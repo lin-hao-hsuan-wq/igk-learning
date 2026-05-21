@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>IGK 7月 VOC. challenge</title>
+    <style>
+        :root {
+            --primary-color: #FF6B6B;
+            --secondary-color: #4ECDC4;
+            --bg-color: #F7FFF7;
+            --text-color: #2F3E46;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            text-shadow: 2px 2px 0px #ffe6e6;
+            margin: 15px 0 10px 0;
+            text-align: center;
+        }
+
+        .menu-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #3db7af;
+            transition: all 0.1s;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        button.mode-btn {
+            background-color: #FF9F43;
+            box-shadow: 0 4px 0 #ee821a;
+        }
+
+        .game-section {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .active {
+            display: block;
+        }
+
+        /* 対對碰 (Matching Game) */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .card {
+            background-color: #f9f9f9;
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            min-height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word;
+        }
+
+        .card.selected {
+            background-color: #FFEaa7;
+            border-color: #FF9F43;
+        }
+
+        .card.matched {
+            background-color: #DFF9FB;
+            border-color: #686DE0;
+            color: #686DE0;
+            visibility: hidden; /* 正解したら消える（レイアウトは維持） */
+        }
+
+        /* 單字輸入 (Typing Game) */
+        .word-hint {
+            font-size: 2.2rem;
+            margin: 20px 0;
+            color: #686DE0;
+            font-weight: bold;
+        }
+
+        .input-box {
+            font-size: 1.8rem;
+            padding: 10px;
+            width: 85%;
+            text-align: center;
+            border: 3px solid var(--secondary-color);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        .feedback {
+            font-size: 1.5rem;
+            font-weight: bold;
+            height: 35px;
+            margin-bottom: 15px;
+        }
+
+        .correct { color: #2ecc71; }
+        .wrong { color: #e74c3c; }
+        
+        .score-info {
+            font-size: 1rem;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>IGK 7月　VOC. challenge</h1>
+
+    <div class="menu-container">
+        <button class="mode-btn" onclick="switchMode('matching')">えらぶ (対対碰)</button>
+        <button class="mode-btn" onclick="switchMode('typing')">タイピング (入力)</button>
+    </div>
+
+    <div id="matching-section" class="game-section">
+        <h2>えらぶテスト (Matching)</h2>
+        <p>えいごと にほんごを ペアに しよう！</p>
+        <div class="score-info" id="matching-status"></div>
+        <button onclick="initMatchingGame()" style="background-color:#95a5a6; box-shadow:0 4px 0 #7f8c8d; padding:8px 16px; font-size:0.9rem; margin-bottom:10px;">つぎの単語を読み込む</button>
+        <div id="matching-grid" class="grid"></div>
+    </div>
+
+    <div id="typing-section" class="game-section">
+        <h2>タイピングテスト (Typing)</h2>
+        <div class="score-info" id="typing-status"></div>
+        <div class="word-hint" id="typing-hint">にほんご</div>
+        <input type="text" id="typing-input" class="input-box" placeholder="ここに入力してね" autocomplete="off" inputmode="url">
+        <div id="typing-feedback" class="feedback"></div>
+        <button onclick="checkTyping()">決定 (けってい)</button>
+    </div>
+
+    <script>
+        // 20個の7月の単語データ
+        const wordBank = {
+            "summer": "なつ",
+            "sun": "たいよう",
+            "hot": "あつい",
+            "swimming": "すいえい",
+            "sea": "うみ",
+            "fireworks": "はなび",
+            "festival": "まつり",
+            "Tanabata": "たなばた",
+            "sunflower": "ひまわり",
+            "ice cream": "あいすくりーむ",
+            "mosquito": "か",
+            "rainy": "あめの",
+            "humid": "むしあつい",
+            "vacation": "やすみ",
+            "cool": "すずしい",
+            "hat": "ぼうし",
+            "beach": "うみべ",
+            "watermelon": "すいか",
+            "school": "がっこう",
+            "friend": "ともだち"
+        };
+
+        let selectedCards = [];
+        let wordList = [];
+        let currentWordIndex = 0;
+
+        function switchMode(mode) {
+            document.getElementById('matching-section').classList.remove('active');
+            document.getElementById('typing-section').classList.remove('active');
+            
+            if (mode === 'matching') {
+                document.getElementById('matching-section').classList.add('active');
+                initMatchingGame();
+            } else if (mode === 'typing') {
+                document.getElementById('typing-section').classList.add('active');
+                initTypingGame();
+            }
+        }
+
+        // --- 模式一：對對碰 (20個から毎回ランダムに6組[12枚]を選出してゲーム化) ---
+        function initMatchingGame() {
+            const grid = document.getElementById('matching-grid');
+            grid.innerHTML = '';
+            selectedCards = [];
+            
+            // 全20個からランダムに6ペアを選ぶ (画面がカードで溢れないようにするため)
+            const allPairs = Object.entries(wordBank);
+            allPairs.sort(() => Math.random() - 0.5);
+            const selectedPairs = allPairs.slice(0, 6);
+
+            document.getElementById('matching-status').innerText = "20問のなかから 6つ えらばれたよ！";
+
+            let cardsData = [];
+            selectedPairs.forEach(([eng, jp]) => {
+                cardsData.push({ text: eng, type: 'eng', match: jp });
+                cardsData.push({ text: jp, type: 'jp', match: eng });
+            });
+
+            // シャッフル
+            cardsData.sort(() => Math.random() - 0.5);
+
+            // カードを生成
+            cardsData.forEach((cardInfo, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.innerText = cardInfo.text;
+                card.dataset.text = cardInfo.text;
+                card.dataset.type = cardInfo.type;
+                card.dataset.match = cardInfo.match;
+
+                card.addEventListener('click', onCardClick);
+                grid.appendChild(card);
+            });
+        }
+
+        function onCardClick(e) {
+            const card = e.currentTarget;
+            if (card.classList.contains('matched') || card.classList.contains('selected')) return;
+
+            card.classList.add('selected');
+            selectedCards.push(card);
+
+            if (selectedCards.length === 2) {
+                const card1 = selectedCards[0];
+                const card2 = selectedCards[1];
+
+                if (card1.dataset.text === card2.dataset.match && card1.dataset.type !== card2.dataset.type) {
+                    setTimeout(() => {
+                        card1.classList.remove('selected');
+                        card2.classList.remove('selected');
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        checkMatchingWin();
+                    }, 400);
+                } else {
+                    setTimeout(() => {
+                        card1.classList.remove('selected');
+                        card2.classList.remove('selected');
+                    }, 800);
+                }
+                selectedCards = [];
+            }
+        }
+
+        function checkMatchingWin() {
+            const unmatched = document.querySelectorAll('.card:not(.matched)');
+            if (unmatched.length === 0) {
+                setTimeout(() => {
+                    alert("すごい！ぜんぶクリア！ ✨");
+                    initMatchingGame();
+                }, 300);
+            }
+        }
+
+        // --- 模式二：單字輸入 (全20問をランダム順に連続出題) ---
+        function initTypingGame() {
+            wordList = Object.entries(wordBank);
+            wordList.sort(() => Math.random() - 0.5); // 20問をシャッフル
+            currentWordIndex = 0;
+            document.getElementById('typing-input').value = "";
+            document.getElementById('typing-feedback').innerText = "";
+            showNextTypingWord();
+        }
+
+        function showNextTypingWord() {
+            if (currentWordIndex < wordList.length) {
+                document.getElementById('typing-status').innerText = `もんだい: ${currentWordIndex + 1} / ${wordList.length}`;
+                document.getElementById('typing-hint').innerText = wordList[currentWordIndex][1];
+                document.getElementById('typing-input').value = "";
+                document.getElementById('typing-input').focus();
+            } else {
+                document.getElementById('typing-status').innerText = "クリア！";
+                document.getElementById('typing-hint').innerText = "おめでとう！";
+                document.getElementById('typing-feedback').className = "feedback correct";
+                document.getElementById('typing-feedback').innerText = "20問 ぜんぶ正解したよ！🌟";
+            }
+        }
+
+        function checkTyping() {
+            const userInput = document.getElementById('typing-input').value.trim().toLowerCase();
+            const correctAnswer = wordList[currentWordIndex][0].toLowerCase();
+            const feedback = document.getElementById('typing-feedback');
+
+            if (userInput === correctAnswer) {
+                feedback.className = "feedback correct";
+                feedback.innerText = "せいかい！ ✨";
+                currentWordIndex++;
+                setTimeout(() => {
+                    feedback.innerText = "";
+                    showNextTypingWord();
+                }, 1000);
+            } else {
+                feedback.className = "feedback wrong";
+                feedback.innerText = "もういちど がんばって！ 🤔";
+            }
+        }
+
+        document.getElementById('typing-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkTyping();
+            }
+        });
+
+        // 初期起動
+        switchMode('matching');
+    </script>
+</body>
+</html>
