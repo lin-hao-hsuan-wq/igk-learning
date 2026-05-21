@@ -72,4 +72,481 @@
 
         .mode-btn.active-tab {
             background-color: #FF5252;
-            box
+            box-shadow: 0 6px 0 #C0392B;
+        }
+
+        /* 主要遊戲區域面板 */
+        .game-section {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            background: var(--bg-paper);
+            padding: 25px 20px;
+            /* 圓潤且不規則的手繪風邊框 */
+            border: 4px solid #4A4A4A;
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.08);
+            text-align: center;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .active {
+            display: block;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            margin-top: 0;
+            color: #2F3E46;
+        }
+
+        .hint-text {
+            font-size: 1.1rem;
+            color: #7F8C8D;
+            margin-bottom: 15px;
+        }
+
+        /* --- 模式一：對對碰卡片樣式 --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .card {
+            background-color: #FFFFFF;
+            /* 蠟筆手繪不規則邊框效果 */
+            border: 3px solid #555;
+            border-radius: 20px 10px 20px 10px/10px 20px 10px 20px;
+            padding: 15px 5px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 3px 0px #555;
+            word-break: break-word;
+            transition: transform 0.1s;
+        }
+
+        .card:active {
+            transform: scale(0.95);
+        }
+
+        .card.selected {
+            background-color: var(--pastel-yellow);
+            transform: scale(1.02);
+        }
+
+        .card.matched {
+            background-color: #E3FAF4;
+            border-color: #BDC3C7;
+            color: #BDC3C7;
+            box-shadow: none;
+            visibility: hidden; /* 配對成功就消失 */
+        }
+
+        /* --- 模式二：單字輸入樣式 --- */
+        .word-hint {
+            font-size: 2.5rem;
+            margin: 25px 0;
+            color: #4A4A4A;
+            font-weight: bold;
+            text-decoration: underline dashed var(--primary-color) 3px;
+        }
+
+        .input-container {
+            position: relative;
+            width: 85%;
+            margin: 0 auto 20px auto;
+        }
+
+        .input-box {
+            font-size: 1.8rem;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            border: 4px solid var(--secondary-color);
+            border-radius: 20px 15px 20px 15px/15px 20px 15px 20px;
+            box-sizing: border-box;
+            outline: none;
+            background: #FFF;
+            font-family: 'Comic Neue', sans-serif;
+        }
+
+        .input-box:focus {
+            background: #F0FFF9;
+        }
+
+        .feedback {
+            font-size: 1.5rem;
+            font-weight: bold;
+            height: 40px;
+            margin-bottom: 10px;
+        }
+
+        .correct { color: #2ECC71; animation: pop 0.3s ease-in-out; }
+        .wrong { color: #E74C3C; animation: shake 0.3s ease-in-out; }
+
+        .btn-submit {
+            background-color: var(--secondary-color);
+            color: white;
+            border: 3px solid #FFF;
+            padding: 12px 35px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #2BBBAD;
+        }
+        .btn-submit:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #2BBBAD;
+        }
+
+        .score-info {
+            font-size: 1.1rem;
+            color: #7F8C8D;
+            margin-bottom: 10px;
+            background: #FFF;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            border: 2px dashed #BDC3C7;
+        }
+
+        /* --- 獎盃互動大畫面 --- */
+        #victory-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(255, 253, 243, 0.96);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .trophy-box {
+            font-size: 8rem;
+            color: #FFD700;
+            text-shadow: 0 0 30px rgba(255,215,0,0.5);
+            animation: bounce 2s infinite ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        .victory-title {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .victory-p {
+            font-size: 1.6rem;
+            color: #4A4A4A;
+            margin-bottom: 30px;
+        }
+
+        /* --- 動畫特效效果 --- */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+        }
+        @keyframes pop {
+            0% { transform: scale(0.8); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1><i class="fa-solid fa-pencil"></i> IGK 6月　VOC. challenge <i class="fa-solid fa-star" style="color:#FFD700;"></i></h1>
+
+    <div class="menu-container">
+        <button id="tab-matching" class="mode-btn" onclick="switchMode('matching')">えらぶ</button>
+        <button id="tab-typing" class="mode-btn" onclick="switchMode('typing')">タイピング</button>
+    </div>
+
+    <div id="matching-section" class="game-section">
+        <h2>えらぶテスト (Matching)</h2>
+        <p class="hint-text">えいごと にほんごを ペアに しよう！ 🔊</p>
+        <div class="score-info" id="matching-status">のこり: 20問</div>
+        <div id="matching-grid" class="grid"></div>
+    </div>
+
+    <div id="typing-section" class="game-section">
+        <h2>タイピングテスト (Typing)</h2>
+        <div class="score-info" id="typing-status">もんだい: 1 / 20</div>
+        <div class="word-hint" id="typing-hint">にほんご</div>
+        <div class="input-container">
+            <input type="text" id="typing-input" class="input-box" placeholder="ここに入力してね" autocomplete="off" inputmode="url">
+        </div>
+        <div id="typing-feedback" class="feedback"></div>
+        <button class="btn-submit" onclick="checkTyping()">決定 (けってい)</button>
+    </div>
+
+    <div id="victory-screen">
+        <div class="trophy-box">
+            <i class="fa-solid fa-trophy"></i>
+        </div>
+        <div class="victory-title">おめでとう！！</div>
+        <div class="victory-p">20問 ぜんぶ クリアしたよ！すごすぎる！🌟</div>
+        <button class="mode-btn" onclick="closeVictory()" style="background-color: var(--secondary-color); box-shadow: 0 6px 0 #2BBBAD;">もういちど あそぶ</button>
+    </div>
+
+    <script>
+        // 20個單字庫數據
+        const wordBank = {
+            "spring": "はる", "summer": "なつ", "fall": "あき", "winter": "ふゆ",
+            "sunny": "はれた", "cloudy": "くもりの", "rainy": "あめの", "snowy": "ゆきのふる",
+            "windy": "かぜのつよい", "family": "かぞく", "father": "おとうさん", "mother": "おかあさん",
+            "brother": "おにいさん・おとうと", "sister": "おねえさん・いもうと",
+            "grandfather": "おじじさん", "grandmother": "おばあさん",
+            "boy": "おとこのこ", "girl": "おんなのこ", "friend": "ともだち", "everyone": "みんな"
+        };
+
+        let selectedCards = [];
+        let wordList = [];
+        let currentWordIndex = 0;
+        let totalPairsCleared = 0; // 對對碰累計配對成功數
+
+        function switchMode(mode) {
+            document.getElementById('matching-section').classList.remove('active');
+            document.getElementById('typing-section').classList.remove('active');
+            document.getElementById('tab-matching').classList.remove('active-tab');
+            document.getElementById('tab-typing').classList.remove('active-tab');
+            
+            if (mode === 'matching') {
+                document.getElementById('matching-section').classList.add('active');
+                document.getElementById('tab-matching').classList.add('active-tab');
+                initMatchingGame();
+            } else if (mode === 'typing') {
+                document.getElementById('typing-section').classList.add('active');
+                document.getElementById('tab-typing').classList.add('active-tab');
+                initTypingGame();
+            }
+        }
+
+        // 🔊 英文單字讀音 TTS 功能
+        function speakEnglish(word) {
+            // 檢查單字中是否包含「・」分隔符（主要針對日文處理，不過這裡傳入的會是純英文如 brother）
+            // 確保清除乾淨非英文字元
+            let cleanWord = word.split('(')[0].trim();
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // 停止上一個正在播放的聲音
+                const utterance = new SpeechSynthesisUtterance(cleanWord);
+                utterance.lang = 'en-US'; // 美式英語
+                utterance.rate = 0.85;    // 稍微放慢一點速度讓日本小孩聽得懂
+                utterance.pitch = 1.1;    // 語調稍微提高一點顯得更有活力
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // 🌈 噴發五彩紙屑彩帶功能
+        function launchConfetti() {
+            var duration = 3 * 1000;
+            var end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0, y: 0.8 }
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1, y: 0.8 }
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        // 🏆 顯示大獎盃通關畫面
+        function triggerVictory() {
+            document.getElementById('victory-screen').style.display = 'flex';
+            launchConfetti();
+        }
+
+        function closeVictory() {
+            document.getElementById('victory-screen').style.display = 'none';
+            // 重新刷新當前模式
+            if (document.getElementById('matching-section').classList.contains('active')) {
+                initMatchingGame();
+            } else {
+                initTypingGame();
+            }
+        }
+
+
+        // --- 模式一：對對碰邏輯 (20個單字全出，分成每次隨機挑6組，直到20組全部完成) ---
+        let poolPairs = [];
+        
+        function initMatchingGame() {
+            const grid = document.getElementById('matching-grid');
+            grid.innerHTML = '';
+            selectedCards = [];
+            totalPairsCleared = 0;
+            
+            // 把20個單字全部放進待分配池中
+            poolPairs = Object.entries(wordBank);
+            poolPairs.sort(() => Math.random() - 0.5); // 洗牌
+            
+            loadNextMatchingSet();
+        }
+
+        function loadNextMatchingSet() {
+            const grid = document.getElementById('matching-grid');
+            grid.innerHTML = '';
+            
+            // 每次從池子裡拿出 5 組單字 (共10張牌，畫面最剛好舒適)
+            const currentSet = poolPairs.slice(totalPairsCleared, totalPairsCleared + 5);
+            
+            if (currentSet.length === 0) {
+                // 20個單字全部對對碰完成了！
+                triggerVictory();
+                return;
+            }
+
+            document.getElementById('matching-status').innerText = `すすみぐあい: ${totalPairsCleared} / 20 問`;
+
+            let cardsData = [];
+            currentSet.forEach(([eng, jp]) => {
+                cardsData.push({ text: eng, type: 'eng', match: jp, engWord: eng });
+                cardsData.push({ text: jp, type: 'jp', match: eng, engWord: eng });
+            });
+
+            cardsData.sort(() => Math.random() - 0.5);
+
+            cardsData.forEach((cardInfo) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.innerText = cardInfo.text;
+                card.dataset.text = cardInfo.text;
+                card.dataset.type = cardInfo.type;
+                card.dataset.match = cardInfo.match;
+                card.dataset.eng = cardInfo.engWord; // 存入對應的英文單字供語音用
+
+                card.addEventListener('click', onCardClick);
+                grid.appendChild(card);
+            });
+        }
+
+        function onCardClick(e) {
+            const card = e.currentTarget;
+            if (card.classList.contains('matched') || card.classList.contains('selected')) return;
+
+            card.classList.add('selected');
+            selectedCards.push(card);
+
+            if (selectedCards.length === 2) {
+                const card1 = selectedCards[0];
+                const card2 = selectedCards[1];
+
+                // 配對成功
+                if (card1.dataset.text === card2.dataset.match && card1.dataset.type !== card2.dataset.type) {
+                    // 點選正確立刻發音英文單字！
+                    speakEnglish(card1.dataset.eng);
+
+                    setTimeout(() => {
+                        card1.classList.remove('selected');
+                        card2.classList.remove('selected');
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        
+                        // 檢查當前這組小卡片是不是被消完了
+                        const unmatchedInSet = document.querySelectorAll('.card:not(.matched)');
+                        if (unmatchedInSet.length === 0) {
+                            totalPairsCleared += 5;
+                            setTimeout(() => {
+                                loadNextMatchingSet();
+                            }, 500);
+                        }
+                    }, 300);
+                } else {
+                    // 配對失敗
+                    setTimeout(() => {
+                        card1.classList.remove('selected');
+                        card2.classList.remove('selected');
+                    }, 600);
+                }
+                selectedCards = [];
+            }
+        }
+
+
+        // --- 模式二：單字輸入邏輯 ---
+        function initTypingGame() {
+            wordList = Object.entries(wordBank);
+            wordList.sort(() => Math.random() - 0.5); // 20題亂序隨機
+            currentWordIndex = 0;
+            document.getElementById('typing-input').value = "";
+            document.getElementById('typing-feedback').innerText = "";
+            showNextTypingWord();
+        }
+
+        function showNextTypingWord() {
+            if (currentWordIndex < wordList.length) {
+                document.getElementById('typing-status').innerText = `もんだい: ${currentWordIndex + 1} / ${wordList.length}`;
+                document.getElementById('typing-hint').innerText = wordList[currentWordIndex][1];
+                document.getElementById('typing-input').value = "";
+                document.getElementById('typing-feedback').innerText = "";
+                document.getElementById('typing-input').focus();
+            } else {
+                // 20題全部拼對
+                triggerVictory();
+            }
+        }
+
+        function checkTyping() {
+            const userInput = document.getElementById('typing-input').value.trim().toLowerCase();
+            const correctAnswer = wordList[currentWordIndex][0].toLowerCase();
+            const feedback = document.getElementById('typing-feedback');
+
+            if (userInput === correctAnswer) {
+                feedback.className = "feedback correct";
+                feedback.innerHTML = "正解 (せいかい)！ ✨";
+                
+                // 答對立刻發音！
+                speakEnglish(wordList[currentWordIndex][0]);
+
+                currentWordIndex++;
+                setTimeout(() => {
+                    showNextTypingWord();
+                }, 1200);
+            } else {
+                feedback.className = "feedback wrong";
+                feedback.innerHTML = "もういちど がんばって！ 😭";
+            }
+        }
+
+        // 監聽 Enter 鍵
+        document.getElementById('typing-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkTyping();
+            }
+        });
+
+
+        // 網頁開啟時默認啟動對對碰
+        switchMode('matching');
+    </script>
+</body>
+</html>
