@@ -17,7 +17,7 @@
         <div class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
           <span class="text-lg font-bold">日</span>
         </div>
-        <span class="text-xl font-bold text-slate-950">日文單字大挑戰</span>
+        <span class="text-xl font-bold text-slate-950">Vocabulary Challenge</span>
       </div>
       <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg">
         <button id="studentBtn" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Student Quiz</button>
@@ -52,36 +52,109 @@
         <h2 class="text-xl font-bold text-slate-900">Teacher Performance Dashboard</h2>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div class="flex items-center space-x-2 mb-6">
-          <span class="text-slate-400">📈</span>
-          <h3 class="text-base font-bold text-slate-800">Weekly trend analysis (Mon–Fri)</h3>
+      <!-- Navigation tabs -->
+      <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg">
+        <button id="overviewTab" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Overall View</button>
+        <button id="studentAnalyticsTab" class="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900">Individual Student</button>
+      </div>
+
+      <!-- Overall View -->
+      <div id="overallView" class="space-y-8">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center space-x-2 mb-6">
+            <span class="text-slate-400">📈</span>
+            <h3 class="text-base font-bold text-slate-800">Weekly trend analysis (Mon–Fri)</h3>
+          </div>
+          <canvas id="trendLineChart" class="w-full" height="300"></canvas>
+          <div class="flex justify-center space-x-6 text-xs font-medium mt-4">
+            <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-indigo-500 rounded-sm"></div><span class="text-slate-500">Total submissions</span></div>
+            <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-emerald-500 rounded-sm"></div><span class="text-slate-500">Average correct answers</span></div>
+          </div>
         </div>
-        <div id="chartContainer" class="space-y-4"></div>
-        <div class="flex justify-center space-x-6 text-xs font-medium mt-4">
-          <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-indigo-500 rounded-sm"></div><span class="text-slate-500">Total submissions</span></div>
-          <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-emerald-500 rounded-sm"></div><span class="text-slate-500">Average correct answers (out of 20)</span></div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100 flex items-center space-x-2">
+            <span class="text-slate-400">📋</span>
+            <h3 class="text-base font-bold text-slate-800">All Student Records</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider">
+                  <th class="p-4">Student</th>
+                  <th class="p-4">Day</th>
+                  <th class="p-4 text-emerald-600">Correct</th>
+                  <th class="p-4 text-rose-600">Wrong</th>
+                  <th class="p-4 text-slate-400">Date</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex items-center space-x-2">
-          <span class="text-slate-400">📋</span>
-          <h3 class="text-base font-bold text-slate-800">學生詳細作答紀錄</h3>
+      <!-- Individual Student Analytics View -->
+      <div id="studentAnalyticsView" class="hidden space-y-8">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center space-x-2 mb-4">
+            <span class="text-slate-400">👤</span>
+            <label class="text-base font-bold text-slate-800">Select Student</label>
+          </div>
+          <select id="studentSelector" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">-- Choose a student --</option>
+          </select>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider">
-                <th class="p-4">Student</th>
-                <th class="p-4">Day</th>
-                <th class="p-4 text-emerald-600">Correct</th>
-                <th class="p-4 text-rose-600">Wrong</th>
-                <th class="p-4 text-slate-400">Date</th>
-              </tr>
-            </thead>
-            <tbody id="recordsBody" class="divide-y divide-slate-100 text-sm"></tbody>
-          </table>
+
+        <div id="studentStatsContainer" class="hidden space-y-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+              <div class="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Total Attempts</div>
+              <div class="text-3xl font-black text-indigo-600 mt-2" id="totalAttempts">0</div>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Average Score</div>
+              <div class="text-3xl font-black text-emerald-600 mt-2" id="avgScore">0%</div>
+            </div>
+            <div class="bg-orange-50 border border-orange-100 rounded-xl p-4">
+              <div class="text-xs font-semibold text-orange-700 uppercase tracking-wider">Best Score</div>
+              <div class="text-3xl font-black text-orange-600 mt-2" id="bestScore">0/20</div>
+            </div>
+            <div class="bg-rose-50 border border-rose-100 rounded-xl p-4">
+              <div class="text-xs font-semibold text-rose-700 uppercase tracking-wider">Worst Score</div>
+              <div class="text-3xl font-black text-rose-600 mt-2" id="worstScore">0/20</div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div class="flex items-center space-x-2 mb-4">
+              <span class="text-slate-400">📈</span>
+              <h3 class="text-base font-bold text-slate-800">Personal Progress Over Time</h3>
+            </div>
+            <canvas id="studentProgressChart" class="w-full" height="250"></canvas>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex items-center space-x-2">
+              <span class="text-slate-400">📝</span>
+              <h3 class="text-base font-bold text-slate-800">Quiz History</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider">
+                    <th class="p-4">#</th>
+                    <th class="p-4">Date</th>
+                    <th class="p-4">Day</th>
+                    <th class="p-4 text-emerald-600">Correct</th>
+                    <th class="p-4 text-rose-600">Wrong</th>
+                    <th class="p-4 text-indigo-600">Score %</th>
+                  </tr>
+                </thead>
+                <tbody id="studentHistoryBody" class="divide-y divide-slate-100 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -89,7 +162,7 @@
 
   <script>
     const QUIZ_DATA = [
-      { jp: "はる", en: "spring" }, { jp: "なつ", en: "summer" }, { jp: "あき", en: "fall" }, { jp: "fuyu", en: "winter" },
+      { jp: "はる", en: "spring" }, { jp: "なつ", en: "summer" }, { jp: "あき", en: "fall" }, { jp: "ふゆ", en: "winter" },
       { jp: "はれた", en: "sunny" }, { jp: "くもりの", en: "cloudy" }, { jp: "あめの", en: "rainy" }, { jp: "ゆきのふる", en: "snowy" },
       { jp: "かぜのつよい", en: "windy" }, { jp: "かぞく", en: "family" }, { jp: "おとうさん", en: "father" }, { jp: "おかあさん", en: "mother" },
       { jp: "おにいさん・おとうと", en: "brother" }, { jp: "おねえさん・いもうと", en: "sister" }, { jp: "おじいさん", en: "grandfather" },
@@ -97,12 +170,13 @@
       { jp: "ともだち", en: "friend" }, { jp: "みんな", en: "everyone" }
     ];
 
-    const DAYS_OF_WEEK = ["星期一", "星期二", "星期三", "星期四", "星期五"];
-    const records = [
-      { id: 1, name: "小明", correct: 18, wrong: 2, day: "星期一", date: "2026-05-18" },
-      { id: 2, name: "小華", correct: 15, wrong: 5, day: "星期一", date: "2026-05-18" },
-      { id: 3, name: "小紅", correct: 20, wrong: 0, day: "星期二", date: "2026-05-19" },
-      { id: 4, name: "小強", correct: 12, wrong: 8, day: "星期三", date: "2026-05-20" }
+    const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+    let records = [
+      { id: 1, name: "Mika", correct: 18, wrong: 2, day: "Mon", date: "2026-05-18" },
+      { id: 2, name: "Yuki", correct: 15, wrong: 5, day: "Mon", date: "2026-05-18" },
+      { id: 3, name: "Mika", correct: 20, wrong: 0, day: "Tue", date: "2026-05-19" },
+      { id: 4, name: "Yuki", correct: 12, wrong: 8, day: "Wed", date: "2026-05-20" }
     ];
 
     const studentBtn = document.getElementById('studentBtn');
@@ -115,10 +189,287 @@
     const studentNameInput = document.getElementById('studentNameInput');
     const startQuizBtn = document.getElementById('startQuizBtn');
     const recordsBody = document.getElementById('recordsBody');
-    const chartContainer = document.getElementById('chartContainer');
+    
+    const overviewTab = document.getElementById('overviewTab');
+    const studentAnalyticsTab = document.getElementById('studentAnalyticsTab');
+    const overallView = document.getElementById('overallView');
+    const studentAnalyticsView = document.getElementById('studentAnalyticsView');
+    const studentSelector = document.getElementById('studentSelector');
+    const studentStatsContainer = document.getElementById('studentStatsContainer');
 
     let currentAnswers = Array(20).fill('');
     let studentName = '';
+    let selectedStudent = '';
+
+    // Tab navigation
+    function switchTab(tab) {
+      if (tab === 'overview') {
+        overallView.classList.remove('hidden');
+        studentAnalyticsView.classList.add('hidden');
+        overviewTab.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+        overviewTab.classList.remove('text-slate-600');
+        studentAnalyticsTab.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+        studentAnalyticsTab.classList.add('text-slate-600');
+      } else {
+        overallView.classList.add('hidden');
+        studentAnalyticsView.classList.remove('hidden');
+        studentAnalyticsTab.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+        studentAnalyticsTab.classList.remove('text-slate-600');
+        overviewTab.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+        overviewTab.classList.add('text-slate-600');
+        populateStudentSelector();
+      }
+    }
+
+    // Get unique students
+    function getUniqueStudents() {
+      const students = [...new Set(records.map(r => r.name))];
+      return students.sort();
+    }
+
+    // Populate student dropdown
+    function populateStudentSelector() {
+      const students = getUniqueStudents();
+      studentSelector.innerHTML = '<option value="">-- Choose a student --</option>';
+      students.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        studentSelector.appendChild(option);
+      });
+    }
+
+    // Get stats for a specific student
+    function getStudentStats(studentName) {
+      const studentRecords = records.filter(r => r.name === studentName);
+      if (!studentRecords.length) return null;
+
+      const totalAttempts = studentRecords.length;
+      const avgScore = Math.round((studentRecords.reduce((sum, r) => sum + r.correct, 0) / (totalAttempts * 20)) * 100);
+      const bestScore = Math.max(...studentRecords.map(r => r.correct));
+      const worstScore = Math.min(...studentRecords.map(r => r.correct));
+
+      return { totalAttempts, avgScore, bestScore, worstScore, records: studentRecords };
+    }
+
+    // Display individual student analytics
+    function displayStudentAnalytics(studentName) {
+      const stats = getStudentStats(studentName);
+      if (!stats) {
+        studentStatsContainer.classList.add('hidden');
+        return;
+      }
+
+      selectedStudent = studentName;
+      document.getElementById('totalAttempts').textContent = stats.totalAttempts;
+      document.getElementById('avgScore').textContent = stats.avgScore + '%';
+      document.getElementById('bestScore').textContent = stats.bestScore + '/20';
+      document.getElementById('worstScore').textContent = stats.worstScore + '/20';
+
+      renderStudentProgressChart(stats.records);
+      renderStudentHistory(stats.records);
+      studentStatsContainer.classList.remove('hidden');
+    }
+
+    // Draw line chart for weekly trends (overall)
+    function drawWeeklyTrendLineChart() {
+      const canvas = document.getElementById('trendLineChart');
+      if (!canvas || !canvas.getContext) return;
+
+      const ctx = canvas.getContext('2d');
+      const chartData = getChartData();
+      drawLineChart(ctx, chartData, ['Total submissions', 'Average correct answers'], ['rgb(99, 102, 241)', 'rgb(16, 185, 129)']);
+    }
+
+    // Draw line chart for student progress
+    function renderStudentProgressChart(studentRecords) {
+      const canvas = document.getElementById('studentProgressChart');
+      if (!canvas || !canvas.getContext) return;
+
+      const ctx = canvas.getContext('2d');
+      const data = studentRecords.map((r, idx) => ({
+        label: `Attempt ${idx + 1}`,
+        value: r.correct
+      }));
+
+      drawSimpleLineChart(ctx, data, 'Correct Answers Over Time');
+    }
+
+    // Generic line chart drawer
+    function drawLineChart(ctx, data, labels, colors) {
+      const width = ctx.canvas.clientWidth;
+      const height = ctx.canvas.clientHeight;
+      ctx.canvas.width = width;
+      ctx.canvas.height = height;
+
+      const padding = 50;
+      const graphWidth = width - 2 * padding;
+      const graphHeight = height - 2 * padding;
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw grid and axes
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (graphHeight / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, height - padding);
+      ctx.lineTo(width - padding, height - padding);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, height - padding);
+      ctx.stroke();
+
+      // Draw data lines
+      const values1 = data.map(d => d.totalPeople || 0);
+      const values2 = data.map(d => d.avgScore || 0);
+      const maxValue1 = Math.max(...values1, 1);
+      const maxValue2 = Math.max(...values2, 20);
+
+      // Line 1 - Total submissions
+      ctx.strokeStyle = colors[0];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      values1.forEach((val, idx) => {
+        const x = padding + (graphWidth / (values1.length - 1 || 1)) * idx;
+        const y = height - padding - (val / maxValue1) * graphHeight;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Line 2 - Average score
+      ctx.strokeStyle = colors[1];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      values2.forEach((val, idx) => {
+        const x = padding + (graphWidth / (values2.length - 1 || 1)) * idx;
+        const y = height - padding - (val / maxValue2) * graphHeight;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw labels
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      data.forEach((d, idx) => {
+        const x = padding + (graphWidth / (data.length - 1 || 1)) * idx;
+        ctx.fillText(d.name, x, height - padding + 20);
+      });
+
+      ctx.textAlign = 'left';
+      ctx.fillText('0', padding - 20, height - padding + 5);
+      ctx.fillText(Math.ceil(maxValue2), padding - 20, padding + 5);
+    }
+
+    // Simple line chart for individual student
+    function drawSimpleLineChart(ctx, data, title) {
+      const width = ctx.canvas.clientWidth;
+      const height = ctx.canvas.clientHeight;
+      ctx.canvas.width = width;
+      ctx.canvas.height = height;
+
+      const padding = 50;
+      const graphWidth = width - 2 * padding;
+      const graphHeight = height - 2 * padding;
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw grid
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (graphHeight / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+
+      // Draw axes
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, height - padding);
+      ctx.lineTo(width - padding, height - padding);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, height - padding);
+      ctx.stroke();
+
+      // Draw line
+      const values = data.map(d => d.value);
+      const maxValue = Math.max(...values, 20);
+
+      ctx.strokeStyle = 'rgb(99, 102, 241)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      values.forEach((val, idx) => {
+        const x = padding + (graphWidth / (values.length - 1 || 1)) * idx;
+        const y = height - padding - (val / maxValue) * graphHeight;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw points
+      ctx.fillStyle = 'rgb(99, 102, 241)';
+      values.forEach((val, idx) => {
+        const x = padding + (graphWidth / (values.length - 1 || 1)) * idx;
+        const y = height - padding - (val / maxValue) * graphHeight;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      // Draw labels
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      data.forEach((d, idx) => {
+        const x = padding + (graphWidth / (data.length - 1 || 1)) * idx;
+        ctx.fillText(`A${idx + 1}`, x, height - padding + 20);
+      });
+
+      ctx.textAlign = 'left';
+      ctx.fillText('0', padding - 25, height - padding + 5);
+      ctx.fillText('20', padding - 25, padding + 5);
+    }
+
+    // Render student history table
+    function renderStudentHistory(studentRecords) {
+      const historyBody = document.getElementById('studentHistoryBody');
+      historyBody.innerHTML = '';
+      studentRecords.forEach((r, idx) => {
+        const percentage = Math.round((r.correct / 20) * 100);
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-slate-50/70 transition-colors';
+        row.innerHTML = `
+          <td class="p-4 font-medium text-slate-400">${idx + 1}</td>
+          <td class="p-4 text-sm text-slate-700">${r.date}</td>
+          <td class="p-4"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">${r.day}</span></td>
+          <td class="p-4 font-bold text-emerald-600">${r.correct}</td>
+          <td class="p-4 font-medium text-rose-500">${r.wrong}</td>
+          <td class="p-4 font-bold text-indigo-600">${percentage}%</td>
+        `;
+        historyBody.appendChild(row);
+      });
+    }
 
     function showView(view) {
       if (view === 'student') {
@@ -232,25 +583,15 @@
       return DAYS_OF_WEEK.map(day => {
         const dayRecords = records.filter(r => r.day === day);
         const totalPeople = dayRecords.length;
-        const avgScore = totalPeople ? Math.round(dayRecords.reduce((sum, r) => sum + r.correct, 0) / totalPeople) : 0;
+        const avgScore = totalPeople ? Math.round((dayRecords.reduce((sum, r) => sum + r.correct, 0) / totalPeople)) : 0;
         return { name: day, totalPeople, avgScore };
       });
     }
 
     function renderTeacherData() {
       renderRecords();
-      chartContainer.innerHTML = '';
-      getChartData().forEach(data => {
-        const row = document.createElement('div');
-        row.className = 'space-y-2';
-        row.innerHTML = `
-          <div class="flex justify-between text-sm text-slate-600"><span>${data.name}</span><span>${data.totalPeople} 人 / ${data.avgScore} 分</span></div>
-          <div class="h-4 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full bg-indigo-500 rounded-full" style="width: ${Math.min(100, data.totalPeople * 20)}%"></div>
-          </div>
-        `;
-        chartContainer.appendChild(row);
-      });
+      switchTab('overview');
+      setTimeout(() => drawWeeklyTrendLineChart(), 100);
     }
 
     function renderRecords() {
@@ -290,6 +631,20 @@
 
     studentBtn.addEventListener('click', () => showView('student'));
     teacherBtn.addEventListener('click', () => showView('teacher'));
+
+    overviewTab.addEventListener('click', () => {
+      switchTab('overview');
+      setTimeout(() => drawWeeklyTrendLineChart(), 100);
+    });
+    studentAnalyticsTab.addEventListener('click', () => switchTab('analytics'));
+
+    studentSelector.addEventListener('change', (e) => {
+      if (e.target.value) {
+        displayStudentAnalytics(e.target.value);
+      } else {
+        studentStatsContainer.classList.add('hidden');
+      }
+    });
 
     renderRecords();
     showView('student');
