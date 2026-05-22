@@ -1,8 +1,8 @@
 {
-"rewrites": [
+  "rewrites": [
     {
-    "source": "/months",
-    "destination": "/months.html"
+      "source": "/:path*",
+      "destination": "/:path*.html"
     }
-]
+  ]
 }
