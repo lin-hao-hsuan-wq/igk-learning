@@ -165,12 +165,11 @@
 
   <script>
     const QUIZ_DATA = [
-      { jp: "はる", en: "spring" }, { jp: "なつ", en: "summer" }, { jp: "あき", en: "fall" }, { jp: "ふゆ", en: "winter" },
-      { jp: "はれた", en: "sunny" }, { jp: "くもりの", en: "cloudy" }, { jp: "あめの", en: "rainy" }, { jp: "ゆきのふる", en: "snowy" },
-      { jp: "かぜのつよい", en: "windy" }, { jp: "かぞく", en: "family" }, { jp: "おとうさん", en: "father" }, { jp: "おかあさん", en: "mother" },
-      { jp: "おにいさん・おとうと", en: "brother" }, { jp: "おねえさん・いもうと", en: "sister" }, { jp: "おじいさん", en: "grandfather" },
-      { jp: "おばあさん", en: "grandmother" }, { jp: "おとこのこ", en: "boy" }, { jp: "おんなのこ", en: "girl" },
-      { jp: "ともだち", en: "friend" }, { jp: "みんな", en: "everyone" }
+      { jp: "いちがつ", en: "January" }, { jp: "にがつ", en: "February" }, { jp: "さんがつ", en: "March" }, { jp: "しがつ", en: "April" },
+      { jp: "ごがつ", en: "May" }, { jp: "ろくがつ", en: "June" }, { jp: "しちがつ", en: "July" }, { jp: "はちがつ", en: "August" },
+      { jp: "くがつ", en: "September" }, { jp: "じゅうがつ", en: "October" }, { jp: "じゅういちがつ", en: "November" }, { jp: "じゅうにがつ", en: "December" },
+      { jp: "なか", en: "in" }, { jp: "うえ", en: "on" }, { jp: "した", en: "under" }, { jp: "まえ", en: "in front of" },
+      { jp: "うしろ", en: "behind" }, { jp: "そば", en: ["by", "beside"] }, { jp: "あいだ", en: "between" }, { jp: "と", en: "and" }
     ];
 
     const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -540,7 +539,12 @@
       if (!studentName.trim()) { alert('Please enter your name!'); return; }
       let correct = 0;
       QUIZ_DATA.forEach((q, idx) => {
-        if (currentAnswers[idx].trim().toLowerCase() === q.en.toLowerCase()) correct += 1;
+        const answer = currentAnswers[idx].trim().toLowerCase();
+        if (Array.isArray(q.en)) {
+          if (q.en.some(valid => valid.toLowerCase() === answer)) correct += 1;
+        } else if (answer === q.en.toLowerCase()) {
+          correct += 1;
+        }
       });
       const wrong = 20 - correct;
       addRecord(correct, wrong);
