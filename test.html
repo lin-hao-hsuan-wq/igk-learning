@@ -68,7 +68,7 @@
             <span class="text-slate-400">📈</span>
             <h3 class="text-base font-bold text-slate-800">Weekly trend analysis (Mon–Fri)</h3>
           </div>
-          <canvas id="trendLineChart" class="w-full" height="220"></canvas>
+          <canvas id="trendLineChart" class="w-full" height="150"></canvas>
           <div class="flex justify-center space-x-6 text-xs font-medium mt-4">
             <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-indigo-500 rounded-sm"></div><span class="text-slate-500">Total submissions</span></div>
             <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-emerald-500 rounded-sm"></div><span class="text-slate-500">Average correct answers</span></div>
@@ -134,7 +134,7 @@
               <span class="text-slate-400">📈</span>
               <h3 class="text-base font-bold text-slate-800">Personal Progress Over Time</h3>
             </div>
-            <canvas id="studentProgressChart" class="w-full" height="180"></canvas>
+            <canvas id="studentProgressChart" class="w-full" height="110"></canvas>
           </div>
 
           <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -300,7 +300,7 @@
       ctx.canvas.width = width;
       ctx.canvas.height = height;
 
-      const padding = 50;
+      const padding = 20;
       const graphWidth = width - 2 * padding;
       const graphHeight = height - 2 * padding;
 
@@ -310,7 +310,7 @@
       // Draw grid and axes
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
-      for (let i = 0; i <= 5; i++) {
+      for (let i = 0; i <= 4; i++) {
         const y = padding + (graphHeight / 5) * i;
         ctx.beginPath();
         ctx.moveTo(padding, y);
@@ -380,7 +380,7 @@
       ctx.canvas.width = width;
       ctx.canvas.height = height;
 
-      const padding = 50;
+      const padding = 20;
       const graphWidth = width - 2 * padding;
       const graphHeight = height - 2 * padding;
 
@@ -390,8 +390,8 @@
       // Draw grid
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
-      for (let i = 0; i <= 5; i++) {
-        const y = padding + (graphHeight / 5) * i;
+      for (let i = 0; i <= 4; i++) {
+        const y = padding + (graphHeight / 4) * i;
         ctx.beginPath();
         ctx.moveTo(padding, y);
         ctx.lineTo(width - padding, y);
