@@ -53,9 +53,12 @@
       </div>
 
       <!-- Navigation tabs -->
-      <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg">
-        <button id="overviewTab" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Overall View</button>
-        <button id="studentAnalyticsTab" class="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900">Individual Student</button>
+      <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg justify-between items-center">
+        <div class="flex space-x-2">
+          <button id="overviewTab" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Overall View</button>
+          <button id="studentAnalyticsTab" class="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900">Individual Student</button>
+        </div>
+        <button id="clearRecordsBtn" class="px-4 py-1.5 rounded-md text-sm font-medium bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">Clear All Records</button>
       </div>
 
       <!-- Overall View -->
@@ -618,6 +621,16 @@
       quizResult.classList.add('hidden');
     }
 
+    function clearAllRecords() {
+      if (confirm('Are you sure you want to delete all records? This action cannot be undone!')) {
+        records = [];
+        renderRecords();
+        switchTab('overview');
+        setTimeout(() => drawWeeklyTrendLineChart(), 100);
+        alert('All records have been cleared!');
+      }
+    }
+
     startQuizBtn.addEventListener('click', () => {
       studentName = studentNameInput.value.trim();
       if (!studentName) { alert('Please enter your name first!'); return; }
@@ -640,6 +653,8 @@
         studentStatsContainer.classList.add('hidden');
       }
     });
+
+    document.getElementById('clearRecordsBtn').addEventListener('click', clearAllRecords);
 
     renderRecords();
     showView('student');
