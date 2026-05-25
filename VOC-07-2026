@@ -283,7 +283,7 @@
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
-                utterance.rate = 0.8; // 放慢一點速度
+                utterance.rate = 0.8; 
                 window.speechSynthesis.speak(utterance);
             }
         }
@@ -291,7 +291,7 @@
         // 初始化網頁資料
         window.onload = function() {
             const tableBody = document.querySelector("#word-table tbody");
-            tableBody.innerHTML = ""; // 清空舊內容
+            tableBody.innerHTML = ""; 
             wordData.forEach(word => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
@@ -310,7 +310,7 @@
             });
         };
 
-        // 切換模式 (修正相容性問題)
+        // 切換模式
         function switchMode(mode, element) {
             document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
@@ -323,3 +323,86 @@
         }
 
         /* --- 模式一：對對碰 邏輯 --- */
+        let selectedEn = null;
+        let selectedJp = null;
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function initMatchGame() {
+            const enColumn = document.getElementById("en-column");
+            const jpColumn = document.getElementById("jp-column");
+            enColumn.innerHTML = "";
+            jpColumn.innerHTML = "";
+            selectedEn = null;
+            selectedJp = null;
+
+            const shuffledWords = shuffle([...wordData]).slice(0, 5);
+            const enWords = shuffle([...shuffledWords]);
+            const jpWords = shuffle([...shuffledWords]);
+
+            enWords.forEach(word => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.innerText = word.en;
+                div.dataset.en = word.en;
+                div.onclick = function() { selectCard(div, 'en'); };
+                enColumn.appendChild(div);
+            });
+
+            jpWords.forEach(word => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.innerText = word.jp;
+                div.dataset.en = word.en; 
+                div.dataset.jp = word.jp;
+                div.onclick = function() { selectCard(div, 'jp'); };
+                jpColumn.appendChild(div);
+            });
+        }
+
+        function selectCard(card, type) {
+            if (card.classList.contains('matched')) return;
+
+            if (type === 'en') {
+                document.querySelectorAll('#en-column .card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedEn = card;
+            } else {
+                document.querySelectorAll('#jp-column .card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedJp = card;
+            }
+
+            if (selectedEn && selectedJp) {
+                if (selectedEn.dataset.en === selectedJp.dataset.en) {
+                    speak(selectedEn.dataset.en);
+                    selectedEn.classList.add('matched');
+                    selectedJp.classList.add('matched');
+                    selectedEn = null;
+                    selectedJp = null;
+                    
+                    setTimeout(() => {
+                        const remaining = document.querySelectorAll('.card:not(.matched)');
+                        if (remaining.length === 0) {
+                            alert("すごーい！ぜんぶ せいかい！");
+                            initMatchGame();
+                        }
+                    }, 500);
+                } else {
+                    const correctEn = selectedJp.dataset.en;
+                    const correctJp = selectedJp.dataset.jp;
+                    showErrorModal(correctEn, correctJp);
+                    
+                    selectedEn.classList.remove('selected');
+                    selectedJp.classList.remove('selected');
+                    selectedEn = null;
+                    selectedJp = null;
+                }
+            }
+        }
+
+        /* --- 模式二：看日文打英文 邏輯 --- */
+        let currentTypingIndex = 0;
+        let typingWords =
