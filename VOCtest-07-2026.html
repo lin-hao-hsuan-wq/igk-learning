@@ -1,574 +1,407 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 語言學習系統</title>
+    <title>IGK Kids Academy Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --success-color: #2ecc71;
-            --error-color: #e74c3c;
-            --bg-color: #f5f7fa;
+            --primary-color: #55acee; 
+            --success-color: #77dd77; 
+            --error-color: #ff6961;   
+            --bg-color: #fff9e6;      
+            --border-style: 4px dashed #ffb347; 
+            --font-en: 'Chilanka', cursive;
+            --font-ja: 'Kosugi Maru', sans-serif;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: var(--font-en), var(--font-ja), cursive, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
-            color: #333;
+            color: #555;
+            background-image: radial-gradient(#ffb347 1px, transparent 1px), radial-gradient(#ffb347 1px, #fff9e6 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
         }
-        .container {
-            max-width: 800px;
+        .main-wrapper {
+            max-width: 900px;
             margin: 0 auto;
-            background: white;
+            border: var(--border-style);
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
         }
         h1.title {
             text-align: center;
-            color: var(--primary-color);
-            font-size: 3rem;
+            color: #ff6961;
+            font-size: 4rem;
             margin-bottom: 30px;
-            letter-spacing: 2px;
-        }
-        .nav-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: bold;
-        }
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        button.secondary { background-color: #95a5a6; }
-        button.admin-btn { background-color: #34495e; }
-        
-        .screen { display: none; }
-        .screen.active { display: block; }
-        
-        /* 題目區塊 */
-        .question-box {
-            font-size: 28px;
-            text-align: center;
-            margin: 30px 0;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .option-btn {
-            background-color: #f8f9fa;
-            color: #333;
-            border: 2px solid #dee2e6;
-            padding: 15px;
-            font-size: 18px;
-        }
-        .option-btn:hover {
-            background-color: #e9ecef;
-            border-color: var(--primary-color);
-        }
-        
-        /* 輸入框樣式 */
-        .input-area {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .input-area input {
-            font-size: 20px;
-            padding: 10px;
-            width: 80%;
-            max-width: 300px;
-            text-align: center;
-            border: 2px solid #ccc;
-            border-radius: 6px;
-        }
-        
-        /* 回饋特效 */
-        .feedback-circle {
-            width: 80px;
-            height: 80px;
-            border: 8px solid var(--success-color);
-            border-radius: 50%;
-            margin: 20px auto;
-            display: none;
-        }
-        .wrong-hint {
-            color: var(--error-color);
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            margin: 15px 0;
-        }
-        
-        /* 後台表格 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: left;
-        }
-        th { background-color: #f2f2f2; }
-        .chart-container {
+            text-shadow: 4px 4px 0px #fff, 8px 8px 0px rgba(0,0,0,0.1);
             position: relative;
-            margin: auto;
-            height: 300px;
-            width: 100%;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
         }
+        h1.title::before, h1.title::after { content: "✨"; font-size: 2rem; position: absolute; }
+        h1.title::before { left: -40px; top: -10px; }
+        h1.title::after { right: -40px; bottom: -10px; }
+
+        .nav-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        button {
+            padding: 15px 30px; font-size: 1.1rem; font-family: var(--font-en), var(--font-ja);
+            border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s ease;
+            color: white; font-weight: bold; box-shadow: 0 6px 0 rgba(0,0,0,0.2); text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+        }
+        button:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        button:active { transform: translateY(6px); box-shadow: none; }
+        
+        .btn-blue { background-color: #55acee; }
+        .btn-green { background-color: #77dd77; }
+        .btn-red { background-color: #ff6961; }
+        .btn-gray { background-color: #95a5a6; }
+        .btn-dark { background-color: #34495e; }
+        
+        .screen { display: none; text-align: center;}
+        .screen.active { display: block; }
+        hr { border: none; border-top: 5px dotted #ffb347; margin: 20px 0; }
+        
+        .question-box {
+            font-size: 3rem; color: #ffb347; background: #fff8f8; border: 4px solid #55acee;
+            padding: 20px; border-radius: 20px; margin: 30px 0; display: inline-block; box-shadow: 0 4px 0 #55acee;
+        }
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+        .option-btn { background-color: #fdfdff; color: #333; border: 4px solid #77dd77; border-radius: 20px; padding: 20px; font-size: 1.4rem; box-shadow: 0 6px 0 #77dd77; }
+        .option-btn:hover { background-color: #77dd77; color: white; box-shadow: 0 4px 0 #77dd77; }
+        
+        .input-area { margin-bottom: 20px; }
+        .input-area input { font-size: 1.5rem; font-family: var(--font-en); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
+        
+        .feedback-circle { width: 100px; height: 100px; border: 15px solid var(--success-color); border-radius: 50%; margin: 20px auto; display: none; }
+        .wrong-hint { color: var(--error-color); font-size: 1.2rem; font-weight: bold; margin: 15px 0; background: #fff0f0; padding: 10px; border-radius: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 15px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        
+        .chart-container { position: relative; margin: 20px auto; height: 400px; width: 100%; background: white; padding: 15px; border-radius: 20px; border: 3px dashed #ffb347; }
+        .score-display { font-size: 1.4rem; color: #7f8c8d; }
+        .comment-display { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 20px 0; padding: 20px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.6; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="main-wrapper">
     <h1 class="title">IGK</h1>
 
     <div id="main-nav" class="nav-buttons">
-        <button onclick="showScreen('mode-select-screen')">練習模式 (Practice)</button>
-        <button onclick="startExamFlow()">考試模式 (Exam)</button>
-        <button class="admin-btn" onclick="loginAdmin()">老師後台 (Admin)</button>
+        <button class="btn-blue" onclick="showScreen('mode-select-screen')">れんしゅう (Practice)</button>
+        <button class="btn-green" onclick="startExamFlow()">テスト (Exam)</button>
+        <button class="btn-dark" onclick="loginAdmin()">せんせい (Teacher)</button>
     </div>
 
     <hr>
 
     <div id="mode-select-screen" class="screen">
-        <h3 style="text-align:center;">請選擇練習種類 / Choose Type</h3>
+        <h3>えらんでね (Choose Type)</h3>
         <div class="nav-buttons">
-            <button onclick="startPractice('choice')">Choose the word (選擇題)</button>
-            <button onclick="startPractice('typing')">英文打字 (Typing)</button>
+            <button class="btn-blue option-btn" onclick="startPractice('choice')">えらぶ (Choose Word)</button>
+            <button class="btn-green option-btn" onclick="startPractice('typing')">タイピング (Typing)</button>
         </div>
+        <br>
+        <button class="btn-gray" onclick="returnToMain()">もどる (Back)</button>
     </div>
 
     <div id="name-input-screen" class="screen">
-        <h3 style="text-align:center;">請輸入您的姓名 / Enter Your Name</h3>
+        <h3>なまえをおしえて (Your Name)</h3>
         <div class="input-area">
-            <input type="text" id="student-name" placeholder="Name / 姓名...">
+            <input type="text" id="student-name" placeholder="Name...">
             <br><br>
-            <button onclick="submitNameAndStartExam()">開始考試 / Start</button>
+            <button class="btn-green" onclick="submitNameAndStartExam()">スタート (Start)</button>
+            <button class="btn-gray" onclick="returnToMain()">もどる (Back)</button>
         </div>
     </div>
 
     <div id="quiz-screen" class="screen">
-        <div style="display:flex; justify-content: space-between; color:#7f8c8d;">
-            <span id="progress-text">題數: 0/20</span>
-            <span id="score-text">目前正確: 0</span>
+        <div style="display:flex; justify-content: space-between; color:#7f8c8d; padding: 0 20px;">
+            <span id="progress-text" class="score-display">もんだい: 0/20</span>
+            <span id="score-text" class="score-display">せいかい: 0</span>
         </div>
-        
-        <div class="question-box" id="question-text">題目載入中...</div>
-        
+        <div class="question-box" id="question-text">...</div>
         <div id="choice-panel" style="display:none;" class="options-grid"></div>
-        
         <div id="typing-panel" style="display:none;" class="input-area">
-            <input type="text" id="typing-input" autocomplete="off" autofocus>
+            <input type="text" id="typing-input" autocomplete="off" autofocus placeholder="Type answer...">
             <br><br>
-            <button id="submit-typing-btn" onclick="checkTypingAnswer()">確認答案 / Submit</button>
+            <button class="btn-blue" id="submit-typing-btn" onclick="checkTypingAnswer()">OK / Submit</button>
         </div>
-
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
-        
-        <div id="exam-actions" style="display:none; text-align:center; margin-top:20px; gap:10px;">
-            <button id="retry-btn" class="secondary" onclick="retryCurrentQuestion()" style="display:none;">再一次 (Retry)</button>
-            <button onclick="nextQuestion()">下一題 (Next)</button>
+        <div id="exam-actions" style="display:none; text-align:center; margin-top:20px; gap:10px; justify-content:center;">
+            <button id="retry-btn" class="btn-red" onclick="retryCurrentQuestion()" style="display:none;">もういちど (Retry)</button>
+            <button class="btn-blue" onclick="nextQuestion()">つぎへ (Next)</button>
         </div>
     </div>
 
-    <div id="result-screen" class="screen" style="text-align:center;">
-        <h2>練習結束 / Finished!</h2>
-        <p style="font-size:24px;" id="final-score-text"></p>
-        <div id="comment-box" style="font-size:20px; font-weight:bold; color:var(--primary-color); margin:20px 0; padding:15px; background:#e8f4f8; border-radius:8px;"></div>
-        <button onclick="returnToMain()">返回主選單 / Home</button>
+    <div id="result-screen" class="screen">
+        <h2>おしまい (Finished!)</h2>
+        <p style="font-size:1.6rem;" id="final-score-text"></p>
+        <div id="comment-box" class="comment-display"></div>
+        <button class="btn-green" onclick="returnToMain()">ホーム (Home)</button>
     </div>
 
     <div id="admin-screen" class="screen">
-        <h2>老師管理後台 (Teacher Dashboard)</h2>
-        <button class="secondary" onclick="clearData()" style="background-color: var(--error-color);">刪除所有紀錄 (Delete All Records)</button>
-        <button class="secondary" onclick="returnToMain()">退出後台 (Exit)</button>
+        <h2>せんせいかんりがめん (Admin Dashboard)</h2>
+        <button class="btn-blue" onclick="loadCloudData()">🔄 グラフをこうしん (Refresh Data)</button>
+        <button class="btn-red" onclick="clearData()">レコードをけす (Delete Records)</button>
+        <button class="btn-dark" onclick="returnToMain()">ログアウト (Exit)</button>
         
-        <h3>整體統計圖表 (Overall Chart)</h3>
+        <h3>ぜんたいのグラフ (Overall Progress & Distribution Chart)</h3>
+        <p style="text-align:left; font-size:0.9rem; color:#7f8c8d; margin:0 15px;">
+            * X軸：テストの かいすう (Attempts) / Y軸：せいかいすう (Correct Answers)
+        </p>
         <div class="chart-container">
             <canvas id="analyticsChart"></canvas>
         </div>
 
-        <h3>個人詳細紀錄表格 (Individual Records)</h3>
+        <h3>こじんレコード (Individual Records)</h3>
         <table id="records-table">
             <thead>
                 <tr>
-                    <th>姓名 (Name)</th>
-                    <th>最高得分 (Max Score)</th>
-                    <th>總測試次數 (Total Attempts)</th>
-                    <th>歷次得分軌跡 (History)</th>
+                    <th>なまえ (Name)</th>
+                    <th>ハイスコア (Max Score)</th>
+                    <th>チャレンジ (Total Attempts)</th>
+                    <th>れきし (History)</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
-
 </div>
 
 <script>
-// 20個單字資料庫 (英文、日文義、日文五十音)
+// JSONBIN 免費雲端資料庫接口 (老將建立的專屬公開臨時同步通道空間)
+// 註：這能將多台平板數據統一儲存於雲端
+const CLOUD_API_URL = "https://api.jsonbin.io/v3/b/6651bb81e41b4d34e4fa0120"; 
+const MASTER_KEY = "$2a$10$Rz7T9N4e4G7lK6fGgDqSBuM.i5wM96S5vF9R4GzEwZDe8FvRjVjS."; // 系統安全通行鑰
+
 const wordBank = [
-    {en: "it", ja: "それ", kana: "それ"},
-    {en: "this", ja: "これ", kana: "これ"},
-    {en: "that", ja: "あれ", kana: "あれ"},
-    {en: "family", ja: "家族", kana: "かぞく"},
-    {en: "father", ja: "父親", kana: "ちちおや"},
-    {en: "mother", ja: "母親", kana: "ははおや"},
-    {en: "brother", ja: "兄弟", kana: "きょうだい"},
-    {en: "sister", ja: "姉妹", kana: "しまい"},
-    {en: "grandfather", ja: "祖父", kana: "そふ"},
-    {en: "grandmother", ja: "祖母", kana: "そぼ"},
-    {en: "boy", ja: "男の子", kana: "おとこのこ"},
-    {en: "girl", ja: "女の子", kana: "おんなのこ"},
-    {en: "friend", ja: "友達", kana: "ともだち"},
-    {en: "everyone", ja: "皆さん", kana: "みなさん"},
-    {en: "old", ja: "古い / 年老いた", kana: "ふるい"},
-    {en: "young", ja: "若い", kana: "わかい"},
-    {en: "funny", ja: "面白い", kana: "おもしろい"},
-    {en: "kind", ja: "親切な", kana: "しんせつ"},
-    {en: "strong", ja: "強い", kana: "つよい"},
-    {en: "busy", ja: "忙しい", kana: "いそがしい"}
+    {en: "it", ja: "それ", kana: "それ"}, {en: "this", ja: "これ", kana: "これ"},
+    {en: "that", ja: "あれ", kana: "あれ"}, {en: "family", ja: "かぞく", kana: "かぞく"},
+    {en: "father", ja: "おとうさん", kana: "おとうさん"}, {en: "mother", ja: "おかあさん", kana: "おかあさん"},
+    {en: "brother", ja: "きょうだい", kana: "きょうだい"}, {en: "sister", ja: "しまい", kana: "しまい"},
+    {en: "grandfather", ja: "おじいさん", kana: "おじいさん"}, {en: "grandmother", ja: "おばあさん", kana: "おばあさん"},
+    {en: "boy", ja: "おとこのこ", kana: "おとこのこ"}, {en: "girl", ja: "おんなのこ", kana: "おんなのこ"},
+    {en: "friend", ja: "ともだち", kana: "ともだち"}, {en: "everyone", ja: "みなさん", kana: "みなさん"},
+    {en: "old", ja: "ふるい", kana: "ふるい"}, {en: "young", ja: "わかい", kana: "わかい"},
+    {en: "funny", ja: "おもしろい", kana: "おもしろい"}, {en: "kind", ja: "しんせつ", kana: "しんせつ"},
+    {en: "strong", ja: "つよい", kana: "つよい"}, {en: "busy", ja: "いそがしい", kana: "いそがしい"}
 ];
 
-let currentMode = ''; // 'practice-choice', 'practice-typing', 'exam'
-let currentQuestions = [];
-let currentIndex = 0;
-let correctCount = 0;
-let currentStudent = '匿名練習';
-let hasAnswered = false; // 防止重複作答
-let chartInstance = null;
+let currentMode = ''; let currentQuestions = []; let currentIndex = 0;
+let correctCount = 0; let currentStudent = 'Guest'; let hasAnswered = false; let chartInstance = null;
 
-// 初始化 LocalStorage 確保後台有資料結構
-if(!localStorage.getItem('igk_records')) {
-    localStorage.setItem('igk_records', JSON.stringify([]));
-}
-
-// 切換畫面
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 }
-
-function returnToMain() {
-    showScreen('');
-    document.getElementById('mode-select-screen').classList.remove('active');
-}
-
-// 語音朗讀英文
+function returnToMain() { showScreen(''); document.getElementById('mode-select-screen').classList.remove('active'); }
 function speakEnglish(text) {
     if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // 停止上一個正在念的
-        let utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; window.speechSynthesis.speak(u);
     }
 }
+function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
-// 洗牌演算法
-function shuffle(array) {
-    return array.sort(() => Math.random() - 0.5);
-}
-
-// --- 練習模式啟動 ---
 function startPractice(type) {
-    currentMode = 'practice-' + type;
-    currentStudent = '匿名練習';
-    currentQuestions = shuffle([...wordBank]);
-    currentIndex = 0;
-    correctCount = 0;
-    setupQuestion();
-    showScreen('quiz-screen');
+    currentMode = 'practice-' + type; currentStudent = 'Guest'; currentQuestions = shuffle([...wordBank]);
+    currentIndex = 0; correctCount = 0; setupQuestion(); showScreen('quiz-screen');
 }
-
-// --- 考試模式流程 ---
-function startExamFlow() {
-    showScreen('name-input-screen');
-    document.getElementById('student-name').value = '';
-}
-
+function startExamFlow() { showScreen('name-input-screen'); document.getElementById('student-name').value = ''; }
 function submitNameAndStartExam() {
     let name = document.getElementById('student-name').value.trim();
-    if(!name) {
-        alert("請輸入姓名後再開始！ / Please enter name!");
-        return;
-    }
-    currentStudent = name;
-    currentMode = 'exam';
-    currentQuestions = shuffle([...wordBank]);
-    currentIndex = 0;
-    correctCount = 0;
-    setupQuestion();
-    showScreen('quiz-screen');
+    if(!name) { alert("Enter your name, please! / なまえをいれてね！"); return; }
+    currentStudent = name; currentMode = 'exam'; currentQuestions = shuffle([...wordBank]);
+    currentIndex = 0; correctCount = 0; setupQuestion(); showScreen('quiz-screen');
 }
 
-// --- 佈置題目 ---
 function setupQuestion() {
-    if(currentIndex >= 20) {
-        endQuiz();
-        return;
-    }
-
-    hasAnswered = false;
-    let item = currentQuestions[currentIndex];
-    
-    // 更新介面數值
-    document.getElementById('progress-text').innerText = `題數: ${currentIndex + 1}/20`;
-    document.getElementById('score-text').innerText = `目前正確: ${correctCount}`;
-    
-    // 隱藏反饋與特殊按鈕
+    if(currentIndex >= 20) { endQuiz(); return; }
+    hasAnswered = false; let item = currentQuestions[currentIndex];
+    document.getElementById('progress-text').innerText = `もんだい: ${currentIndex + 1}/20`;
+    document.getElementById('score-text').innerText = `せいかい: ${correctCount}`;
     document.getElementById('feedback-success-circle').style.display = 'none';
     document.getElementById('feedback-wrong-hint').innerText = '';
     document.getElementById('exam-actions').style.display = 'none';
     document.getElementById('retry-btn').style.display = 'none';
     
-    // 依模式決定題目題面與答案面板
     if(currentMode === 'exam') {
-        document.getElementById('question-text').innerText = item.kana; // 考試顯示50音
+        document.getElementById('question-text').innerText = item.kana; 
         document.getElementById('choice-panel').style.display = 'none';
         document.getElementById('typing-panel').style.display = 'block';
         document.getElementById('submit-typing-btn').style.display = 'inline-block';
-        document.getElementById('typing-input').value = '';
-        document.getElementById('typing-input').disabled = false;
-    } else if(currentMode === 'practice-choice') {
-        document.getElementById('question-text').innerText = item.ja; // 練習顯示日文義
-        document.getElementById('choice-panel').style.display = 'grid';
-        document.getElementById('typing-panel').style.display = 'none';
-        generateChoices(item.en);
-    } else if(currentMode === 'practice-typing') {
+        document.getElementById('typing-input').value = ''; document.getElementById('typing-input').disabled = false;
+    } else {
         document.getElementById('question-text').innerText = item.ja;
-        document.getElementById('choice-panel').style.display = 'none';
-        document.getElementById('typing-panel').style.display = 'block';
-        document.getElementById('submit-typing-btn').style.display = 'inline-block';
-        document.getElementById('typing-input').value = '';
-        document.getElementById('typing-input').disabled = false;
+        if(currentMode === 'practice-choice') {
+            document.getElementById('choice-panel').style.display = 'grid'; document.getElementById('typing-panel').style.display = 'none'; generateChoices(item.en);
+        } else {
+            document.getElementById('choice-panel').style.display = 'none'; document.getElementById('typing-panel').style.display = 'block';
+            document.getElementById('submit-typing-btn').style.display = 'inline-block'; document.getElementById('typing-input').value = ''; document.getElementById('typing-input').disabled = false;
+        }
     }
 }
 
-// 生成選擇題選項
 function generateChoices(correctEn) {
     let choices = [correctEn];
     while(choices.length < 4) {
-        let randomWord = wordBank[Math.floor(Math.random() * wordBank.length)].en;
-        if(!choices.includes(randomWord)) choices.push(randomWord);
+        let r = wordBank[Math.floor(Math.random() * wordBank.length)].en;
+        if(!choices.includes(r)) choices.push(r);
     }
     shuffle(choices);
-
-    let panel = document.getElementById('choice-panel');
-    panel.innerHTML = '';
-    choices.forEach(choice => {
-        let btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.innerText = choice;
-        btn.onclick = () => checkChoiceAnswer(choice, correctEn);
+    let panel = document.getElementById('choice-panel'); panel.innerHTML = '';
+    choices.forEach(c => {
+        let btn = document.createElement('button'); btn.className = 'option-btn'; btn.innerText = c;
+        btn.onclick = () => { if(hasAnswered) return; hasAnswered = true; if(c === correctEn) { correctCount++; speakEnglish(c); setTimeout(nextQuestion, 1200); } else { alert(`Uh oh! \nせいかいは: ${correctEn}`); speakEnglish(correctEn); setTimeout(nextQuestion, 500); } };
         panel.appendChild(btn);
     });
 }
 
-// --- 答案判定邏輯 ---
-
-// 1. 選擇題判定
-function checkChoiceAnswer(selected, correct) {
-    if(hasAnswered) return;
-    hasAnswered = true;
-
-    if(selected === correct) {
-        correctCount++;
-        speakEnglish(correct);
-        setTimeout(nextQuestion, 1200); // 正確直接下一題
-    } else {
-        alert(`答錯囉！正確答案是: ${correct}`);
-        speakEnglish(correct);
-        setTimeout(nextQuestion, 500);
-    }
-}
-
-// 2. 打字題判定 (包含練習打字與考試打字)
 function checkTypingAnswer() {
     if(hasAnswered) return;
     let inputField = document.getElementById('typing-input');
     let userAns = inputField.value.trim().toLowerCase();
     let correct = currentQuestions[currentIndex].en.toLowerCase();
+    hasAnswered = true; inputField.disabled = true; document.getElementById('submit-typing-btn').style.display = 'none';
 
     if(currentMode === 'practice-typing') {
-        hasAnswered = true;
-        inputField.disabled = true;
-        document.getElementById('submit-typing-btn').style.display = 'none';
-        
-        if(userAns === correct) {
-            correctCount++;
-            document.getElementById('feedback-success-circle').style.display = 'block';
-            speakEnglish(correct);
-        } else {
-            document.getElementById('feedback-wrong-hint').innerText = `提示更正： ${currentQuestions[currentIndex].en}`;
-            speakEnglish(correct);
-        }
-        setTimeout(nextQuestion, 2000); // 練習模式兩秒後自動下一題
-
+        if(userAns === correct) { correctCount++; document.getElementById('feedback-success-circle').style.display = 'block'; }
+        else { document.getElementById('feedback-wrong-hint').innerText = `Correction: ${currentQuestions[currentIndex].en}`; }
+        speakEnglish(correct); setTimeout(nextQuestion, 2200); 
     } else if(currentMode === 'exam') {
-        hasAnswered = true;
-        inputField.disabled = true;
-        document.getElementById('submit-typing-btn').style.display = 'none';
-        document.getElementById('exam-actions').style.display = 'flex'; // 顯示老師要求的下一題與再一次按鈕
-
-        if(userAns === correct) {
-            correctCount++;
-            document.getElementById('feedback-success-circle').style.display = 'block';
-            // 考試模式正確不出現提示，點選下一題前進
-        } else {
-            // 考試答錯「不出現任何畫面」，僅提供再一次或下一題的選擇
-            document.getElementById('retry-btn').style.display = 'inline-block';
-        }
+        document.getElementById('exam-actions').style.display = 'flex'; 
+        if(userAns === correct) { correctCount++; document.getElementById('feedback-success-circle').style.display = 'block'; }
+        else { document.getElementById('retry-btn').style.display = 'inline-block'; }
     }
 }
 
 function retryCurrentQuestion() {
-    // 考試模式限定：再一次
-    hasAnswered = false;
-    let inputField = document.getElementById('typing-input');
-    inputField.value = '';
-    inputField.disabled = false;
-    document.getElementById('submit-typing-btn').style.display = 'inline-block';
-    document.getElementById('exam-actions').style.display = 'none';
-    document.getElementById('retry-btn').style.display = 'none';
+    hasAnswered = false; let inputField = document.getElementById('typing-input'); inputField.value = ''; inputField.disabled = false;
+    document.getElementById('submit-typing-btn').style.display = 'inline-block'; document.getElementById('exam-actions').style.display = 'none';
 }
+function nextQuestion() { currentIndex++; setupQuestion(); }
 
-function nextQuestion() {
-    currentIndex++;
-    setupQuestion();
-}
-
-// --- 結算結束與評語機制 ---
 function endQuiz() {
     showScreen('result-screen');
-    document.getElementById('final-score-text').innerText = `得分：${correctCount} / 20 題`;
-    
+    document.getElementById('final-score-text').innerText = `せいかい： ${correctCount} / 20`;
     let comment = "";
-    if(correctCount >= 15) {
-        comment = "素晴らしい！優秀な成績です！<br>Excellent! Outstanding performance!";
-    } else if(correctCount >= 10) {
-        comment = "よくできました！次も頑張りましょう！<br>Good job! Keep pushing yourself!";
-    } else {
-        comment = "一緒に練習しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
-    }
+    if(correctCount >= 15) comment = "すばらしい！ ゆうしゅうな せいせきです！<br>Excellent! Outstanding performance!";
+    else if(correctCount >= 10) comment = "よく できました！ つぎも がんばりましょう！<br>Good job! Keep pushing yourself!";
+    else comment = "いっしょに れんしゅう しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
     document.getElementById('comment-box').innerHTML = comment;
-
-    // 只有考試模式才將成績存入後台紀錄
-    if(currentMode === 'exam') {
-        saveExamData(currentStudent, correctCount);
-    }
+    if(currentMode === 'exam') { uploadExamData(currentStudent, correctCount); }
 }
 
-// --- 老師後台儲存與控制邏輯 ---
-function saveExamData(name, score) {
-    let data = JSON.parse(localStorage.getItem('igk_records'));
-    let userRecord = data.find(r => r.name === name);
-
-    if(userRecord) {
-        userRecord.history.push(score);
-        if(score > userRecord.maxScore) {
-            userRecord.maxScore = score;
+// ☁️ 雲端網路同步讀寫模組 ☁️
+function uploadExamData(name, score) {
+    fetch(CLOUD_API_URL, { headers: { "X-Master-Key": MASTER_KEY } })
+    .then(res => res.json())
+    .then(resData => {
+        let records = resData.record || [];
+        let userRecord = records.find(r => r.name === name);
+        if(userRecord) {
+            userRecord.history.push(score);
+            if(score > userRecord.maxScore) userRecord.maxScore = score;
+            userRecord.attempts = userRecord.history.length;
+        } else {
+            records.push({ name: name, maxScore: score, attempts: 1, history: [score] });
         }
-        userRecord.attempts = userRecord.history.length;
-    } else {
-        data.push({
-            name: name,
-            maxScore: score,
-            attempts: 1,
-            history: [score]
+        return fetch(CLOUD_API_URL, {
+            method: 'PUT',
+            headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+            body: JSON.stringify(records)
         });
-    }
-    localStorage.setItem('igk_records', JSON.stringify(data));
+    }).then(() => console.log("Cloud sync successful!")).catch(err => console.error(err));
 }
 
 function loginAdmin() {
-    let pwd = prompt("請輸入老師後台管理密碼：");
-    if(pwd === "0004") {
-        showScreen('admin-screen');
-        renderAdminDashboard();
-    } else {
-        alert("密碼錯誤，拒絕存取！");
-    }
+    let pwd = prompt("Teacher's Password (せんせいパスワード):");
+    if(pwd === "0004") { showScreen('admin-screen'); loadCloudData(); } else { alert("Wrong! / ちがいます！"); }
 }
 
-function renderAdminDashboard() {
-    let data = JSON.parse(localStorage.getItem('igk_records')) || [];
+function loadCloudData() {
+    let tbody = document.querySelector('#records-table tbody');
+    tbody.innerHTML = '<tr><td colspan="4">Loading cloud database... 請稍候...</td></tr>';
     
-    // 1. 渲染個人紀錄表格
+    fetch(CLOUD_API_URL, { headers: { "X-Master-Key": MASTER_KEY } })
+    .then(res => res.json())
+    .then(resData => {
+        let data = resData.record || [];
+        renderChartAndTable(data);
+    }).catch(err => alert("Cloud connection failed: " + err));
+}
+
+function getRandomColor(index) {
+    const colors = ['#55acee', '#77dd77', '#ff6961', '#ffb347', '#b19cd9', '#f49ac2', '#aec6cf', '#ffb7ce', '#92a8d1', '#f7cac9'];
+    return colors[index % colors.length];
+}
+
+function renderChartAndTable(data) {
     let tbody = document.querySelector('#records-table tbody');
     tbody.innerHTML = '';
     
+    if(data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No record found. / まだデータがありません。</td></tr>';
+        if (chartInstance) chartInstance.destroy();
+        return;
+    }
+
     data.forEach(item => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${item.name}</td>
-            <td style="color:var(--success-color); font-weight:bold;">${item.maxScore} / 20</td>
-            <td>${item.attempts}</td>
-            <td>[ ${item.history.join(', ')} ]</td>
-        `;
+        tr.innerHTML = `<td>${item.name}</td><td style="color:var(--success-color); font-weight:bold;">${item.maxScore} / 20</td><td>${item.attempts}</td><td>[ ${item.history.join(', ')} ]</td>`;
         tbody.appendChild(tr);
     });
 
-    // 2. 渲染整體圖表統計 (Chart.js)
     let ctx = document.getElementById('analyticsChart').getContext('2d');
-    
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
+    if (chartInstance) { chartInstance.destroy(); }
 
-    let names = data.map(item => item.name);
-    let maxScores = data.map(item => item.maxScore);
+    let maxAttempts = 1;
+    data.forEach(item => { if(item.attempts > maxAttempts) maxAttempts = item.attempts; });
+    let labels = []; for(let i = 1; i <= maxAttempts; i++) { labels.push(`${i}`); }
+
+    let datasets = data.map((item, idx) => {
+        let color = getRandomColor(idx);
+        return {
+            label: item.name, data: item.history, borderColor: color, backgroundColor: color,
+            borderWidth: 3, pointRadius: 6, fill: false, tension: 0.2
+        };
+    });
 
     chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: names,
-            datasets: [{
-                label: '最高紀錄 (Max Score)',
-                data: maxScores,
-                backgroundColor: 'rgba(74, 144, 226, 0.6)',
-                borderColor: 'rgba(74, 144, 226, 1)',
-                borderWidth: 1
-            }]
-        },
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, max: 20 }
+                x: { title: { display: true, text: 'テストの かいすう (Attempts)' } },
+                y: { beginAtZero: true, max: 20, title: { display: true, text: 'せいかい (Score)' } }
             }
         }
     });
 }
 
 function clearData() {
-    if(confirm("確定要刪除所有學生考試紀錄嗎？此動作無法復原。")) {
-        localStorage.setItem('igk_records', JSON.stringify([]));
-        renderAdminDashboard();
+    if(confirm("Delete everything on the cloud? \n本当にすべてのクラウドデータを消去しますか？")) {
+        fetch(CLOUD_API_URL, {
+            method: 'PUT',
+            headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+            body: JSON.stringify([])
+        }).then(() => loadCloudData()).catch(err => console.error(err));
     }
 }
 </script>
-
 </body>
 </html>
