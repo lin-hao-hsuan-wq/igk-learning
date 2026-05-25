@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Kids Academy Cloud</title>
+    <title>IGK Kids Academy Cloud Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -90,6 +90,13 @@
         .chart-container { position: relative; margin: 20px auto; height: 400px; width: 100%; background: white; padding: 15px; border-radius: 20px; border: 3px dashed #ffb347; }
         .score-display { font-size: 1.4rem; color: #7f8c8d; }
         .comment-display { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 20px 0; padding: 20px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.6; }
+        
+        /* 錯題複習樣式 */
+        .review-box {
+            margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 20px; border: 3px dashed var(--error-color);
+        }
+        .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
@@ -139,8 +146,8 @@
         </div>
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
-        <div id="exam-actions" style="display:none; text-align:center; margin-top:20px; gap:10px; justify-content:center;">
-            <button id="retry-btn" class="btn-red" onclick="retryCurrentQuestion()" style="display:none;">もういちど (Retry)</button>
+        
+        <div id="exam-actions" style="display:none; text-align:center; margin-top:20px; justify-content:center;">
             <button class="btn-blue" onclick="nextQuestion()">つぎへ (Next)</button>
         </div>
     </div>
@@ -149,6 +156,12 @@
         <h2>おしまい (Finished!)</h2>
         <p style="font-size:1.6rem;" id="final-score-text"></p>
         <div id="comment-box" class="comment-display"></div>
+        
+        <div id="wrong-answers-review" class="review-box" style="display:none;">
+            <div class="review-title">もういちど みなおそう (Review Wrong Words)</div>
+            <div id="review-list"></div>
+        </div>
+        <br>
         <button class="btn-green" onclick="returnToMain()">ホーム (Home)</button>
     </div>
 
@@ -182,10 +195,8 @@
 </div>
 
 <script>
-// JSONBIN 免費雲端資料庫接口 (老將建立的專屬公開臨時同步通道空間)
-// 註：這能將多台平板數據統一儲存於雲端
 const CLOUD_API_URL = "https://api.jsonbin.io/v3/b/6651bb81e41b4d34e4fa0120"; 
-const MASTER_KEY = "$2a$10$Rz7T9N4e4G7lK6fGgDqSBuM.i5wM96S5vF9R4GzEwZDe8FvRjVjS."; // 系統安全通行鑰
+const MASTER_KEY = "$2a$10$Rz7T9N4e4G7lK6fGgDqSBuM.i5wM96S5vF9R4GzEwZDe8FvRjVjS."; 
 
 const wordBank = [
     {en: "it", ja: "それ", kana: "それ"}, {en: "this", ja: "これ", kana: "これ"},
@@ -193,7 +204,7 @@ const wordBank = [
     {en: "father", ja: "おとうさん", kana: "おとうさん"}, {en: "mother", ja: "おかあさん", kana: "おかあさん"},
     {en: "brother", ja: "きょうだい", kana: "きょうだい"}, {en: "sister", ja: "しまい", kana: "しまい"},
     {en: "grandfather", ja: "おじいさん", kana: "おじいさん"}, {en: "grandmother", ja: "おばあさん", kana: "おばあさん"},
-    {en: "boy", ja: "おとこのこ", kana: "おとこのこ"}, {en: "girl", ja: "おんなのこ", kana: "おんなのこ"},
+    {en: "boy", ja: "おと公のこ", kana: "おとこのこ"}, {en: "girl", ja: "おんなのこ", kana: "おんなのこ"},
     {en: "friend", ja: "ともだち", kana: "ともだち"}, {en: "everyone", ja: "みなさん", kana: "みなさん"},
     {en: "old", ja: "ふるい", kana: "ふるい"}, {en: "young", ja: "わかい", kana: "わかい"},
     {en: "funny", ja: "おもしろい", kana: "おもしろい"}, {en: "kind", ja: "しんせつ", kana: "しんせつ"},
@@ -202,6 +213,7 @@ const wordBank = [
 
 let currentMode = ''; let currentQuestions = []; let currentIndex = 0;
 let correctCount = 0; let currentStudent = 'Guest'; let hasAnswered = false; let chartInstance = null;
+let wrongWordsList = []; // 用來紀錄本次考試學生寫錯的題目
 
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -218,14 +230,14 @@ function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
 function startPractice(type) {
     currentMode = 'practice-' + type; currentStudent = 'Guest'; currentQuestions = shuffle([...wordBank]);
-    currentIndex = 0; correctCount = 0; setupQuestion(); showScreen('quiz-screen');
+    currentIndex = 0; correctCount = 0; wrongWordsList = []; setupQuestion(); showScreen('quiz-screen');
 }
 function startExamFlow() { showScreen('name-input-screen'); document.getElementById('student-name').value = ''; }
 function submitNameAndStartExam() {
     let name = document.getElementById('student-name').value.trim();
     if(!name) { alert("Enter your name, please! / なまえをいれてね！"); return; }
     currentStudent = name; currentMode = 'exam'; currentQuestions = shuffle([...wordBank]);
-    currentIndex = 0; correctCount = 0; setupQuestion(); showScreen('quiz-screen');
+    currentIndex = 0; correctCount = 0; wrongWordsList = []; setupQuestion(); showScreen('quiz-screen');
 }
 
 function setupQuestion() {
@@ -236,7 +248,6 @@ function setupQuestion() {
     document.getElementById('feedback-success-circle').style.display = 'none';
     document.getElementById('feedback-wrong-hint').innerText = '';
     document.getElementById('exam-actions').style.display = 'none';
-    document.getElementById('retry-btn').style.display = 'none';
     
     if(currentMode === 'exam') {
         document.getElementById('question-text').innerText = item.kana; 
@@ -265,7 +276,11 @@ function generateChoices(correctEn) {
     let panel = document.getElementById('choice-panel'); panel.innerHTML = '';
     choices.forEach(c => {
         let btn = document.createElement('button'); btn.className = 'option-btn'; btn.innerText = c;
-        btn.onclick = () => { if(hasAnswered) return; hasAnswered = true; if(c === correctEn) { correctCount++; speakEnglish(c); setTimeout(nextQuestion, 1200); } else { alert(`Uh oh! \nせいかいは: ${correctEn}`); speakEnglish(correctEn); setTimeout(nextQuestion, 500); } };
+        btn.onclick = () => { 
+            if(hasAnswered) return; hasAnswered = true; 
+            if(c === correctEn) { correctCount++; speakEnglish(c); setTimeout(nextQuestion, 1200); } 
+            else { alert(`Uh oh! \nせいかいは: ${correctEn}`); speakEnglish(correctEn); setTimeout(nextQuestion, 500); } 
+        };
         panel.appendChild(btn);
     });
 }
@@ -274,38 +289,59 @@ function checkTypingAnswer() {
     if(hasAnswered) return;
     let inputField = document.getElementById('typing-input');
     let userAns = inputField.value.trim().toLowerCase();
-    let correct = currentQuestions[currentIndex].en.toLowerCase();
+    let currentItem = currentQuestions[currentIndex];
+    let correct = currentItem.en.toLowerCase();
     hasAnswered = true; inputField.disabled = true; document.getElementById('submit-typing-btn').style.display = 'none';
 
     if(currentMode === 'practice-typing') {
         if(userAns === correct) { correctCount++; document.getElementById('feedback-success-circle').style.display = 'block'; }
-        else { document.getElementById('feedback-wrong-hint').innerText = `Correction: ${currentQuestions[currentIndex].en}`; }
+        else { document.getElementById('feedback-wrong-hint').innerText = `Correction: ${currentItem.en}`; }
         speakEnglish(correct); setTimeout(nextQuestion, 2200); 
     } else if(currentMode === 'exam') {
+        // 考試模式：點選確認後顯示下一題按鈕讓學生「自行點選下一題」
         document.getElementById('exam-actions').style.display = 'flex'; 
-        if(userAns === correct) { correctCount++; document.getElementById('feedback-success-circle').style.display = 'block'; }
-        else { document.getElementById('retry-btn').style.display = 'inline-block'; }
+        if(userAns === correct) { 
+            correctCount++; 
+            document.getElementById('feedback-success-circle').style.display = 'block'; // 正確出現綠色圈圈
+        } else { 
+            // 錯誤則不出現任何畫面，等學生點 Next 直接進下一題
+            wrongWordsList.push(currentItem); // 把錯題塞進歷史清單
+        }
     }
 }
 
-function retryCurrentQuestion() {
-    hasAnswered = false; let inputField = document.getElementById('typing-input'); inputField.value = ''; inputField.disabled = false;
-    document.getElementById('submit-typing-btn').style.display = 'inline-block'; document.getElementById('exam-actions').style.display = 'none';
-}
 function nextQuestion() { currentIndex++; setupQuestion(); }
 
 function endQuiz() {
     showScreen('result-screen');
     document.getElementById('final-score-text').innerText = `せいかい： ${correctCount} / 20`;
+    
     let comment = "";
     if(correctCount >= 15) comment = "すばらしい！ ゆうしゅうな せいせきです！<br>Excellent! Outstanding performance!";
     else if(correctCount >= 10) comment = "よく できました！ つぎも がんばりましょう！<br>Good job! Keep pushing yourself!";
     else comment = "いっしょに れんしゅう しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
     document.getElementById('comment-box').innerHTML = comment;
+    
+    // 渲染錯題複習區
+    let reviewBox = document.getElementById('wrong-answers-review');
+    let reviewList = document.getElementById('review-list');
+    reviewList.innerHTML = '';
+    
+    if(wrongWordsList.length > 0) {
+        reviewBox.style.display = 'block';
+        wrongWordsList.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'review-item';
+            div.innerHTML = `<span>🔴 ${item.kana}</span> <span style="font-weight:bold; color:var(--primary-color);">${item.en}</span>`;
+            reviewList.appendChild(div);
+        });
+    } else {
+        reviewBox.style.display = 'none';
+    }
+
     if(currentMode === 'exam') { uploadExamData(currentStudent, correctCount); }
 }
 
-// ☁️ 雲端網路同步讀寫模組 ☁️
 function uploadExamData(name, score) {
     fetch(CLOUD_API_URL, { headers: { "X-Master-Key": MASTER_KEY } })
     .then(res => res.json())
@@ -335,13 +371,10 @@ function loginAdmin() {
 function loadCloudData() {
     let tbody = document.querySelector('#records-table tbody');
     tbody.innerHTML = '<tr><td colspan="4">Loading cloud database... 請稍候...</td></tr>';
-    
     fetch(CLOUD_API_URL, { headers: { "X-Master-Key": MASTER_KEY } })
     .then(res => res.json())
-    .then(resData => {
-        let data = resData.record || [];
-        renderChartAndTable(data);
-    }).catch(err => alert("Cloud connection failed: " + err));
+    .then(resData => { let data = resData.record || []; renderChartAndTable(data); })
+    .catch(err => alert("Cloud connection failed: " + err));
 }
 
 function getRandomColor(index) {
@@ -350,15 +383,11 @@ function getRandomColor(index) {
 }
 
 function renderChartAndTable(data) {
-    let tbody = document.querySelector('#records-table tbody');
-    tbody.innerHTML = '';
-    
+    let tbody = document.querySelector('#records-table tbody'); tbody.innerHTML = '';
     if(data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">No record found. / まだデータがありません。</td></tr>';
-        if (chartInstance) chartInstance.destroy();
-        return;
+        tbody.innerHTML = '<tr><td colspan="4">No record found.</td></tr>';
+        if (chartInstance) chartInstance.destroy(); return;
     }
-
     data.forEach(item => {
         let tr = document.createElement('tr');
         tr.innerHTML = `<td>${item.name}</td><td style="color:var(--success-color); font-weight:bold;">${item.maxScore} / 20</td><td>${item.attempts}</td><td>[ ${item.history.join(', ')} ]</td>`;
@@ -367,38 +396,22 @@ function renderChartAndTable(data) {
 
     let ctx = document.getElementById('analyticsChart').getContext('2d');
     if (chartInstance) { chartInstance.destroy(); }
-
-    let maxAttempts = 1;
-    data.forEach(item => { if(item.attempts > maxAttempts) maxAttempts = item.attempts; });
+    let maxAttempts = 1; data.forEach(item => { if(item.attempts > maxAttempts) maxAttempts = item.attempts; });
     let labels = []; for(let i = 1; i <= maxAttempts; i++) { labels.push(`${i}`); }
-
     let datasets = data.map((item, idx) => {
         let color = getRandomColor(idx);
-        return {
-            label: item.name, data: item.history, borderColor: color, backgroundColor: color,
-            borderWidth: 3, pointRadius: 6, fill: false, tension: 0.2
-        };
+        return { label: item.name, data: item.history, borderColor: color, backgroundColor: color, borderWidth: 3, pointRadius: 6, fill: false, tension: 0.2 };
     });
-
     chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: 'テストの かいすう (Attempts)' } },
-                y: { beginAtZero: true, max: 20, title: { display: true, text: 'せいかい (Score)' } }
-            }
-        }
+        type: 'line', data: { labels: labels, datasets: datasets },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Attempts' } }, y: { beginAtZero: true, max: 20 } } }
     });
 }
 
 function clearData() {
     if(confirm("Delete everything on the cloud? \n本当にすべてのクラウドデータを消去しますか？")) {
         fetch(CLOUD_API_URL, {
-            method: 'PUT',
-            headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
-            body: JSON.stringify([])
+            method: 'PUT', headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY }, body: JSON.stringify([])
         }).then(() => loadCloudData()).catch(err => console.error(err));
     }
 }
