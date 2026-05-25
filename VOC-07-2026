@@ -57,7 +57,7 @@
             display: block;
         }
         
-        /* 單字表樣式 */
+        /* 表格樣式 */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -112,7 +112,7 @@
             border-color: #28a745;
             color: #155724;
             cursor: default;
-            visibility: hidden; /* 答對後隱藏 */
+            visibility: hidden;
         }
 
         /* 模式二：打字練習樣式 */
@@ -200,20 +200,20 @@
         <p style="font-size: 1.1rem; color: #666;">えいごを たのしく おぼえよう！</p>
         
         <div class="mode-buttons">
-            <button class="mode-btn active" onclick="switchMode('list')">たんご いちらん</button>
-            <button class="mode-btn" onclick="switchMode('match')">えいご えらびゲーム</button>
-            <button class="mode-btn" onclick="switchMode('typing')">タイピング れんしゅう</button>
+            <button id="btn-list" class="mode-btn active" onclick="switchMode('list', this)">たんご いちらん</button>
+            <button id="btn-match" class="mode-btn" onclick="switchMode('match', this)">えいご えらびゲーム</button>
+            <button id="btn-typing" class="mode-btn" onclick="switchMode('typing', this)">タイピング れんしゅう</button>
         </div>
 
         <div id="list-mode" class="game-section active">
-            <h2>たんご いちらん</h2>
+            <h2>たんご いちらん (單字列表)</h2>
             <p>まずは ここで えいごと にほんごを おぼえてね！</p>
             <table id="word-table">
                 <thead>
                     <tr>
                         <th>英語 (えいご)</th>
                         <th>日本語 (にほんご)</th>
-                        <th>こえ (おんせい)</th>
+                        <th>こえ (發音)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -222,9 +222,9 @@
         </div>
 
         <div id="match-mode" class="game-section">
-            <h2>えいご えらびゲーム</h2>
+            <h2>えいご えらびゲーム (對對碰)</h2>
             <p>おなじ いみの えいごと にほんごを えらんでね！</p>
-            <button onclick="initMatchGame()" style="margin-bottom:15px; padding: 5px 10px;">つぎの もんだい</button>
+            <button onclick="initMatchGame()" style="margin-bottom:15px; padding: 5px 10px; font-size:1rem; cursor:pointer;">つぎの もんだい (換一組字)</button>
             <div class="match-container">
                 <div class="column" id="en-column"></div>
                 <div class="column" id="jp-column"></div>
@@ -232,7 +232,7 @@
         </div>
 
         <div id="typing-mode" class="game-section">
-            <h2>タイピング れんしゅう</h2>
+            <h2>タイピング れんしゅう (看日文打英文)</h2>
             <p>にほんごを みて、えいごを キーボードで うちましょう！</p>
             <div class="typing-box">
                 <div class="jp-question" id="typing-question">にほんご</div>
@@ -282,30 +282,40 @@
         function speak(text) {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US'; // 設定美式英語發音
-                utterance.rate = 0.8;    // 放慢一點速度讓小孩聽得懂
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8; // 放慢一點速度
                 window.speechSynthesis.speak(utterance);
             }
         }
 
-        // 初始化單字列表
-        const tableBody = document.querySelector("#word-table tbody");
-        wordData.forEach(word => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td style="font-weight:bold; color:#4361ee;">${word.en}</td>
-                <td>${word.jp}</td>
-                <td><button onclick="speak('${word.en}')" style="cursor:pointer; border-radius:5px; border:1px solid #ccc; background:#fff;">🔊</button></td>
-            `;
-            tableBody.appendChild(tr);
-        });
+        // 初始化網頁資料
+        window.onload = function() {
+            const tableBody = document.querySelector("#word-table tbody");
+            tableBody.innerHTML = ""; // 清空舊內容
+            wordData.forEach(word => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td style="font-weight:bold; color:#4361ee;">${word.en}</td>
+                    <td>${word.jp}</td>
+                    <td><button onclick="speak('${word.en}')" style="cursor:pointer; border-radius:5px; border:1px solid #ccc; background:#fff; padding:3px 8px;">🔊</button></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            
+            // 綁定輸入框 Enter 鍵事件
+            document.getElementById("typing-input").addEventListener("keyup", function(event) {
+                if (event.key === "Enter") {
+                    checkTyping();
+                }
+            });
+        };
 
-        // 切換模式
-        function switchMode(mode) {
+        // 切換模式 (修正相容性問題)
+        function switchMode(mode, element) {
             document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             
-            event.target.classList.add('active');
+            element.classList.add('active');
             document.getElementById(`${mode}-mode`).classList.add('active');
 
             if (mode === 'match') initMatchGame();
@@ -313,154 +323,3 @@
         }
 
         /* --- 模式一：對對碰 邏輯 --- */
-        let selectedEn = null;
-        let selectedJp = null;
-
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
-
-        function initMatchGame() {
-            const enColumn = document.getElementById("en-column");
-            const jpColumn = document.getElementById("jp-column");
-            enColumn.innerHTML = "";
-            jpColumn.innerHTML = "";
-            selectedEn = null;
-            selectedJp = null;
-
-            // 隨機選取 5 個單字來玩，避免畫面太擁擠
-            const shuffledWords = shuffle([...wordData]).slice(0, 5);
-            const enWords = shuffle([...shuffledWords]);
-            const jpWords = shuffle([...shuffledWords]);
-
-            enWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.en;
-                div.dataset.en = word.en;
-                div.onclick = () => selectCard(div, 'en');
-                enColumn.appendChild(div);
-            });
-
-            jpWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.jp;
-                div.dataset.en = word.en; // 綁定正確的英文答案
-                div.dataset.jp = word.jp;
-                div.onclick = () => selectCard(div, 'jp');
-                jpColumn.appendChild(div);
-            });
-        }
-
-        function selectCard(card, type) {
-            if (card.classList.contains('matched')) return;
-
-            if (type === 'en') {
-                document.querySelectorAll('#en-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedEn = card;
-            } else {
-                document.querySelectorAll('#jp-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedJp = card;
-            }
-
-            // 當兩邊都選好時進行檢查
-            if (selectedEn && selectedJp) {
-                if (selectedEn.dataset.en === selectedJp.dataset.en) {
-                    // 答對了
-                    speak(selectedEn.dataset.en);
-                    selectedEn.classList.add('matched');
-                    selectedJp.classList.add('matched');
-                    selectedEn = null;
-                    selectedJp = null;
-                    
-                    // 檢查是不是全全答對了，如果是就自動刷新
-                    setTimeout(() => {
-                        const remaining = document.querySelectorAll('.card:not(.matched)');
-                        if (remaining.length === 0) {
-                            alert("すごーい！ぜんぶ せいかい！");
-                            initMatchGame();
-                        }
-                    }, 500);
-                } else {
-                    // 答錯了，跳出警告視窗
-                    const correctEn = selectedJp.dataset.en;
-                    const correctJp = selectedJp.dataset.jp;
-                    showErrorModal(correctEn, correctJp);
-                    
-                    // 取消選取狀態
-                    selectedEn.classList.remove('selected');
-                    selectedJp.classList.remove('selected');
-                    selectedEn = null;
-                    selectedJp = null;
-                }
-            }
-        }
-
-        /* --- 模式二：看日文打英文 邏輯 --- */
-        let currentTypingIndex = 0;
-        let typingWords = [];
-
-        function initTypingGame() {
-            typingWords = shuffle([...wordData]);
-            currentTypingIndex = 0;
-            showTypingQuestion();
-            updateTypingScore();
-        }
-
-        function showTypingQuestion() {
-            if (currentTypingIndex >= typingWords.length) {
-                alert("クリア！おめでとう！");
-                initTypingGame();
-                return;
-            }
-            document.getElementById("typing-question").innerText = typingWords[currentTypingIndex].jp;
-            document.getElementById("typing-input").value = "";
-            document.getElementById("typing-input").focus();
-        }
-
-        function updateTypingScore() {
-            document.getElementById("typing-score").innerText = `もんだい: ${currentTypingIndex + 1} / ${typingWords.length}`;
-        }
-
-        function checkTyping() {
-            const inputField = document.getElementById("typing-input");
-            const userAnswer = inputField.value.trim().toLowerCase();
-            const correctAnswer = typingWords[currentTypingIndex].en.toLowerCase();
-            const currentJp = typingWords[currentTypingIndex].jp;
-
-            if (userAnswer === correctAnswer) {
-                // 答對
-                speak(typingWords[currentTypingIndex].en);
-                currentTypingIndex++;
-                updateTypingScore();
-                setTimeout(showTypingQuestion, 500);
-            } else {
-                // 答錯
-                showErrorModal(typingWords[currentTypingIndex].en, currentJp);
-                inputField.focus();
-            }
-        }
-
-        // 支援按下 Enter 鍵直接送出答案
-        document.getElementById("typing-input").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {
-                checkTyping();
-            }
-        });
-
-        /* --- 錯誤彈窗邏輯 --- */
-        function showErrorModal(en, jp) {
-            const msg = `にほんご： <strong>${jp}</strong><br><br>ただしい えいご： <span style="font-size:1.8rem; color:#dc3545; font-weight:bold;">${en}</span>`;
-            document.getElementById("error-msg").innerHTML = msg;
-            document.getElementById("error-modal").style.display = "flex";
-        }
-
-        function closeModal() {
-            document.getElementById("error-modal").style.display = "none";
-        }
-    </script>
-</body>
-</html>
