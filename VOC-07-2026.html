@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGK Kids Academy - Practice Mode</title>
     <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
             --primary-color: #55acee; 
@@ -91,6 +92,36 @@
         }
         .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
         .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+
+        /* 右下角小房子返回主選單按鈕樣式 */
+        .home-floating-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #ffb347; /* 搭配主題的橘黃色 */
+            box-shadow: 0 6px 0 #e09224;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 1000;
+        }
+        .home-floating-btn:hover {
+            transform: translateY(2px);
+            box-shadow: 0 4px 0 #e09224;
+            background-color: #ffa524;
+        }
+        .home-floating-btn:active {
+            transform: translateY(6px);
+            box-shadow: none;
+        }
+        .home-floating-btn .material-icons {
+            font-size: 32px;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -120,6 +151,10 @@
         </div>
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
+
+        <button class="home-floating-btn" onclick="returnToMain()" title="Go back to Home">
+            <span class="material-icons">home</span>
+        </button>
     </div>
 
     <div id="result-screen" class="screen">
@@ -149,7 +184,7 @@ const wordBank = [
     {en: "sister", ja: "しまい"},
     {en: "grandfather", ja: "おじいさん"},
     {en: "grandmother", ja: "おばあさん"},
-    {en: "boy", ja: "おとこのこ"},
+    {en: "boy", ja: "おと公のこ"},
     {en: "girl", ja: "おんなのこ"},
     {en: "friend", ja: "ともだち"},
     {en: "everyone", ja: "みなさん"},
@@ -234,7 +269,6 @@ function generateChoices(correctEn) {
     let panel = document.getElementById('choice-panel'); 
     panel.innerHTML = '';
     
-    // 鎖定當前單字，避免異步處理時 currentIndex 飄移
     let currentItem = currentQuestions[currentIndex];
     
     choices.forEach(c => {
@@ -249,7 +283,7 @@ function generateChoices(correctEn) {
                 speakEnglish(c); 
                 setTimeout(nextQuestion, 1200); 
             } else { 
-                wrongWordsList.push(currentItem); // 已修正：精確推入當前單字
+                wrongWordsList.push(currentItem); 
                 alert(`Uh oh! \nせいかいは: ${correctEn}`); 
                 speakEnglish(correctEn); 
                 setTimeout(nextQuestion, 500); 
@@ -312,7 +346,6 @@ function endQuiz() {
     }
 }
 
-// 支援打字輸入框按 Enter 鍵直接提交
 document.getElementById('typing-input').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         checkTypingAnswer();
