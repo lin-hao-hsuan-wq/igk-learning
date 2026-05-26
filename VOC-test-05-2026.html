@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IGK Kids Academy Cloud Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,44 +16,70 @@
             --font-en: 'Chilanka', cursive;
             --font-ja: 'Kosugi Maru', sans-serif;
         }
+        
+        /* 鎖定全螢幕，防止整體畫面滑動 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
         body {
             font-family: var(--font-en), var(--font-ja), cursive, sans-serif;
             background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
             color: #555;
             background-image: radial-gradient(#ffb347 1px, transparent 1px), radial-gradient(#ffb347 1px, #fff9e6 1px);
             background-size: 20px 20px;
             background-position: 0 0, 10px 10px;
+            
+            /* 使用 Flexbox 讓外框在螢幕正中間完美適應 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
         }
+        
+        /* 網頁主外框：高度自適應螢幕，並限制最大高度 */
         .main-wrapper {
-            max-width: 900px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 850px;
+            height: 92vh; /* 自動適應螢幕高度的 92% */
+            max-height: 750px;
             border: var(--border-style);
-            padding: 30px;
+            padding: 25px;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 30px;
             box-shadow: 0 8px 0 rgba(0,0,0,0.1);
             position: relative;
+            box-sizing: border-box;
+            
+            /* 內部元素垂直置中排列 */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
+        
+        /* 調小大標題間距，避免擠壓到答題區 */
         h1.title {
             text-align: center;
             color: #ff6961;
-            font-size: 4rem;
-            margin-bottom: 30px;
-            text-shadow: 4px 4px 0px #fff, 8px 8px 0px rgba(0,0,0,0.1);
+            font-size: 3rem;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0px #fff, 6px 6px 0px rgba(0,0,0,0.1);
             position: relative;
             display: inline-block;
-            left: 50%;
-            transform: translateX(-50%);
+            align-self: center;
         }
-        h1.title::before, h1.title::after { content: "✨"; font-size: 2rem; position: absolute; }
-        h1.title::before { left: -40px; top: -10px; }
-        h1.title::after { right: -40px; bottom: -10px; }
+        h1.title::before, h1.title::after { content: "✨"; font-size: 1.8rem; position: absolute; }
+        h1.title::before { left: -35px; top: -5px; }
+        h1.title::after { right: -35px; bottom: -5px; }
 
-        .nav-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        .nav-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
         button {
-            padding: 15px 30px; font-size: 1.1rem; font-family: var(--font-en), var(--font-ja);
+            padding: 12px 28px; font-size: 1.1rem; font-family: var(--font-en), var(--font-ja);
             border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s ease;
             color: white; font-weight: bold; box-shadow: 0 6px 0 rgba(0,0,0,0.2); text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
         }
@@ -67,69 +93,71 @@
         .btn-dark { background-color: #34495e; }
         .btn-orange { background-color: #ffb347; }
         
-        .screen { display: none; text-align: center;}
-        .screen.active { display: block; }
-        hr { border: none; border-top: 5px dotted #ffb347; margin: 20px 0; }
+        /* 讓各個畫面佔滿剩餘的垂直空間，並方便內部元件置中 */
+        .screen { 
+            display: none; 
+            text-align: center;
+            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto; /* 若老師後台圖表太長，僅限後台內部可滾動，不影響考試 */
+        }
+        .screen.active { display: flex; }
+        hr { width: 100%; border: none; border-top: 5px dotted #ffb347; margin: 15px 0; }
         
+        /* 題目框 */
         .question-box {
-            font-size: 3rem; color: #ffb347; background: #fff8f8; border: 4px solid #55acee;
-            padding: 20px; border-radius: 20px; margin: 30px 0; display: inline-block; box-shadow: 0 4px 0 #55acee;
+            font-size: 2.8rem; color: #ffb347; background: #fff8f8; border: 4px solid #55acee;
+            padding: 15px 40px; border-radius: 20px; margin: 20px 0; display: inline-block; box-shadow: 0 4px 0 #55acee;
         }
         
-        .input-area { margin-bottom: 20px; }
-        .input-area select { font-size: 1.5rem; font-family: var(--font-en), var(--font-ja); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #55acee; border-radius: 20px; outline: none; background-color: white; cursor: pointer; }
-        .input-area input { font-size: 1.5rem; font-family: var(--font-en); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
+        .input-area { width: 100%; margin-bottom: 15px; }
+        .input-area select { font-size: 1.4rem; font-family: var(--font-en), var(--font-ja); padding: 12px; width: 85%; max-width: 350px; text-align: center; border: 4px solid #55acee; border-radius: 20px; outline: none; background-color: white; cursor: pointer; }
+        .input-area input { font-size: 1.4rem; font-family: var(--font-en); padding: 12px; width: 85%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
         
-        /* 名字二次確認彈窗樣式 */
-        .ready-popup { display: none; background: #fffdf0; border: 4px solid #ffb347; border-radius: 25px; padding: 25px; margin: 20px auto; max-width: 400px; box-shadow: 0 6px 0 rgba(0,0,0,0.05); }
-        .ready-text { font-size: 1.8rem; color: #ff6961; font-weight: bold; margin-bottom: 20px; line-height: 1.4; }
+        /* 名字二次確認彈窗 */
+        .ready-popup { display: none; background: #fffdf0; border: 4px solid #ffb347; border-radius: 25px; padding: 20px; margin: 15px auto; width: 85%; max-width: 380px; box-shadow: 0 6px 0 rgba(0,0,0,0.05); }
+        .ready-text { font-size: 1.6rem; color: #ff6961; font-weight: bold; margin-bottom: 15px; line-height: 1.4; }
 
-        .feedback-circle { width: 100px; height: 100px; border: 15px solid var(--success-color); border-radius: 50%; margin: 20px auto; display: none; }
-        .wrong-hint { color: var(--error-color); font-size: 1.2rem; font-weight: bold; margin: 15px 0; background: #fff0f0; padding: 10px; border-radius: 10px; }
+        .feedback-circle { width: 80px; height: 80px; border: 12px solid var(--success-color); border-radius: 50%; margin: 15px auto; display: none; }
+        .wrong-hint { color: var(--error-color); font-size: 1.2rem; font-weight: bold; margin: 10px 0; background: #fff0f0; padding: 10px; border-radius: 10px; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #ddd; padding: 15px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f2f2f2; }
         
-        .chart-container { position: relative; margin: 20px auto; height: 400px; width: 100%; background: white; padding: 15px; border-radius: 20px; border: 3px dashed #ffb347; }
-        .score-display { font-size: 1.4rem; color: #7f8c8d; }
-        .comment-display { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 20px 0; padding: 20px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.6; }
+        .chart-container { position: relative; margin: 15px auto; height: 320px; width: 100%; background: white; padding: 10px; border-radius: 20px; border: 3px dashed #ffb347; box-sizing: border-box; }
+        .score-display { font-size: 1.3rem; color: #7f8c8d; }
+        .comment-display { font-size: 1.4rem; font-weight: bold; color: var(--primary-color); margin: 15px 0; padding: 15px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.5; }
         
-        /* 錯題複習樣式 */
         .review-box {
-            margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 20px; border: 3px dashed var(--error-color);
+            margin-top: 15px; text-align: left; background: #fff; padding: 15px; border-radius: 20px; border: 3px dashed var(--error-color); width: 100%; box-sizing: border-box; max-height: 180px; overflow-y: auto;
         }
-        .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
-        .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+        .review-title { color: var(--error-color); font-size: 1.3rem; font-weight: bold; margin-bottom: 8px; text-align: center; }
+        .review-item { font-size: 1.1rem; padding: 6px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
 
-        /* 右上角老師專屬Q版懸浮按鈕 */
+        /* 右上角老師專屬懸浮按鈕 */
         .teacher-floating-btn {
             position: fixed;
-            top: 25px;
-            right: 25px;
-            width: 65px;
-            height: 65px;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background-color: #34495e;
             box-shadow: 0 6px 0 #1a252f;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
+            font-size: 28px;
             cursor: pointer;
             border: none;
             z-index: 1000;
             transition: all 0.2s ease;
         }
-        .teacher-floating-btn:hover {
-            transform: translateY(2px);
-            box-shadow: 0 4px 0 #1a252f;
-            background-color: #2c3e50;
-        }
-        .teacher-floating-btn:active {
-            transform: translateY(6px);
-            box-shadow: none;
-        }
+        .teacher-floating-btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 #1a252f; background-color: #2c3e50; }
+        .teacher-floating-btn:active { transform: translateY(6px); box-shadow: none; }
     </style>
 </head>
 <body>
@@ -139,11 +167,11 @@
 <div class="main-wrapper">
     <h1 class="title">IGK</h1>
 
-    <div id="main-nav" class="nav-buttons">
-        <button class="btn-green" style="font-size: 1.5rem; padding: 20px 50px;" onclick="startExamFlow()">テスト (Exam)</button>
+    <div id="main-nav" class="nav-buttons" style="display: flex;">
+        <button class="btn-green" style="font-size: 1.5rem; padding: 15px 45px;" onclick="startExamFlow()">テスト (Exam)</button>
     </div>
 
-    <hr>
+    <hr id="main-hr">
 
     <div id="name-input-screen" class="screen">
         <h3>なまえをえらんでね (Choose Your Name)</h3>
@@ -178,15 +206,15 @@
                 </div>
             </div>
 
-            <br><br>
+            <br>
             <button class="btn-green" id="exam-start-btn" style="display:none;" onclick="submitNameAndStartExam()">スタート (Start! 🚀)</button>
-            <br><br>
+            <br>
             <button class="btn-gray" id="name-back-btn" onclick="returnToMain()">もどる (Back)</button>
         </div>
     </div>
 
     <div id="quiz-screen" class="screen">
-        <div style="display:flex; justify-content: space-between; color:#7f8c8d; padding: 0 20px;">
+        <div style="display:flex; justify-content: space-between; color:#7f8c8d; padding: 0 10px; width: 100%; box-sizing: border-box;">
             <span id="progress-text" class="score-display">もんだい: 0/20</span>
             <span id="score-text" class="score-display">せいかい: 0</span>
         </div>
@@ -199,14 +227,14 @@
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
         
-        <div id="exam-actions" style="display:none; text-align:center; margin-top:20px; justify-content:center;">
+        <div id="exam-actions" style="display:none; text-align:center; margin-top:10px; justify-content:center;">
             <button class="btn-blue" onclick="nextQuestion()">つぎへ (Next)</button>
         </div>
     </div>
 
     <div id="result-screen" class="screen">
         <h2>おしまい (Finished!)</h2>
-        <p style="font-size:1.6rem;" id="final-score-text"></p>
+        <p style="font-size:1.4rem; margin: 5px 0;" id="final-score-text"></p>
         <div id="comment-box" class="comment-display"></div>
         
         <div id="wrong-answers-review" class="review-box" style="display:none;">
@@ -219,25 +247,24 @@
 
     <div id="admin-screen" class="screen">
         <h2>せんせいかんりがめん (Admin Dashboard)</h2>
-        <button class="btn-blue" onclick="loadCloudData()">🔄 グラフをこうしん (Refresh Data)</button>
-        <button class="btn-red" onclick="clearData()">レコードをけす (Delete Records)</button>
-        <button class="btn-dark" onclick="returnToMain()">ログアウト (Exit)</button>
+        <div class="nav-buttons" style="margin-bottom: 10px;">
+            <button class="btn-blue" onclick="loadCloudData()">🔄 こうしん</button>
+            <button class="btn-red" onclick="clearData()">レコードをけす</button>
+            <button class="btn-dark" onclick="returnToMain()">ログアウト</button>
+        </div>
         
-        <h3>ぜんたいのグラフ (Overall Progress & Distribution Chart)</h3>
-        <p style="text-align:left; font-size:0.9rem; color:#7f8c8d; margin:0 15px;">
-            * X軸：テストの かいすう (Attempts) / Y軸：せいかいすう (Correct Answers)
-        </p>
+        <h3>ぜんたいのグラフ</h3>
         <div class="chart-container">
             <canvas id="analyticsChart"></canvas>
         </div>
 
-        <h3>こじんレコード (Individual Records)</h3>
+        <h3>こじんレコード</h3>
         <table id="records-table">
             <thead>
                 <tr>
                     <th>なまえ (Name)</th>
-                    <th>ハイスコア (Max Score)</th>
-                    <th>チャレンジ (Total Attempts)</th>
+                    <th>ハイスコア</th>
+                    <th>チャレンジ</th>
                     <th>れきし (History)</th>
                 </tr>
             </thead>
@@ -250,7 +277,6 @@
 const CLOUD_API_URL = "https://api.jsonbin.io/v3/b/6651bb81e41b4d34e4fa0120"; 
 const MASTER_KEY = "$2a$10$Rz7T9N4e4G7lK6fGgDqSBuM.i5wM96S5vF9R4GzEwZDe8FvRjVjS."; 
 
-// ✨ 已更新為指定的 20 個時間與天氣單字
 const wordBank = [
     {en: "year", ja: "ねん", kana: "ねん"},
     {en: "spring", ja: "はる", kana: "はる"},
@@ -279,8 +305,16 @@ let correctCount = 0; let currentStudent = ''; let hasAnswered = false; let char
 let wrongWordsList = [];
 
 function showScreen(screenId) {
+    document.getElementById('main-nav').style.display = 'none';
+    document.getElementById('main-hr').style.display = 'none';
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
+    
+    if(screenId) {
+        document.getElementById(screenId).classList.add('active');
+    } else {
+        document.getElementById('main-nav').style.display = 'flex';
+        document.getElementById('main-hr').style.display = 'block';
+    }
 }
 
 function returnToMain() { 
@@ -314,7 +348,7 @@ function handleNameSelection(name) {
         currentStudent = name;
         document.getElementById('student-name-select').disabled = true;
         document.getElementById('name-back-btn').style.display = 'none';
-        document.getElementById('ready-text-content').innerHTML = `Are you ready,<br><span style="font-size:2.2rem; color:#55acee;">${name}</span> ?`;
+        document.getElementById('ready-text-content').innerHTML = `Are you ready,<br><span style="font-size:2rem; color:#55acee;">${name}</span> ?`;
         document.getElementById('ready-confirmation-box').style.display = 'block';
     } else {
         document.getElementById('ready-confirmation-box').style.display = 'none';
@@ -427,6 +461,7 @@ function uploadExamData(name, score) {
     }).then(() => console.log("Cloud sync successful!")).catch(err => console.error(err));
 }
 
+// 老師登入
 function loginAdmin() {
     let pwd = prompt("Teacher's Password (せんせいパスワード):");
     if(pwd === "0004") { showScreen('admin-screen'); loadCloudData(); } else { alert("Wrong! / ちがいます！"); }
