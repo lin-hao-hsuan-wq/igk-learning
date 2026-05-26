@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGK Kids Academy - Practice Mode</title>
     <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
             --primary-color: #55acee; 
@@ -91,6 +92,36 @@
         }
         .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
         .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+
+        /* 右下角懸浮小房子按鈕樣式 */
+        .home-floating-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #ffb347; 
+            box-shadow: 0 6px 0 #e09224;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 1000;
+        }
+        .home-floating-btn:hover {
+            transform: translateY(2px);
+            box-shadow: 0 4px 0 #e09224;
+            background-color: #ffa524;
+        }
+        .home-floating-btn:active {
+            transform: translateY(6px);
+            box-shadow: none;
+        }
+        .home-floating-btn .material-icons {
+            font-size: 32px;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -120,6 +151,10 @@
         </div>
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
+
+        <button class="home-floating-btn" onclick="returnToMain()" title="Go back to menu">
+            <span class="material-icons">home</span>
+        </button>
     </div>
 
     <div id="result-screen" class="screen">
@@ -137,26 +172,26 @@
 </div>
 
 <script>
-// ✨ 已同步更新為 20 個時間與天氣的單字，採用純假名格式
+// ✨ 已更新為指定的 20 個時間與天氣單字與日文假名對照
 const wordBank = [
-    {en: "year", ja: "とし"},
+    {en: "year", ja: "ねん"},
     {en: "spring", ja: "はる"},
     {en: "summer", ja: "なつ"},
     {en: "fall", ja: "あき"},
     {en: "winter", ja: "ふゆ"},
-    {en: "sunny", ja: "はれ"},
-    {en: "cloudy", ja: "くもり"},
-    {en: "rainy", ja: "あめ"},
-    {en: "snowy", ja: "ゆき"},
-    {en: "windy", ja: "かぜ"},
+    {en: "sunny", ja: "はれた"},
+    {en: "cloudy", ja: "くもりの"},
+    {en: "rainy", ja: "あめの"},
+    {en: "snowy", ja: "ゆきのふる"},
+    {en: "windy", ja: "かぜのつよい"},
     {en: "day", ja: "ひ"},
-    {en: "date", ja: "ひにち"},
+    {en: "date", ja: "ひづけ"},
     {en: "month", ja: "つき"},
     {en: "yesterday", ja: "きのう"},
     {en: "today", ja: "きょう"},
     {en: "tomorrow", ja: "あした"},
     {en: "morning", ja: "あさ"},
-    {en: "afternoon", ja: "ひる"},
+    {en: "afternoon", ja: "ごご"},
     {en: "evening", ja: "ゆうがた"},
     {en: "night", ja: "よる"}
 ];
