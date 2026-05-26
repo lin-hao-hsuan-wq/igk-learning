@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK</title>
+    <title>IGK Kids Learning</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
@@ -196,8 +196,8 @@
 <body>
 
     <div class="container">
-        <h1>🇬🇧 えいご れんしゅう 🇯🇵</h1>
-        <p style="font-size: 1.1rem; color: #666;">えいごを たのしく おぼえよう！</p>
+        <h1>IGK</h1>
+        <p style="font-size: 1.1rem; color: #666;">Learning English</p>
         
         <div class="mode-buttons">
             <button id="btn-list" class="mode-btn active" onclick="switchMode('list', this)">たんご いちらん</button>
@@ -206,14 +206,14 @@
         </div>
 
         <div id="list-mode" class="game-section active">
-            <h2>たんご いちらん (單字列表)</h2>
+            <h2>たんご いちらん</h2>
             <p>まずは ここで えいごと にほんごを おぼえてね！</p>
             <table id="word-table">
                 <thead>
                     <tr>
-                        <th>英語 (えいご)</th>
-                        <th>日本語 (にほんご)</th>
-                        <th>こえ (發音)</th>
+                        <th>えいご</th>
+                        <th>にほんご</th>
+                        <th>こえ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -222,7 +222,7 @@
         </div>
 
         <div id="match-mode" class="game-section">
-            <h2>えいご えらびゲーム (對對碰)</h2>
+            <h2>えらびゲーム</h2>
             <p>おなじ いみの えいごと にほんごを えらんでね！</p>
             <button onclick="initMatchGame()" style="margin-bottom:15px; padding: 5px 10px; font-size:1rem; cursor:pointer;">つぎの もんだい (換一組字)</button>
             <div class="match-container">
@@ -232,7 +232,7 @@
         </div>
 
         <div id="typing-mode" class="game-section">
-            <h2>タイピング れんしゅう (看日文打英文)</h2>
+            <h2>タイピング</h2>
             <p>にほんごを みて、えいごを キーボードで うちましょう！</p>
             <div class="typing-box">
                 <div class="jp-question" id="typing-question">にほんご</div>
