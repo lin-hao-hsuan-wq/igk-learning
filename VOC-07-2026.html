@@ -217,7 +217,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    </tbody>
+                </tbody>
             </table>
         </div>
 
@@ -254,33 +254,34 @@
     </div>
 
     <script>
-        // 20個單字資料庫
+        // ✨ 已修正：完全移除日文漢字，全部採用純假名表現（平假名/片假名）
         const wordData = [
             { en: "it", jp: "それ" },
             { en: "this", jp: "これ" },
             { en: "that", jp: "あれ" },
-            { en: "family", jp: "かぞく (家族)" },
-            { en: "father", jp: "おとうさん (父親)" },
-            { en: "mother", jp: "おかあさん (母親)" },
-            { en: "brother", jp: "きょうだい (兄弟)" },
-            { en: "sister", jp: "しまい (姉妹)" },
+            { en: "family", jp: "かぞく" },
+            { en: "father", jp: "おとうさん" },
+            { en: "mother", jp: "おかあさん" },
+            { en: "brother", jp: "きょうだい" },
+            { en: "sister", jp: "しまい" },
             { en: "grandfather", jp: "おじいさん" },
             { en: "grandmother", jp: "おばあさん" },
-            { en: "boy", jp: "おとこのこ (男の子)" },
-            { en: "girl", jp: "おんなのこ (女の子)" },
-            { en: "friend", jp: "ともだち (友達)" },
-            { en: "everyone", jp: "みなさん (みんな)" },
+            { en: "boy", jp: "おとこのこ" },
+            { en: "girl", jp: "おんなのこ" },
+            { en: "friend", jp: "ともだち" },
+            { en: "everyone", jp: "みなさん" },
             { en: "old", jp: "ふるい / としをとった" },
             { en: "young", jp: "わかい" },
             { en: "funny", jp: "おもしろい" },
-            { en: "kind", jp: "やさしい (親切な)" },
-            { en: "strong", jp: "つよい (強い)" },
+            { en: "kind", jp: "やさしい" },
+            { en: "strong", jp: "つよい" },
             { en: "busy", jp: "いそがしい" }
         ];
 
         // 語音播放功能
         function speak(text) {
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
                 utterance.rate = 0.8; 
@@ -315,94 +316,4 @@
             document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             
-            element.classList.add('active');
-            document.getElementById(`${mode}-mode`).classList.add('active');
-
-            if (mode === 'match') initMatchGame();
-            if (mode === 'typing') initTypingGame();
-        }
-
-        /* --- 模式一：對對碰 邏輯 --- */
-        let selectedEn = null;
-        let selectedJp = null;
-
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
-
-        function initMatchGame() {
-            const enColumn = document.getElementById("en-column");
-            const jpColumn = document.getElementById("jp-column");
-            enColumn.innerHTML = "";
-            jpColumn.innerHTML = "";
-            selectedEn = null;
-            selectedJp = null;
-
-            const shuffledWords = shuffle([...wordData]).slice(0, 5);
-            const enWords = shuffle([...shuffledWords]);
-            const jpWords = shuffle([...shuffledWords]);
-
-            enWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.en;
-                div.dataset.en = word.en;
-                div.onclick = function() { selectCard(div, 'en'); };
-                enColumn.appendChild(div);
-            });
-
-            jpWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.jp;
-                div.dataset.en = word.en; 
-                div.dataset.jp = word.jp;
-                div.onclick = function() { selectCard(div, 'jp'); };
-                jpColumn.appendChild(div);
-            });
-        }
-
-        function selectCard(card, type) {
-            if (card.classList.contains('matched')) return;
-
-            if (type === 'en') {
-                document.querySelectorAll('#en-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedEn = card;
-            } else {
-                document.querySelectorAll('#jp-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedJp = card;
-            }
-
-            if (selectedEn && selectedJp) {
-                if (selectedEn.dataset.en === selectedJp.dataset.en) {
-                    speak(selectedEn.dataset.en);
-                    selectedEn.classList.add('matched');
-                    selectedJp.classList.add('matched');
-                    selectedEn = null;
-                    selectedJp = null;
-                    
-                    setTimeout(() => {
-                        const remaining = document.querySelectorAll('.card:not(.matched)');
-                        if (remaining.length === 0) {
-                            alert("すごーい！ぜんぶ せいかい！");
-                            initMatchGame();
-                        }
-                    }, 500);
-                } else {
-                    const correctEn = selectedJp.dataset.en;
-                    const correctJp = selectedJp.dataset.jp;
-                    showErrorModal(correctEn, correctJp);
-                    
-                    selectedEn.classList.remove('selected');
-                    selectedJp.classList.remove('selected');
-                    selectedEn = null;
-                    selectedJp = null;
-                }
-            }
-        }
-
-        /* --- 模式二：看日文打英文 邏輯 --- */
-        let currentTypingIndex = 0;
-        let typingWords =
+            element.classList
