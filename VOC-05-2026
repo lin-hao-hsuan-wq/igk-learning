@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGK Kids Academy - Practice Mode</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #55acee; 
+            --success-color: #77dd77; 
+            --error-color: #ff6961;   
+            --bg-color: #fff9e6;      
+            --border-style: 4px dashed #ffb347; 
+            --font-en: 'Chilanka', cursive;
+            --font-ja: 'Kosugi Maru', sans-serif;
+        }
+        body {
+            font-family: var(--font-en), var(--font-ja), cursive, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #555;
+            background-image: radial-gradient(#ffb347 1px, transparent 1px), radial-gradient(#ffb347 1px, #fff9e6 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .main-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            border: var(--border-style);
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
+        }
+        h1.title {
+            text-align: center;
+            color: #ff6961;
+            font-size: 4rem;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 0px #fff, 8px 8px 0px rgba(0,0,0,0.1);
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        h1.title::before, h1.title::after { content: "✨"; font-size: 2rem; position: absolute; }
+        h1.title::before { left: -40px; top: -10px; }
+        h1.title::after { right: -40px; bottom: -10px; }
+
+        .nav-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        button {
+            padding: 15px 30px; font-size: 1.1rem; font-family: var(--font-en), var(--font-ja);
+            border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s ease;
+            color: white; font-weight: bold; box-shadow: 0 6px 0 rgba(0,0,0,0.2); text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+        }
+        button:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        button:active { transform: translateY(6px); box-shadow: none; }
+        
+        .btn-blue { background-color: #55acee; }
+        .btn-green { background-color: #77dd77; }
+        .btn-gray { background-color: #95a5a6; }
+        
+        .screen { display: none; text-align: center;}
+        .screen.active { display: block; }
+        hr { border: none; border-top: 5px dotted #ffb347; margin: 20px 0; }
+        
+        .question-box {
+            font-size: 3rem; color: #ffb347; background: #fff8f8; border: 4px solid #55acee;
+            padding: 20px; border-radius: 20px; margin: 30px 0; display: inline-block; box-shadow: 0 4px 0 #55acee;
+        }
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+        .option-btn { background-color: #fdfdff; color: #333; border: 4px solid #77dd77; border-radius: 20px; padding: 20px; font-size: 1.4rem; box-shadow: 0 6px 0 #77dd77; cursor: pointer; }
+        .option-btn:hover { background-color: #77dd77; color: white; box-shadow: 0 4px 0 #77dd77; }
+        
+        .input-area { margin-bottom: 20px; }
+        .input-area input { font-size: 1.5rem; font-family: var(--font-en); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
+        
+        .feedback-circle { width: 100px; height: 100px; border: 15px solid var(--success-color); border-radius: 50%; margin: 20px auto; display: none; }
+        .wrong-hint { color: var(--error-color); font-size: 1.2rem; font-weight: bold; margin: 15px 0; background: #fff0f0; padding: 10px; border-radius: 10px; }
+        
+        .score-display { font-size: 1.4rem; color: #7f8c8d; }
+        .comment-display { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 20px 0; padding: 20px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.6; }
+        
+        /* 錯題複習樣式 */
+        .review-box {
+            margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 20px; border: 3px dashed var(--error-color);
+        }
+        .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    <h1 class="title">IGK</h1>
+
+    <div id="mode-select-screen" class="screen active">
+        <h3>えらんでね (Choose Type)</h3>
+        <div class="nav-buttons">
+            <button class="btn-blue option-btn" onclick="startPractice('choice')">えらぶ (Choose Word)</button>
+            <button class="btn-green option-btn" onclick="startPractice('typing')">タイピング (Typing)</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div style="display:flex; justify-content: space-between; color:#7f8c8d; padding: 0 20px;">
+            <span id="progress-text" class="score-display">もんだい: 0/20</span>
+            <span id="score-text" class="score-display">せいかい: 0</span>
+        </div>
+        <div class="question-box" id="question-text">...</div>
+        <div id="choice-panel" style="display:none;" class="options-grid"></div>
+        <div id="typing-panel" style="display:none;" class="input-area">
+            <input type="text" id="typing-input" autocomplete="off" placeholder="Type answer...">
+            <br><br>
+            <button class="btn-blue" id="submit-typing-btn" onclick="checkTypingAnswer()">OK / Submit</button>
+        </div>
+        <div id="feedback-success-circle" class="feedback-circle"></div>
+        <div id="feedback-wrong-hint" class="wrong-hint"></div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h2>おしまい (Finished!)</h2>
+        <p style="font-size:1.6rem;" id="final-score-text"></p>
+        <div id="comment-box" class="comment-display"></div>
+        
+        <div id="wrong-answers-review" class="review-box" style="display:none;">
+            <div class="review-title">もういちど みなおそう (Review Wrong Words)</div>
+            <div id="review-list"></div>
+        </div>
+        <br>
+        <button class="btn-green" onclick="returnToMain()">ホーム (Home)</button>
+    </div>
+</div>
+
+<script>
+// ✨ 已同步更新為 20 個時間與天氣的單字，採用純假名格式
+const wordBank = [
+    {en: "year", ja: "とし"},
+    {en: "spring", ja: "はる"},
+    {en: "summer", ja: "なつ"},
+    {en: "fall", ja: "あき"},
+    {en: "winter", ja: "ふゆ"},
+    {en: "sunny", ja: "はれ"},
+    {en: "cloudy", ja: "くもり"},
+    {en: "rainy", ja: "あめ"},
+    {en: "snowy", ja: "ゆき"},
+    {en: "windy", ja: "かぜ"},
+    {en: "day", ja: "ひ"},
+    {en: "date", ja: "ひにち"},
+    {en: "month", ja: "つき"},
+    {en: "yesterday", ja: "きのう"},
+    {en: "today", ja: "きょう"},
+    {en: "tomorrow", ja: "あした"},
+    {en: "morning", ja: "あさ"},
+    {en: "afternoon", ja: "ひる"},
+    {en: "evening", ja: "ゆうがた"},
+    {en: "night", ja: "よる"}
+];
+
+let currentMode = ''; 
+let currentQuestions = []; 
+let currentIndex = 0;
+let correctCount = 0; 
+let hasAnswered = false; 
+let wrongWordsList = []; 
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+function returnToMain() { 
+    showScreen('mode-select-screen'); 
+}
+
+function speakEnglish(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance(text); 
+        u.lang = 'en-US'; 
+        window.speechSynthesis.speak(u);
+    }
+}
+
+function shuffle(array) { 
+    return array.sort(() => Math.random() - 0.5); 
+}
+
+function startPractice(type) {
+    currentMode = 'practice-' + type; 
+    currentQuestions = shuffle([...wordBank]);
+    currentIndex = 0; 
+    correctCount = 0; 
+    wrongWordsList = []; 
+    setupQuestion(); 
+    showScreen('quiz-screen');
+}
+
+function setupQuestion() {
+    if(currentIndex >= 20) { endQuiz(); return; }
+    hasAnswered = false; 
+    let item = currentQuestions[currentIndex];
+    document.getElementById('progress-text').innerText = `もんだい: ${currentIndex + 1}/20`;
+    document.getElementById('score-text').innerText = `せいかい: ${correctCount}`;
+    document.getElementById('feedback-success-circle').style.display = 'none';
+    document.getElementById('feedback-wrong-hint').innerText = '';
+    
+    document.getElementById('question-text').innerText = item.ja;
+    if(currentMode === 'practice-choice') {
+        document.getElementById('choice-panel').style.display = 'grid'; 
+        document.getElementById('typing-panel').style.display = 'none'; 
+        generateChoices(item.en);
+    } else {
+        document.getElementById('choice-panel').style.display = 'none'; 
+        document.getElementById('typing-panel').style.display = 'block';
+        document.getElementById('submit-typing-btn').style.display = 'inline-block'; 
+        document.getElementById('typing-input').value = ''; 
+        document.getElementById('typing-input').disabled = false;
+        setTimeout(() => document.getElementById('typing-input').focus(), 50);
+    }
+}
+
+function generateChoices(correctEn) {
+    let choices = [correctEn];
+    while(choices.length < 4) {
+        let r = wordBank[Math.floor(Math.random() * wordBank.length)].en;
+        if(!choices.includes(r)) choices.push(r);
+    }
+    shuffle(choices);
+    let panel = document.getElementById('choice-panel'); 
+    panel.innerHTML = '';
+    
+    let currentItem = currentQuestions[currentIndex];
+    
+    choices.forEach(c => {
+        let btn = document.createElement('button'); 
+        btn.className = 'option-btn'; 
+        btn.innerText = c;
+        btn.onclick = () => { 
+            if(hasAnswered) return; 
+            hasAnswered = true; 
+            if(c === correctEn) { 
+                correctCount++; 
+                speakEnglish(c); 
+                setTimeout(nextQuestion, 1200); 
+            } else { 
+                wrongWordsList.push(currentItem); 
+                alert(`Uh oh! \nせいかいは: ${correctEn}`); 
+                speakEnglish(correctEn); 
+                setTimeout(nextQuestion, 500); 
+            } 
+        };
+        panel.appendChild(btn);
+    });
+}
+
+function checkTypingAnswer() {
+    if(hasAnswered) return;
+    let inputField = document.getElementById('typing-input');
+    let userAns = inputField.value.trim().toLowerCase();
+    let currentItem = currentQuestions[currentIndex];
+    let correct = currentItem.en.toLowerCase();
+    hasAnswered = true; 
+    inputField.disabled = true; 
+    document.getElementById('submit-typing-btn').style.display = 'none';
+
+    if(userAns === correct) { 
+        correctCount++; 
+        document.getElementById('feedback-success-circle').style.display = 'block'; 
+    } else { 
+        wrongWordsList.push(currentItem);
+        document.getElementById('feedback-wrong-hint').innerText = `Correction: ${currentItem.en}`; 
+    }
+    speakEnglish(correct); 
+    setTimeout(nextQuestion, 2200); 
+}
+
+function nextQuestion() { 
+    currentIndex++; 
+    setupQuestion(); 
+}
+
+function endQuiz() {
+    showScreen('result-screen');
+    document.getElementById('final-score-text').innerText = `せいかい： ${correctCount} / 20`;
+    
+    let comment = "";
+    if(correctCount >= 15) comment = "すばらしい！ ゆうしゅうな せいせきです！<br>Excellent! Outstanding performance!";
+    else if(correctCount >= 10) comment = "よく できました！ つぎも がんばりましょう！<br>Good job! Keep pushing yourself!";
+    else comment = "いっしょに れんしゅう しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
+    document.getElementById('comment-box').innerHTML = comment;
+    
+    let reviewBox = document.getElementById('wrong-answers-review');
+    let reviewList = document.getElementById('review-list');
+    reviewList.innerHTML = '';
+    
+    if(wrongWordsList.length > 0) {
+        reviewBox.style.display = 'block';
+        wrongWordsList.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'review-item';
+            div.innerHTML = `<span>🔴 ${item.ja}</span> <span style="font-weight:bold; color:var(--primary-color);">${item.en}</span>`;
+            reviewList.appendChild(div);
+        });
+    } else {
+        reviewBox.style.display = 'none';
+    }
+}
+
+document.getElementById('typing-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        checkTypingAnswer();
+    }
+});
+</script>
+</body>
+</html>
