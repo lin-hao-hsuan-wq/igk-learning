@@ -271,7 +271,7 @@
 </head>
 <body>
 
-    <h1><i class="fa-solid fa-pencil"></i> IGK 6月　VOC. challenge <i class="fa-solid fa-star" style="color:#FFD700;"></i></h1>
+    <h1><i class="fa-solid fa-pencil"></i> IGK 6月 VOC. challenge <i class="fa-solid fa-star" style="color:#FFD700;"></i></h1>
 
     <div class="menu-container">
         <button id="tab-matching" class="mode-btn" onclick="switchMode('matching')">えらぶ</button>
@@ -306,15 +306,28 @@
     </div>
 
     <script>
-        // 20個單字庫數據
+        // ✨ 已修正：20個單字庫數據（使用正確的物件對照： "英文": "日文"）
         const wordBank = {
-           jp: "いちがつ", en: "January" }, { jp: "にがつ", en: "February" }, { jp: "さんがつ", en: "March" }, { jp: "しがつ", en: "April" },
-      { jp: "ごがつ", en: "May" }, { jp: "ろくがつ", en: "June" }, { jp: "しちがつ", en: "July" }, { jp: "はちがつ", en: "August" },
-      { jp: "くがつ", en: "September" }, { jp: "じゅうがつ", en: "October" }, { jp: "じゅういちがつ", en: "November" }, { jp: "じゅうにがつ", en: "December" },
-      { jp: "なか", en: "in" }, { jp: "うえ", en: "on" }, { jp: "した", en: "under" }, { jp: "まえ", en: "in front of" },
-      { jp: "うしろ", en: "behind" }, { jp: "そば", en: ["by", "beside"] }, { jp: "あいだ", en: "between" }, { jp: "と", en: "and" }
-    ];
-
+            "January": "いちがつ", 
+            "February": "にがつ", 
+            "March": "さんがつ", 
+            "April": "しがつ",
+            "May": "ごがつ", 
+            "June": "ろくがつ", 
+            "July": "しちがつ", 
+            "August": "はちがつ",
+            "September": "くがつ", 
+            "October": "じゅうがつ", 
+            "November": "じゅういちがつ", 
+            "December": "じゅうにがつ",
+            "in": "なか", 
+            "on": "うえ", 
+            "under": "した", 
+            "in front of": "まえ",
+            "behind": "うしろ", 
+            "by": "そば", 
+            "between": "あいだ", 
+            "and": "と"
         };
 
         let selectedCards = [];
@@ -341,10 +354,7 @@
 
         // 🔊 英文單字讀音 TTS 功能
         function speakEnglish(word) {
-            // 檢查單字中是否包含「・」分隔符（主要針對日文處理，不過這裡傳入的會是純英文如 brother）
-            // 確保清除乾淨非英文字元
             let cleanWord = word.split('(')[0].trim();
-            
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel(); // 停止上一個正在播放的聲音
                 const utterance = new SpeechSynthesisUtterance(cleanWord);
@@ -388,7 +398,6 @@
 
         function closeVictory() {
             document.getElementById('victory-screen').style.display = 'none';
-            // 重新刷新當前模式
             if (document.getElementById('matching-section').classList.contains('active')) {
                 initMatchingGame();
             } else {
@@ -397,7 +406,7 @@
         }
 
 
-        // --- 模式一：對對碰邏輯 (20個單字全出，分成每次隨機挑6組，直到20組全部完成) ---
+        // --- 模式一：對對碰邏輯 ---
         let poolPairs = [];
         
         function initMatchingGame() {
@@ -406,7 +415,6 @@
             selectedCards = [];
             totalPairsCleared = 0;
             
-            // 把20個單字全部放進待分配池中
             poolPairs = Object.entries(wordBank);
             poolPairs.sort(() => Math.random() - 0.5); // 洗牌
             
@@ -417,11 +425,10 @@
             const grid = document.getElementById('matching-grid');
             grid.innerHTML = '';
             
-            // 每次從池子裡拿出 5 組單字 (共10張牌，畫面最剛好舒適)
+            // 每次從池子裡拿出 5 組單字 (共10張牌)
             const currentSet = poolPairs.slice(totalPairsCleared, totalPairsCleared + 5);
             
             if (currentSet.length === 0) {
-                // 20個單字全部對對碰完成了！
                 triggerVictory();
                 return;
             }
@@ -443,7 +450,7 @@
                 card.dataset.text = cardInfo.text;
                 card.dataset.type = cardInfo.type;
                 card.dataset.match = cardInfo.match;
-                card.dataset.eng = cardInfo.engWord; // 存入對應的英文單字供語音用
+                card.dataset.eng = cardInfo.engWord;
 
                 card.addEventListener('click', onCardClick);
                 grid.appendChild(card);
@@ -463,7 +470,6 @@
 
                 // 配對成功
                 if (card1.dataset.text === card2.dataset.match && card1.dataset.type !== card2.dataset.type) {
-                    // 點選正確立刻發音英文單字！
                     speakEnglish(card1.dataset.eng);
 
                     setTimeout(() => {
@@ -472,7 +478,6 @@
                         card1.classList.add('matched');
                         card2.classList.add('matched');
                         
-                        // 檢查當前這組小卡片是不是被消完了
                         const unmatchedInSet = document.querySelectorAll('.card:not(.matched)');
                         if (unmatchedInSet.length === 0) {
                             totalPairsCleared += 5;
@@ -511,7 +516,6 @@
                 document.getElementById('typing-feedback').innerText = "";
                 document.getElementById('typing-input').focus();
             } else {
-                // 20題全部拼對
                 triggerVictory();
             }
         }
@@ -525,7 +529,6 @@
                 feedback.className = "feedback correct";
                 feedback.innerHTML = "正解 (せいかい)！ ✨";
                 
-                // 答對立刻發音！
                 speakEnglish(wordList[currentWordIndex][0]);
 
                 currentWordIndex++;
@@ -538,13 +541,11 @@
             }
         }
 
-        // 監聽 Enter 鍵
         document.getElementById('typing-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 checkTyping();
             }
         });
-
 
         // 網頁開啟時默認啟動對對碰
         switchMode('matching');
