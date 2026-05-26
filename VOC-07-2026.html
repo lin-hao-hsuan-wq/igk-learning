@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>たのしい えいご れんしゅう</title>
+    <title>IGK</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
@@ -254,7 +254,7 @@
     </div>
 
     <script>
-        // ✨ 已修正：完全移除日文漢字，全部採用純假名表現（平假名/片假名）
+        // 20個指定單字（純假名版）
         const wordData = [
             { en: "it", jp: "それ" },
             { en: "this", jp: "これ" },
@@ -311,9 +311,146 @@
             });
         };
 
-        // 切換模式
+        // 切換模式（修復完成：不再被截斷）
         function switchMode(mode, element) {
             document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             
-            element.classList
+            element.classList.add('active');
+            document.getElementById(`${mode}-mode`).classList.add('active');
+
+            if (mode === 'match') initMatchGame();
+            if (mode === 'typing') initTypingGame();
+        }
+
+        /* --- 模式一：對對碰 邏輯 --- */
+        let selectedEn = null;
+        let selectedJp = null;
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function initMatchGame() {
+            const enColumn = document.getElementById("en-column");
+            const jpColumn = document.getElementById("jp-column");
+            enColumn.innerHTML = "";
+            jpColumn.innerHTML = "";
+            selectedEn = null;
+            selectedJp = null;
+
+            const shuffledWords = shuffle([...wordData]).slice(0, 5);
+            const enWords = shuffle([...shuffledWords]);
+            const jpWords = shuffle([...shuffledWords]);
+
+            enWords.forEach(word => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.innerText = word.en;
+                div.dataset.en = word.en;
+                div.onclick = function() { selectCard(div, 'en'); };
+                enColumn.appendChild(div);
+            });
+
+            jpWords.forEach(word => {
+                const div = document.createElement("div");
+                div.className = "card";
+                div.innerText = word.jp;
+                div.dataset.en = word.en; 
+                div.dataset.jp = word.jp;
+                div.onclick = function() { selectCard(div, 'jp'); };
+                jpColumn.appendChild(div);
+            });
+        }
+
+        function selectCard(card, type) {
+            if (card.classList.contains('matched')) return;
+
+            if (type === 'en') {
+                document.querySelectorAll('#en-column .card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedEn = card;
+            } else {
+                document.querySelectorAll('#jp-column .card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedJp = card;
+            }
+
+            if (selectedEn && selectedJp) {
+                if (selectedEn.dataset.en === selectedJp.dataset.en) {
+                    speak(selectedEn.dataset.en);
+                    selectedEn.classList.add('matched');
+                    selectedJp.classList.add('matched');
+                    selectedEn = null;
+                    selectedJp = null;
+                    
+                    setTimeout(() => {
+                        const remaining = document.querySelectorAll('.card:not(.matched)');
+                        if (remaining.length === 0) {
+                            alert("すごーい！ぜんぶ せいかい！");
+                            initMatchGame();
+                        }
+                    }, 500);
+                } else {
+                    const correctEn = selectedJp.dataset.en;
+                    const correctJp = selectedJp.dataset.jp;
+                    showErrorModal(correctEn, correctJp);
+                    
+                    selectedEn.classList.remove('selected');
+                    selectedJp.classList.remove('selected');
+                    selectedEn = null;
+                    selectedJp = null;
+                }
+            }
+        }
+
+        /* --- 模式二：看日文打英文 邏輯 --- */
+        let currentTypingIndex = 0;
+        let typingWords = [];
+
+        function initTypingGame() {
+            typingWords = shuffle([...wordData]);
+            currentTypingIndex = 0;
+            showNextTyping();
+        }
+
+        function showNextTyping() {
+            if (currentTypingIndex < typingWords.length) {
+                document.getElementById("typing-question").innerText = typingWords[currentTypingIndex].jp;
+                document.getElementById("typing-input").value = "";
+                document.getElementById("typing-input").focus();
+                document.getElementById("typing-score").innerText = `もんだい: ${currentTypingIndex + 1} / ${typingWords.length}`;
+            } else {
+                alert("全問クリア！がんばったね！🌟");
+                initTypingGame();
+            }
+        }
+
+        function checkTyping() {
+            const inputField = document.getElementById("typing-input");
+            const userAns = inputField.value.trim().toLowerCase();
+            const correctAns = typingWords[currentTypingIndex].en.toLowerCase();
+
+            if (userAns === correctAns) {
+                speak(typingWords[currentTypingIndex].en);
+                currentTypingIndex++;
+                showNextTyping();
+            } else {
+                showErrorModal(typingWords[currentTypingIndex].en, typingWords[currentTypingIndex].jp);
+            }
+        }
+
+        /* --- 彈窗 Modal 控制邏輯 --- */
+        function showErrorModal(en, jp) {
+            document.getElementById("error-msg").innerHTML = `にほんご: ${jp}<br><br><span style="font-size:1.8rem; color:#4361ee; font-weight:bold;">せいかい: ${en}</span>`;
+            document.getElementById("error-modal").style.display = "flex";
+            speak(en);
+        }
+
+        function closeModal() {
+            document.getElementById("error-modal").style.display = "none";
+            document.getElementById("typing-input").focus();
+        }
+    </script>
+</body>
+</html>
