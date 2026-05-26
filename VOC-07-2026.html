@@ -3,454 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Kids Learning</title>
+    <title>IGK Kids Academy - Practice Mode</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #55acee; 
+            --success-color: #77dd77; 
+            --error-color: #ff6961;   
+            --bg-color: #fff9e6;      
+            --border-style: 4px dashed #ffb347; 
+            --font-en: 'Chilanka', cursive;
+            --font-ja: 'Kosugi Maru', sans-serif;
+        }
         body {
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-            background-color: #f0f9ff;
-            color: #333;
+            font-family: var(--font-en), var(--font-ja), cursive, sans-serif;
+            background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
-            text-align: center;
-        }
-        h1 {
-            color: #ff6b6b;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px #ffe3e3;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        }
-        .mode-buttons {
-            margin-bottom: 30px;
-        }
-        button.mode-btn {
-            background-color: #4cc9f0;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            margin: 0 10px;
-            transition: transform 0.2s, background-color 0.2s;
-        }
-        button.mode-btn:hover {
-            background-color: #4361ee;
-            transform: scale(1.05);
-        }
-        button.active {
-            background-color: #4361ee;
-            box-shadow: 0 0 10px rgba(67, 97, 238, 0.5);
-        }
-        .game-section {
-            display: none;
-        }
-        .game-section.active {
-            display: block;
-        }
-        
-        /* 表格樣式 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 2px solid #e0e0e0;
-            padding: 12px;
-            font-size: 1.1rem;
-        }
-        th {
-            background-color: #f72585;
-            color: white;
-        }
-        tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        /* 模式一：對對碰樣式 */
-        .match-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-        }
-        .column {
-            width: 45%;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .card {
-            background-color: #f8f9fa;
-            border: 3px solid #dee2e6;
-            padding: 15px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
+            color: #555;
+            background-image: radial-gradient(#ffb347 1px, transparent 1px), radial-gradient(#ffb347 1px, #fff9e6 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            -webkit-user-select: none;
             user-select: none;
-            transition: all 0.2s;
         }
-        .card:hover {
-            background-color: #e9ecef;
-            border-color: #6c757d;
-        }
-        .card.selected {
-            background-color: #ffe3e3;
-            border-color: #ff6b6b;
-        }
-        .card.matched {
-            background-color: #d4edda;
-            border-color: #28a745;
-            color: #155724;
-            cursor: default;
-            visibility: hidden;
-        }
-
-        /* 模式二：打字練習樣式 */
-        .typing-box {
-            background-color: #fff3cd;
+        .main-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            border: var(--border-style);
             padding: 30px;
-            border-radius: 15px;
-            border: 3px dashed #ffc107;
-            max-width: 500px;
-            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
         }
-        .jp-question {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #856404;
-            margin-bottom: 20px;
-        }
-        .en-input {
-            font-size: 1.8rem;
-            padding: 10px;
-            width: 80%;
+        h1.title {
             text-align: center;
-            border: 3px solid #ced4da;
-            border-radius: 10px;
-            outline: none;
+            color: #ff6961;
+            font-size: 4rem;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 0px #fff, 8px 8px 0px rgba(0,0,0,0.1);
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
         }
-        .en-input:focus {
-            border-color: #4cc9f0;
-        }
-        .submit-btn {
-            margin-top: 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1.2rem;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+        h1.title::before, h1.title::after { content: "✨"; font-size: 2rem; position: absolute; }
+        h1.title::before { left: -40px; top: -10px; }
+        h1.title::after { right: -40px; bottom: -10px; }
 
-        /* 自訂彈窗樣式 */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        .nav-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        button {
+            padding: 15px 30px; font-size: 1.1rem; font-family: var(--font-en), var(--font-ja);
+            border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s ease;
+            color: white; font-weight: bold; box-shadow: 0 6px 0 rgba(0,0,0,0.2); text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
         }
-        .modal-content {
-            background-color: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 400px;
-            width: 80%;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            text-align: center;
-            border: 5px solid #dc3545;
+        button:hover { transform: translateY(2px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        button:active { transform: translateY(6px); box-shadow: none; }
+        
+        .btn-blue { background-color: #55acee; }
+        .btn-green { background-color: #77dd77; }
+        .btn-gray { background-color: #95a5a6; }
+        
+        .screen { display: none; text-align: center;}
+        .screen.active { display: block; }
+        hr { border: none; border-top: 5px dotted #ffb347; margin: 20px 0; }
+        
+        .question-box {
+            font-size: 3rem; color: #ffb347; background: #fff8f8; border: 4px solid #55acee;
+            padding: 20px; border-radius: 20px; margin: 30px 0; display: inline-block; box-shadow: 0 4px 0 #55acee;
         }
-        .modal-content h2 {
-            color: #dc3545;
-            margin-top: 0;
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+        .option-btn { background-color: #fdfdff; color: #333; border: 4px solid #77dd77; border-radius: 20px; padding: 20px; font-size: 1.4rem; box-shadow: 0 6px 0 #77dd77; cursor: pointer; }
+        .option-btn:hover { background-color: #77dd77; color: white; box-shadow: 0 4px 0 #77dd77; }
+        
+        .input-area { margin-bottom: 20px; }
+        .input-area input { font-size: 1.5rem; font-family: var(--font-en); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
+        
+        .feedback-circle { width: 100px; height: 100px; border: 15px solid var(--success-color); border-radius: 50%; margin: 20px auto; display: none; }
+        .wrong-hint { color: var(--error-color); font-size: 1.2rem; font-weight: bold; margin: 15px 0; background: #fff0f0; padding: 10px; border-radius: 10px; }
+        
+        .score-display { font-size: 1.4rem; color: #7f8c8d; }
+        .comment-display { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 20px 0; padding: 20px; background: #e8f4f8; border-radius: 15px; border: 3px solid var(--primary-color); line-height: 1.6; }
+        
+        /* 錯題複習樣式 */
+        .review-box {
+            margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 20px; border: 3px dashed var(--error-color);
         }
-        .modal-content p {
-            font-size: 1.3rem;
-            line-height: 1.6;
-        }
-        .modal-close {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1.1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
+        .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>IGK</h1>
-        <p style="font-size: 1.1rem; color: #666;">Learning English</p>
+<div class="main-wrapper">
+    <h1 class="title">IGK</h1>
+
+    <div id="mode-select-screen" class="screen active">
+        <h3>えらんでね (Choose Type)</h3>
+        <div class="nav-buttons">
+            <button class="btn-blue option-btn" onclick="startPractice('choice')">えらぶ (Choose Word)</button>
+            <button class="btn-green option-btn" onclick="startPractice('typing')">タイピング (Typing)</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div style="display:flex; justify-content: space-between; color:#7f8c8d; padding: 0 20px;">
+            <span id="progress-text" class="score-display">もんだい: 0/20</span>
+            <span id="score-text" class="score-display">せいかい: 0</span>
+        </div>
+        <div class="question-box" id="question-text">...</div>
+        <div id="choice-panel" style="display:none;" class="options-grid"></div>
+        <div id="typing-panel" style="display:none;" class="input-area">
+            <input type="text" id="typing-input" autocomplete="off" placeholder="Type answer...">
+            <br><br>
+            <button class="btn-blue" id="submit-typing-btn" onclick="checkTypingAnswer()">OK / Submit</button>
+        </div>
+        <div id="feedback-success-circle" class="feedback-circle"></div>
+        <div id="feedback-wrong-hint" class="wrong-hint"></div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h2>おしまい (Finished!)</h2>
+        <p style="font-size:1.6rem;" id="final-score-text"></p>
+        <div id="comment-box" class="comment-display"></div>
         
-        <div class="mode-buttons">
-            <button id="btn-list" class="mode-btn active" onclick="switchMode('list', this)">たんご いちらん</button>
-            <button id="btn-match" class="mode-btn" onclick="switchMode('match', this)">えいご えらびゲーム</button>
-            <button id="btn-typing" class="mode-btn" onclick="switchMode('typing', this)">タイピング れんしゅう</button>
+        <div id="wrong-answers-review" class="review-box" style="display:none;">
+            <div class="review-title">もういちど みなおそう (Review Wrong Words)</div>
+            <div id="review-list"></div>
         </div>
-
-        <div id="list-mode" class="game-section active">
-            <h2>たんご いちらん</h2>
-            <p>まずは ここで えいごと にほんごを おぼえてね！</p>
-            <table id="word-table">
-                <thead>
-                    <tr>
-                        <th>えいご</th>
-                        <th>にほんご</th>
-                        <th>こえ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-
-        <div id="match-mode" class="game-section">
-            <h2>えらびゲーム</h2>
-            <p>おなじ いみの えいごと にほんごを えらんでね！</p>
-            <button onclick="initMatchGame()" style="margin-bottom:15px; padding: 5px 10px; font-size:1rem; cursor:pointer;">つぎの もんだい (換一組字)</button>
-            <div class="match-container">
-                <div class="column" id="en-column"></div>
-                <div class="column" id="jp-column"></div>
-            </div>
-        </div>
-
-        <div id="typing-mode" class="game-section">
-            <h2>タイピング</h2>
-            <p>にほんごを みて、えいごを キーボードで うちましょう！</p>
-            <div class="typing-box">
-                <div class="jp-question" id="typing-question">にほんご</div>
-                <input type="text" class="en-input" id="typing-input" placeholder="ここに入力してね" autocomplete="off">
-                <br>
-                <button class="submit-btn" onclick="checkTyping()">こたえあわせ</button>
-            </div>
-            <p id="typing-score" style="font-weight: bold; color: #4361ee;"></p>
-        </div>
+        <br>
+        <button class="btn-green" onclick="returnToMain()">ホーム (Home)</button>
     </div>
+</div>
 
-    <div class="modal" id="error-modal">
-        <div class="modal-content">
-            <h2>ざんねん！ちがうよ 😢</h2>
-            <hr>
-            <p id="error-msg"></p>
-            <button class="modal-close" onclick="closeModal()">つぎへ すすむ</button>
-        </div>
-    </div>
+<script>
+// ✨ 已同步更新 20 個指定單字，並全部採用純假名（平假名/片假名）
+const wordBank = [
+    {en: "it", ja: "それ"},
+    {en: "this", ja: "これ"},
+    {en: "that", ja: "あれ"},
+    {en: "family", ja: "かぞく"},
+    {en: "father", ja: "おとうさん"},
+    {en: "mother", ja: "おかあさん"},
+    {en: "brother", ja: "きょうだい"},
+    {en: "sister", ja: "しまい"},
+    {en: "grandfather", ja: "おじいさん"},
+    {en: "grandmother", ja: "おばあさん"},
+    {en: "boy", ja: "おとこのこ"},
+    {en: "girl", ja: "おんなのこ"},
+    {en: "friend", ja: "ともだち"},
+    {en: "everyone", ja: "みなさん"},
+    {en: "old", ja: "ふるい / としをとった"},
+    {en: "young", ja: "わかい"},
+    {en: "funny", ja: "おもしろい"},
+    {en: "kind", ja: "やさしい"},
+    {en: "strong", ja: "つよい"},
+    {en: "busy", ja: "いそがしい"}
+];
 
-    <script>
-        // 20個指定單字（純假名版）
-        const wordData = [
-            { en: "it", jp: "それ" },
-            { en: "this", jp: "これ" },
-            { en: "that", jp: "あれ" },
-            { en: "family", jp: "かぞく" },
-            { en: "father", jp: "おとうさん" },
-            { en: "mother", jp: "おかあさん" },
-            { en: "brother", jp: "きょうだい" },
-            { en: "sister", jp: "しまい" },
-            { en: "grandfather", jp: "おじいさん" },
-            { en: "grandmother", jp: "おばあさん" },
-            { en: "boy", jp: "おとこのこ" },
-            { en: "girl", jp: "おんなのこ" },
-            { en: "friend", jp: "ともだち" },
-            { en: "everyone", jp: "みなさん" },
-            { en: "old", jp: "ふるい / としをとった" },
-            { en: "young", jp: "わかい" },
-            { en: "funny", jp: "おもしろい" },
-            { en: "kind", jp: "やさしい" },
-            { en: "strong", jp: "つよい" },
-            { en: "busy", jp: "いそがしい" }
-        ];
+let currentMode = ''; 
+let currentQuestions = []; 
+let currentIndex = 0;
+let correctCount = 0; 
+let hasAnswered = false; 
+let wrongWordsList = []; 
 
-        // 語音播放功能
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.8; 
-                window.speechSynthesis.speak(utterance);
-            }
-        }
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
 
-        // 初始化網頁資料
-        window.onload = function() {
-            const tableBody = document.querySelector("#word-table tbody");
-            tableBody.innerHTML = ""; 
-            wordData.forEach(word => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td style="font-weight:bold; color:#4361ee;">${word.en}</td>
-                    <td>${word.jp}</td>
-                    <td><button onclick="speak('${word.en}')" style="cursor:pointer; border-radius:5px; border:1px solid #ccc; background:#fff; padding:3px 8px;">🔊</button></td>
-                `;
-                tableBody.appendChild(tr);
-            });
-            
-            // 綁定輸入框 Enter 鍵事件
-            document.getElementById("typing-input").addEventListener("keyup", function(event) {
-                if (event.key === "Enter") {
-                    checkTyping();
-                }
-            });
+function returnToMain() { 
+    showScreen('mode-select-screen'); 
+}
+
+function speakEnglish(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance(text); 
+        u.lang = 'en-US'; 
+        window.speechSynthesis.speak(u);
+    }
+}
+
+function shuffle(array) { 
+    return array.sort(() => Math.random() - 0.5); 
+}
+
+function startPractice(type) {
+    currentMode = 'practice-' + type; 
+    currentQuestions = shuffle([...wordBank]);
+    currentIndex = 0; 
+    correctCount = 0; 
+    wrongWordsList = []; 
+    setupQuestion(); 
+    showScreen('quiz-screen');
+}
+
+function setupQuestion() {
+    if(currentIndex >= 20) { endQuiz(); return; }
+    hasAnswered = false; 
+    let item = currentQuestions[currentIndex];
+    document.getElementById('progress-text').innerText = `もんだい: ${currentIndex + 1}/20`;
+    document.getElementById('score-text').innerText = `せいかい: ${correctCount}`;
+    document.getElementById('feedback-success-circle').style.display = 'none';
+    document.getElementById('feedback-wrong-hint').innerText = '';
+    
+    document.getElementById('question-text').innerText = item.ja;
+    if(currentMode === 'practice-choice') {
+        document.getElementById('choice-panel').style.display = 'grid'; 
+        document.getElementById('typing-panel').style.display = 'none'; 
+        generateChoices(item.en);
+    } else {
+        document.getElementById('choice-panel').style.display = 'none'; 
+        document.getElementById('typing-panel').style.display = 'block';
+        document.getElementById('submit-typing-btn').style.display = 'inline-block'; 
+        document.getElementById('typing-input').value = ''; 
+        document.getElementById('typing-input').disabled = false;
+        setTimeout(() => document.getElementById('typing-input').focus(), 50);
+    }
+}
+
+function generateChoices(correctEn) {
+    let choices = [correctEn];
+    while(choices.length < 4) {
+        let r = wordBank[Math.floor(Math.random() * wordBank.length)].en;
+        if(!choices.includes(r)) choices.push(r);
+    }
+    shuffle(choices);
+    let panel = document.getElementById('choice-panel'); 
+    panel.innerHTML = '';
+    
+    // 鎖定當前單字，避免異步處理時 currentIndex 飄移
+    let currentItem = currentQuestions[currentIndex];
+    
+    choices.forEach(c => {
+        let btn = document.createElement('button'); 
+        btn.className = 'option-btn'; 
+        btn.innerText = c;
+        btn.onclick = () => { 
+            if(hasAnswered) return; 
+            hasAnswered = true; 
+            if(c === correctEn) { 
+                correctCount++; 
+                speakEnglish(c); 
+                setTimeout(nextQuestion, 1200); 
+            } else { 
+                wrongWordsList.push(currentItem); // 已修正：精確推入當前單字
+                alert(`Uh oh! \nせいかいは: ${correctEn}`); 
+                speakEnglish(correctEn); 
+                setTimeout(nextQuestion, 500); 
+            } 
         };
+        panel.appendChild(btn);
+    });
+}
 
-        // 切換模式（修復完成：不再被截斷）
-        function switchMode(mode, element) {
-            document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            
-            element.classList.add('active');
-            document.getElementById(`${mode}-mode`).classList.add('active');
+function checkTypingAnswer() {
+    if(hasAnswered) return;
+    let inputField = document.getElementById('typing-input');
+    let userAns = inputField.value.trim().toLowerCase();
+    let currentItem = currentQuestions[currentIndex];
+    let correct = currentItem.en.toLowerCase();
+    hasAnswered = true; 
+    inputField.disabled = true; 
+    document.getElementById('submit-typing-btn').style.display = 'none';
 
-            if (mode === 'match') initMatchGame();
-            if (mode === 'typing') initTypingGame();
-        }
+    if(userAns === correct) { 
+        correctCount++; 
+        document.getElementById('feedback-success-circle').style.display = 'block'; 
+    } else { 
+        wrongWordsList.push(currentItem);
+        document.getElementById('feedback-wrong-hint').innerText = `Correction: ${currentItem.en}`; 
+    }
+    speakEnglish(correct); 
+    setTimeout(nextQuestion, 2200); 
+}
 
-        /* --- 模式一：對對碰 邏輯 --- */
-        let selectedEn = null;
-        let selectedJp = null;
+function nextQuestion() { 
+    currentIndex++; 
+    setupQuestion(); 
+}
 
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
+function endQuiz() {
+    showScreen('result-screen');
+    document.getElementById('final-score-text').innerText = `せいかい： ${correctCount} / 20`;
+    
+    let comment = "";
+    if(correctCount >= 15) comment = "すばらしい！ ゆうしゅうな せいせきです！<br>Excellent! Outstanding performance!";
+    else if(correctCount >= 10) comment = "よく できました！ つぎも がんばりましょう！<br>Good job! Keep pushing yourself!";
+    else comment = "いっしょに れんしゅう しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
+    document.getElementById('comment-box').innerHTML = comment;
+    
+    let reviewBox = document.getElementById('wrong-answers-review');
+    let reviewList = document.getElementById('review-list');
+    reviewList.innerHTML = '';
+    
+    if(wrongWordsList.length > 0) {
+        reviewBox.style.display = 'block';
+        wrongWordsList.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'review-item';
+            div.innerHTML = `<span>🔴 ${item.ja}</span> <span style="font-weight:bold; color:var(--primary-color);">${item.en}</span>`;
+            reviewList.appendChild(div);
+        });
+    } else {
+        reviewBox.style.display = 'none';
+    }
+}
 
-        function initMatchGame() {
-            const enColumn = document.getElementById("en-column");
-            const jpColumn = document.getElementById("jp-column");
-            enColumn.innerHTML = "";
-            jpColumn.innerHTML = "";
-            selectedEn = null;
-            selectedJp = null;
-
-            const shuffledWords = shuffle([...wordData]).slice(0, 5);
-            const enWords = shuffle([...shuffledWords]);
-            const jpWords = shuffle([...shuffledWords]);
-
-            enWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.en;
-                div.dataset.en = word.en;
-                div.onclick = function() { selectCard(div, 'en'); };
-                enColumn.appendChild(div);
-            });
-
-            jpWords.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "card";
-                div.innerText = word.jp;
-                div.dataset.en = word.en; 
-                div.dataset.jp = word.jp;
-                div.onclick = function() { selectCard(div, 'jp'); };
-                jpColumn.appendChild(div);
-            });
-        }
-
-        function selectCard(card, type) {
-            if (card.classList.contains('matched')) return;
-
-            if (type === 'en') {
-                document.querySelectorAll('#en-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedEn = card;
-            } else {
-                document.querySelectorAll('#jp-column .card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedJp = card;
-            }
-
-            if (selectedEn && selectedJp) {
-                if (selectedEn.dataset.en === selectedJp.dataset.en) {
-                    speak(selectedEn.dataset.en);
-                    selectedEn.classList.add('matched');
-                    selectedJp.classList.add('matched');
-                    selectedEn = null;
-                    selectedJp = null;
-                    
-                    setTimeout(() => {
-                        const remaining = document.querySelectorAll('.card:not(.matched)');
-                        if (remaining.length === 0) {
-                            alert("すごーい！ぜんぶ せいかい！");
-                            initMatchGame();
-                        }
-                    }, 500);
-                } else {
-                    const correctEn = selectedJp.dataset.en;
-                    const correctJp = selectedJp.dataset.jp;
-                    showErrorModal(correctEn, correctJp);
-                    
-                    selectedEn.classList.remove('selected');
-                    selectedJp.classList.remove('selected');
-                    selectedEn = null;
-                    selectedJp = null;
-                }
-            }
-        }
-
-        /* --- 模式二：看日文打英文 邏輯 --- */
-        let currentTypingIndex = 0;
-        let typingWords = [];
-
-        function initTypingGame() {
-            typingWords = shuffle([...wordData]);
-            currentTypingIndex = 0;
-            showNextTyping();
-        }
-
-        function showNextTyping() {
-            if (currentTypingIndex < typingWords.length) {
-                document.getElementById("typing-question").innerText = typingWords[currentTypingIndex].jp;
-                document.getElementById("typing-input").value = "";
-                document.getElementById("typing-input").focus();
-                document.getElementById("typing-score").innerText = `もんだい: ${currentTypingIndex + 1} / ${typingWords.length}`;
-            } else {
-                alert("全問クリア！がんばったね！🌟");
-                initTypingGame();
-            }
-        }
-
-        function checkTyping() {
-            const inputField = document.getElementById("typing-input");
-            const userAns = inputField.value.trim().toLowerCase();
-            const correctAns = typingWords[currentTypingIndex].en.toLowerCase();
-
-            if (userAns === correctAns) {
-                speak(typingWords[currentTypingIndex].en);
-                currentTypingIndex++;
-                showNextTyping();
-            } else {
-                showErrorModal(typingWords[currentTypingIndex].en, typingWords[currentTypingIndex].jp);
-            }
-        }
-
-        /* --- 彈窗 Modal 控制邏輯 --- */
-        function showErrorModal(en, jp) {
-            document.getElementById("error-msg").innerHTML = `にほんご: ${jp}<br><br><span style="font-size:1.8rem; color:#4361ee; font-weight:bold;">せいかい: ${en}</span>`;
-            document.getElementById("error-modal").style.display = "flex";
-            speak(en);
-        }
-
-        function closeModal() {
-            document.getElementById("error-modal").style.display = "none";
-            document.getElementById("typing-input").focus();
-        }
-    </script>
+// 支援打字輸入框按 Enter 鍵直接提交
+document.getElementById('typing-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        checkTypingAnswer();
+    }
+});
+</script>
 </body>
 </html>
