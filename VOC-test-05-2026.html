@@ -77,7 +77,7 @@
         }
         
         .input-area { margin-bottom: 20px; }
-        .input-area select { font-size: 1.5rem; font-family: var(--font-en), var(--font-ja); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #55acee; border-radius: 20px; outline: none; bookkeeping-color: white; cursor: pointer; }
+        .input-area select { font-size: 1.5rem; font-family: var(--font-en), var(--font-ja); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #55acee; border-radius: 20px; outline: none; background-color: white; cursor: pointer; }
         .input-area input { font-size: 1.5rem; font-family: var(--font-en); padding: 15px; width: 80%; max-width: 350px; text-align: center; border: 4px solid #f99f9f; border-radius: 20px; outline: none; }
         
         /* 名字二次確認彈窗樣式 */
@@ -250,17 +250,28 @@
 const CLOUD_API_URL = "https://api.jsonbin.io/v3/b/6651bb81e41b4d34e4fa0120"; 
 const MASTER_KEY = "$2a$10$Rz7T9N4e4G7lK6fGgDqSBuM.i5wM96S5vF9R4GzEwZDe8FvRjVjS."; 
 
+// ✨ 已更新為指定的 20 個時間與天氣單字
 const wordBank = [
-    {en: "it", ja: "それ", kana: "それ"}, {en: "this", ja: "これ", kana: "これ"},
-    {en: "that", ja: "あれ", kana: "あれ"}, {en: "family", ja: "かぞく", kana: "かぞく"},
-    {en: "father", ja: "おとうさん", kana: "おとうさん"}, {en: "mother", ja: "おかあさん", kana: "おかあさん"},
-    {en: "brother", ja: "きょうだい", kana: "きょうだい"}, {en: "sister", ja: "しまい", kana: "しまい"},
-    {en: "grandfather", ja: "おじいさん", kana: "おじいさん"}, {en: "grandmother", ja: "おばあさん", kana: "おばあさん"},
-    {en: "boy", ja: "おと公のこ", kana: "おとこのこ"}, {en: "girl", ja: "おんなのこ", kana: "おんなのこ"},
-    {en: "friend", ja: "ともだち", kana: "ともだち"}, {en: "everyone", ja: "みなさん", kana: "みなさん"},
-    {en: "old", ja: "ふるい", kana: "ふるい"}, {en: "young", ja: "わかい", kana: "わかい"},
-    {en: "funny", ja: "おもしろい", kana: "おもしろい"}, {en: "kind", ja: "しんせつ", kana: "しんせつ"},
-    {en: "strong", ja: "つよい", kana: "つよい"}, {en: "busy", ja: "いそがしい", kana: "いそがしい"}
+    {en: "year", ja: "ねん", kana: "ねん"},
+    {en: "spring", ja: "はる", kana: "はる"},
+    {en: "summer", ja: "なつ", kana: "なつ"},
+    {en: "fall", ja: "あき", kana: "あき"},
+    {en: "winter", ja: "ふゆ", kana: "ふゆ"},
+    {en: "sunny", ja: "はれた", kana: "はれた"},
+    {en: "cloudy", ja: "くもりの", kana: "くもりの"},
+    {en: "rainy", ja: "あめの", kana: "あめの"},
+    {en: "snowy", ja: "ゆきのふる", kana: "ゆきのふる"},
+    {en: "windy", ja: "かぜのつよい", kana: "かぜのつよい"},
+    {en: "day", ja: "ひ", kana: "ひ"},
+    {en: "date", ja: "ひづけ", kana: "ひづけ"},
+    {en: "month", ja: "つき", kana: "つき"},
+    {en: "yesterday", ja: "きのう", kana: "きのう"},
+    {en: "today", ja: "きょう", kana: "きょう"},
+    {en: "tomorrow", ja: "あした", kana: "あした"},
+    {en: "morning", ja: "あさ", kana: "あさ"},
+    {en: "afternoon", ja: "ごご", kana: "ごご"},
+    {en: "evening", ja: "ゆうがた", kana: "ゆうがた"},
+    {en: "night", ja: "よる", kana: "よる"}
 ];
 
 let currentMode = ''; let currentQuestions = []; let currentIndex = 0;
@@ -298,11 +309,9 @@ function startExamFlow() {
     document.getElementById('name-back-btn').style.display = 'inline-block';
 }
 
-// 當小朋友選擇姓名後的處理
 function handleNameSelection(name) {
     if(name) {
         currentStudent = name;
-        // 鎖定選單並顯示 Are you ready 二次確認框
         document.getElementById('student-name-select').disabled = true;
         document.getElementById('name-back-btn').style.display = 'none';
         document.getElementById('ready-text-content').innerHTML = `Are you ready,<br><span style="font-size:2.2rem; color:#55acee;">${name}</span> ?`;
@@ -313,13 +322,11 @@ function handleNameSelection(name) {
     }
 }
 
-// 小朋友確認名字無誤，按下 GO
 function confirmReadyGO() {
     document.getElementById('ready-confirmation-box').style.display = 'none';
     document.getElementById('exam-start-btn').style.display = 'inline-block';
 }
 
-// 小朋友發現選錯了，按下 Back 重新選擇
 function cancelReadyBack() {
     document.getElementById('ready-confirmation-box').style.display = 'none';
     document.getElementById('student-name-select').disabled = false;
