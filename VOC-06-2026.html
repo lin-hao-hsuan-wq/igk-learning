@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGK Kids Academy - Practice Mode</title>
     <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
             --primary-color: #55acee; 
@@ -24,6 +25,8 @@
             background-image: radial-gradient(#ffb347 1px, transparent 1px), radial-gradient(#ffb347 1px, #fff9e6 1px);
             background-size: 20px 20px;
             background-position: 0 0, 10px 10px;
+            -webkit-user-select: none;
+            user-select: none;
         }
         .main-wrapper {
             max-width: 900px;
@@ -89,6 +92,36 @@
         }
         .review-title { color: var(--error-color); font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; text-align: center; }
         .review-item { font-size: 1.2rem; padding: 8px 0; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+
+        /* 右下角懸浮小房子按鈕樣式 */
+        .home-floating-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #ffb347; 
+            box-shadow: 0 6px 0 #e09224;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 1000;
+        }
+        .home-floating-btn:hover {
+            transform: translateY(2px);
+            box-shadow: 0 4px 0 #e09224;
+            background-color: #ffa524;
+        }
+        .home-floating-btn:active {
+            transform: translateY(6px);
+            box-shadow: none;
+        }
+        .home-floating-btn .material-icons {
+            font-size: 32px;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -99,8 +132,8 @@
     <div id="mode-select-screen" class="screen active">
         <h3>えらんでね (Choose Type)</h3>
         <div class="nav-buttons">
-            <button class="btn-blue option-btn" onclick="startPractice('choice')">えらぶ (Choose Word)</button>
-            <button class="btn-green option-btn" onclick="startPractice('typing')">タイピング (Typing)</button>
+            <button class="btn-blue option-btn" onclick="startPractice('choice')">えらぶ</button>
+            <button class="btn-green option-btn" onclick="startPractice('typing')">タイピング</button>
         </div>
     </div>
 
@@ -118,6 +151,10 @@
         </div>
         <div id="feedback-success-circle" class="feedback-circle"></div>
         <div id="feedback-wrong-hint" class="wrong-hint"></div>
+
+        <button class="home-floating-btn" onclick="returnToMain()" title="Go back to menu">
+            <span class="material-icons">home</span>
+        </button>
     </div>
 
     <div id="result-screen" class="screen">
@@ -135,27 +172,28 @@
 </div>
 
 <script>
+// ✨ 已更新為指定的 20 個月份與方位介系詞單字
 const wordBank = [
-    {en: "January", ja: "1月", kana: "いちがつ"}, 
-    {en: "February", ja: "2月", kana: "にがつ"}, 
-    {en: "March", ja: "3月", kana: "さんがつ"}, 
-    {en: "April", ja: "4月", kana: "しがつ"},
-    {en: "May", ja: "5月", kana: "ごがつ"}, 
-    {en: "June", ja: "6月", kana: "ろくがつ"}, 
-    {en: "July", ja: "7月", kana: "しちがつ"}, 
-    {en: "August", ja: "8月", kana: "はちがつ"},
-    {en: "September", ja: "9月", kana: "くがつ"}, 
-    {en: "October", ja: "10月", kana: "じゅうがつ"}, 
-    {en: "November", ja: "11月", kana: "じゅういちがつ"}, 
-    {en: "December", ja: "12月", kana: "じゅうにがつ"},
-    {en: "in", ja: "～の中に", kana: "なか"}, 
-    {en: "on", ja: "～の上に", kana: "うえ"}, 
-    {en: "under", ja: "～の下に", kana: "した"}, 
-    {en: "in front of", ja: "～の前に", kana: "まえ"},
-    {en: "behind", ja: "～の後ろに", kana: "うしろ"}, 
-    {en: "by", ja: "～のそばに", kana: "そば"}, 
-    {en: "between", ja: "～の間に", kana: "あいだ"}, 
-    {en: "and", ja: "～と", kana: "と"}
+    {en: "January", ja: "１がつ"},
+    {en: "February", ja: "２がつ"},
+    {en: "March", ja: "３がつ"},
+    {en: "April", ja: "４がつ"},
+    {en: "May", ja: "５がつ"},
+    {en: "June", ja: "６がつ"},
+    {en: "July", ja: "７がつ"},
+    {en: "August", ja: "８がつ"},
+    {en: "September", ja: "９がつ"},
+    {en: "October", ja: "１０がつ"},
+    {en: "November", ja: "１１がつ"},
+    {en: "December", ja: "１２がつ"},
+    {en: "in", ja: "〜のなかに"},
+    {en: "on", ja: "〜のうえに"},
+    {en: "under", ja: "〜の下に"},
+    {en: "in front of", ja: "〜のまえに"},
+    {en: "behind", ja: "〜のうしろに"},
+    {en: "by", ja: "〜のそばに"},
+    {en: "between", ja: "〜のあいだに"},
+    {en: "and", ja: "そして"}
 ];
 
 let currentMode = ''; 
@@ -230,6 +268,9 @@ function generateChoices(correctEn) {
     shuffle(choices);
     let panel = document.getElementById('choice-panel'); 
     panel.innerHTML = '';
+    
+    let currentItem = currentQuestions[currentIndex];
+    
     choices.forEach(c => {
         let btn = document.createElement('button'); 
         btn.className = 'option-btn'; 
@@ -242,7 +283,7 @@ function generateChoices(correctEn) {
                 speakEnglish(c); 
                 setTimeout(nextQuestion, 1200); 
             } else { 
-                wrongWordsList.push(currentQuestions[currentIndex]);
+                wrongWordsList.push(currentItem); 
                 alert(`Uh oh! \nせいかいは: ${correctEn}`); 
                 speakEnglish(correctEn); 
                 setTimeout(nextQuestion, 500); 
@@ -285,7 +326,7 @@ function endQuiz() {
     let comment = "";
     if(correctCount >= 15) comment = "すばらしい！ ゆうしゅうな せいせきです！<br>Excellent! Outstanding performance!";
     else if(correctCount >= 10) comment = "よく できました！ つぎも がんばりましょう！<br>Good job! Keep pushing yourself!";
-    else comment = "いっしょに れんしゅう しましょう。あき기らないで！<br>Let's practice together. Don't give up!";
+    else comment = "いっしょに れんしゅう しましょう。あきらめないで！<br>Let's practice together. Don't give up!";
     document.getElementById('comment-box').innerHTML = comment;
     
     let reviewBox = document.getElementById('wrong-answers-review');
@@ -297,7 +338,7 @@ function endQuiz() {
         wrongWordsList.forEach(item => {
             let div = document.createElement('div');
             div.className = 'review-item';
-            div.innerHTML = `<span>🔴 ${item.ja} (${item.kana})</span> <span style="font-weight:bold; color:var(--primary-color);">${item.en}</span>`;
+            div.innerHTML = `<span>🔴 ${item.ja}</span> <span style="font-weight:bold; color:var(--primary-color);">${item.en}</span>`;
             reviewList.appendChild(div);
         });
     } else {
@@ -305,7 +346,6 @@ function endQuiz() {
     }
 }
 
-// 支援打字輸入框按 Enter 鍵直接提交
 document.getElementById('typing-input').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         checkTypingAnswer();
