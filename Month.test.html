@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGK TOE　記録</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .logo {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        h2 {
+            border-left: 5px solid #3498db;
+            padding-left: 10px;
+            color: #2c3e50;
+            margin-top: 30px;
+        }
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+        }
+        .chart-container {
+            margin-top: 20px;
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .motivation-box {
+            margin-top: 40px;
+            text-align: center;
+            padding: 20px;
+            background: #e8f4fd;
+            border-radius: 8px;
+            border-mid: 1px solid #d4e6f1;
+        }
+        .motivation-en {
+            font-size: 18px;
+            font-weight: 500;
+            color: #2980b9;
+            margin-bottom: 5px;
+        }
+        .motivation-jp {
+            font-size: 16px;
+            color: #566573;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo">IGK</div>
+
+    <h2>📊 每日數據輸入</h2>
+    <div class="form-group">
+        <div>
+            <label for="userSelect">Name (A-Z)</label>
+            <select id="userSelect"></select>
+        </div>
+        <div>
+            <label for="dateSelect">date (當月最後一週)</label>
+            <select id="dateSelect"></select>
+        </div>
+        <div>
+            <label for="scoreInput">Accurate (0-20)</label>
+            <input type="number" id="scoreInput" min="0" max="20" value="0">
+        </div>
+        <div>
+            <label>&nbsp;</label>
+            <button onclick="saveData()">記録</button>
+        </div>
+    </div>
+
+    <h2>📋 每日概要報表</h2>
+    <table id="dailySummaryTable">
+        <thead>
+            <tr>
+                <th>date</th>
+                <th>人数</th>
+                <th>最高点数 (20題)</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+
+    <h2>📈 Personal</h2>
+    <div style="width: 250px; margin-bottom: 15px;">
+        <label for="chartUserSelect">：</label>
+        <select id="chartUserSelect" onchange="updateChart()"></select>
+    </div>
+    <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+    </div>
+
+    <div class="motivation-box">
+        <div class="motivation-en" id="quoteEN">"Success is the sum of small efforts, repeated day in and day out."</div>
+        <div class="motivation-jp" id="quoteJP">「継続は力なり。毎日の一歩が、大きな成果へと繋がります。」</div>
+    </div>
+</div>
+
+<script>
+    // 1. 初始化 A-Z 人名選單
+    const users = Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)); // A-Z
+    const userSelect = document.getElementById('userSelect');
+    const chartUserSelect = document.getElementById('chartUserSelect');
+    
+    users.forEach(user => {
+        let opt1 = new Option(user, user);
+        let opt2 = new Option(user, user);
+        userSelect.add(opt1);
+        chartUserSelect.add(opt2);
+    });
+
+    // 2. 自動計算當月最後一週的五天日期 (週一至週五)
+    function getLastWeekDays() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-11
+        
+        // 找出本月最後一天
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const lastDate = lastDayOfMonth.getDate();
+        const lastDayOfWeek = lastDayOfMonth.getDay(); // 0(日) - 6(六)
+        
+        let lastFriday;
+        if (lastDayOfWeek >= 5) {
+            // 如果最後一天是週五或週六
+            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek - 5));
+        } else {
+            // 如果最後一天是週日至週四，週五在上一週
+            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek + 2));
+        }
+        
+        // 從週五往前推算出週一到週五的日期
+        const dates = [];
+        for (let i = 4; i >= 0; i--) {
+            let d = new Date(lastFriday);
+            d.setDate(lastFriday.getDate() - i);
+            let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            dates.push(dateStr);
+        }
+        return dates;
+    }
+
+    const lastWeekDates = getLastWeekDays();
+    const dateSelect = document.getElementById('dateSelect');
+    lastWeekDates.forEach(date => {
+        dateSelect.add(new Option(date, date));
+    });
+
+    // 3. 資料儲存與載入 (使用 localStorage 保持每日紀錄)
+    let recordData = JSON.parse(localStorage.getItem('igk_records')) || {};
+
+    function saveData() {
+        const user = userSelect.value;
+        const date = dateSelect.value;
+        const score = parseInt(document.getElementById('scoreInput').value);
+
+        if (score < 0 || score > 20 || isNaN(score)) {
+            alert("Accurate (0-20)！");
+            return;
+        }
+
+        if (!recordData[user]) recordData[user] = {};
+        recordData[user][date] = score;
+
+        localStorage.setItem('igk_records', JSON.stringify(recordData));
+        alert(`${user} 在 ${date} 的紀錄已儲存！`);
+        
+        renderSummaryTable();
+        updateChart();
+    }
+
+    // 4. 渲染報表 1：每日總人數及最高分數
+    function renderSummaryTable() {
+        const tbody = document.getElementById('dailySummaryTable').querySelector('tbody');
+        tbody.innerHTML = '';
+
+        lastWeekDates.forEach(date => {
+            let totalUsers = 0;
+            let maxScore = 0;
+            let hasData = false;
+
+            for (let user in recordData) {
+                if (recordData[user][date] !== undefined) {
+                    totalUsers++;
+                    hasData = true;
+                    if (recordData[user][date] > maxScore) {
+                        maxScore = recordData[user][date];
+                    }
+                }
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${date}</td>
+                <td>${totalUsers} 人</td>
+                <td>${hasData ? maxScore + ' 題' : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 5. 渲染報表 2：個人五天紀錄折線圖
+    let trendChart;
+    function updateChart() {
+        const currentUser = chartUserSelect.value;
+        const scores = lastWeekDates.map(date => {
+            return (recordData[currentUser] && recordData[currentUser][date] !== undefined) ? recordData[currentUser][date] : null;
+        });
+
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        if (trendChart) {
+            trendChart.destroy(); // 銷毀舊圖表以利重新繪製
+        }
+
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: lastWeekDates,
+                datasets: [{
+                    label: `${currentUser} 的五日得分趨勢 (最高20題)`,
+                    data: scores,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#2980b9',
+                    spanGaps: true // 若當天沒紀錄，線條會自動連接或留空（這裡設定自動連，若要中斷可改 false）
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 20,
+                        ticks: { stepSize: 2 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 6. 隨機英日語鼓勵語陣列 (每次重新整理可以換，或固定一組)
+    const motivations = [
+        { en: '"Success is the sum of small efforts, repeated day in and day out."', jp: '「継続は力なり。毎日の一歩が、大きな成果へと繋がります。」' },
+        { en: '"Believe you can and you\'re halfway there."', jp: '「自分を信じれば、目標の半分は達成されたも同然です。」' },
+        { en: '"Quality means doing it right when no one is looking."', jp: '「誰も見ていない時でも、正しく行うこと。それが品質です。」' }
+    ];
+    
+    // 固定顯示第一組，若想隨機可解開下一行
+    // const randomQuote = motivations[Math.floor(Math.random() * motivations.length)];
+    // document.getElementById('quoteEN').innerText = randomQuote.en;
+    // document.getElementById('quoteJP').innerText = randomQuote.jp;
+
+    // 初始執行
+    renderSummaryTable();
+    updateChart();
+</script>
+
+</body>
+</html>
