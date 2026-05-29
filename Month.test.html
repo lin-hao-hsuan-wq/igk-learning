@@ -76,7 +76,7 @@
             font-size: 13px;
             color: var(--text-muted);
             font-weight: 400;
-            margin-top: 20px;
+            margin-top: 5px;
         }
 
         .form-group {
@@ -304,11 +304,11 @@
 </div>
 
 <script>
-    // 1. Members List & Sorting
+    // 1. Members List & Sorting (Added: Takuto, Aqeel, Ryuya)
     const rawUsers = [
         "Soma", "Kosei", "Minato", "Sumire", "Ayata", "Rito", "Kanata", 
         "Taishin", "Hina", "Soichi", "Tamaki", "Yushi", "Sohjiroh", 
-        "Risa", "Ukyo", "Takumi", "Shiori", "Koharu"
+        "Risa", "Ukyo", "Takumi", "Shiori", "Koharu", "Takuto", "Aqeel", "Ryuya"
     ];
     const users = rawUsers.sort((a, b) => a.localeCompare(b));
 
@@ -357,7 +357,6 @@
         const date = dateSelect.value;
         const score = parseInt(document.getElementById('scoreInput').value);
 
-        // Bilingual Alert Messages
         if (score < 0 || score > 20 || isNaN(score)) {
             alert("⚠️ Please enter a score between 0 and 20.\n0から20の間の数値を入力してください。");
             return;
@@ -416,7 +415,6 @@
         if (overallChart) overallChart.destroy();
         if (personalChart) personalChart.destroy();
 
-        // Chart Text Configuration (Bilingual)
         overallChart = new Chart(ctxOverall, {
             type: 'bar',
             data: {
