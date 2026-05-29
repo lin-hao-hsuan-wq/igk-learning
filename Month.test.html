@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK TOE　記録</title>
+    <title>IGK 五日紀錄系統</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -94,7 +94,7 @@
             padding: 20px;
             background: #e8f4fd;
             border-radius: 8px;
-            border-mid: 1px solid #d4e6f1;
+            border: 1px solid #d4e6f1;
         }
         .motivation-en {
             font-size: 18px;
@@ -116,20 +116,20 @@
     <h2>📊 每日數據輸入</h2>
     <div class="form-group">
         <div>
-            <label for="userSelect">Name (A-Z)</label>
+            <label for="userSelect">選擇人員 (A-Z 排序)</label>
             <select id="userSelect"></select>
         </div>
         <div>
-            <label for="dateSelect">date (當月最後一週)</label>
+            <label for="dateSelect">選擇日期 (當月最後一週)</label>
             <select id="dateSelect"></select>
         </div>
         <div>
-            <label for="scoreInput">Accurate (0-20)</label>
+            <label for="scoreInput">正確題數 (0-20)</label>
             <input type="number" id="scoreInput" min="0" max="20" value="0">
         </div>
         <div>
             <label>&nbsp;</label>
-            <button onclick="saveData()">記録</button>
+            <button onclick="saveData()">儲存紀錄</button>
         </div>
     </div>
 
@@ -137,18 +137,18 @@
     <table id="dailySummaryTable">
         <thead>
             <tr>
-                <th>date</th>
-                <th>人数</th>
-                <th>最高点数 (20題)</th>
+                <th>日期</th>
+                <th>總人數</th>
+                <th>最高分數 (20題)</th>
             </tr>
         </thead>
         <tbody>
             </tbody>
     </table>
 
-    <h2>📈 Personal</h2>
+    <h2>📈 個人五日趨勢圖</h2>
     <div style="width: 250px; margin-bottom: 15px;">
-        <label for="chartUserSelect">：</label>
+        <label for="chartUserSelect">切換查看個人圖表：</label>
         <select id="chartUserSelect" onchange="updateChart()"></select>
     </div>
     <div class="chart-container">
@@ -162,8 +162,16 @@
 </div>
 
 <script>
-    // 1. 初始化 A-Z 人名選單
-    const users = Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)); // A-Z
+    // 1. 指定人員名單，並使用 localeCompare 進行 A-Z 排序
+    const rawUsers = [
+        "Soma", "Kosei", "Minato", "Sumire", "Ayata", 
+        "Rito", "Kanata", "Taishin", "Hina", "Soichi", 
+        "Tamaki", "Yushi", "Sohjiroh", "Risa", "Ukyo", 
+        "Takumi", "Shiori", "Koharu"
+    ];
+    const users = rawUsers.sort((a, b) => a.localeCompare(b));
+
+    // 初始化下拉選單
     const userSelect = document.getElementById('userSelect');
     const chartUserSelect = document.getElementById('chartUserSelect');
     
@@ -178,23 +186,19 @@
     function getLastWeekDays() {
         const now = new Date();
         const year = now.getFullYear();
-        const month = now.getMonth(); // 0-11
+        const month = now.getMonth(); 
         
-        // 找出本月最後一天
         const lastDayOfMonth = new Date(year, month + 1, 0);
         const lastDate = lastDayOfMonth.getDate();
-        const lastDayOfWeek = lastDayOfMonth.getDay(); // 0(日) - 6(六)
+        const lastDayOfWeek = lastDayOfMonth.getDay(); 
         
         let lastFriday;
         if (lastDayOfWeek >= 5) {
-            // 如果最後一天是週五或週六
             lastFriday = new Date(year, month, lastDate - (lastDayOfWeek - 5));
         } else {
-            // 如果最後一天是週日至週四，週五在上一週
             lastFriday = new Date(year, month, lastDate - (lastDayOfWeek + 2));
         }
         
-        // 從週五往前推算出週一到週五的日期
         const dates = [];
         for (let i = 4; i >= 0; i--) {
             let d = new Date(lastFriday);
@@ -211,7 +215,7 @@
         dateSelect.add(new Option(date, date));
     });
 
-    // 3. 資料儲存與載入 (使用 localStorage 保持每日紀錄)
+    // 3. 資料儲存與載入 (localStorage)
     let recordData = JSON.parse(localStorage.getItem('igk_records')) || {};
 
     function saveData() {
@@ -220,7 +224,7 @@
         const score = parseInt(document.getElementById('scoreInput').value);
 
         if (score < 0 || score > 20 || isNaN(score)) {
-            alert("Accurate (0-20)！");
+            alert("請輸入正確的題數 (0-20)！");
             return;
         }
 
@@ -275,7 +279,7 @@
         const ctx = document.getElementById('trendChart').getContext('2d');
         
         if (trendChart) {
-            trendChart.destroy(); // 銷毀舊圖表以利重新繪製
+            trendChart.destroy();
         }
 
         trendChart = new Chart(ctx, {
@@ -290,7 +294,7 @@
                     borderWidth: 3,
                     pointRadius: 6,
                     pointBackgroundColor: '#2980b9',
-                    spanGaps: true // 若當天沒紀錄，線條會自動連接或留空（這裡設定自動連，若要中斷可改 false）
+                    spanGaps: true 
                 }]
             },
             options: {
@@ -306,18 +310,6 @@
             }
         });
     }
-
-    // 6. 隨機英日語鼓勵語陣列 (每次重新整理可以換，或固定一組)
-    const motivations = [
-        { en: '"Success is the sum of small efforts, repeated day in and day out."', jp: '「継続は力なり。毎日の一歩が、大きな成果へと繋がります。」' },
-        { en: '"Believe you can and you\'re halfway there."', jp: '「自分を信じれば、目標の半分は達成されたも同然です。」' },
-        { en: '"Quality means doing it right when no one is looking."', jp: '「誰も見ていない時でも、正しく行うこと。それが品質です。」' }
-    ];
-    
-    // 固定顯示第一組，若想隨機可解開下一行
-    // const randomQuote = motivations[Math.floor(Math.random() * motivations.length)];
-    // document.getElementById('quoteEN').innerText = randomQuote.en;
-    // document.getElementById('quoteJP').innerText = randomQuote.jp;
 
     // 初始執行
     renderSummaryTable();
