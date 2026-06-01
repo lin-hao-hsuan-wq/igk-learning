@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 5-Day Record System (With Delete Function)</title>
+    <title>IGK 5-Day Record System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -58,6 +58,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            font-size: 14px;
         }
 
         .btn-print { background-color: #2ecc71; color: white; }
@@ -281,7 +282,7 @@
 <div class="container">
     <div class="top-bar">
         <div>
-            <label style="display:inline-block; margin-right: 10px; margin-bottom:0;">Target Month <span>對象月份</span></label>
+            <label style="display:inline-block; margin-right: 10px; margin-bottom:0;">Target Month <span>対象月</span></label>
             <select id="monthSelect" onchange="handleMonthChange()" style="width: 160px; display:inline-block; padding: 6px; font-size: 14px;"></select>
         </div>
         <div class="btn-group">
@@ -300,7 +301,7 @@
             <select id="userSelect"></select>
         </div>
         <div>
-            <label>Record Date <span>記錄日 (最終週)</span></label>
+            <label>Record Date <span>記録日 (最終週)</span></label>
             <select id="dateSelect"></select>
         </div>
         <div>
@@ -359,10 +360,301 @@
             <span class="close-modal" onclick="closeModal()">&times;</span>
         </div>
         <div class="detail-list" id="modalList"></div>
-        <button onclick="closeModal()" style="background-color: var(--primary-color); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer;">Close / 閉じる</button>
+        <button onclick="closeModal()" style="background-color: var(--primary-color); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Close / 閉じる</button>
     </div>
 </div>
 
 <script>
     // 1. Members List
-    const rawUsers =
+    const rawUsers = [
+        "Soma", "Kosei", "Minato", "Sumire", "Ayata", "Rito", "Kanata", 
+        "Taishin", "Hina", "Soichi", "Tamaki", "Yushi", "Sohjiroh", 
+        "Risa", "Ukyo", "Takumi", "Shiori", "Koharu", "Takuto", "Aqeel", "Ryuya"
+    ];
+    const users = rawUsers.sort((a, b) => a.localeCompare(b));
+
+    const userSelect = document.getElementById('userSelect');
+    const chartUserSelect = document.getElementById('chartUserSelect');
+    
+    users.forEach(user => {
+        userSelect.add(new Option(user, user));
+        chartUserSelect.add(new Option(user, user));
+    });
+
+    // 2. Month Selector Setup
+    const monthSelect = document.getElementById('monthSelect');
+    function initMonthSelector() {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); 
+
+        for(let i = -5; i <= 6; i++) {
+            let d = new Date(currentYear, currentMonth + i, 1);
+            let y = d.getFullYear();
+            let m = String(d.getMonth() + 1).padStart(2, '0');
+            let val = `${y}-${m}`;
+            let text = `${y}年 ${m}月`;
+            let option = new Option(text, val);
+            if(i === 0) option.selected = true;
+            monthSelect.add(option);
+        }
+    }
+    initMonthSelector();
+
+    // 3. Automatically Calculate Last Week
+    let lastWeekDates = [];
+    function updateLastWeekDays() {
+        const [yearStr, monthStr] = monthSelect.value.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr) - 1; 
+        
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const lastDate = lastDayOfMonth.getDate();
+        const lastDayOfWeek = lastDayOfMonth.getDay(); 
+        
+        let lastFriday;
+        if (lastDayOfWeek >= 5) {
+            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek - 5));
+        } else {
+            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek + 2));
+        }
+        
+        lastWeekDates = [];
+        for (let i = 4; i >= 0; i--) {
+            let d = new Date(lastFriday);
+            d.setDate(lastFriday.getDate() - i);
+            lastWeekDates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+        }
+
+        const dateSelect = document.getElementById('dateSelect');
+        dateSelect.innerHTML = '';
+        lastWeekDates.forEach(date => dateSelect.add(new Option(date, date)));
+    }
+
+    function handleMonthChange() {
+        updateLastWeekDays();
+        renderSummaryTable();
+        updateCharts();
+    }
+
+    // 4. Data Management
+    let recordData = JSON.parse(localStorage.getItem('igk_records_v2')) || {};
+
+    function saveData() {
+        const user = userSelect.value;
+        const date = dateSelect.value;
+        const score = parseInt(document.getElementById('scoreInput').value);
+        const selectedMonth = monthSelect.value;
+
+        if (score < 0 || score > 20 || isNaN(score)) {
+            alert("⚠️ Please enter a score between 0 and 20.\n0から20の間の数値を入力してください。");
+            return;
+        }
+
+        if (!recordData[selectedMonth]) recordData[selectedMonth] = {};
+        if (!recordData[selectedMonth][user]) recordData[selectedMonth][user] = {};
+        
+        recordData[selectedMonth][user][date] = score;
+        localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
+        
+        renderSummaryTable();
+        updateCharts();
+        alert(`✅ Record saved successfully for ${user}!\n${user}のデータが正常に保存されました！`);
+    }
+
+    function renderSummaryTable() {
+        const tbody = document.getElementById('dailySummaryTable').querySelector('tbody');
+        tbody.innerHTML = '';
+        const selectedMonth = monthSelect.value;
+        const monthData = recordData[selectedMonth] || {};
+
+        lastWeekDates.forEach(date => {
+            let count = 0, max = 0, hasData = false;
+            for (let u in monthData) {
+                if (monthData[u][date] !== undefined) {
+                    count++;
+                    hasData = true;
+                    if (monthData[u][date] > max) max = monthData[u][date];
+                }
+            }
+            tbody.innerHTML += `
+                <tr>
+                    <td>${date}</td>
+                    <td>${count} Ppl / 人</td>
+                    <td>${hasData ? max + ' Qs / 題' : '-'}</td>
+                    <td><button class="btn-action" onclick="openManageModal('${date}')">🔍 View / Edit</button></td>
+                </tr>`;
+        });
+    }
+
+    // Delete Feature Logic
+    function openManageModal(date) {
+        const selectedMonth = monthSelect.value;
+        const monthData = recordData[selectedMonth] || {};
+        
+        document.getElementById('modalTitle').innerText = `📅 Manage Data: ${date}`;
+        const listContainer = document.getElementById('modalList');
+        listContainer.innerHTML = '';
+
+        let hasData = false;
+        for (let user in monthData) {
+            if (monthData[user][date] !== undefined) {
+                hasData = true;
+                const score = monthData[user][date];
+                listContainer.innerHTML += `
+                    <div class="detail-item">
+                        <span><strong>${user}</strong>: ${score} Qs / 題</span>
+                        <button class="btn-delete" onclick="deleteSingleRecord('${selectedMonth}', '${user}', '${date}')">🗑️ Delete</button>
+                    </div>`;
+            }
+        }
+
+        if (!hasData) {
+            listContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No records found for this day.<br>この日のデータはありません。</p>';
+        }
+
+        document.getElementById('dataModal').style.display = 'flex';
+    }
+
+    function deleteSingleRecord(month, user, date) {
+        if (confirm(`Are you sure you want to delete the record for ${user} on ${date}?\n${user}（${date}）のデータを削除してもよろしいですか？`)) {
+            if (recordData[month] && recordData[month][user]) {
+                delete recordData[month][user][date];
+                
+                if (Object.keys(recordData[month][user]).length === 0) {
+                    delete recordData[month][user];
+                }
+                
+                localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
+                
+                renderSummaryTable();
+                updateCharts();
+                openManageModal(date); 
+            }
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('dataModal').style.display = 'none';
+    }
+
+    // 5. Chart Configurations
+    let overallChart, personalChart;
+
+    function updateCharts() {
+        const selectedMonth = monthSelect.value;
+        const monthData = recordData[selectedMonth] || {};
+
+        const avgScores = lastWeekDates.map(date => {
+            let total = 0, count = 0;
+            for (let u in monthData) {
+                if (monthData[u][date] !== undefined) {
+                    total += monthData[u][date];
+                    count++;
+                }
+            }
+            return count > 0 ? (total / count).toFixed(1) : null;
+        });
+
+        const currentUser = chartUserSelect.value;
+        const userScores = lastWeekDates.map(date => 
+            (monthData[currentUser] && monthData[currentUser][date] !== undefined) ? monthData[currentUser][date] : null
+        );
+
+        const ctxOverall = document.getElementById('overallChart').getContext('2d');
+        const ctxPersonal = document.getElementById('personalChart').getContext('2d');
+
+        if (overallChart) overallChart.destroy();
+        if (personalChart) personalChart.destroy();
+
+        overallChart = new Chart(ctxOverall, {
+            type: 'bar',
+            data: {
+                labels: lastWeekDates.map(d => d.slice(5)), 
+                datasets: [{
+                    label: 'Team Avg / 全體平均',
+                    data: avgScores,
+                    backgroundColor: 'rgba(52, 152, 219, 0.4)',
+                    borderColor: '#3498db',
+                    borderWidth: 1
+                }]
+            },
+            options: chartOptions(20, 'Avg Score / 平均正解数')
+        });
+
+        personalChart = new Chart(ctxPersonal, {
+            type: 'line',
+            data: {
+                labels: lastWeekDates.map(d => d.slice(5)),
+                datasets: [{
+                    label: `${currentUser}'s Score / スコア`,
+                    data: userScores,
+                    borderColor: '#2c3e50',
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    fill: false,
+                    tension: 0.3
+                }]
+            },
+            options: chartOptions(20, 'Score / 正解数')
+        });
+    }
+
+    function chartOptions(max, yLabel) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { min: 0, max: max, ticks: { stepSize: 2 }, title: { display: true, text: yLabel, font: { size: 11 } } }
+            },
+            plugins: { legend: { display: false } }
+        };
+    }
+
+    // 6. Emergency Data Sync
+    function exportData() {
+        const dataStr = JSON.stringify(recordData);
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = dataStr;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+        alert("📋 All data copied to clipboard!\nすべてのデータがクリップボードにコピーされました！");
+    }
+
+    function importData() {
+        const input = prompt("📥 Please paste the data code (JSON String):\nデータを貼り付けてください:");
+        if (input) {
+            try {
+                const parsed = JSON.parse(input);
+                if (typeof parsed === 'object') {
+                    recordData = parsed;
+                    localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
+                    renderSummaryTable();
+                    updateCharts();
+                    alert("✨ Data imported successfully!\nデータのインポートが成功しました！");
+                } else {
+                    alert("⚠️ Invalid data format.\n無効なデータ形式です。");
+                }
+            } catch (e) {
+                alert("⚠️ Parsing error.\nデータの解析に失敗しました。");
+            }
+        }
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('dataModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // Initialize Page
+    updateLastWeekDays();
+    renderSummaryTable();
+    updateCharts();
+</script>
+
+</body>
+</html>
