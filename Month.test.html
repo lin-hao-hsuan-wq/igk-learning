@@ -235,7 +235,6 @@
 
         #printAllContainer { display: none; }
         
-        /* 🔥 Vital fix for Canvas printing */
         .chart-print-img {
             display: none; /* Hidden on screen */
             width: 100%;
@@ -296,7 +295,7 @@
                 background: white !important; 
                 color: #000 !important; 
                 padding: 0 !important; 
-                -webkit-print-color-adjust: exact !important; /* 🔥 Force print colors/backgrounds */
+                -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important;
             }
             .container { display: none !important; } /* Hide interactive UI */
@@ -335,9 +334,11 @@
                 background: white !important;
             }
             
-            /* 🔥 Vital: Hide Canvas, Show Image when printing */
+            /* 🔥 關鍵修正：移出視覺區取代 display:none，確保 Chart.js 能計算正確寬高 */
             .chart-container canvas {
-                display: none !important;
+                position: absolute;
+                left: -9999px;
+                visibility: hidden;
             }
             .chart-print-img {
                 display: block !important; /* Show Image */
@@ -655,7 +656,6 @@
                     borderWidth: 1
                 }]
             },
-            // 🔥 Vital: Disable animation on screen so screenshots can be captured instantly
             options: chartOptions(20, 'Avg Score', false) 
         });
 
@@ -681,7 +681,7 @@
         return {
             responsive: true,
             maintainAspectRatio: false,
-            animation: animate, // 🔥 Vital for stable print capturing
+            animation: animate, 
             scales: {
                 y: { min: 0, max: max, ticks: { stepSize: 2 }, title: { display: true, text: yLabel, font: { size: 11 } } }
             },
@@ -691,10 +691,30 @@
 
     // ================= 🖨️ ADVANCED PRINT GENERATOR (WITH CANVAS FIX) =================
     
-    // 🔥 Core Fix: Convert a Chart.js instance to a static PNG Image base64 string
-    function chartToImage(chartInstance) {
-        if (!chartInstance) return '';
-        return chartInstance.toBase64Image();
+    // 🔥 關鍵修正：包裝成 Promise 結構，利用 onComplete 確保 Canvas 畫完才輸出圖片
+    function createHiddenChartAndCapture(canvasId, imgId, config) {
+        return new Promise((resolve) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                resolve();
+                return;
+            }
+            
+            config.options = config.options || {};
+            config.options.animation = {
+                duration: 0, // 關閉動畫加速渲染
+                onComplete: function() {
+                    const img = document.getElementById(imgId);
+                    if (img) {
+                        img.src = this.toBase64Image();
+                    }
+                    this.destroy(); // 釋放資源
+                    resolve(); // 完成 Promise 釋放
+                }
+            };
+            
+            new Chart(canvas.getContext('2d'), config);
+        });
     }
 
     function generateSummaryHtml(monthData) {
@@ -755,14 +775,14 @@
                     <div class="chart-box">
                         <div class="chart-title">📊 Overall Team Progress <span>全体平均の推移</span></div>
                         <div class="chart-container">
-                            <canvas id="print-overall-${index}" style="display:none;"></canvas>
+                            <canvas id="print-overall-${index}"></canvas>
                             <img id="print-overall-img-${index}" class="chart-print-img" src="" alt="Team Chart">
                         </div>
                     </div>
                     <div class="chart-box">
                         <div class="chart-title">👤 Individual Performance <span>個人スコアの傾向</span></div>
                         <div class="chart-container">
-                            <canvas id="print-personal-${index}" style="display:none;"></canvas>
+                            <canvas id="print-personal-${index}"></canvas>
                             <img id="print-personal-img-${index}" class="chart-print-img" src="" alt="Individual Chart">
                         </div>
                     </div>
@@ -772,26 +792,7 @@
         `;
     }
 
-    function createHiddenChartAndCapture(canvasId, imgId, config) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        
-        // Use a decoupled, temporary chart instance with animation disabled
-        config.options = config.options || {};
-        config.options.animation = false; 
-        
-        const tempChart = new Chart(canvas.getContext('2d'), config);
-        
-        // Capture to image instantly (since animation is false)
-        const img = document.getElementById(imgId);
-        if (img) {
-            img.src = tempChart.toBase64Image();
-        }
-        
-        // Cleanup memory
-        tempChart.destroy();
-    }
-
+    // 🔥 關鍵修正：改為 async 函式，等待圖片捕捉就緒
     async function printCurrentMember() {
         const singleUser = chartUserSelect.value;
         const container = document.getElementById('printAllContainer');
@@ -801,8 +802,8 @@
 
         container.innerHTML = renderPrintPageSkeleton(singleUser, 0, generateSummaryHtml(monthData));
 
-        // Create temporary chart and capture to image
-        createHiddenChartAndCapture('print-overall-0', 'print-overall-img-0', {
+        // 依序等待圖表生成為圖片
+        await createHiddenChartAndCapture('print-overall-0', 'print-overall-img-0', {
             type: 'bar',
             data: {
                 labels: lastWeekDates.map(d => d.slice(5)),
@@ -816,7 +817,7 @@
             options: chartOptions(20, 'Avg Score', false)
         });
 
-        createHiddenChartAndCapture('print-personal-0', 'print-personal-img-0', {
+        await createHiddenChartAndCapture('print-personal-0', 'print-personal-img-0', {
             type: 'line',
             data: {
                 labels: lastWeekDates.map(d => d.slice(5)),
@@ -832,10 +833,10 @@
             options: chartOptions(20, 'Score', false)
         });
 
-        // Slight delay to ensure DOM update before print dialog
-        setTimeout(() => window.print(), 200);
+        window.print();
     }
 
+    // 🔥 關鍵修正：改為 async 函式，並利用 for 迴圈序列同步化生成所有人的圖表
     async function printAllMembers() {
         if (!confirm(`Generating print preview for all ${users.length} members. This may take a few seconds.\n全${users.length}名分の列印預覽生成中。數秒かかります。`)) return;
 
@@ -846,7 +847,6 @@
         const monthData = recordData[selectedMonth] || {};
         const summaryRowsHtml = generateSummaryHtml(monthData);
 
-        // Precompute Team Average (shared)
         const avgScores = lastWeekDates.map(date => {
             let total = 0, count = 0;
             for (let u in monthData) {
@@ -858,21 +858,22 @@
             return count > 0 ? (total / count).toFixed(1) : null;
         });
 
-        // 1. First, build the entire DOM skeleton
+        // 1. 先繪製所有結構骨架
         let massiveHtml = '';
         users.forEach((user, index) => {
             massiveHtml += renderPrintPageSkeleton(user, index, summaryRowsHtml);
         });
         container.innerHTML = massiveHtml;
 
-        // 2. Secondly, loop again, generate charts, capture to images, and destroy charts immediately to save memory
-        users.forEach((user, index) => {
+        // 2. 依序渲染各個成員的 Canvas 並捕捉為實體圖片
+        for (let index = 0; index < users.length; index++) {
+            const user = users[index];
             const userScores = lastWeekDates.map(date => 
                 (monthData[user] && monthData[user][date] !== undefined) ? monthData[user][date] : null
             );
 
-            // Generate Team Average Image
-            createHiddenChartAndCapture(`print-overall-${index}`, `print-overall-img-${index}`, {
+            // 生成並等待團隊平均圖
+            await createHiddenChartAndCapture(`print-overall-${index}`, `print-overall-img-${index}`, {
                 type: 'bar',
                 data: {
                     labels: lastWeekDates.map(d => d.slice(5)),
@@ -886,8 +887,8 @@
                 options: chartOptions(20, 'Avg Score', false)
             });
 
-            // Generate Individual Image
-            createHiddenChartAndCapture(`print-personal-${index}`, `print-personal-img-${index}`, {
+            // 生成並等待個人數據圖
+            await createHiddenChartAndCapture(`print-personal-${index}`, `print-personal-img-${index}`, {
                 type: 'line',
                 data: {
                     labels: lastWeekDates.map(d => d.slice(5)),
@@ -902,10 +903,10 @@
                 },
                 options: chartOptions(20, 'Score', false)
             });
-        });
+        }
 
-        // Slight delay to ensure DOM update before print dialog
-        setTimeout(() => window.print(), 500);
+        // 3. 所有非同步圖片皆捕捉完畢後，開啟列印視窗
+        setTimeout(() => window.print(), 300);
     }
 
     // 6. Emergency Data Sync
