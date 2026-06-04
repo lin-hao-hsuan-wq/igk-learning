@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兒童日常狀況紀錄系統</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-box input {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        #main-app {
+            display: none;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .top-controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        select, input[type="date"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            outline: none;
+        }
+        .content-area {
+            display: flex;
+            gap: 30px;
+        }
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .column label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            resize: vertical;
+            box-sizing: border-box;
+            line-height: 1.5;
+        }
+        button {
+            padding: 10px 24px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        .save-btn { margin-top: 20px; width: 100%; background-color: #2ecc71; font-weight: bold; font-size: 18px; }
+        .save-btn:hover { background-color: #27ae60; }
+        .history-section { margin-top: 40px; }
+        .record-card {
+            background: #f9f9f9;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .record-header { font-weight: bold; margin-bottom: 10px; color: #555; }
+        .record-body { display: flex; gap: 20px; }
+        .record-body div { flex: 1; background: white; padding: 10px; border-radius: 4px; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🔒 系統登入</h2>
+            <p>請輸入密碼以查看紀錄</p>
+            <input type="password" id="password-input" placeholder="請輸入密碼 (預設: 1234)">
+            <br>
+            <button onclick="checkPassword()">登入</button>
+        </div>
+    </div>
+
+    <div id="main-app">
+        <h2>👶 小朋友日常狀況紀錄</h2>
+        
+        <div class="top-controls">
+            <select id="student-name">
+                <option value="" disabled selected>請選擇姓名</option>
+                <optgroup label="G1 (第一組)">
+                    <option value="石原 瑛茉 Emma Ishihara (G1)">石原 瑛茉 Emma Ishihara</option>
+                    <option value="岩瀬 広真 Kouma Iwase (G1)">岩瀬 広真 Kouma Iwase</option>
+                    <option value="鹿島 美咲 Misaki Kashima (G1)">鹿島 美咲 Misaki Kashima</option>
+                    <option value="金多 紗歩 Saho Kaneta (G1)">金多 紗歩 Saho Kaneta</option>
+                    <option value="川畑 遼真 Haruma Kawabata (G1)">川畑 遼真 Haruma Kawabata</option>
+                    <option value="河村 泉 Izumi Kawamura (G1)">河村 泉 Izumi Kawamura</option>
+                    <option value="栗本 理来 Riku Kurimoto (G1)">栗本 理来 Riku Kurimoto</option>
+                    <option value="酒井 梓 Azusa Sakai (G1)">酒井 梓 Azusa Sakai</option>
+                    <option value="重安 こころ Kokoro Shigeyasu (G1)">重安 こころ Kokoro Shigeyasu</option>
+                    <option value="杉立 舷 Gen Sugitate (G1)">杉立 舷 Gen Sugitate</option>
+                    <option value="世古 碧 Aoi Seko (G1)">世古 碧 Aoi Seko</option>
+                    <option value="田中 愛梨 Airi Tanaka (G1)">田中 愛梨 Airi Tanaka</option>
+                    <option value="津田 莉世 Rise Tsuda (G1)">津田 莉世 Rise Tsuda</option>
+                    <option value="橋本 莉緒 Rio Hashimoto (G1)">橋本 莉緒 Rio Hashimoto</option>
+                    <option value="福田 悠晴 Yusei Fukuda (G1)">福田 悠晴 Yusei Fukuda</option>
+                    <option value="南 佳苗 Kanae Minami (G1)">南 佳苗 Kanae Minami</option>
+                    <option value="藪内 香帆 Kaho Yabuuchi (G1)">藪内 香帆 Kaho Yabuuchi</option>
+                    <option value="山本 夕緋 Yuuhi Yamamoto (G1)">山本 夕緋 Yuuhi Yamamoto</option>
+                    <option value="吉本 希 Mare Yoshimoto (G1)">吉本 希 Mare Yoshimoto</option>
+                    <option value="羅 周周 ZhouZhou Luo (G1)">羅 周周 ZhouZhou Luo</option>
+                    <option value="李 詩悠 Shiyuu Lee (G1)">李 詩悠 Shiyuu Lee</option>
+                    <option value="大仲 和真 Kazuma Onaka (G1)">大仲 和真 Kazuma Onaka</option>
+                    <option value="網 徹真 Toma Ami (G1)">網 徹真 Toma Ami</option>
+                    <option value="弓場 茉弥 Mahiro Yuba (G1)">弓場 茉弥 Mahiro Yuba</option>
+                    <option value="慈 恵俊 Eshun Utsumi (G1)">慈 恵俊 Eshun Utsumi</option>
+                </optgroup>
+                <optgroup label="G2 (第二組)">
+                    <option value="平瀬 想真 Soma Hirase (G2)">平瀬 想真 Soma Hirase</option>
+                    <option value="山部 弘誠 Kosei Yamabe (G2)">山部 弘誠 Kosei Yamabe</option>
+                    <option value="上田 湊斗 Minato Ueta (G2)">上田 湊斗 Minato Ueta</option>
+                    <option value="有吉 純麗 Sumire Ariyoshi (G2)">有吉 純麗 Sumire Ariyoshi</option>
+                    <option value="澤村 奏汰 Kanata Sawamura (G2)">澤村 奏汰 Kanata Sawamura</option>
+                    <option value="橋本 珠季 Tamaki Hashimoto (G2)">橋本 珠季 Tamaki Hashimoto</option>
+                    <option value="足立 英大 Ayata Adachi (G2)">足立 英大 Ayata Adachi</option>
+                    <option value="坂井 緋夏 Hina Sakai (G2)">坂井 緋夏 Hina Sakai</option>
+                    <option value="永田 創次郎 Sohjiroh Nagata (G2)">永田 創次郎 Sohjiroh Nagata</option>
+                    <option value="藤原 匠 Takumi Fujiwara (G2)">藤原 匠 Takumi Fujiwara</option>
+                    <option value="宮田 泰槙 Taishin Miyata (G2)">宮田 泰槙 Taishin Miyata</option>
+                    <option value="糸賀 優士 Yushi Itoga (G2)">糸賀 優士 Yushi Itoga</option>
+                    <option value="岩田 吏永 Rito Iwata (G2)">岩田 吏永 Rito Iwata</option>
+                    <option value="田中 聡一 Soichi Tanaka (G2)">田中 聡一 Soichi Tanaka</option>
+                    <option value="畑 凜采 Risa Hata (G2)">畑 凜采 Risa Hata</option>
+                    <option value="山根 栞 Shiori Yamane (G2)">山根 栞 Shiori Yamane</option>
+                    <option value="剱物 右京 Ukyo Kenmotsu (G2)">剱物 右京 Ukyo Kenmotsu</option>
+                    <option value="玉置 小晴 Koharu Tamaki (G2)">玉置 小晴 Koharu Tamaki</option>
+                </optgroup>
+            </select>
+            <input type="date" id="record-date">
+        </div>
+
+        <div class="content-area">
+            <div class="column">
+                <label for="event-text">📝 事件紀錄</label>
+                <textarea id="event-text" placeholder="請詳細描述今天發生的事情..."></textarea>
+            </div>
+            <div class="column">
+                <label for="solution-text">💡 解決方式</label>
+                <textarea id="solution-text" placeholder="請記錄你如何處理或解決這個狀況..."></textarea>
+            </div>
+        </div>
+
+        <button class="save-btn" onclick="saveRecord()">💾 儲存紀錄</button>
+
+        <div class="history-section">
+            <h3>📂 歷史紀錄</h3>
+            <div id="records-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // 設定今天的預設日期
+        document.getElementById('record-date').valueAsDate = new Date();
+
+        function checkPassword() {
+            const pwd = document.getElementById('password-input').value;
+            if (pwd === '1234') { 
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                loadRecords(); 
+            } else {
+                alert('密碼錯誤！');
+            }
+        }
+
+        // 讀取紀錄
+        function loadRecords() {
+            const container = document.getElementById('records-container');
+            const records = JSON.parse(localStorage.getItem('myChildRecords')) || [];
+            
+            container.innerHTML = ''; 
+
+            if (records.length === 0) {
+                container.innerHTML = '<p style="color:#777;">目前沒有任何紀錄。</p>';
+                return;
+            }
+
+            records.forEach(record => {
+                const card = document.createElement('div');
+                card.className = 'record-card';
+                card.innerHTML = `
+                    <div class="record-header">📅 ${record.date} | 👤 ${record.name}</div>
+                    <div class="record-body">
+                        <div><strong>📝 事件：</strong><br>${record.eventDesc.replace(/\n/g, '<br>')}</div>
+                        <div><strong>💡 解決：</strong><br>${record.solutionDesc.replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 儲存紀錄
+        function saveRecord() {
+            const name = document.getElementById('student-name').value;
+            const date = document.getElementById('record-date').value;
+            const eventDesc = document.getElementById('event-text').value;
+            const solutionDesc = document.getElementById('solution-text').value;
+
+            if (!name || !eventDesc || !solutionDesc) {
+                alert('請確認姓名、事件與解決方式皆已填寫！');
+                return;
+            }
+
+            const newRecord = { name, date, eventDesc, solutionDesc };
+            
+            let records = JSON.parse(localStorage.getItem('myChildRecords')) || [];
+            records.unshift(newRecord); 
+            localStorage.setItem('myChildRecords', JSON.stringify(records));
+
+            alert('儲存成功！');
+            
+            document.getElementById('event-text').value = '';
+            document.getElementById('solution-text').value = '';
+            
+            loadRecords();
+        }
+    </script>
+</body>
+</html>
