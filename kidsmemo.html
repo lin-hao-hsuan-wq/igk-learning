@@ -379,194 +379,207 @@
         </div>
     </div>
 
-    <script>
-        // ⚠️ 請在下方雙引號內填入您的 Google Apps Script 網頁應用程式 URL
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyi5CfdkrgiufwUGpFvCxl9NJHudL8s0joB08qEs7HB6ufRY5TTcXldIjfslM-V20ybMQ/exec";
+<script>
+    // ⚠️ 請在下方雙引號內填入您的 Google Apps Script 網頁應用程式 URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyi5CfdkrgiufwUGpFvCxl9NJHudL8s0joB08qEs7HB6ufRY5TTcXldIjfslM-V20ybMQ/exec";
 
-        // 全域變數，用來快取從雲端下載下來的資料
-        let globalCloudRecords = [];
+    // 全域變數，用來快取從雲端下載下來的資料
+    let globalCloudRecords = [];
 
-        // Set today's date natively
-        document.getElementById('record-date').valueAsDate = new Date();
+    // Set today's date natively
+    document.getElementById('record-date').valueAsDate = new Date();
 
-        // Login Logic
-        function checkPassword() {
-            const pwd = document.getElementById('password-input').value;
-            if (pwd === '0004') { 
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-app').style.display = 'flex'; // Use flex for layout
-                // 登入成功後，在背景靜默預載雲端資料，提升使用者體驗
-                preloadCloudData();
-            } else {
-                alert('Password Incorrect! / パスワードが間違っています！');
-            }
+    // Login Logic
+    function checkPassword() {
+        const pwd = document.getElementById('password-input').value;
+        if (pwd === '0004') { 
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex'; // Use flex for layout
+            preloadCloudData();
+        } else {
+            alert('Password Incorrect! / パスワードが間違っています！');
         }
-        document.getElementById('password-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') checkPassword();
+    }
+    document.getElementById('password-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') checkPassword();
+    });
+
+    // 格式化日期函數：確保所有日期不論帶有時間與否，一律變成 YYYY-MM-DD
+    function cleanDateStr(rawDate) {
+        if (!rawDate) return "";
+        // 如果帶有 T (如 2026-06-04T15:00:00.000Z)
+        if (rawDate.includes("T")) {
+            return rawDate.split("T")[0];
+        }
+        // 如果是其他標準格式，只取前 10 碼
+        return rawDate.substring(0, 10);
+    }
+
+    // 背景預載雲端資料
+    function preloadCloudData() {
+        fetch(GOOGLE_SCRIPT_URL)
+        .then(res => res.json())
+        .then(data => {
+            // 在儲存前，將每筆紀錄的日期先做標準化清洗
+            globalCloudRecords = data.map(r => {
+                r.date = cleanDateStr(r.date);
+                return r;
+            });
+            console.log("雲端資料已預載並完成格式校正，共 " + data.length + " 筆。");
+        })
+        .catch(err => console.error("背景預載失敗:", err));
+    }
+
+    // 保存紀錄邏輯
+    function saveRecord() {
+        const name = document.getElementById('student-name').value;
+        const date = document.getElementById('record-date').value;
+        const eventDesc = document.getElementById('event-text').value.trim();
+        const solutionDesc = document.getElementById('solution-text').value.trim();
+
+        if (!name || !eventDesc || !solutionDesc) {
+            alert('Please fill in all fields! / 全ての項目を入力してください！');
+            return;
+        }
+
+        const saveBtn = document.getElementById('save-btn-el');
+        saveBtn.disabled = true;
+        saveBtn.innerText = '🔄 Saving... / 保存中...';
+
+        const payload = {
+            date: date,
+            name: name,
+            event: eventDesc,
+            solution: solutionDesc
+        };
+
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            alert('Saved Successfully to Cloud! / 雲端保存成功！');
+            document.getElementById('event-text').value = '';
+            document.getElementById('solution-text').value = '';
+            preloadCloudData();
+        })
+        .catch(error => {
+            console.error("儲存失敗:", error);
+            alert("儲存失敗，請檢查網路連線。");
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerText = '💾 Save Record / 保存する';
+        });
+    }
+
+    // --- 行事曆邏輯 ---
+    let currentCalDate = new Date();
+
+    function openCalendarModal() {
+        const historyBtn = document.getElementById('history-btn-el');
+        const originalText = historyBtn.innerText;
+        historyBtn.innerText = "🔄 Loading... / 読み込み中...";
+        historyBtn.disabled = true;
+
+        fetch(GOOGLE_SCRIPT_URL)
+        .then(res => res.json())
+        .then(data => {
+            // 下載時同樣進行日期格式化清洗
+            globalCloudRecords = data.map(r => {
+                r.date = cleanDateStr(r.date);
+                return r;
+            });
+            document.getElementById('calendar-modal').style.display = 'flex';
+            renderCalendar();
+        })
+        .catch(err => {
+            console.error("無法同步雲端行事曆:", err);
+            alert("載入雲端資料失敗，將使用暫存資料顯示。");
+            document.getElementById('calendar-modal').style.display = 'flex';
+            renderCalendar();
+        })
+        .finally(() => {
+            historyBtn.innerText = originalText;
+            historyBtn.disabled = false;
+        });
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function changeMonth(step) {
+        currentCalDate.setMonth(currentCalDate.getMonth() + step);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const year = currentCalDate.getFullYear();
+        const month = currentCalDate.getMonth();
+        
+        document.getElementById('calendar-month-year').innerText = `${year} / ${String(month + 1).padStart(2, '0')}`;
+        
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        const recordDates = globalCloudRecords.map(r => r.date);
+
+        const daysGrid = document.getElementById('calendar-days');
+        daysGrid.innerHTML = '';
+
+        // Blank spots before first day
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'day-cell day-empty';
+            daysGrid.appendChild(emptyCell);
+        }
+
+        // Days of the month
+        for (let i = 1; i <= daysInMonth; i++) {
+            const cell = document.createElement('div');
+            cell.innerText = i;
+            
+            const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            
+            if (recordDates.includes(dateString)) {
+                cell.className = 'day-cell day-has-record';
+                cell.onclick = () => openDailyRecords(dateString, globalCloudRecords);
+            } else {
+                cell.className = 'day-cell day-no-record';
+            }
+            
+            daysGrid.appendChild(cell);
+        }
+    }
+
+    // Open specific date records
+    function openDailyRecords(targetDate, allRecords) {
+        const dailyRecords = allRecords.filter(r => r.date === targetDate);
+        document.getElementById('records-date-title').innerText = `📅 ${targetDate} Records / 記録`;
+        
+        const listContainer = document.getElementById('records-list-container');
+        listContainer.innerHTML = '';
+
+        dailyRecords.forEach(record => {
+            const card = document.createElement('div');
+            card.className = 'record-card';
+            
+            const eventContent = record.eventDesc || record.event || "";
+            const solutionContent = record.solutionDesc || record.solution || "";
+
+            card.innerHTML = `
+                <div class="record-name">👤 ${record.name}</div>
+                <div class="record-detail"><span>📝 Event / 出来事:</span><br>${eventContent.replace(/\n/g, '<br>')}</div>
+                <div class="record-detail"><span>💡 Solution / 解決策:</span><br>${solutionContent.replace(/\n/g, '<br>')}</div>
+            `;
+            listContainer.appendChild(card);
         });
 
-        // 背景預載雲端資料
-        function preloadCloudData() {
-            fetch(GOOGLE_SCRIPT_URL)
-            .then(res => res.json())
-            .then(data => {
-                globalCloudRecords = data;
-                console.log("雲端資料已預載完成，共 " + data.length + " 筆。");
-            })
-            .catch(err => console.error("背景預載失敗:", err));
-        }
-
-        // 🚀 修改後的保存紀錄邏輯（發送到 Google 試算表）
-        function saveRecord() {
-            const name = document.getElementById('student-name').value;
-            const date = document.getElementById('record-date').value;
-            const eventDesc = document.getElementById('event-text').value.trim();
-            const solutionDesc = document.getElementById('solution-text').value.trim();
-
-            if (!name || !eventDesc || !solutionDesc) {
-                alert('Please fill in all fields! / 全ての項目を入力してください！');
-                return;
-            }
-
-            const saveBtn = document.getElementById('save-btn-el');
-            saveBtn.disabled = true;
-            saveBtn.innerText = '🔄 Saving... / 保存中...';
-
-            const payload = {
-                date: date,
-                name: name,
-                event: eventDesc,
-                solution: solutionDesc
-            };
-
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                alert('Saved Successfully to Cloud! / 雲端保存成功！');
-                document.getElementById('event-text').value = '';
-                document.getElementById('solution-text').value = '';
-                // 儲存後立即重新整理快取，確保日曆同步最新進度
-                preloadCloudData();
-            })
-            .catch(error => {
-                console.error("儲存失敗:", error);
-                alert("儲存失敗，請檢查網路連線。");
-            })
-            .finally(() => {
-                saveBtn.disabled = false;
-                saveBtn.innerText = '💾 Save Record / 保存する';
-            });
-        }
-
-        // --- 行事曆邏輯 ---
-        let currentCalDate = new Date();
-
-        // 🚀 修改後的打開行事曆邏輯（即時點擊時一律重新向雲端抓最新版）
-        function openCalendarModal() {
-            const historyBtn = document.getElementById('history-btn-el');
-            const originalText = historyBtn.innerText;
-            historyBtn.innerText = "🔄 Loading... / 読み込み中...";
-            historyBtn.disabled = true;
-
-            fetch(GOOGLE_SCRIPT_URL)
-            .then(res => res.json())
-            .then(data => {
-                globalCloudRecords = data; // 更新最新雲端紀錄
-                document.getElementById('calendar-modal').style.display = 'flex';
-                renderCalendar();
-            })
-            .catch(err => {
-                console.error("無法同步雲端行事曆:", err);
-                alert("載入雲端資料失敗，將使用暫存資料顯示。");
-                document.getElementById('calendar-modal').style.display = 'flex';
-                renderCalendar();
-            })
-            .finally(() => {
-                historyBtn.innerText = originalText;
-                historyBtn.disabled = false;
-            });
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-
-        function changeMonth(step) {
-            currentCalDate.setMonth(currentCalDate.getMonth() + step);
-            renderCalendar();
-        }
-
-        function renderCalendar() {
-            const year = currentCalDate.getFullYear();
-            const month = currentCalDate.getMonth();
-            
-            document.getElementById('calendar-month-year').innerText = `${year} / ${String(month + 1).padStart(2, '0')}`;
-            
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            // 🚀 改由 globalCloudRecords 讀取所有日期
-            const recordDates = globalCloudRecords.map(r => r.date);
-
-            const daysGrid = document.getElementById('calendar-days');
-            daysGrid.innerHTML = '';
-
-            // Blank spots before first day
-            for (let i = 0; i < firstDayIndex; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = 'day-cell day-empty';
-                daysGrid.appendChild(emptyCell);
-            }
-
-            // Days of the month
-            for (let i = 1; i <= daysInMonth; i++) {
-                const cell = document.createElement('div');
-                cell.innerText = i;
-                
-                // Format date to match saving format (YYYY-MM-DD)
-                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                
-                if (recordDates.includes(dateString)) {
-                    cell.className = 'day-cell day-has-record';
-                    cell.onclick = () => openDailyRecords(dateString, globalCloudRecords);
-                } else {
-                    cell.className = 'day-cell day-no-record';
-                }
-                
-                daysGrid.appendChild(cell);
-            }
-        }
-
-        // Open specific date records
-        function openDailyRecords(targetDate, allRecords) {
-            const dailyRecords = allRecords.filter(r => r.date === targetDate);
-            document.getElementById('records-date-title').innerText = `📅 ${targetDate} Records / 記録`;
-            
-            const listContainer = document.getElementById('records-list-container');
-            listContainer.innerHTML = '';
-
-            dailyRecords.forEach(record => {
-                const card = document.createElement('div');
-                card.className = 'record-card';
-                
-                // 🚀 因應 Google Apps Script 回傳欄位名稱為 event 與 solution，故做此對應調整
-                const eventContent = record.eventDesc || record.event || "";
-                const solutionContent = record.solutionDesc || record.solution || "";
-
-                card.innerHTML = `
-                    <div class="record-name">👤 ${record.name}</div>
-                    <div class="record-detail"><span>📝 Event / 出来事:</span><br>${eventContent.replace(/\n/g, '<br>')}</div>
-                    <div class="record-detail"><span>💡 Solution / 解決策:</span><br>${solutionContent.replace(/\n/g, '<br>')}</div>
-                `;
-                listContainer.appendChild(card);
-            });
-
-            document.getElementById('records-modal').style.display = 'flex';
-        }
-    </script>
+        document.getElementById('records-modal').style.display = 'flex';
+    }
+  </script>
 </body>
 </html>
