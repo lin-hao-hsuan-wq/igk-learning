@@ -90,7 +90,7 @@
         /* 頂部控制區 */
         .top-controls {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             margin-bottom: 20px;
             align-items: center;
             flex-wrap: wrap;
@@ -106,13 +106,25 @@
         }
         select:focus, input[type="date"]:focus { border-color: #ffaaa5; }
 
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-left: auto; /* 將按鈕群組推到最右邊 */
+        }
+
         .history-btn {
             background-color: #ffe082;
             color: #6d4c41;
             box-shadow: 0 4px 6px rgba(255, 224, 130, 0.4);
-            margin-left: auto; /* 將歷史按鈕推到最右邊 */
         }
         .history-btn:hover { background-color: #ffd54f; }
+
+        .student-btn {
+            background-color: #b2dfdb;
+            color: #004d40;
+            box-shadow: 0 4px 6px rgba(178, 223, 219, 0.4);
+        }
+        .student-btn:hover { background-color: #80cbc4; }
 
         /* 下方左右輸入區 (自動延展) */
         .content-area {
@@ -251,7 +263,7 @@
         }
         .day-has-record:hover { transform: scale(1.1); background-color: #ff8c85; }
 
-        /* 紀錄詳情樣式 */
+        /* 紀錄詳情與學生歷程樣式 */
         .records-list {
             overflow-y: auto;
             flex-grow: 1;
@@ -268,6 +280,8 @@
             border-bottom: 1px solid #eee;
         }
         .record-name { font-weight: bold; color: #d9736c; margin-bottom: 10px; font-size: 1.1em; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
+        /* 學生個人歷程特製標題 */
+        .record-date-tag { font-weight: bold; color: #e57373; margin-bottom: 10px; font-size: 1.1em; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
         .record-detail { margin-bottom: 8px; }
         .record-detail span { font-weight: bold; color: #6d9fa2; }
     </style>
@@ -307,7 +321,7 @@
                     <option value="橋本 莉緒 Rio Hashimoto (G1)">橋本 莉緒 Rio Hashimoto</option>
                     <option value="福田 悠晴 Yusei Fukuda (G1)">福田 悠晴 Yusei Fukuda</option>
                     <option value="南 佳苗 Kanae Minami (G1)">南 佳苗 Kanae Minami</option>
-                    <option value="藪内 香帆 Kaho Yabuuchi (G1)">藪内 香帆 Kaho Yabuuchi</option>
+                    <option value="藪內 香帆 Kaho Yabuuchi (G1)">藪內 香帆 Kaho Yabuuchi</option>
                     <option value="山本 夕緋 Yuuhi Yamamoto (G1)">山本 夕緋 Yuuhi Yamamoto</option>
                     <option value="吉本 希 Mare Yoshimoto (G1)">吉本 希 Mare Yoshimoto</option>
                     <option value="羅 周周 ZhouZhou Luo (G1)">羅 周周 ZhouZhou Luo</option>
@@ -342,7 +356,10 @@
                 </optgroup>
             </select>
             <input type="date" id="record-date">
-            <button class="history-btn" id="history-btn-el" onclick="openCalendarModal()">📅 History / 履歴</button>
+            <div class="btn-group">
+                <button class="history-btn" id="history-btn-el" onclick="openCalendarModal()">📅 History / 履歴</button>
+                <button class="student-btn" id="student-btn-el" onclick="openStudentModal()">👤 Student / 児童別</button>
+            </div>
         </div>
 
         <div class="content-area">
@@ -359,6 +376,7 @@
         <button class="save-btn" id="save-btn-el" onclick="saveRecord()">💾 Save Record / 保存する</button>
     </div>
 
+    <!-- 1. 原有的日曆視窗 -->
     <div id="calendar-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal('calendar-modal')">&times;</span>
@@ -374,11 +392,33 @@
         </div>
     </div>
 
+    <!-- 2. 原有的單日紀錄詳情視窗 -->
     <div id="records-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal('records-modal')">&times;</span>
             <h3 style="color:#d9736c; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;" id="records-date-title"></h3>
             <div class="records-list" id="records-list-container"></div>
+        </div>
+    </div>
+
+    <!-- 3. 【新功能】依小孩查看的彈出視窗 -->
+    <div id="student-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('student-modal')">&times;</span>
+            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #b2dfdb; padding-bottom: 10px;">👤 Student History / 兒童履歷紀錄</h3>
+            
+            <!-- 選擇小孩的下拉選單 -->
+            <div style="margin-bottom: 20px;">
+                <select id="modal-student-select" style="width: 100%;" onchange="searchStudentHistory()">
+                    <option value="" disabled selected>Select a student / 兒童を選択してください</option>
+                    <!-- 這裡會透過 JavaScript 在開啟時自動塞入與主畫面一模一樣的名單 -->
+                </select>
+            </div>
+            
+            <!-- 顯示該小孩所有歷史紀錄的容器 -->
+            <div class="records-list" id="student-records-container">
+                <p style="color: #999; text-align: center; margin-top: 20px;">Please select a student to view records.<br>兒童を選択すると、全期間の記録が表示されます。</p>
+            </div>
         </div>
     </div>
 
@@ -490,7 +530,6 @@
         fetch(GOOGLE_SCRIPT_URL)
         .then(res => res.json())
         .then(data => {
-            // 下載時同樣進行日期格式化清洗
             globalCloudRecords = data.map(r => {
                 r.date = cleanDateStr(r.date);
                 return r;
@@ -582,6 +621,78 @@
         });
 
         document.getElementById('records-modal').style.display = 'flex';
+    }
+
+    // --- 【新功能】依小孩查看的邏輯 ---
+    function openStudentModal() {
+        const studentBtn = document.getElementById('student-btn-el');
+        const originalText = studentBtn.innerText;
+        studentBtn.innerText = "🔄 Loading... / 読み込み中...";
+        studentBtn.disabled = true;
+
+        // 開啟前先重新從雲端抓一次最新資料，確保最即時
+        fetch(GOOGLE_SCRIPT_URL)
+        .then(res => res.json())
+        .then(data => {
+            globalCloudRecords = data.map(r => {
+                r.date = cleanDateStr(r.date);
+                return r;
+            });
+
+            // 動態同步主畫面的學生名單下拉選單到 Modal 中
+            const mainSelect = document.getElementById('student-name');
+            const modalSelect = document.getElementById('modal-student-select');
+            
+            // 保留原本的第一個提示選項，其餘清空重新同步
+            modalSelect.innerHTML = '<option value="" disabled selected>Select a student / 兒童を選択してください</option>';
+            modalSelect.innerHTML += mainSelect.innerHTML.replace('Select Name / 名前を選択', '');
+
+            // 顯示視窗
+            document.getElementById('student-modal').style.display = 'flex';
+        })
+        .catch(err => {
+            console.error("同步失敗:", err);
+            alert("載入最新資料失敗，將使用暫存資料顯示。");
+            document.getElementById('student-modal').style.display = 'flex';
+        })
+        .finally(() => {
+            studentBtn.innerText = originalText;
+            studentBtn.disabled = false;
+        });
+    }
+
+    function searchStudentHistory() {
+        const selectedStudent = document.getElementById('modal-student-select').value;
+        const container = document.getElementById('student-records-container');
+        container.innerHTML = '';
+
+        if (!selectedStudent) return;
+
+        // 核心過濾：從所有資料中，撈出名字和被選中學生完全相符的紀錄，並依照日期排序（新到舊）
+        const studentRecords = globalCloudRecords
+            .filter(r => r.name === selectedStudent)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (studentRecords.length === 0) {
+            container.innerHTML = `<p style="color: #999; text-align: center; margin-top: 20px;">No records found for this student.<br>這個孩子目前沒有任何歷史異常紀錄。</p>`;
+            return;
+        }
+
+        // 渲染該學生的歷史卡片
+        studentRecords.forEach(record => {
+            const card = document.createElement('div');
+            card.className = 'record-card';
+            
+            const eventContent = record.eventDesc || record.event || "";
+            const solutionContent = record.solutionDesc || record.solution || "";
+
+            card.innerHTML = `
+                <div class="record-date-tag">📅 ${record.date}</div>
+                <div class="record-detail"><span>📝 Event / 出来事:</span><br>${eventContent.replace(/\n/g, '<br>')}</div>
+                <div class="record-detail"><span>💡 Solution / 解決策:</span><br>${solutionContent.replace(/\n/g, '<br>')}</div>
+            `;
+            container.appendChild(card);
+        });
     }
   </script>
 </body>
