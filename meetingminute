@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IGK のあしあと/ </title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Noto Sans JP & Nunito -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Nunito', 'Noto Sans JP', 'sans-serif'],
+          },
+          colors: {
+            rila: {
+              brown: '#c39b62',
+              dark: '#3d2109',
+              light: '#fdf8f2',
+              cream: '#faf5eb',
+              yellow: '#ffde59',
+              pink: '#ff8da1',
+              darkbrown: '#5c3c25',
+              softOrange: '#ffb347'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Firebase & Gemini API Setup (Global Scope) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    // 1. 初始化 Firebase 模組
+    window.initFirebaseSystem = async function() {
+      if (typeof __firebase_config === 'undefined') {
+        console.warn("Firebase config not found.");
+        return null;
+      }
+      const config = JSON.parse(__firebase_config);
+      const app = initializeApp(config);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+      let user = null;
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+         await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+         await signInAnonymously(auth);
+      }
+
+      return new Promise((resolve) => {
+        onAuthStateChanged(auth, (u) => {
+          user = u;
+          window.firebaseApp = { db, user, appId };
+          resolve(true);
+        });
+      });
+    };
+
+    // Firebase 操作函數 (掛載至 window 供 Alpine 使用)
+    window.saveRecordToDB = async function(dateStr, data) {
+      if (!window.firebaseApp || !window.firebaseApp.user) return false;
+      const { db, user, appId } = window.firebaseApp;
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
+        await setDoc(docRef, data);
+        return true;
+      } catch(e) {
+        console.error("Save error:", e);
+        return false;
+      }
+    };
+
+    window.loadRecordFromDB = async function(dateStr) {
+      if (!window.firebaseApp || !window.firebaseApp.user) return null;
+      const { db, user, appId } = window.firebaseApp;
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return docSnap.data();
+        }
+      } catch(e) {
+        console.error("Load error:", e);
+      }
+      return null;
+    };
+
+    // 2. 初始化 Gemini API 翻譯模組
+    const apiKey = "";
+    window.translateWithGemini = async function(text) {
+      if (!text || text.trim() === '') return { ja: '', en: '' };
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const payload = {
+          contents: [{ parts: [{ text }] }],
+          systemInstruction: { parts: [{ text: "You are a professional translator. Translate the given text into highly natural Japanese and English. Respond ONLY with a valid JSON object in this exact format: {\"ja\": \"[Japanese translation]\", \"en\": \"[English translation]\"}. Do not include markdown code blocks or any other text." }] },
+          generationConfig: { responseMimeType: "application/json" }
+      };
+
+      const delays = [1000, 2000, 4000, 8000, 16000];
+      for (let i = 0; i < 6; i++) {
+          try {
+              const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+              if (!res.ok) throw new Error("API error");
+              const data = await res.json();
+              const jsonStr = data.candidates[0].content.parts[0].text;
+              return JSON.parse(jsonStr);
+          } catch (err) {
+              if (i === 5) throw err;
+              await new Promise(r => setTimeout(r, delays[i]));
+          }
+      }
+    };
+  </script>
+
+  <script>
+    // 預設 100 句勵志名言 (每日一句)
+    const MOTIVATIONAL_QUOTES = [
+      { ja: "どんなに高い山でも、一歩ずつ登れば必ず頂上に着く。", en: "No matter how high the mountain, you will reach the top if you climb step by step." },
+      { ja: "失敗は成功の母。", en: "Failure is the mother of success." },
+      { ja: "継続は力なり。", en: "Continuity is power." },
+      { ja: "明日は明日の風が吹く。", en: "Tomorrow is another day." },
+      { ja: "笑う門には福来る。", en: "Fortune comes to a laughing gate (Good things come to those who smile)." },
+      { ja: "千里の道も一歩から。", en: "A journey of a thousand miles begins with a single step." },
+      { ja: "思い立ったが吉日。", en: "The day you decide to do it is your lucky day." },
+      { ja: "為せば成る、為さねば成らぬ何事も。", en: "Where there is a will, there is a way." },
+      { ja: "一期一会。", en: "Treasure every encounter, for it will never recur." },
+      { ja: "雨降って地固まる。", en: "After the rain, the earth hardens (Adversity builds character)." },
+      { ja: "百聞は一見に如かず。", en: "Seeing is believing." },
+      { ja: "石の上にも三年。", en: "Three years on a stone (Perseverance pays off)." },
+      { ja: "急がば回れ。", en: "More haste, less speed." },
+      { ja: "初心忘るべからず。", en: "Never forget your original intention." },
+      { ja: "三つ子の魂百まで。", en: "The soul of a three-year-old lasts until a hundred." },
+      { ja: "光陰矢の如し。", en: "Time flies like an arrow." },
+      { ja: "情けは人の為ならず。", en: "Kindness is never wasted (Charity is a good investment)." },
+      { ja: "習うより慣れよ。", en: "Practice makes perfect." },
+      { ja: "転ばぬ先の杖。", en: "Prevention is better than cure." },
+      { ja: "七転び八起き。", en: "Fall down seven times, stand up eight." },
+      { ja: "時間は金なり。", en: "Time is money." },
+      { ja: "一石二鳥。", en: "Kill two birds with one stone." },
+      { ja: "温故知新。", en: "Learn from the past to guide the future." },
+      { ja: "十人十色。", en: "Ten people, ten colors (To each their own)." },
+      { ja: "類は友を呼ぶ。", en: "Birds of a feather flock together." },
+      { ja: "塵も積もれば山となる。", en: "Even dust, when piled up, can become a mountain." },
+      { ja: "良薬は口に苦し。", en: "Good medicine tastes bitter." },
+      { ja: "善は急げ。", en: "Be quick to do good." },
+      { ja: "短気は損気。", en: "A quick temper will cost you." },
+      { ja: "無知の知。", en: "Knowing that you know nothing." },
+      { ja: "果報は寝て待て。", en: "Good things come to those who wait." },
+      { ja: "可愛い子には旅をさせよ。", en: "If you love your child, send them on a journey." },
+      { ja: "井の中の蛙大海を知らず。", en: "A frog in a well knows nothing of the great ocean." },
+      { ja: "案ずるより産むが易し。", en: "Doing is easier than worrying about it." },
+      { ja: "鉄は熱いうちに打て。", en: "Strike while the iron is hot." },
+      { ja: "言うは易く行うは難し。", en: "Easier said than done." },
+      { ja: "弘法にも筆の誤り。", en: "Even Homer sometimes nods (Everyone makes mistakes)." },
+      { ja: "猿も木から落ちる。", en: "Even monkeys fall from trees." },
+      { ja: "河童の川流れ。", en: "Even a kappa can drown (Experts make mistakes)." },
+      { ja: "馬の耳に念仏。", en: "Praying to a horse's ears (Wasted effort)." },
+      { ja: "猫に小判。", en: "Gold coins to a cat (Pearls before swine)." },
+      { ja: "豚に真珠。", en: "Pearls before swine." },
+      { ja: "どんぐりの背比べ。", en: "Comparing the height of acorns (Not much difference)." },
+      { ja: "五十歩百歩。", en: "Fifty steps or a hundred steps (Six of one, half a dozen of the other)." },
+      { ja: "目から鱗が落ちる。", en: "Scales falling from the eyes (A sudden realization)." },
+      { ja: "青天の霹靂。", en: "A bolt out of the blue." },
+      { ja: "灯台下暗し。", en: "It's dark right under the lighthouse (It's hard to see what's right in front of you)." },
+      { ja: "覆水盆に返らず。", en: "Spilt water will not return to the tray (No use crying over spilt milk)." },
+      { ja: "二度あることは三度ある。", en: "What happens twice will happen thrice." },
+      { ja: "三度目の正直。", en: "Third time's the charm." },
+      { ja: "明日は明日、今日は今日。", en: "Tomorrow is tomorrow, today is today." },
+      { ja: "人生は一度きり。", en: "You only live once." },
+      { ja: "自分を信じて。", en: "Believe in yourself." },
+      { ja: "夢を諦めないで。", en: "Don't give up on your dreams." },
+      { ja: "努力は嘘をつかない。", en: "Hard work never betrays you." },
+      { ja: "ピンチはチャンス。", en: "A crisis is an opportunity." },
+      { ja: "前を向いて歩こう。", en: "Keep looking forward." },
+      { ja: "未来は自分で創るもの。", en: "The future is what you create." },
+      { ja: "一歩踏み出す勇気。", en: "The courage to take a step forward." },
+      { ja: "可能性は無限大。", en: "Possibilities are infinite." },
+      { ja: "感謝の気持ちを忘れない。", en: "Never forget a feeling of gratitude." },
+      { ja: "笑顔は最高の薬。", en: "A smile is the best medicine." },
+      { ja: "何事も経験。", en: "Everything is an experience." },
+      { ja: "人生楽しんだ者勝ち。", en: "The one who enjoys life wins." },
+      { ja: "毎日が新しいスタート。", en: "Every day is a new beginning." },
+      { ja: "小さな幸せを見つけよう。", en: "Find the little joys." },
+      { ja: "自分らしく生きる。", en: "Live true to yourself." },
+      { ja: "失敗を恐れない。", en: "Don't be afraid to fail." },
+      { ja: "挑戦し続けること。", en: "Keep challenging yourself." },
+      { ja: "限界を突破しろ。", en: "Break through your limits." },
+      { ja: "心に太陽を。", en: "Keep the sun in your heart." },
+      { ja: "希望の光は必ずある。", en: "There is always a ray of hope." },
+      { ja: "ポジティブに考えよう。", en: "Think positively." },
+      { ja: "周りを大切に。", en: "Cherish those around you." },
+      { ja: "自分を褒めてあげよう。", en: "Give yourself some praise." },
+      { ja: "リラックスも大切。", en: "Relaxation is also important." },
+      { ja: "深呼吸して、もう一度。", en: "Take a deep breath and try again." },
+      { ja: "焦らず、自分のペースで。", en: "Don't rush, go at your own pace." },
+      { ja: "結果より過程が大事。", en: "The journey is more important than the destination." },
+      { ja: "学ぶ姿勢を忘れない。", en: "Never lose the attitude of learning." },
+      { ja: "知的好奇心を満たそう。", en: "Satisfy your intellectual curiosity." },
+      { ja: "創造力を羽ばたかせよう。", en: "Let your creativity soar." },
+      { ja: "思いやりを持とう。", en: "Be compassionate." },
+      { ja: "誠実さが一番。", en: "Honesty is the best policy." },
+      { ja: "勇気を出して言ってみよう。", en: "Have the courage to speak up." },
+      { ja: "言葉の力を信じて。", en: "Believe in the power of words." },
+      { ja: "行動あるのみ。", en: "Action is everything." },
+      { ja: "運命は自分の手で切り開く。", en: "Carve out your own destiny." },
+      { ja: "奇跡は起こるもの。", en: "Miracles do happen." },
+      { ja: "愛こそすべて。", en: "Love is everything." },
+      { ja: "平和な日々を祈って。", en: "Praying for peaceful days." },
+      { ja: "健康第一。", en: "Health comes first." },
+      { ja: "美味しいものを食べて元気になろう。", en: "Eat good food and cheer up." },
+      { ja: "睡眠は最高の充電。", en: "Sleep is the best recharge." },
+      { ja: "自然と触れ合おう。", en: "Connect with nature." },
+      { ja: "音楽は心を癒す。", en: "Music heals the soul." },
+      { ja: "読書は知識の泉。", en: "Reading is the fountain of knowledge." },
+      { ja: "旅は人生を豊かにする。", en: "Travel enriches your life." },
+      { ja: "家族との時間を大切に。", en: "Cherish your time with family." },
+      { ja: "今日も一日、頑張ろう！", en: "Let's do our best today too!" }
+    ];
+
+    // 初始化預設的成員名單 (依據新需求，林昊嬛置於最後)
+    const DEFAULT_MEMBERS = [
+      { id: 1, name: 'minori kadono', avatar: 'korilakkuma', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
+      { id: 2, name: 'yuri kato', avatar: 'kiiroitori', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
+      { id: 3, name: 'Yassmyn Khairussalima Ratu', avatar: 'chairoikoguma', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
+      { id: 4, name: 'yoon honey aung', avatar: 'pinksquirrel', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
+      { id: 5, name: '林昊嬛', avatar: 'rilakkuma', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' }
+    ];
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('meetingApp', meetingApp);
+    });
+
+    function meetingApp() {
+      return {
+        // 資料狀態
+        members: JSON.parse(JSON.stringify(DEFAULT_MEMBERS)),
+        announcements: [],
+        newMemberName: '',
+        newMemberAvatar: 'rilakkuma',
+        newAnnouncement: '',
+        meetingDate: new Date().toISOString().split('T')[0],
+        showToast: false,
+        toastMessage: '',
+        showAddMemberMenu: false, // 控制新增成員彈出選單
+        dailyQuote: MOTIVATIONAL_QUOTES[0], // 預設
+
+        async init() {
+          // 計算當天勵志名言 (100日循環)
+          const daysSinceEpoch = Math.floor(Date.now() / 86400000);
+          const quoteIndex = daysSinceEpoch % 100;
+          this.dailyQuote = MOTIVATIONAL_QUOTES[quoteIndex];
+
+          // 綁定 Firebase 並載入今天資料
+          if (window.initFirebaseSystem) {
+            await window.initFirebaseSystem();
+            this.loadRecord(this.meetingDate);
+          }
+
+          // 監聽日期變化，自動載入當日紀錄
+          this.$watch('meetingDate', (newDate) => {
+             this.loadRecord(newDate);
+          });
+        },
+
+        // 載入資料庫紀錄
+        async loadRecord(dateStr) {
+          const data = await window.loadRecordFromDB(dateStr);
+          if (data) {
+            // 為防止舊資料缺少新欄位，進行屬性合併
+            this.members = data.members.map(m => ({
+               ...m,
+               isTranslating: false,
+               lastTranslatedText: m.report
+            }));
+            this.announcements = data.announcements || [];
+            this.triggerToast(`📅 読み込み完了 / Loaded records for ${dateStr}`);
+          } else {
+            // 若該日無紀錄，恢復預設空白表單
+            this.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+            this.announcements = [];
+          }
+        },
+
+        // 保存紀錄至資料庫
+        async saveRecord() {
+          const dataToSave = {
+            members: this.members.map(m => ({
+              id: m.id, name: m.name, avatar: m.avatar, status: m.status, 
+              report: m.report, reportJa: m.reportJa, reportEn: m.reportEn
+            })),
+            announcements: this.announcements
+          };
+          const success = await window.saveRecordToDB(this.meetingDate, dataToSave);
+          if (success) {
+            this.triggerToast('💾 記録を保存しました / Records successfully saved!');
+          } else {
+            this.triggerToast('⚠️ 保存に失敗しました / Failed to save records.');
+          }
+        },
+
+        // 自動雙語翻譯功能
+        async autoTranslate(member) {
+          const text = member.report.trim();
+          if (!text || text === member.lastTranslatedText) return;
+          
+          member.isTranslating = true;
+          try {
+            const result = await window.translateWithGemini(text);
+            if (result && result.ja && result.en) {
+              member.reportJa = result.ja;
+              member.reportEn = result.en;
+              member.lastTranslatedText = text;
+            }
+          } catch(e) {
+            console.error("Translation failed:", e);
+            this.triggerToast('⚠️ 翻訳エラー / Translation Error');
+          }
+          member.isTranslating = false;
+        },
+
+        // 轉換出席狀態文字 (雙語)
+        getStatusText(status) {
+          switch (status) {
+            case 'present': return '出席 / Present';
+            case 'tardy': return '遅刻 / Late';
+            case 'absent': return '欠席 / Absent';
+            default: return '出席 / Present';
+          }
+        },
+
+        cycleStatus(member) {
+          if (member.status === 'present') {
+            member.status = 'tardy';
+          } else if (member.status === 'tardy') {
+            member.status = 'absent';
+          } else {
+            member.status = 'present';
+          }
+          this.triggerToast(`${member.name} ➡️ ${this.getStatusText(member.status)}`);
+        },
+
+        formatDate(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const weekDay = weekDays[d.getDay()];
+          return `${year}/${month}/${day} (${weekDay})`;
+        },
+
+        addMember() {
+          const nameTrimmed = this.newMemberName.trim();
+          if (!nameTrimmed) {
+            this.triggerToast('⚠️ 名前を入力してください / Please enter a name');
+            return;
+          }
+
+          let avatar = this.newMemberAvatar;
+          if (nameTrimmed === '林昊嬛') {
+            avatar = 'rilakkuma';
+          }
+
+          this.members.push({
+            id: Date.now(),
+            name: nameTrimmed,
+            avatar: avatar,
+            status: 'present',
+            report: '',
+            reportJa: '',
+            reportEn: '',
+            isTranslating: false,
+            lastTranslatedText: ''
+          });
+
+          this.newMemberName = '';
+          this.newMemberAvatar = 'rilakkuma';
+          this.showAddMemberMenu = false;
+          this.triggerToast(`🎉 追加しました / Member Added: ${nameTrimmed}`);
+        },
+
+        removeMember(id) {
+          this.members = this.members.filter(m => m.id !== id);
+          this.triggerToast('🗑️ 削除しました / Removed');
+        },
+
+        addAnnouncement() {
+          const textTrimmed = this.newAnnouncement.trim();
+          if (!textTrimmed) return;
+          this.announcements.push({
+            id: Date.now(),
+            text: textTrimmed,
+            completed: false
+          });
+          this.newAnnouncement = '';
+        },
+
+        toggleAnnouncement(id) {
+          const item = this.announcements.find(a => a.id === id);
+          if (item) {
+            item.completed = !item.completed;
+          }
+        },
+
+        removeAnnouncement(id) {
+          this.announcements = this.announcements.filter(a => a.id !== id);
+        },
+
+        triggerToast(message) {
+          this.toastMessage = message;
+          this.showToast = true;
+          setTimeout(() => { this.showToast = false; }, 3500);
+        },
+
+        copyMeetingMinutes() {
+          let text = `🐻【会議議事録 / Meeting Minutes】🍯\n`;
+          text += `📅 日付/Date：${this.formatDate(this.meetingDate)}\n`;
+          text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+          text += `📢 【共有事項 / Shared Information】\n`;
+          if (this.announcements.length === 0) {
+            text += `（特になし / None）\n`;
+          } else {
+            this.announcements.forEach((ann, idx) => {
+              const checkIcon = ann.completed ? '✅' : '📌';
+              text += `${idx + 1}. [${checkIcon}] ${ann.text}\n`;
+            });
+          }
+          text += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+          text += `👥 【個人レポート / Individual Reports】\n`;
+          this.members.forEach((m) => {
+            const statusLabel = this.getStatusText(m.status);
+            text += `👤 ${m.name} (${statusLabel})\n`;
+            if (m.status === 'absent') {
+              text += `   ↳ 💤 欠席 / Absent\n`;
+            } else {
+              text += `   ↳ [Original]: ${m.report.trim() ? m.report : '...'}\n`;
+              if (m.reportJa) text += `   ↳ [JP]: ${m.reportJa}\n`;
+              if (m.reportEn) text += `   ↳ [EN]: ${m.reportEn}\n`;
+            }
+            text += `\n`;
+          });
+
+          text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          text += `🧸 ${this.dailyQuote.ja} / ${this.dailyQuote.en}\n`;
+
+          const tempTextarea = document.createElement('textarea');
+          tempTextarea.value = text;
+          document.body.appendChild(tempTextarea);
+          tempTextarea.select();
+          try {
+            document.execCommand('copy');
+            this.triggerToast('📋 議事録をコピーしました / Minutes Copied! 🐻✨');
+          } catch (err) {
+            this.triggerToast('⚠️ コピー失敗 / Copy Failed');
+          }
+          document.body.removeChild(tempTextarea);
+        },
+
+        printMinutes() {
+          window.print();
+        },
+
+        resetMeeting() {
+          const confirmReset = window.confirm("データをリセットしますか？ / Are you sure you want to reset the meeting records?");
+          if (confirmReset) {
+            this.announcements = [];
+            this.members.forEach(m => {
+              m.report = '';
+              m.reportJa = '';
+              m.reportEn = '';
+              m.status = 'present';
+            });
+            this.triggerToast('🧹 リセット完了 / Reset complete.');
+          }
+        }
+      };
+    }
+  </script>
+
+  <!-- 延遲載入 Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    body {
+      background-color: #f7eedf;
+      background-image: radial-gradient(#e0cfb8 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+    }
+
+    /* 🐻 超萌熊頭按鈕樣式 🐻 */
+    .bear-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.6rem 1.2rem;
+      background-color: #c39b62; 
+      color: white;
+      font-weight: 800;
+      border-radius: 9999px;
+      border: 3px solid #3d2109;
+      box-shadow: 0 4px 0 #3d2109;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      z-index: 10;
+    }
+    .bear-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #3d2109;
+    }
+    .bear-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 0px 0 #3d2109;
+    }
+    .bear-btn::before, .bear-btn::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      width: 22px;
+      height: 22px;
+      background-color: inherit;
+      border: 3px solid #3d2109;
+      border-radius: 50%;
+      z-index: -1;
+    }
+    .bear-btn::before { left: 15px; }
+    .bear-btn::after { right: 15px; }
+
+    /* 小白熊、茶色小熊、拉拉熊按鈕變體 */
+    .bear-btn-kori { background-color: #faf5eb; color: #3d2109; }
+    .bear-btn-kori-ear-inner::before, .bear-btn-kori-ear-inner::after {
+      content: ''; position: absolute; top: -6px; width: 10px; height: 10px; background-color: #ff8da1; border-radius: 50%; z-index: 1;
+    }
+    .bear-btn-kori-ear-inner::before { left: 19px; } .bear-btn-kori-ear-inner::after { right: 19px; }
+
+    .bear-btn-koguma { background-color: #5c3c25; color: #faf5eb; }
+    .bear-btn-koguma-ear-inner::before, .bear-btn-koguma-ear-inner::after {
+      content: ''; position: absolute; top: -6px; width: 10px; height: 10px; background-color: #ffffff; border-radius: 50%; z-index: 1;
+    }
+    .bear-btn-koguma-ear-inner::before { left: 19px; } .bear-btn-koguma-ear-inner::after { right: 19px; }
+
+    .bear-btn-rila-ear-inner::before, .bear-btn-rila-ear-inner::after {
+      content: ''; position: absolute; top: -6px; width: 10px; height: 10px; background-color: #ffde59; border-radius: 50%; z-index: 1;
+    }
+    .bear-btn-rila-ear-inner::before { left: 19px; } .bear-btn-rila-ear-inner::after { right: 19px; }
+
+    .rila-card { border: 3px solid #3d2109; box-shadow: 6px 6px 0px #3d2109; }
+    .rila-inset-shadow { box-shadow: inset 0 2px 4px rgba(61, 33, 9, 0.08); }
+
+    /* 列印樣式 */
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+      .rila-card { box-shadow: none !important; border: 1px solid #3d2109 !important; }
+      textarea { border: none !important; resize: none !important; }
+    }
+
+    /* 🐻 自訂橫向捲軸樣式 🐻 */
+    .horizontal-scroll::-webkit-scrollbar {
+      height: 10px;
+    }
+    .horizontal-scroll::-webkit-scrollbar-track {
+      background: #fdf8f2;
+      border-radius: 9999px;
+      border: 1px solid #e0cfb8;
+    }
+    .horizontal-scroll::-webkit-scrollbar-thumb {
+      background: #c39b62;
+      border-radius: 9999px;
+      border: 2px solid #fdf8f2;
+    }
+    .horizontal-scroll::-webkit-scrollbar-thumb:hover {
+      background: #3d2109;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-rila-dark pb-16 antialiased">
+
+  <div x-data="meetingApp()" class="container mx-auto px-4 py-8 max-w-6xl">
+    
+    <!-- 🥞 HEADER 橫幅區 🥞 -->
+    <header class="rila-card bg-rila-light rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
+      <!-- 裝飾背景蜂蜜罐 -->
+      <div class="absolute right-4 -top-8 opacity-10 pointer-events-none">
+        <svg class="w-48 h-48" viewBox="0 0 100 100" fill="currentColor">
+          <path d="M30 20 C30 10, 70 10, 70 20 L80 40 C85 60, 15 60, 20 40 Z"/>
+          <ellipse cx="50" cy="20" rx="20" ry="6"/>
+        </svg>
+      </div>
+
+      <div class="flex items-center gap-4 z-10">
+        <div class="animate-bounce" style="animation-duration: 3s;">
+          <svg viewBox="0 0 100 100" class="w-20 h-20 filter drop-shadow-md">
+            <circle cx="22" cy="30" r="16" fill="#c39b62" /><circle cx="22" cy="30" r="10" fill="#FFDE59" />
+            <circle cx="78" cy="30" r="16" fill="#c39b62" /><circle cx="78" cy="30" r="10" fill="#FFDE59" />
+            <ellipse cx="50" cy="58" rx="42" ry="34" fill="#c39b62" />
+            <ellipse cx="50" cy="68" rx="15" ry="10" fill="#FFFFFF" />
+            <path d="M 47 65 Q 50 69 53 65" fill="none" stroke="#3d2109" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="50" y1="63" x2="50" y2="66" stroke="#3d2109" stroke-width="2.5" />
+            <circle cx="34" cy="54" r="4.5" fill="#3d2109" /><circle cx="66" cy="54" r="4.5" fill="#3d2109" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl md:text-3xl font-extrabold tracking-wide flex items-center gap-2">
+            リラックマ 議事録 🍯
+          </h1>
+          <p class="text-sm font-bold text-rila-brown mt-1">
+            Rilakkuma Meeting Minutes - Pancakes & Coffee Time
+          </p>
+        </div>
+      </div>
+
+      <!-- 日期顯示區 (單行顯示) -->
+      <div class="mt-4 md:mt-0 z-10 flex items-center gap-3">
+        <span class="text-xs font-bold tracking-wider text-rila-brown bg-[#eddcc4] px-3 py-1 rounded-full whitespace-nowrap">
+          DATE
+        </span>
+        <h2 class="text-2xl font-black text-rila-dark whitespace-nowrap" x-text="formatDate(meetingDate)"></h2>
+        <div class="relative no-print flex-shrink-0">
+          <input type="date" x-model="meetingDate" class="absolute inset-0 opacity-0 cursor-pointer w-8 h-8 z-20" />
+          <button class="bg-rila-yellow hover:bg-yellow-400 p-2 rounded-full border-2 border-rila-dark transition-colors duration-150 shadow-sm">
+            📅
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 🌟 主區格版面 🌟 -->
+    <div class="flex flex-col gap-8 items-stretch">
+      
+      <!-- 👥 頂部：成員名單區與新增人員 (橫向排列) 👥 -->
+      <section class="w-full no-print">
+        
+        <div class="rila-card bg-white rounded-3xl p-6 relative">
+          <!-- 頂部：標題與右上角的新增按鈕 -->
+          <div class="flex items-center justify-between mb-4 border-b-2 border-dashed border-rila-brown pb-3 relative">
+            <h3 class="text-xl font-black flex items-center gap-2">
+              🐾 メンバーリスト <br/><span class="text-sm text-rila-brown">Member List</span>
+              <span class="text-xs bg-rila-yellow border border-rila-dark px-2 py-0.5 rounded-full whitespace-nowrap" x-text="`${members.length}`"></span>
+            </h3>
+            
+            <!-- 右上角小加號按鈕 -->
+            <button @click="showAddMemberMenu = !showAddMemberMenu" 
+                    class="bg-rila-brown hover:bg-yellow-600 text-white border-2 border-rila-dark w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md transition-transform transform hover:scale-110 z-20">
+              ＋
+            </button>
+          </div>
+
+          <!-- 新增成員的浮動選單 (點擊加號後顯示) -->
+          <div x-show="showAddMemberMenu" 
+               @click.away="showAddMemberMenu = false"
+               x-transition.opacity
+               class="absolute top-16 right-4 w-72 bg-rila-cream border-2 border-rila-dark shadow-lg rounded-2xl p-4 z-30">
+            <h4 class="text-sm font-bold mb-2">メンバー追加 / Add Member</h4>
+            <div class="space-y-3">
+              <input type="text" x-model="newMemberName" placeholder="名前 / Name..."
+                     class="w-full px-3 py-1.5 border-2 border-rila-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-rila-brown text-sm" />
+              <div class="grid grid-cols-6 gap-1 bg-white/60 p-1 rounded-xl border border-rila-brown/50">
+                <button @click="newMemberAvatar = 'rilakkuma'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'rilakkuma'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><circle cx="20" cy="25" r="15" fill="#c39b62" /><circle cx="20" cy="25" r="9" fill="#FFDE59" /><circle cx="80" cy="25" r="15" fill="#c39b62" /><circle cx="80" cy="25" r="9" fill="#FFDE59" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#c39b62" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg></button>
+                <button @click="newMemberAvatar = 'korilakkuma'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'korilakkuma'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><circle cx="20" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="20" cy="25" r="9" fill="#FF8DA1" /><circle cx="80" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="80" cy="25" r="9" fill="#FF8DA1" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg></button>
+                <button @click="newMemberAvatar = 'kiiroitori'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'kiiroitori'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><path d="M 46 15 Q 46 5 48 8" stroke="#3d2109" stroke-width="4" fill="none"/><path d="M 54 15 Q 54 5 52 8" stroke="#3d2109" stroke-width="4" fill="none"/><ellipse cx="50" cy="55" rx="40" ry="35" fill="#FFDE59" /><circle cx="34" cy="50" r="4" fill="#3d2109" /><circle cx="66" cy="50" r="4" fill="#3d2109" /><ellipse cx="50" cy="58" rx="14" ry="8" fill="#FF9900" /></svg></button>
+                <button @click="newMemberAvatar = 'chairoikoguma'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'chairoikoguma'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><circle cx="20" cy="25" r="15" fill="#5c3c25" /><circle cx="20" cy="25" r="9" fill="#FFFFFF" /><circle cx="80" cy="25" r="15" fill="#5c3c25" /><circle cx="80" cy="25" r="9" fill="#FFFFFF" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#5c3c25" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg></button>
+                <button @click="newMemberAvatar = 'honeybee'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'honeybee'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><path d="M 35 20 Q 30 5 25 10" stroke="#3d2109" stroke-width="3" fill="none" /><circle cx="25" cy="10" r="4" fill="#FFDE59" /><circle cx="20" cy="30" r="13" fill="#c39b62" /><ellipse cx="50" cy="58" rx="40" ry="30" fill="#c39b62" /><ellipse cx="50" cy="66" rx="13" ry="9" fill="#FFFFFF" /><path d="M 46 63 Q 50 67 54 63" fill="none" stroke="#3d2109" stroke-width="2" /><circle cx="33" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="26" cy="61" rx="5" ry="3.5" fill="#FFB7B2" opacity="0.8" /></svg></button>
+                <button @click="newMemberAvatar = 'pinksquirrel'" :class="{'ring-2 ring-rila-yellow bg-rila-light': newMemberAvatar === 'pinksquirrel'}" class="p-1 rounded-lg flex justify-center"><svg viewBox="0 0 100 100" class="w-6 h-6"><path d="M 65 65 C 100 70, 100 20, 75 25 C 65 27, 70 45, 65 50" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 75 35 C 85 30, 85 50, 75 55" fill="none" stroke="#ff8da1" stroke-width="3" stroke-linecap="round" /><path d="M 22 40 Q 15 10 40 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 26 36 Q 20 18 36 24" fill="#ffffff" /><path d="M 78 40 Q 85 10 60 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 74 36 Q 80 18 64 24" fill="#ffffff" /><ellipse cx="50" cy="58" rx="38" ry="30" fill="#ffb6c1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#ffffff" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="2.5" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="2.5" /><circle cx="50" cy="58" r="3.5" fill="#3d2109" /><circle cx="30" cy="52" r="4.5" fill="#3d2109" /><circle cx="70" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="20" cy="60" rx="5" ry="3" fill="#ff8da1" /><ellipse cx="80" cy="60" rx="5" ry="3" fill="#ff8da1" /></svg></button>
+              </div>
+              <button @click="addMember()" class="w-full bg-rila-yellow hover:bg-yellow-400 border border-rila-dark rounded-lg py-1.5 text-sm font-black">
+                追加 / Add
+              </button>
+            </div>
+          </div>
+
+          <!-- 成員列表 (橫向捲動區塊) -->
+          <ul class="flex flex-row gap-4 overflow-x-auto pb-4 pt-2 horizontal-scroll">
+            <template x-for="(member, index) in members" :key="member.id">
+              <li class="flex flex-col items-center p-3 rounded-2xl border-2 border-transparent hover:border-rila-yellow/50 hover:bg-rila-light/40 transition-all duration-150 relative flex-shrink-0 w-32 group">
+                
+                <!-- 移除按鈕 (懸停時顯示於右上角) -->
+                <button @click="removeMember(member.id)" class="absolute top-1 right-1 text-xs text-red-400 hover:text-red-600 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                  🗑️
+                </button>
+
+                <!-- 點選頭像切換出席狀態 -->
+                <div class="cursor-pointer hover:scale-110 transition-transform duration-150 mb-2" @click="cycleStatus(member)">
+                  <template x-if="member.avatar === 'rilakkuma'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><circle cx="20" cy="25" r="15" fill="#c39b62" /><circle cx="20" cy="25" r="9" fill="#FFDE59" /><circle cx="80" cy="25" r="15" fill="#c39b62" /><circle cx="80" cy="25" r="9" fill="#FFDE59" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#c39b62" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                  </template>
+                  <template x-if="member.avatar === 'korilakkuma'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><circle cx="20" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="20" cy="25" r="9" fill="#FF8DA1" /><circle cx="80" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="80" cy="25" r="9" fill="#FF8DA1" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                  </template>
+                  <template x-if="member.avatar === 'kiiroitori'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><path d="M 46 15 Q 46 5 48 8" stroke="#3d2109" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M 54 15 Q 54 5 52 8" stroke="#3d2109" stroke-width="4" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="55" rx="40" ry="35" fill="#FFDE59" /><circle cx="34" cy="50" r="4" fill="#3d2109" /><circle cx="66" cy="50" r="4" fill="#3d2109" /><ellipse cx="50" cy="58" rx="14" ry="8" fill="#FF9900" /><line x1="36" y1="58" x2="64" y2="58" stroke="#3d2109" stroke-width="2" /></svg>
+                  </template>
+                  <template x-if="member.avatar === 'chairoikoguma'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><circle cx="20" cy="25" r="15" fill="#5c3c25" /><circle cx="20" cy="25" r="9" fill="#FFFFFF" /><circle cx="80" cy="25" r="15" fill="#5c3c25" /><circle cx="80" cy="25" r="9" fill="#FFFFFF" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#5c3c25" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                  </template>
+                  <template x-if="member.avatar === 'honeybee'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><path d="M 35 20 Q 30 5 25 10" stroke="#3d2109" stroke-width="3" fill="none" /><circle cx="25" cy="10" r="4" fill="#FFDE59" /><path d="M 65 20 Q 70 5 75 10" stroke="#3d2109" stroke-width="3" fill="none" /><circle cx="75" cy="10" r="4" fill="#FFDE59" /><circle cx="20" cy="30" r="13" fill="#c39b62" /><circle cx="20" cy="30" r="7" fill="#FFDE59" /><circle cx="80" cy="30" r="13" fill="#c39b62" /><circle cx="80" cy="30" r="7" fill="#FFDE59" /><ellipse cx="50" cy="58" rx="40" ry="30" fill="#c39b62" /><ellipse cx="50" cy="66" rx="13" ry="9" fill="#FFFFFF" /><path d="M 46 63 Q 50 67 54 63" fill="none" stroke="#3d2109" stroke-width="2" /><circle cx="33" cy="52" r="4.5" fill="#3d2109" /><circle cx="67" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="26" cy="61" rx="5" ry="3.5" fill="#FFB7B2" opacity="0.8" /><ellipse cx="74" cy="61" rx="5" ry="3.5" fill="#FFB7B2" opacity="0.8" /></svg>
+                  </template>
+                  <template x-if="member.avatar === 'pinksquirrel'">
+                    <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><path d="M 65 65 C 100 70, 100 20, 75 25 C 65 27, 70 45, 65 50" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 75 35 C 85 30, 85 50, 75 55" fill="none" stroke="#ff8da1" stroke-width="3" stroke-linecap="round" /><path d="M 22 40 Q 15 10 40 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 26 36 Q 20 18 36 24" fill="#ffffff" /><path d="M 78 40 Q 85 10 60 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 74 36 Q 80 18 64 24" fill="#ffffff" /><ellipse cx="50" cy="58" rx="38" ry="30" fill="#ffb6c1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#ffffff" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="2.5" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="2.5" /><circle cx="50" cy="58" r="3.5" fill="#3d2109" /><circle cx="30" cy="52" r="4.5" fill="#3d2109" /><circle cx="70" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="20" cy="60" rx="5" ry="3" fill="#ff8da1" /><ellipse cx="80" cy="60" rx="5" ry="3" fill="#ff8da1" /></svg>
+                  </template>
+                </div>
+                
+                <div class="flex flex-col items-center w-full overflow-hidden">
+                  <span class="font-bold text-sm block text-rila-dark truncate w-full text-center" x-text="member.name"></span>
+                  <div class="mt-1">
+                    <span class="text-[10px] px-2 py-0.5 rounded-full border border-rila-dark font-black"
+                          :class="{
+                            'bg-[#e2f0d9] text-[#385723]': member.status === 'present',
+                            'bg-[#fff2cc] text-[#7f6000]': member.status === 'tardy',
+                            'bg-[#f8cbad] text-[#c65911]': member.status === 'absent'
+                          }"
+                          x-text="getStatusText(member.status)">
+                    </span>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 📝 下半部：主要會議紀錄區 (公佈事項 + 報告) 📝 -->
+      <main class="w-full flex flex-col space-y-8">
+        
+        <!-- 📢 公佈事項區 📢 -->
+        <section class="rila-card bg-[#fffcf5] rounded-3xl p-6 relative">
+          <div class="absolute -top-3 -right-3 bg-rila-yellow border-2 border-rila-dark text-xs font-extrabold px-3 py-1 rotate-12 rounded-lg shadow-md no-print">
+            HOT 🔥
+          </div>
+          
+          <h3 class="text-xl font-black mb-4 flex items-center gap-2 text-rila-dark border-b-2 border-rila-dark pb-2">
+            🍯 共有事項 / Shared Information
+          </h3>
+
+          <div class="flex gap-2 mb-6 no-print">
+            <input type="text" x-model="newAnnouncement" placeholder="事項を入力... / Enter announcement..."
+                   @keydown.enter="addAnnouncement()"
+                   class="flex-1 px-4 py-2 border-2 border-rila-dark rounded-xl focus:outline-none focus:ring-2 focus:ring-rila-brown bg-white text-sm rila-inset-shadow" />
+            <button @click="addAnnouncement()" class="bg-rila-yellow hover:bg-yellow-400 border-2 border-rila-dark text-rila-dark font-black px-4 py-2 rounded-xl text-sm transition-colors duration-150 whitespace-nowrap">
+              追加 / Add
+            </button>
+          </div>
+
+          <ul class="space-y-3">
+            <template x-for="(ann, index) in announcements" :key="ann.id">
+              <li class="flex items-start justify-between bg-rila-light/60 border-2 border-rila-dark/15 p-3 rounded-2xl transition-all duration-150"
+                  :class="{'opacity-60 bg-gray-100 line-through decoration-rila-dark decoration-2': ann.completed}">
+                <div class="flex items-start gap-3 flex-1">
+                  <button @click="toggleAnnouncement(ann.id)" class="mt-0.5 flex-shrink-0 transition-transform duration-100 hover:scale-110">
+                    <template x-if="ann.completed">
+                      <svg class="w-6 h-6 text-rila-dark" viewBox="0 0 24 24" fill="currentColor">
+                        <ellipse cx="12" cy="14" rx="6" ry="5" />
+                        <circle cx="6" cy="7" r="2" /><circle cx="10" cy="5" r="2" /><circle cx="14" cy="5" r="2" /><circle cx="18" cy="7" r="2" />
+                      </svg>
+                    </template>
+                    <template x-if="!ann.completed">
+                      <svg class="w-6 h-6 text-rila-brown/40 hover:text-rila-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <ellipse cx="12" cy="14" rx="6" ry="5" />
+                        <circle cx="6" cy="7" r="2" /><circle cx="10" cy="5" r="2" /><circle cx="14" cy="5" r="2" /><circle cx="18" cy="7" r="2" />
+                      </svg>
+                    </template>
+                  </button>
+                  <span class="text-sm font-bold text-rila-dark pt-0.5" x-text="ann.text"></span>
+                </div>
+                <button @click="removeAnnouncement(ann.id)" class="text-xs text-red-400 hover:text-red-600 ml-2 pt-0.5 no-print">
+                  🗑️
+                </button>
+              </li>
+            </template>
+            <template x-if="announcements.length === 0">
+              <div class="text-center py-6 text-sm text-rila-brown font-bold italic">
+                事項はありません / No announcements yet ☕
+              </div>
+            </template>
+          </ul>
+        </section>
+
+        <!-- ✍️ 每個人的報告紀錄區 ✍️ -->
+        <section class="space-y-6">
+          <h3 class="text-xl font-black flex items-center gap-2 text-rila-dark border-b-2 border-rila-dark pb-2">
+            🍪 個人レポート / Individual Reports
+          </h3>
+
+          <div class="space-y-4">
+            <template x-for="member in members" :key="member.id">
+              <div class="rila-card bg-white rounded-3xl p-5 relative overflow-hidden transition-all duration-200"
+                   :class="{'opacity-60 bg-gray-100': member.status === 'absent'}">
+                
+                <div class="flex items-center justify-between mb-3 border-b border-dashed border-rila-brown/30 pb-2">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10">
+                      <template x-if="member.avatar === 'rilakkuma'">
+                        <svg viewBox="0 0 100 100"><circle cx="20" cy="25" r="15" fill="#c39b62" /><circle cx="20" cy="25" r="9" fill="#FFDE59" /><circle cx="80" cy="25" r="15" fill="#c39b62" /><circle cx="80" cy="25" r="9" fill="#FFDE59" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#c39b62" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                      </template>
+                      <template x-if="member.avatar === 'korilakkuma'">
+                        <svg viewBox="0 0 100 100"><circle cx="20" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="20" cy="25" r="9" fill="#FF8DA1" /><circle cx="80" cy="25" r="15" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><circle cx="80" cy="25" r="9" fill="#FF8DA1" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#faf5eb" stroke="#d5cebf" stroke-width="1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                      </template>
+                      <template x-if="member.avatar === 'kiiroitori'">
+                        <svg viewBox="0 0 100 100"><path d="M 46 15 Q 46 5 48 8" stroke="#3d2109" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M 54 15 Q 54 5 52 8" stroke="#3d2109" stroke-width="4" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="55" rx="40" ry="35" fill="#FFDE59" /><circle cx="34" cy="50" r="4" fill="#3d2109" /><circle cx="66" cy="50" r="4" fill="#3d2109" /><ellipse cx="50" cy="58" rx="14" ry="8" fill="#FF9900" /><line x1="36" y1="58" x2="64" y2="58" stroke="#3d2109" stroke-width="2" /></svg>
+                      </template>
+                      <template x-if="member.avatar === 'chairoikoguma'">
+                        <svg viewBox="0 0 100 100"><circle cx="20" cy="25" r="15" fill="#5c3c25" /><circle cx="20" cy="25" r="9" fill="#FFFFFF" /><circle cx="80" cy="25" r="15" fill="#5c3c25" /><circle cx="80" cy="25" r="9" fill="#FFFFFF" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#5c3c25" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
+                      </template>
+                      <template x-if="member.avatar === 'honeybee'">
+                        <svg viewBox="0 0 100 100"><path d="M 35 20 Q 30 5 25 10" stroke="#3d2109" stroke-width="3" fill="none" /><circle cx="25" cy="10" r="4" fill="#FFDE59" /><path d="M 65 20 Q 70 5 75 10" stroke="#3d2109" stroke-width="3" fill="none" /><circle cx="75" cy="10" r="4" fill="#FFDE59" /><circle cx="20" cy="30" r="13" fill="#c39b62" /><circle cx="20" cy="30" r="7" fill="#FFDE59" /><circle cx="80" cy="30" r="13" fill="#c39b62" /><circle cx="80" cy="30" r="7" fill="#FFDE59" /><ellipse cx="50" cy="58" rx="40" ry="30" fill="#c39b62" /><ellipse cx="50" cy="66" rx="13" ry="9" fill="#FFFFFF" /><path d="M 46 63 Q 50 67 54 63" fill="none" stroke="#3d2109" stroke-width="2" /><circle cx="33" cy="52" r="4.5" fill="#3d2109" /><circle cx="67" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="26" cy="61" rx="5" ry="3.5" fill="#FFB7B2" opacity="0.8" /><ellipse cx="74" cy="61" rx="5" ry="3.5" fill="#FFB7B2" opacity="0.8" /></svg>
+                      </template>
+                      <template x-if="member.avatar === 'pinksquirrel'">
+                        <svg viewBox="0 0 100 100"><path d="M 65 65 C 100 70, 100 20, 75 25 C 65 27, 70 45, 65 50" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 75 35 C 85 30, 85 50, 75 55" fill="none" stroke="#ff8da1" stroke-width="3" stroke-linecap="round" /><path d="M 22 40 Q 15 10 40 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 26 36 Q 20 18 36 24" fill="#ffffff" /><path d="M 78 40 Q 85 10 60 22" fill="#ffb6c1" stroke="#3d2109" stroke-width="2" /><path d="M 74 36 Q 80 18 64 24" fill="#ffffff" /><ellipse cx="50" cy="58" rx="38" ry="30" fill="#ffb6c1" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#ffffff" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="2.5" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="2.5" /><circle cx="50" cy="58" r="3.5" fill="#3d2109" /><circle cx="30" cy="52" r="4.5" fill="#3d2109" /><circle cx="70" cy="52" r="4.5" fill="#3d2109" /><ellipse cx="20" cy="60" rx="5" ry="3" fill="#ff8da1" /><ellipse cx="80" cy="60" rx="5" ry="3" fill="#ff8da1" /></svg>
+                      </template>
+                    </div>
+                    <h4 class="font-extrabold text-lg text-rila-dark" x-text="member.name"></h4>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-rila-brown hidden sm:inline">ステータス:</span>
+                    <select x-model="member.status" class="no-print border-2 border-rila-dark rounded-lg px-2 py-0.5 text-xs font-bold bg-[#faf5eb] focus:outline-none">
+                      <option value="present">🟢 出席/Present</option>
+                      <option value="tardy">🟡 遅刻/Late</option>
+                      <option value="absent">🔴 欠席/Absent</option>
+                    </select>
+                    <span class="hidden print:inline font-bold text-sm" x-text="`[${getStatusText(member.status)}]`"></span>
+                  </div>
+                </div>
+
+                <div>
+                  <template x-if="member.status !== 'absent'">
+                    <div>
+                      <!-- 主要文字框，綁定 blur 事件觸發自動翻譯 -->
+                      <textarea x-model="member.report" 
+                                @blur="autoTranslate(member)"
+                                placeholder="進捗やタスクを入力（自動翻訳されます）/ Enter report (auto-translated)... ✍️"
+                                rows="2"
+                                class="w-full px-4 py-2 border-2 border-rila-dark/30 rounded-2xl focus:border-rila-brown focus:outline-none bg-rila-light/30 rila-inset-shadow text-sm transition-all duration-150"></textarea>
+                      
+                      <!-- 翻譯狀態 -->
+                      <div x-show="member.isTranslating" class="text-xs font-bold text-rila-brown mt-1 animate-pulse flex items-center gap-1">
+                        <svg class="animate-spin h-3 w-3 text-rila-brown" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        翻訳中 / Translating...
+                      </div>
+
+                      <!-- 翻譯結果呈現區 -->
+                      <div x-show="member.reportJa || member.reportEn" class="mt-2 space-y-2 no-print">
+                        <div x-show="member.reportJa" class="bg-[#fcf8f2] p-2.5 rounded-xl border border-rila-brown/30 text-sm flex gap-2">
+                          <span class="font-bold text-xs text-rila-brown whitespace-nowrap mt-0.5">🇯🇵 JA:</span>
+                          <span class="text-rila-dark" x-text="member.reportJa"></span>
+                        </div>
+                        <div x-show="member.reportEn" class="bg-[#f2f8fc] p-2.5 rounded-xl border border-[#b2c8d6] text-sm flex gap-2">
+                          <span class="font-bold text-xs text-[#527993] whitespace-nowrap mt-0.5">🇬🇧 EN:</span>
+                          <span class="text-[#2b4151]" x-text="member.reportEn"></span>
+                        </div>
+                      </div>
+                      
+                      <!-- 列印用雙語顯示 -->
+                      <div class="hidden print:block mt-2 text-sm text-gray-700">
+                        <p x-show="member.reportJa"><strong>JA:</strong> <span x-text="member.reportJa"></span></p>
+                        <p x-show="member.reportEn"><strong>EN:</strong> <span x-text="member.reportEn"></span></p>
+                      </div>
+                    </div>
+                  </template>
+                  <template x-if="member.status === 'absent'">
+                    <div class="py-3 text-center text-sm font-bold text-red-500 italic">
+                      欠席 / Absent 💤
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- 🌸 每日勵志名言區 (在最後一位成員下方) 🌸 -->
+        <div class="mt-4 border-t-2 border-dashed border-rila-brown/40 pt-8 pb-4 text-center select-none rila-card bg-white rounded-3xl">
+          <p class="text-xs font-black text-rila-brown/80 tracking-widest uppercase mb-2 flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            本日の名言 / Today's Quote
+          </p>
+          <p class="text-lg font-black text-rila-dark px-4" x-text="dailyQuote.ja"></p>
+          <p class="text-sm font-bold text-rila-brown mt-1 px-4" x-text="dailyQuote.en"></p>
+        </div>
+      </main>
+      
+    </div>
+
+    <!-- 🛠️ 底部按鈕控制區 🛠️ -->
+    <footer class="mt-12 flex flex-col md:flex-row gap-4 justify-center items-center no-print">
+      <!-- 儲存紀錄 (Firebase) -->
+      <button @click="saveRecord()" class="bear-btn bear-btn-koguma bear-btn-koguma-ear-inner px-6 py-3 text-sm md:text-base shadow-lg w-full md:w-auto">
+        記録を保存 / Save Record 💾
+      </button>
+
+      <!-- 列印 PDF -->
+      <button @click="printMinutes()" class="bear-btn bear-btn-rila-ear-inner px-6 py-3 text-sm md:text-base shadow-lg w-full md:w-auto">
+        PDFを出力 / Print PDF 🖨️
+      </button>
+
+      <!-- 複製純文字 -->
+      <button @click="copyMeetingMinutes()" class="bear-btn bear-btn-kori bear-btn-kori-ear-inner px-6 py-3 text-sm md:text-base shadow-lg border-gray-400 w-full md:w-auto">
+        議事録をコピー / Copy 📋
+      </button>
+
+      <!-- 重設按鈕 -->
+      <button @click="resetMeeting()" class="bear-btn bear-btn-kori bear-btn-kori-ear-inner px-6 py-3 text-sm md:text-base shadow-lg text-red-500 border-red-400 w-full md:w-auto">
+        リセット / Reset 🧹
+      </button>
+    </footer>
+
+    <!-- 🌟 吐司提示框 🌟 -->
+    <div x-show="showToast" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-y-4"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 transform translate-y-0"
+         x-transition:leave-end="opacity-0 transform translate-y-4"
+         class="fixed bottom-6 right-6 z-50 rila-card bg-rila-yellow text-rila-dark px-6 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl"
+         style="display: none;">
+      <span>🐻</span>
+      <span x-text="toastMessage"></span>
+    </div>
+
+  </div>
+</body>
+</html>
