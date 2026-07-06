@@ -38,13 +38,34 @@
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
     import { getFirestore, doc, setDoc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
+    // 🌐 ONLINE SYNC SETTINGS (Firebase Configuration)
+    // ⚠️ Please replace the values below with your real Firebase project settings!
+    const defaultFirebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_FIREBASE_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_FIREBASE_PROJECT_ID",
+      storageBucket: "YOUR_FIREBASE_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_FIREBASE_SENDER_ID",
+      appId: "YOUR_FIREBASE_APP_ID"
+    };
+
+    // 1. 初始化 Firebase 模組
     window.initFirebaseSystem = async function() {
-      if (typeof __firebase_config === 'undefined') {
-        console.warn("Firebase config not found. Will fallback to LocalStorage for saving.");
+      let config = null;
+      
+      // Check if environment config exists, otherwise use the configuration above
+      if (typeof __firebase_config !== 'undefined') {
+        config = JSON.parse(__firebase_config);
+      } else if (defaultFirebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+        config = defaultFirebaseConfig;
+      }
+
+      if (!config) {
+        console.warn("Firebase configuration not set. Will fallback to LocalStorage for saving.");
         return null;
       }
+
       try {
-        const config = JSON.parse(__firebase_config);
         const app = initializeApp(config);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -112,7 +133,6 @@
       let apiKey = localStorage.getItem('gemini_api_key');
       
       if (!apiKey) {
-        // 純日/英文的 API Key 詢問視窗
         apiKey = prompt("🐻 自動翻訳には Gemini API Key が必要です！\nAPIキーを入力してください（このPCにのみ保存されます）。\n\nGemini API Key is required for auto-translation!\nPlease enter your API Key (saved locally on this PC only):");
         if (apiKey && apiKey.trim() !== "") {
           localStorage.setItem('gemini_api_key', apiKey.trim());
@@ -152,7 +172,6 @@
     
     window.resetApiKey = function() {
         localStorage.removeItem('gemini_api_key');
-        // 純日/英文的重設確認視窗
         alert("🐻 API Key を削除しました！次回入力時に再設定してください。\nAPI Key cleared! You will be asked again next time.");
     };
   </script>
@@ -239,7 +258,7 @@
       { ja: "焦らず、自分のペースで。", en: "Don't rush, go at your own pace." },
       { ja: "結果より過程が大事。", en: "The journey is more important than the destination." },
       { ja: "学ぶ姿勢を忘れない。", en: "Never lose the attitude of learning." },
-      { ja: "知的好奇心を満たそう。", en: "Satisfy your intellectual curiosity." },
+      { ja: "知精度奇心を満たそう。", en: "Satisfy your intellectual curiosity." },
       { ja: "創造力を羽ばたかせよう。", en: "Let your creativity soar." },
       { ja: "思いやりを持とう。", en: "Be compassionate." },
       { ja: "誠実さが一番。", en: "Honesty is the best policy." },
@@ -291,10 +310,9 @@
           const quoteIndex = daysSinceEpoch % 100;
           this.dailyQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
-          if (window.initFirebaseSystem) {
-            await window.initFirebaseSystem();
-            this.loadRecord(this.meetingDate);
-          }
+          // Initialize database sync
+          await window.initFirebaseSystem();
+          this.loadRecord(this.meetingDate);
 
           this.$watch('meetingDate', (newDate) => {
              this.loadRecord(newDate);
@@ -347,7 +365,6 @@
             }
           } catch(e) {
             console.error("Translation failed:", e);
-            // 翻譯失敗時，優雅降級：不卡死存檔，只跳出日英雙語提示，保留輸入框讓使用者手動輸入
             if(e.message.includes("cancelled") || e.message.includes("Invalid")) {
                 this.triggerToast('⚠️ 自動翻訳スキップ (手動入力可) / Auto-translation skipped (Manual input available) 🐻');
             } else {
@@ -518,8 +535,6 @@
     }
   </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
   <style>
     body {
       background-color: #f7eedf;
@@ -636,10 +651,10 @@
         </div>
         <div>
           <h1 class="text-3xl md:text-3xl font-extrabold tracking-wide flex items-center gap-2">
-            IGK のあしあと 🍯
+            リラックマ 議事録 🍯
           </h1>
           <p class="text-sm font-bold text-rila-brown mt-1">
-            Meeting Minutes 
+            Rilakkuma Meeting Minutes - Pancakes & Coffee Time
           </p>
         </div>
       </div>
