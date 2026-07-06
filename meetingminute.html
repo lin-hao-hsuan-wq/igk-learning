@@ -49,11 +49,9 @@
       appId: "YOUR_FIREBASE_APP_ID"
     };
 
-    // 1. 初始化 Firebase 模組
     window.initFirebaseSystem = async function() {
       let config = null;
       
-      // Check if environment config exists, otherwise use the configuration above
       if (typeof __firebase_config !== 'undefined') {
         config = JSON.parse(__firebase_config);
       } else if (defaultFirebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
@@ -258,7 +256,7 @@
       { ja: "焦らず、自分のペースで。", en: "Don't rush, go at your own pace." },
       { ja: "結果より過程が大事。", en: "The journey is more important than the destination." },
       { ja: "学ぶ姿勢を忘れない。", en: "Never lose the attitude of learning." },
-      { ja: "知精度奇心を満たそう。", en: "Satisfy your intellectual curiosity." },
+      { ja: "知的好奇心を満たそう。", en: "Satisfy your intellectual curiosity." },
       { ja: "創造力を羽ばたかせよう。", en: "Let your creativity soar." },
       { ja: "思いやりを持とう。", en: "Be compassionate." },
       { ja: "誠実さが一番。", en: "Honesty is the best policy." },
@@ -310,7 +308,6 @@
           const quoteIndex = daysSinceEpoch % 100;
           this.dailyQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
-          // Initialize database sync
           await window.initFirebaseSystem();
           this.loadRecord(this.meetingDate);
 
@@ -320,18 +317,24 @@
         },
 
         async loadRecord(dateStr) {
-          const data = await window.loadRecordFromDB(dateStr);
-          if (data) {
-            this.members = data.members.map(m => ({
-               ...m,
-               isTranslating: false,
-               lastTranslatedText: m.report
-            }));
-            this.announcements = data.announcements || [];
-            this.triggerToast(`📅 読み込み完了 / Loaded records for ${dateStr}`);
-          } else {
+          try {
+            const data = await window.loadRecordFromDB(dateStr);
+            // 防呆機制：確保讀取到的資料裡面真的有成員，如果沒有就自動補上預設成員！
+            if (data && Array.isArray(data.members) && data.members.length > 0) {
+              this.members = data.members.map(m => ({
+                 ...m,
+                 isTranslating: false,
+                 lastTranslatedText: m.report
+              }));
+              this.announcements = data.announcements || [];
+              this.triggerToast(`📅 読み込み完了 / Loaded records for ${dateStr}`);
+            } else {
+              this.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+              this.announcements = data?.announcements || [];
+            }
+          } catch(e) {
+            console.error("Load error:", e);
             this.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
-            this.announcements = [];
           }
         },
 
@@ -519,21 +522,19 @@
         },
 
         resetMeeting() {
-          const confirmReset = window.confirm("データをリセットしますか？ / Are you sure you want to reset the meeting records?");
+          // 真正的重置機制：不只清空文字，還把成員名單恢復成最初的 5 人！
+          const confirmReset = window.confirm("データを初期化しますか？(メンバーもデフォルトに戻ります)\nAre you sure you want to reset everything?");
           if (confirmReset) {
             this.announcements = [];
-            this.members.forEach(m => {
-              m.report = '';
-              m.reportJa = '';
-              m.reportEn = '';
-              m.status = 'present';
-            });
+            this.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
             this.triggerToast('🧹 リセット完了 / Reset complete.');
           }
         }
       };
     }
   </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
   <style>
     body {
