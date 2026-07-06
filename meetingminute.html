@@ -308,8 +308,18 @@
           const quoteIndex = daysSinceEpoch % 100;
           this.dailyQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
-          await window.initFirebaseSystem();
-          this.loadRecord(this.meetingDate);
+          // 🛠️ 修復：加入自動等待機制，確保 Firebase 模組載入完成
+          const checkAndInit = async () => {
+            if (typeof window.initFirebaseSystem === 'function') {
+              await window.initFirebaseSystem();
+              this.loadRecord(this.meetingDate);
+            } else {
+              // 如果還沒載入好，等 100 毫秒後再檢查一次
+              setTimeout(checkAndInit, 100);
+            }
+          };
+          
+          checkAndInit();
 
           this.$watch('meetingDate', (newDate) => {
              this.loadRecord(newDate);
@@ -655,7 +665,7 @@
             IGK のあしあと 🍯
           </h1>
           <p class="text-sm font-bold text-rila-brown mt-1">
-          　talk talk
+           talk talk
           </p>
         </div>
       </div>
