@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IGK のあしあと/ </title>
+  <title>IGK のあしあと / Rilakkuma Meeting</title>
   
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Google Fonts: Noto Sans JP & Nunito -->
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
   
   <script>
@@ -35,98 +33,131 @@
     }
   </script>
 
-  <!-- Firebase & Gemini API Setup (Global Scope) -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
     import { getFirestore, doc, setDoc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-    // 1. 初始化 Firebase 模組
     window.initFirebaseSystem = async function() {
       if (typeof __firebase_config === 'undefined') {
-        console.warn("Firebase config not found.");
+        console.warn("Firebase config not found. Will fallback to LocalStorage for saving.");
         return null;
       }
-      const config = JSON.parse(__firebase_config);
-      const app = initializeApp(config);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+      try {
+        const config = JSON.parse(__firebase_config);
+        const app = initializeApp(config);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-      let user = null;
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-         await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-         await signInAnonymously(auth);
-      }
+        let user = null;
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+           await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+           await signInAnonymously(auth);
+        }
 
-      return new Promise((resolve) => {
-        onAuthStateChanged(auth, (u) => {
-          user = u;
-          window.firebaseApp = { db, user, appId };
-          resolve(true);
+        return new Promise((resolve) => {
+          onAuthStateChanged(auth, (u) => {
+            user = u;
+            window.firebaseApp = { db, user, appId };
+            resolve(true);
+          });
         });
-      });
+      } catch (e) {
+        console.error("Firebase init error:", e);
+        return null;
+      }
     };
 
-    // Firebase 操作函數 (掛載至 window 供 Alpine 使用)
     window.saveRecordToDB = async function(dateStr, data) {
-      if (!window.firebaseApp || !window.firebaseApp.user) return false;
-      const { db, user, appId } = window.firebaseApp;
-      try {
-        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
-        await setDoc(docRef, data);
+      if (window.firebaseApp && window.firebaseApp.user) {
+        const { db, user, appId } = window.firebaseApp;
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
+          await setDoc(docRef, data);
+          return true;
+        } catch(e) {
+          console.error("Firebase Save error:", e);
+          return false;
+        }
+      } else {
+        localStorage.setItem(`rilakkuma_record_${dateStr}`, JSON.stringify(data));
         return true;
-      } catch(e) {
-        console.error("Save error:", e);
-        return false;
       }
     };
 
     window.loadRecordFromDB = async function(dateStr) {
-      if (!window.firebaseApp || !window.firebaseApp.user) return null;
-      const { db, user, appId } = window.firebaseApp;
-      try {
-        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          return docSnap.data();
+      if (window.firebaseApp && window.firebaseApp.user) {
+        const { db, user, appId } = window.firebaseApp;
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'meeting_records', dateStr);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            return docSnap.data();
+          }
+        } catch(e) {
+          console.error("Firebase Load error:", e);
         }
-      } catch(e) {
-        console.error("Load error:", e);
+      } else {
+        const localData = localStorage.getItem(`rilakkuma_record_${dateStr}`);
+        if (localData) return JSON.parse(localData);
       }
       return null;
     };
 
-    // 2. 初始化 Gemini API 翻譯模組
-    const apiKey = "";
     window.translateWithGemini = async function(text) {
       if (!text || text.trim() === '') return { ja: '', en: '' };
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      
+      let apiKey = localStorage.getItem('gemini_api_key');
+      
+      if (!apiKey) {
+        // 純日/英文的 API Key 詢問視窗
+        apiKey = prompt("🐻 自動翻訳には Gemini API Key が必要です！\nAPIキーを入力してください（このPCにのみ保存されます）。\n\nGemini API Key is required for auto-translation!\nPlease enter your API Key (saved locally on this PC only):");
+        if (apiKey && apiKey.trim() !== "") {
+          localStorage.setItem('gemini_api_key', apiKey.trim());
+        } else {
+          console.warn("API Key not entered. Skipping translation.");
+          throw new Error("API Key cancelled");
+        }
+      }
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const payload = {
           contents: [{ parts: [{ text }] }],
           systemInstruction: { parts: [{ text: "You are a professional translator. Translate the given text into highly natural Japanese and English. Respond ONLY with a valid JSON object in this exact format: {\"ja\": \"[Japanese translation]\", \"en\": \"[English translation]\"}. Do not include markdown code blocks or any other text." }] },
           generationConfig: { responseMimeType: "application/json" }
       };
 
-      const delays = [1000, 2000, 4000, 8000, 16000];
-      for (let i = 0; i < 6; i++) {
-          try {
-              const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
-              if (!res.ok) throw new Error("API error");
-              const data = await res.json();
-              const jsonStr = data.candidates[0].content.parts[0].text;
-              return JSON.parse(jsonStr);
-          } catch (err) {
-              if (i === 5) throw err;
-              await new Promise(r => setTimeout(r, delays[i]));
+      try {
+          const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+          if (!res.ok) {
+              if (res.status === 400 || res.status === 403) {
+                  localStorage.removeItem('gemini_api_key');
+                  throw new Error("Invalid API Key");
+              }
+              throw new Error("API error");
           }
+          
+          const data = await res.json();
+          let jsonStr = data.candidates[0].content.parts[0].text;
+          jsonStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
+          return JSON.parse(jsonStr);
+          
+      } catch (err) {
+          console.error(err);
+          throw err;
       }
+    };
+    
+    window.resetApiKey = function() {
+        localStorage.removeItem('gemini_api_key');
+        // 純日/英文的重設確認視窗
+        alert("🐻 API Key を削除しました！次回入力時に再設定してください。\nAPI Key cleared! You will be asked again next time.");
     };
   </script>
 
   <script>
-    // 預設 100 句勵志名言 (每日一句)
     const MOTIVATIONAL_QUOTES = [
       { ja: "どんなに高い山でも、一歩ずつ登れば必ず頂上に着く。", en: "No matter how high the mountain, you will reach the top if you climb step by step." },
       { ja: "失敗は成功の母。", en: "Failure is the mother of success." },
@@ -230,7 +261,6 @@
       { ja: "今日も一日、頑張ろう！", en: "Let's do our best today too!" }
     ];
 
-    // 初始化預設的成員名單 (依據新需求，林昊嬛置於最後)
     const DEFAULT_MEMBERS = [
       { id: 1, name: 'minori kadono', avatar: 'korilakkuma', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
       { id: 2, name: 'yuri kato', avatar: 'kiiroitori', status: 'present', report: '', reportJa: '', reportEn: '', isTranslating: false, lastTranslatedText: '' },
@@ -245,7 +275,6 @@
 
     function meetingApp() {
       return {
-        // 資料狀態
         members: JSON.parse(JSON.stringify(DEFAULT_MEMBERS)),
         announcements: [],
         newMemberName: '',
@@ -254,32 +283,27 @@
         meetingDate: new Date().toISOString().split('T')[0],
         showToast: false,
         toastMessage: '',
-        showAddMemberMenu: false, // 控制新增成員彈出選單
-        dailyQuote: MOTIVATIONAL_QUOTES[0], // 預設
+        showAddMemberMenu: false,
+        dailyQuote: MOTIVATIONAL_QUOTES[0],
 
         async init() {
-          // 計算當天勵志名言 (100日循環)
           const daysSinceEpoch = Math.floor(Date.now() / 86400000);
           const quoteIndex = daysSinceEpoch % 100;
           this.dailyQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
-          // 綁定 Firebase 並載入今天資料
           if (window.initFirebaseSystem) {
             await window.initFirebaseSystem();
             this.loadRecord(this.meetingDate);
           }
 
-          // 監聽日期變化，自動載入當日紀錄
           this.$watch('meetingDate', (newDate) => {
              this.loadRecord(newDate);
           });
         },
 
-        // 載入資料庫紀錄
         async loadRecord(dateStr) {
           const data = await window.loadRecordFromDB(dateStr);
           if (data) {
-            // 為防止舊資料缺少新欄位，進行屬性合併
             this.members = data.members.map(m => ({
                ...m,
                isTranslating: false,
@@ -288,13 +312,11 @@
             this.announcements = data.announcements || [];
             this.triggerToast(`📅 読み込み完了 / Loaded records for ${dateStr}`);
           } else {
-            // 若該日無紀錄，恢復預設空白表單
             this.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
             this.announcements = [];
           }
         },
 
-        // 保存紀錄至資料庫
         async saveRecord() {
           const dataToSave = {
             members: this.members.map(m => ({
@@ -311,7 +333,6 @@
           }
         },
 
-        // 自動雙語翻譯功能
         async autoTranslate(member) {
           const text = member.report.trim();
           if (!text || text === member.lastTranslatedText) return;
@@ -326,12 +347,16 @@
             }
           } catch(e) {
             console.error("Translation failed:", e);
-            this.triggerToast('⚠️ 翻訳エラー / Translation Error');
+            // 翻譯失敗時，優雅降級：不卡死存檔，只跳出日英雙語提示，保留輸入框讓使用者手動輸入
+            if(e.message.includes("cancelled") || e.message.includes("Invalid")) {
+                this.triggerToast('⚠️ 自動翻訳スキップ (手動入力可) / Auto-translation skipped (Manual input available) 🐻');
+            } else {
+                this.triggerToast('⚠️ 翻訳エラー (手動入力可) / Translation Error (Manual input available)');
+            }
           }
           member.isTranslating = false;
         },
 
-        // 轉換出席狀態文字 (雙語)
         getStatusText(status) {
           switch (status) {
             case 'present': return '出席 / Present';
@@ -493,7 +518,6 @@
     }
   </script>
 
-  <!-- 延遲載入 Alpine.js -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
   <style>
@@ -503,7 +527,6 @@
       background-size: 24px 24px;
     }
 
-    /* 🐻 超萌熊頭按鈕樣式 🐻 */
     .bear-btn {
       position: relative;
       display: inline-flex;
@@ -542,7 +565,6 @@
     .bear-btn::before { left: 15px; }
     .bear-btn::after { right: 15px; }
 
-    /* 小白熊、茶色小熊、拉拉熊按鈕變體 */
     .bear-btn-kori { background-color: #faf5eb; color: #3d2109; }
     .bear-btn-kori-ear-inner::before, .bear-btn-kori-ear-inner::after {
       content: ''; position: absolute; top: -6px; width: 10px; height: 10px; background-color: #ff8da1; border-radius: 50%; z-index: 1;
@@ -563,15 +585,13 @@
     .rila-card { border: 3px solid #3d2109; box-shadow: 6px 6px 0px #3d2109; }
     .rila-inset-shadow { box-shadow: inset 0 2px 4px rgba(61, 33, 9, 0.08); }
 
-    /* 列印樣式 */
     @media print {
       body { background: white !important; color: black !important; }
       .no-print { display: none !important; }
       .rila-card { box-shadow: none !important; border: 1px solid #3d2109 !important; }
-      textarea { border: none !important; resize: none !important; }
+      textarea, input { border: none !important; resize: none !important; background: transparent !important; }
     }
 
-    /* 🐻 自訂橫向捲軸樣式 🐻 */
     .horizontal-scroll::-webkit-scrollbar {
       height: 10px;
     }
@@ -594,9 +614,7 @@
 
   <div x-data="meetingApp()" class="container mx-auto px-4 py-8 max-w-6xl">
     
-    <!-- 🥞 HEADER 橫幅區 🥞 -->
     <header class="rila-card bg-rila-light rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
-      <!-- 裝飾背景蜂蜜罐 -->
       <div class="absolute right-4 -top-8 opacity-10 pointer-events-none">
         <svg class="w-48 h-48" viewBox="0 0 100 100" fill="currentColor">
           <path d="M30 20 C30 10, 70 10, 70 20 L80 40 C85 60, 15 60, 20 40 Z"/>
@@ -626,7 +644,6 @@
         </div>
       </div>
 
-      <!-- 日期顯示區 (單行顯示) -->
       <div class="mt-4 md:mt-0 z-10 flex items-center gap-3">
         <span class="text-xs font-bold tracking-wider text-rila-brown bg-[#eddcc4] px-3 py-1 rounded-full whitespace-nowrap">
           DATE
@@ -641,28 +658,22 @@
       </div>
     </header>
 
-    <!-- 🌟 主區格版面 🌟 -->
     <div class="flex flex-col gap-8 items-stretch">
       
-      <!-- 👥 頂部：成員名單區與新增人員 (橫向排列) 👥 -->
       <section class="w-full no-print">
-        
         <div class="rila-card bg-white rounded-3xl p-6 relative">
-          <!-- 頂部：標題與右上角的新增按鈕 -->
           <div class="flex items-center justify-between mb-4 border-b-2 border-dashed border-rila-brown pb-3 relative">
             <h3 class="text-xl font-black flex items-center gap-2">
               🐾 メンバーリスト <br/><span class="text-sm text-rila-brown">Member List</span>
               <span class="text-xs bg-rila-yellow border border-rila-dark px-2 py-0.5 rounded-full whitespace-nowrap" x-text="`${members.length}`"></span>
             </h3>
             
-            <!-- 右上角小加號按鈕 -->
             <button @click="showAddMemberMenu = !showAddMemberMenu" 
                     class="bg-rila-brown hover:bg-yellow-600 text-white border-2 border-rila-dark w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md transition-transform transform hover:scale-110 z-20">
               ＋
             </button>
           </div>
 
-          <!-- 新增成員的浮動選單 (點擊加號後顯示) -->
           <div x-show="showAddMemberMenu" 
                @click.away="showAddMemberMenu = false"
                x-transition.opacity
@@ -685,17 +696,14 @@
             </div>
           </div>
 
-          <!-- 成員列表 (橫向捲動區塊) -->
           <ul class="flex flex-row gap-4 overflow-x-auto pb-4 pt-2 horizontal-scroll">
             <template x-for="(member, index) in members" :key="member.id">
               <li class="flex flex-col items-center p-3 rounded-2xl border-2 border-transparent hover:border-rila-yellow/50 hover:bg-rila-light/40 transition-all duration-150 relative flex-shrink-0 w-32 group">
                 
-                <!-- 移除按鈕 (懸停時顯示於右上角) -->
                 <button @click="removeMember(member.id)" class="absolute top-1 right-1 text-xs text-red-400 hover:text-red-600 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                   🗑️
                 </button>
 
-                <!-- 點選頭像切換出席狀態 -->
                 <div class="cursor-pointer hover:scale-110 transition-transform duration-150 mb-2" @click="cycleStatus(member)">
                   <template x-if="member.avatar === 'rilakkuma'">
                     <svg viewBox="0 0 100 100" class="w-14 h-14 filter drop-shadow"><circle cx="20" cy="25" r="15" fill="#c39b62" /><circle cx="20" cy="25" r="9" fill="#FFDE59" /><circle cx="80" cy="25" r="15" fill="#c39b62" /><circle cx="80" cy="25" r="9" fill="#FFDE59" /><ellipse cx="50" cy="55" rx="41" ry="33" fill="#c39b62" /><ellipse cx="50" cy="65" rx="14" ry="10" fill="#FFFFFF" /><path d="M 46 62 Q 50 67 54 62" fill="none" stroke="#3d2109" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="60" x2="50" y2="63" stroke="#3d2109" stroke-width="3" /><circle cx="32" cy="50" r="4.5" fill="#3d2109" /><circle cx="68" cy="50" r="4.5" fill="#3d2109" /></svg>
@@ -736,10 +744,8 @@
         </div>
       </section>
 
-      <!-- 📝 下半部：主要會議紀錄區 (公佈事項 + 報告) 📝 -->
       <main class="w-full flex flex-col space-y-8">
         
-        <!-- 📢 公佈事項區 📢 -->
         <section class="rila-card bg-[#fffcf5] rounded-3xl p-6 relative">
           <div class="absolute -top-3 -right-3 bg-rila-yellow border-2 border-rila-dark text-xs font-extrabold px-3 py-1 rotate-12 rounded-lg shadow-md no-print">
             HOT 🔥
@@ -792,7 +798,6 @@
           </ul>
         </section>
 
-        <!-- ✍️ 每個人的報告紀錄區 ✍️ -->
         <section class="space-y-6">
           <h3 class="text-xl font-black flex items-center gap-2 text-rila-dark border-b-2 border-rila-dark pb-2">
             🍪 個人レポート / Individual Reports
@@ -842,32 +847,30 @@
                 <div>
                   <template x-if="member.status !== 'absent'">
                     <div>
-                      <!-- 主要文字框，綁定 blur 事件觸發自動翻譯 -->
                       <textarea x-model="member.report" 
                                 @blur="autoTranslate(member)"
                                 placeholder="進捗やタスクを入力（自動翻訳されます）/ Enter report (auto-translated)... ✍️"
                                 rows="2"
                                 class="w-full px-4 py-2 border-2 border-rila-dark/30 rounded-2xl focus:border-rila-brown focus:outline-none bg-rila-light/30 rila-inset-shadow text-sm transition-all duration-150"></textarea>
                       
-                      <!-- 翻譯狀態 -->
                       <div x-show="member.isTranslating" class="text-xs font-bold text-rila-brown mt-1 animate-pulse flex items-center gap-1">
                         <svg class="animate-spin h-3 w-3 text-rila-brown" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         翻訳中 / Translating...
                       </div>
 
-                      <!-- 翻譯結果呈現區 -->
-                      <div x-show="member.reportJa || member.reportEn" class="mt-2 space-y-2 no-print">
-                        <div x-show="member.reportJa" class="bg-[#fcf8f2] p-2.5 rounded-xl border border-rila-brown/30 text-sm flex gap-2">
-                          <span class="font-bold text-xs text-rila-brown whitespace-nowrap mt-0.5">🇯🇵 JA:</span>
-                          <span class="text-rila-dark" x-text="member.reportJa"></span>
+                      <div class="mt-2 space-y-2 no-print">
+                        <div class="bg-[#fcf8f2] p-2.5 rounded-xl border border-rila-brown/30 text-sm flex gap-2 items-center">
+                          <span class="font-bold text-xs text-rila-brown whitespace-nowrap">🇯🇵 JA:</span>
+                          <input type="text" x-model="member.reportJa" placeholder="（手動入力 / Manual JP Input）" 
+                                 class="bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-rila-brown w-full text-rila-dark rounded px-1 transition-all">
                         </div>
-                        <div x-show="member.reportEn" class="bg-[#f2f8fc] p-2.5 rounded-xl border border-[#b2c8d6] text-sm flex gap-2">
-                          <span class="font-bold text-xs text-[#527993] whitespace-nowrap mt-0.5">🇬🇧 EN:</span>
-                          <span class="text-[#2b4151]" x-text="member.reportEn"></span>
+                        <div class="bg-[#f2f8fc] p-2.5 rounded-xl border border-[#b2c8d6] text-sm flex gap-2 items-center">
+                          <span class="font-bold text-xs text-[#527993] whitespace-nowrap">🇬🇧 EN:</span>
+                          <input type="text" x-model="member.reportEn" placeholder="（手動入力 / Manual EN Input）" 
+                                 class="bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-[#527993] w-full text-[#2b4151] rounded px-1 transition-all">
                         </div>
                       </div>
                       
-                      <!-- 列印用雙語顯示 -->
                       <div class="hidden print:block mt-2 text-sm text-gray-700">
                         <p x-show="member.reportJa"><strong>JA:</strong> <span x-text="member.reportJa"></span></p>
                         <p x-show="member.reportEn"><strong>EN:</strong> <span x-text="member.reportEn"></span></p>
@@ -885,7 +888,6 @@
           </div>
         </section>
 
-        <!-- 🌸 每日勵志名言區 (在最後一位成員下方) 🌸 -->
         <div class="mt-4 border-t-2 border-dashed border-rila-brown/40 pt-8 pb-4 text-center select-none rila-card bg-white rounded-3xl">
           <p class="text-xs font-black text-rila-brown/80 tracking-widest uppercase mb-2 flex items-center justify-center gap-2">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
@@ -898,30 +900,28 @@
       
     </div>
 
-    <!-- 🛠️ 底部按鈕控制區 🛠️ -->
     <footer class="mt-12 flex flex-col md:flex-row gap-4 justify-center items-center no-print">
-      <!-- 儲存紀錄 (Firebase) -->
       <button @click="saveRecord()" class="bear-btn bear-btn-koguma bear-btn-koguma-ear-inner px-6 py-3 text-sm md:text-base shadow-lg w-full md:w-auto">
         記録を保存 / Save Record 💾
       </button>
 
-      <!-- 列印 PDF -->
       <button @click="printMinutes()" class="bear-btn bear-btn-rila-ear-inner px-6 py-3 text-sm md:text-base shadow-lg w-full md:w-auto">
         PDFを出力 / Print PDF 🖨️
       </button>
 
-      <!-- 複製純文字 -->
       <button @click="copyMeetingMinutes()" class="bear-btn bear-btn-kori bear-btn-kori-ear-inner px-6 py-3 text-sm md:text-base shadow-lg border-gray-400 w-full md:w-auto">
         議事録をコピー / Copy 📋
       </button>
 
-      <!-- 重設按鈕 -->
       <button @click="resetMeeting()" class="bear-btn bear-btn-kori bear-btn-kori-ear-inner px-6 py-3 text-sm md:text-base shadow-lg text-red-500 border-red-400 w-full md:w-auto">
         リセット / Reset 🧹
       </button>
+      
+      <button onclick="window.resetApiKey()" class="text-xs text-rila-brown underline mt-2 md:mt-0 md:ml-4 hover:text-rila-dark">
+        API Key を変更 / Change API Key
+      </button>
     </footer>
 
-    <!-- 🌟 吐司提示框 🌟 -->
     <div x-show="showToast" 
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform translate-y-4"
