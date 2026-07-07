@@ -234,7 +234,7 @@
       { ja: "ピンチはチャンス。", en: "A crisis is an opportunity." },
       { ja: "前を向いて歩こう。", en: "Keep looking forward." },
       { ja: "未来は自分で創るもの。", en: "The future is what you create." },
-      { ja: "一歩踏み出す勇気。", en: "The courage to take a step forward." },
+      { ja: "一歩踏み出す勇氣。", en: "The courage to take a step forward." },
       { ja: "可能性は無限大。", en: "Possibilities are infinite." },
       { ja: "感謝の気持ちを忘れない。", en: "Never forget a feeling of gratitude." },
       { ja: "笑顔は最高の薬。", en: "A smile is the best medicine." },
@@ -310,6 +310,11 @@
         animationFrame: null,
         winner: null,
 
+        // 🎯 算出プロパティ：出席または遅刻の（ルーレット対象の）メンバーのみを返す
+        get activeMembers() {
+          return this.members.filter(m => m.status !== 'absent');
+        },
+
         async init() {
           const daysSinceEpoch = Math.floor(Date.now() / 86400000);
           const quoteIndex = daysSinceEpoch % 100;
@@ -333,26 +338,34 @@
           this.$watch('meetingDate', (newDate) => {
              this.loadRecord(newDate);
           });
+
+          // 🔄 メンバー変更の監視（ルーレットリセット用）
+          this.$watch('members', () => {
+            this.winner = null;
+          }, { deep: true });
         },
 
-        // --- 🎯 每天隨機 15 題雜談 (4天防撞題) ---
+        // --- 🎯 每天隨機 18 題雜談 (4天防撞題) ---
         initDailyTopic() {
           const TOPICS = [
-            { ja: "最近食べた一番美味しいもの", en: "The most delicious thing you ate recently" },
-            { ja: "おすすめの映画・ドラマ・アニメ", en: "Recommended movie / drama / anime" },
-            { ja: "もし100万円自由に使えたら？", en: "If you had 1 million yen to spend freely?" },
-            { ja: "最近やらかした小さな失敗", en: "A small mistake you made recently" },
-            { ja: "子供の頃の夢は何でしたか？", en: "What was your childhood dream?" },
-            { ja: "今週末の予定ややりたいこと", en: "Plans or things you want to do this weekend" },
-            { ja: "自分を動物に例えるなら何？", en: "If you were an animal, what would you be?" },
-            { ja: "タイムトラベルできるならいつに行く？", en: "If you could time travel, when would you go?" },
-            { ja: "最近一番笑った出来事", en: "The event that made you laugh the most recently" },
-            { ja: "好きな季節とその理由", en: "Favorite season and the reason why" },
-            { ja: "超能力が一つだけ使えるなら何を選ぶ？", en: "If you could use one superpower, what would it be?" },
-            { ja: "会ってみたい歴史上の人物は？", en: "Which historical figure would you like to meet?" },
-            { ja: "よく聴く音楽のジャンルやアーティスト", en: "Favorite music genre or artist you often listen to" },
-            { ja: "私だけのオリジナルストレス発散法", en: "My original way to relieve stress" },
-            { ja: "無人島に一つだけ持っていくなら何？", en: "If you could take one thing to a deserted island, what would it be?" }
+            { ja: "最近の授業で、一番達成感を感じたことは何ですか？", en: "What is the thing you felt the most accomplished about in recent classes?" },
+            { ja: "最近の授業の中で、調整や改善が必要だと感じるレッスンはどれですか？", en: "Which class do you feel needs adjustment or improvement among recent lessons?" },
+            { ja: "最近の授業で落ち込んだり、挫折感を感じたりしたことは何ですか？", en: "What is something that made you feel frustrated or discouraged in recent classes?" },
+            { ja: "最近の授業で誇らしく思った生徒は誰ですか？その理由は何ですか？", en: "Who is a student you felt proud of in recent classes, and why?" },
+            { ja: "最近の授業でサポートや手助けが必要だと感じる生徒は誰ですか？その理由は何ですか？", en: "Who is a student you feel needs extra help or support in recent classes, and why?" },
+            { ja: "生徒たちを授業に集中させるために、どのような工夫や方法を使っていますか？", en: "What methods or strategies do you use to keep students focused during class?" },
+            { ja: "生徒たちの好奇心を引き出すために、どのようなアプローチが効果的だと思いますか？", en: "What ways do you think could be used to spark students' curiosity?" },
+            { ja: "最近の授業で、パートナーや同僚からのサポートが必要だと感じる部分はありますか？", en: "Is there anything in your recent classes where you feel you need help from your partners?" },
+            { ja: "最近、疲れたなと感じることは何ですか？", en: "What has been making you feel tired or exhausted lately?" },
+            { ja: "最近、とても達成感を感じた出来事は何ですか？", en: "What is something that has given you a great sense of accomplishment recently?" },
+            { ja: "最近の授業の中で、調整が必要だと思うアクティビティや学習内容を一つ教えてください。", en: "Name one activity or content in recent classes that you think needs to be adjusted." },
+            { ja: "最近の授業で、生徒たちの反応が最も良かった学習内容や活動を一つ教えてください。", en: "Name one lesson content or activity where students had the best response recently?" },
+            { ja: "ストレスが溜まっているときに、解消するためにすること（ストレス解消法）をシェアしてください。", en: "Share what you usually do when you are under a lot of stress." },
+            { ja: "自分をリラックスさせてくれることや、リラックスできる瞬間をシェアしてください。", en: "Share something that helps you relax or wind down." },
+            { ja: "おすすめの英語の絵本があれば、ぜひみんなに紹介してください。", en: "Share an English picture book that you highly recommend." },
+            { ja: "最近気づいたことや、新しく発見したことをシェアしてください。", en: "Share a new discovery or something you realized recently." },
+            { ja: "最近、スムーズに、または無事に完了できたことをシェアしてください。", en: "Share something that you have successfully or smoothly completed recently." },
+            { ja: "最近、パートナーや同僚と話し合ったこと、議論したことをシェアしてください。", en: "Share something you discussed or consulted with your partners recently." }
           ];
 
           const todayStr = new Date().toISOString().split('T')[0];
@@ -391,24 +404,28 @@
 
         // --- 🥞 轉盤控制邏輯 ---
         toggleSpin() {
+          const activeM = this.activeMembers;
           if (this.isSpinning) {
             // 按下停止
             this.isSpinning = false;
             cancelAnimationFrame(this.animationFrame);
             
             // 計算是誰中獎
-            if (this.members.length > 0) {
+            if (activeM.length > 0) {
                const actualRotation = this.currentAngle % 360;
-               const sliceAngle = 360 / this.members.length;
+               const sliceAngle = 360 / activeM.length;
                // 修正因為 conic-gradient 和順時針旋轉產生的角度差
                const pointedAngle = (360 - actualRotation) % 360;
                const winnerIndex = Math.floor(pointedAngle / sliceAngle);
-               this.winner = this.members[winnerIndex].name;
+               this.winner = activeM[winnerIndex].name;
                this.triggerToast(`🎉 ${this.winner} の番です！ / It's ${this.winner}'s turn! 🥞`);
             }
           } else {
             // 按下開始
-            if (this.members.length === 0) return;
+            if (activeM.length === 0) {
+              this.triggerToast('⚠️ ルーレットに参加できるメンバーがいません / No members available for the wheel.');
+              return;
+            }
             this.isSpinning = true;
             this.winner = null;
             this.animateSpin();
@@ -421,12 +438,14 @@
           this.animationFrame = requestAnimationFrame(() => this.animateSpin());
         },
 
-        getWheelGradient() {
-          if (this.members.length === 0) return 'transparent';
+        // 🎨 轉盤背景グラデーションを動的に取得 (activeMembers の数とリアルタイム連動)
+        getWheelGradient(activeCount) {
+          const activeM = this.activeMembers;
+          if (activeM.length === 0) return 'transparent';
           const colors = ['#ffde59', '#ffb347', '#ff8da1', '#c39b62', '#e2f0d9', '#fdf8f2'];
-          const slice = 360 / this.members.length;
+          const slice = 360 / activeM.length;
           let stops = [];
-          for(let i=0; i < this.members.length; i++) {
+          for(let i=0; i < activeM.length; i++) {
             const color = colors[i % colors.length];
             stops.push(`${color} ${i * slice}deg ${(i + 1) * slice}deg`);
           }
@@ -588,7 +607,7 @@
         },
 
         copyMeetingMinutes() {
-          let text = `🐻【会議議事録 / Meeting Minutes】🍯\n`;
+          let text = `🐻【會議議事錄 / Meeting Minutes】🍯\n`;
           text += `📅 日付/Date：${this.formatDate(this.meetingDate)}\n`;
           text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -770,7 +789,7 @@
             IGK のあしあと 🍯
           </h1>
           <p class="text-sm font-bold text-rila-brown mt-1">
-           talk talk
+            talk talk
           </p>
         </div>
       </div>
@@ -891,27 +910,40 @@
 
           <div class="flex flex-col items-center justify-center border-t-2 md:border-t-0 md:border-l-2 border-dashed border-rila-brown/40 pt-6 md:pt-0 pl-0 md:pl-6 min-w-[220px]">
             <h3 class="text-lg font-black mb-3 text-rila-dark">🎯 ルーレット</h3>
-            <div class="relative w-48 h-48 rounded-full border-4 border-rila-dark shadow-lg overflow-hidden bg-white">
-               <div class="absolute inset-0 rounded-full"
-                    :style="`transform: rotate(${currentAngle}deg); background: ${getWheelGradient()}`">
-                  <template x-for="(m, i) in members">
-                     <div class="absolute w-full h-full flex items-center justify-center pointer-events-none origin-center"
-                          :style="`transform: rotate(${i * (360/members.length) + (180/members.length)}deg)`">
-                        <span class="text-[10px] font-black text-rila-dark translate-y-[-65px] whitespace-nowrap bg-white/70 px-1.5 py-0.5 rounded shadow-sm" x-text="m.name"></span>
-                     </div>
-                  </template>
-               </div>
-               <div class="absolute top-0 left-1/2 -ml-2.5 -mt-1 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-red-600 z-20 drop-shadow-md"></div>
-               
-               <button @click="toggleSpin()" 
-                       class="absolute inset-0 m-auto w-14 h-14 bg-white rounded-full border-4 border-rila-dark shadow-md flex items-center justify-center text-3xl z-10 hover:scale-110 active:scale-95 transition-transform"
-                       :class="{'animate-pulse bg-rila-yellow shadow-[0_0_15px_rgba(255,222,89,0.8)]': isSpinning}">
-                  🥞
-               </button>
-            </div>
+            
+            <!-- ルーレット盤：activeMembers が 1 人以上のとき表示 -->
+            <template x-if="activeMembers.length > 0">
+              <div class="relative w-48 h-48 rounded-full border-4 border-rila-dark shadow-lg overflow-hidden bg-white">
+                 <div class="absolute inset-0 rounded-full transition-transform duration-75"
+                      :style="`transform: rotate(${currentAngle}deg); background: ${getWheelGradient(activeMembers.length)}`">
+                    <template x-for="(m, i) in activeMembers" :key="m.id">
+                       <div class="absolute w-full h-full flex items-center justify-center pointer-events-none origin-center"
+                            :style="`transform: rotate(${i * (360/activeMembers.length) + (180/activeMembers.length)}deg)`">
+                          <span class="text-[10px] font-black text-rila-dark translate-y-[-65px] whitespace-nowrap bg-white/70 px-1.5 py-0.5 rounded shadow-sm" x-text="m.name"></span>
+                       </div>
+                    </template>
+                 </div>
+                 <div class="absolute top-0 left-1/2 -ml-2.5 -mt-1 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-red-600 z-20 drop-shadow-md"></div>
+                 
+                 <button @click="toggleSpin()" 
+                         class="absolute inset-0 m-auto w-14 h-14 bg-white rounded-full border-4 border-rila-dark shadow-md flex items-center justify-center text-3xl z-10 hover:scale-110 active:scale-95 transition-transform"
+                         :class="{'animate-pulse bg-rila-yellow shadow-[0_0_15px_rgba(255,222,89,0.8)]': isSpinning}">
+                   🥞
+                 </button>
+              </div>
+            </template>
+
+            <!-- ルーレット盤プレースホルダー：出席メンバーがいない（全員欠席）とき表示 -->
+            <template x-if="activeMembers.length === 0">
+              <div class="w-48 h-48 rounded-full border-4 border-dashed border-gray-300 flex flex-col items-center justify-center text-center p-4 bg-gray-50/50">
+                <span class="text-3xl mb-1">💤</span>
+                <span class="text-xs font-bold text-gray-400">出席メンバーが<br>いません</span>
+                <span class="text-[10px] text-gray-300">No active members</span>
+              </div>
+            </template>
             
             <div class="mt-4 text-base font-black text-rila-dark min-h-[1.5rem] bg-rila-yellow px-4 py-1 rounded-full border-2 border-rila-dark shadow-sm" 
-                 x-show="winner" x-transition>
+                 x-show="winner && activeMembers.length > 0" x-transition>
               👑 <span x-text="winner"></span>
             </div>
           </div>
