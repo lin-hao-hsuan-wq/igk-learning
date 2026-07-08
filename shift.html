@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IGK Shift Scheduler</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      background-color: #FAFAFA;
+      color: #1F2937;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #F3F4F6;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app" class="min-h-screen flex flex-col justify-between relative">
+
+  <!-- ================= NOTIFICATION TOAST (REPLACES ALERT) ================= -->
+  <div 
+    v-if="toast.visible" 
+    :class="[
+      'fixed top-5 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3.5 rounded-xl shadow-2xl transition-all duration-300 flex items-center space-x-3 text-sm font-semibold max-w-md w-11/12 border',
+      toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+    ]"
+  >
+    <span v-if="toast.type === 'success'" class="text-lg">✓</span>
+    <span v-else class="text-lg">⚠️</span>
+    <span class="flex-grow">{{ toast.message }}</span>
+    <button @click="toast.visible = false" class="opacity-60 hover:opacity-100 font-bold ml-2">✕</button>
+  </div>
+
+  <!-- ================= HEADER (NAVBAR) ================= -->
+  <header class="bg-white border-b border-gray-100 py-4 px-6 flex justify-between items-center sticky top-0 z-40 shadow-sm">
+    <div class="flex items-center space-x-3">
+      <!-- IGK Logo trigger for Admin -->
+      <span 
+        @click="triggerAdminModal" 
+        class="text-2xl font-black tracking-widest cursor-pointer select-none text-gray-900 hover:text-indigo-600 transition-colors duration-200"
+        title="Admin Portal"
+      >
+        IGK
+      </span>
+      <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-mono">v2.0</span>
+    </div>
+    
+    <div class="flex items-center space-x-4">
+      <!-- Language Switcher -->
+      <button 
+        @click="toggleLanguage" 
+        class="text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-full bg-white hover:bg-gray-50 transition shadow-xs"
+      >
+        {{ lang === 'ja' ? 'English' : '日本語' }}
+      </button>
+
+      <!-- Logged in state info -->
+      <div v-if="currentUser" class="flex items-center space-x-2 text-sm text-gray-600">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        <span class="font-medium">{{ currentUser.name }} ({{ currentUser.role === 'admin' ? t('admin') : t('staff') }})</span>
+        <button @click="logout" class="text-xs text-red-500 hover:underline ml-2">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="flex-grow flex flex-col">
+
+    <!-- ================= 1. LOGIN SCREEN ================= -->
+    <div v-if="!currentUser" class="flex-grow flex items-center justify-center p-6 bg-gradient-to-b from-white to-gray-50">
+      <div class="bg-white border border-gray-100 p-8 rounded-2xl shadow-xl w-full max-w-md relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gray-900"></div>
+        
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-black text-gray-900 tracking-wide">IGK</h2>
+          <p class="text-sm text-gray-500 mt-1 font-medium">{{ t('welcomeMsg') }}</p>
+        </div>
+
+        <div class="space-y-5">
+          <!-- Name Search Autocomplete -->
+          <div class="relative">
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{{ t('staffName') }}</label>
+            <input 
+              type="text" 
+              v-model="loginSearchName" 
+              @focus="showAutocomplete = true"
+              @input="filterUsers"
+              placeholder="e.g. Mikuma"
+              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 transition text-sm"
+            >
+            <!-- Dropdown autocomplete -->
+            <ul v-if="showAutocomplete && filteredUsers.length > 0" class="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
+              <li 
+                v-for="user in filteredUsers" 
+                :key="user.name"
+                @click="selectLoginUser(user.name)"
+                class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm flex justify-between items-center transition"
+              >
+                <span class="font-medium text-gray-800">{{ user.name }}</span>
+                <span v-if="user.isFirstLogin" class="text-2xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded font-bold border border-amber-100">NEW</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Password Input -->
+          <div>
+            <div class="flex justify-between mb-2">
+              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">{{ t('password') }}</label>
+              <span class="text-2xs text-gray-400 font-sans">{{ t('firstLoginHint') }}</span>
+            </div>
+            <div class="relative">
+              <input 
+                :type="showPassword ? 'text' : 'password'" 
+                v-model="loginPassword" 
+                placeholder="••••••••"
+                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 transition text-sm"
+              >
+              <button 
+                type="button" 
+                @click="showPassword = !showPassword"
+                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+              >
+                <span class="text-xs font-semibold">{{ showPassword ? 'HIDE' : 'SHOW' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <button 
+            @click="attemptLogin" 
+            class="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold tracking-wide transition shadow-md hover:shadow-lg mt-6 text-sm"
+          >
+            {{ t('loginBtn') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 2. PART-TIMER (アルバイト) VIEW ================= -->
+    <div v-if="currentUser && currentUser.role === 'staff'" class="flex-grow flex flex-col md:flex-row">
+      <!-- Sidebar -->
+      <aside class="w-full md:w-64 bg-white border-r border-gray-100 p-6 flex md:flex-col space-y-0 md:space-y-2 md:space-x-0 space-x-2 border-b md:border-b-0">
+        <button 
+          @click="activeStaffTab = 'current'"
+          :class="['w-full py-3 px-4 rounded-xl font-semibold flex items-center space-x-3 transition text-sm', activeStaffTab === 'current' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900']"
+        >
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+          <span>{{ t('currentMonthTab') }}</span>
+        </button>
+        <button 
+          @click="activeStaffTab = 'future'"
+          :class="['w-full py-3 px-4 rounded-xl font-semibold flex items-center space-x-3 transition text-sm', activeStaffTab === 'future' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900']"
+        >
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+          <span>{{ t('futureMonthTab') }}</span>
+        </button>
+      </aside>
+
+      <!-- Calendar Container -->
+      <section class="flex-grow p-6 md:p-8 max-w-7xl mx-auto w-full">
+        <!-- Announcements / Alerts Area -->
+        <div class="mb-6 space-y-3">
+          <!-- Deadline Banner -->
+          <div class="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded-xl flex items-center space-x-3 text-sm">
+            <span class="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+            <div class="flex-grow flex flex-wrap justify-between items-center gap-2">
+              <span><strong>{{ t('deadlineNotice') }}:</strong> {{ deadlineDay }}{{ t('deadlineDaySuffix') }} ({{ currentYear }}/{{ currentMonth + 1 }}/{{ deadlineDay }})</span>
+              <span class="text-xs text-gray-400 font-mono">{{ t('changeableTill') }}</span>
+            </div>
+          </div>
+
+          <!-- Transport Receipt Alert (Only shows from 15th to 17th) -->
+          <div v-if="isTransportReceiptDay" class="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-xl flex items-start space-x-3 shadow-sm">
+            <span class="text-xl">⚠️</span>
+            <div>
+              <strong class="block font-bold text-sm">{{ t('receiptAlertTitle') }}</strong>
+              <span class="text-xs opacity-90">{{ t('receiptAlertDesc') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 1: Current Month Calendar (View-Only) -->
+        <div v-if="activeStaffTab === 'current'" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold tracking-tight text-gray-900">
+              {{ currentYear }}年 {{ currentMonth + 1 }}月 {{ t('scheduleOf') }} ({{ currentUser.name }})
+            </h3>
+          </div>
+          <!-- Calendar Grid -->
+          <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+            <!-- Weekdays Header -->
+            <div v-for="day in weekdays" :key="day.en" class="bg-gray-50 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              {{ lang === 'ja' ? day.ja : day.en }}
+            </div>
+            <!-- Month Days -->
+            <div 
+              v-for="(day, index) in currentMonthDays" 
+              :key="index"
+              :class="['min-h-[100px] bg-white p-2 flex flex-col justify-between transition', day.isToday ? 'bg-blue-50/30' : '']"
+            >
+              <div class="flex justify-between items-start">
+                <span :class="['text-sm font-semibold rounded-full w-6 h-6 flex items-center justify-center', 
+                  day.isToday ? 'bg-gray-900 text-white' : '',
+                  day.holiday ? 'text-red-500 bg-red-50' : (day.dayOfWeek === 0 ? 'text-red-500' : (day.dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'))
+                ]">
+                  {{ day.date }}
+                </span>
+                <span v-if="day.holiday" class="text-[9px] text-red-500 font-bold max-w-[65px] truncate text-right bg-red-50 px-1 rounded" :title="day.holiday">
+                  {{ day.holiday }}
+                </span>
+              </div>
+              <!-- Assigned Shift Details -->
+              <div v-if="getStaffConfirmedShift(day.fullDate)" class="mt-2">
+                <button 
+                  @click="showShiftDetails(day.fullDate)"
+                  class="w-full text-left bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-700 text-xs py-1.5 px-2 rounded-lg transition-all"
+                >
+                  <div class="font-bold flex justify-between">
+                    <span>🕒 {{ getStaffConfirmedShift(day.fullDate).time }}</span>
+                  </div>
+                  <div class="text-2xs opacity-75 truncate">
+                    {{ getStaffConfirmedShiftDetailsString(day.fullDate) }}
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Future Month Calendar (Availability Input) -->
+        <div v-if="activeStaffTab === 'future'" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+          <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
+            <div>
+              <h3 class="text-xl font-bold tracking-tight text-gray-900">
+                {{ futureYear }}年 {{ futureMonth + 1 }}月 {{ t('submittingTitle') }}
+              </h3>
+              <p class="text-xs text-gray-400 mt-0.5">{{ t('submissionGuideline') }}</p>
+            </div>
+            <!-- Lock indicator -->
+            <span v-if="isSubmissionLocked" class="bg-red-50 text-red-600 border border-red-100 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1.5">
+              <span>🔒 {{ t('locked') }}</span>
+            </span>
+            <span v-else class="bg-green-50 text-green-600 border border-green-100 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1.5 animate-pulse">
+              <span>🔓 {{ t('editable') }}</span>
+            </span>
+          </div>
+
+          <!-- Calendar Grid -->
+          <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+            <!-- Weekdays Header -->
+            <div v-for="day in weekdays" :key="day.en" class="bg-gray-50 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              {{ lang === 'ja' ? day.ja : day.en }}
+            </div>
+            <!-- Month Days -->
+            <div 
+              v-for="(day, index) in futureMonthDays" 
+              :key="index"
+              @click="!isSubmissionLocked && openAvailabilityModal(day)"
+              :class="[
+                'min-h-[110px] bg-white p-2 flex flex-col justify-between transition-all select-none',
+                isSubmissionLocked ? 'cursor-not-allowed opacity-90' : 'cursor-pointer hover:bg-gray-50/50',
+                isCopyMode && copyTargetDates.includes(day.fullDate) ? 'ring-2 ring-indigo-500 bg-indigo-50/20' : ''
+              ]"
+            >
+              <div class="flex justify-between items-start">
+                <span :class="['text-sm font-semibold rounded-full w-6 h-6 flex items-center justify-center', 
+                  day.holiday ? 'text-red-500 bg-red-50' : (day.dayOfWeek === 0 ? 'text-red-500' : (day.dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-700'))
+                ]">
+                  {{ day.date }}
+                </span>
+                <span v-if="day.holiday" class="text-[9px] text-red-500 font-bold max-w-[65px] truncate text-right bg-red-50 px-1 rounded" :title="day.holiday">
+                  {{ day.holiday }}
+                </span>
+              </div>
+              
+              <!-- Submitted Availability Hours -->
+              <div class="mt-2">
+                <div v-if="getStaffSubmittedAvailability(day.fullDate)" class="bg-indigo-50/80 border border-indigo-100 text-indigo-700 text-xs py-1 px-2 rounded-lg font-bold flex justify-between items-center">
+                  <span>{{ getStaffSubmittedAvailability(day.fullDate) }}</span>
+                  <span v-if="!isSubmissionLocked" class="text-[10px] opacity-50">✍️</span>
+                </div>
+                <div v-else class="text-center py-2 text-2xs text-gray-300">
+                  {{ isSubmissionLocked ? t('noAvailability') : t('clickToSet') }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= 3. ADMIN (管理者) VIEW ================= -->
+    <div v-if="currentUser && currentUser.role === 'admin'" class="flex-grow flex flex-col">
+      <!-- Admin Navigation Tabs -->
+      <div class="bg-white border-b border-gray-100 px-6 py-3 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex space-x-2">
+          <button 
+            @click="activeAdminTab = 'current'"
+            :class="['px-4 py-2 text-sm font-semibold rounded-lg transition', activeAdminTab === 'current' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50']"
+          >
+            {{ t('adminCurrentMonth') }}
+          </button>
+          <button 
+            @click="activeAdminTab = 'future'"
+            :class="['px-4 py-2 text-sm font-semibold rounded-lg transition', activeAdminTab === 'future' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50']"
+          >
+            {{ t('adminFutureMonth') }}
+          </button>
+          <!-- Added Staff Management Tab -->
+          <button 
+            @click="activeAdminTab = 'staff'"
+            :class="['px-4 py-2 text-sm font-semibold rounded-lg transition flex items-center space-x-1', activeAdminTab === 'staff' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50']"
+          >
+            <span>👤 {{ t('staffManagement') }}</span>
+          </button>
+        </div>
+
+        <!-- Deadline setting -->
+        <div class="flex items-center space-x-2 text-sm bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+          <span class="font-semibold text-gray-700 text-xs">{{ t('configDeadline') }}:</span>
+          <select v-model="deadlineDay" class="bg-white border border-gray-200 rounded px-1 text-xs py-0.5 focus:outline-none focus:ring-1 focus:ring-gray-900">
+            <option v-for="d in 28" :key="d" :value="d">{{ d }}</option>
+          </select>
+          <span class="text-xs text-gray-500">{{ t('deadlineDaySuffix') }}</span>
+        </div>
+      </div>
+
+      <div class="p-6 flex-grow max-w-[1600px] w-full mx-auto">
+        <!-- ================= ADMIN TAB: CURRENT MONTH VIEW ================= -->
+        <div v-if="activeAdminTab === 'current'" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 overflow-x-auto">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-900">{{ currentYear }}年 {{ currentMonth + 1 }}月 {{ t('masterSchedule') }}</h3>
+            <span class="text-xs bg-green-50 border border-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✔️ {{ t('liveMode') }}</span>
+          </div>
+
+          <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+            <div v-for="day in weekdays" :key="day.en" class="bg-gray-50 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              {{ lang === 'ja' ? day.ja : day.en }}
+            </div>
+            
+            <div 
+              v-for="(day, index) in currentMonthDays" 
+              :key="index"
+              @click="openAdminEditModal(day)"
+              class="min-h-[220px] bg-white p-3 flex flex-col justify-between hover:bg-gray-50/50 transition border-r border-b border-gray-100 cursor-pointer"
+            >
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-sm font-bold text-gray-800">{{ day.date }}</span>
+                <span v-if="day.holiday" class="text-[10px] text-red-500 font-bold bg-red-50 px-1 rounded truncate max-w-[70px]" :title="day.holiday">
+                  {{ day.holiday }}
+                </span>
+              </div>
+
+              <!-- Main Shifts (Teachers) -->
+              <div class="flex-grow space-y-1.5 overflow-y-auto max-h-[140px] custom-scrollbar text-2xs">
+                <!-- Grouped by hours -->
+                <div v-for="(staffs, time) in getGroupedShiftsForDay(day.fullDate)" :key="time" class="bg-gray-50 border border-gray-100 p-1.5 rounded-md">
+                  <div class="font-bold text-gray-700 mb-0.5 border-b border-gray-200/50 pb-0.5">{{ time }}</div>
+                  <div v-for="staff in staffs" :key="staff" class="text-gray-600 font-medium ml-1">
+                    • {{ staff }}
+                  </div>
+                </div>
+
+                <!-- Driver Shifts View -->
+                <div v-if="getDriverShiftsForDay(day.fullDate).hasDrivers" class="bg-amber-50/60 border border-amber-100 p-1.5 rounded-md mt-2">
+                  <div class="font-bold text-amber-800 border-b border-amber-200/50 pb-0.5 mb-1 flex justify-between">
+                    <span>🚗 Route Drivers</span>
+                  </div>
+                  <!-- Outbound -->
+                  <div class="space-y-0.5">
+                    <div v-if="getDriverShiftsForDay(day.fullDate).outA" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('outward') }} A:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).outA }}</strong>
+                    </div>
+                    <div v-if="getDriverShiftsForDay(day.fullDate).outB" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('outward') }} B:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).outB }}</strong>
+                    </div>
+                    <div v-if="getDriverShiftsForDay(day.fullDate).outC" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('outward') }} C:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).outC }}</strong>
+                    </div>
+                  </div>
+                  <!-- Return -->
+                  <div class="border-t border-amber-100/50 my-1"></div>
+                  <div class="space-y-0.5">
+                    <div v-if="getDriverShiftsForDay(day.fullDate).retA" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('returnTrip') }} A:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).retA }}</strong>
+                    </div>
+                    <div v-if="getDriverShiftsForDay(day.fullDate).retB" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('returnTrip') }} B:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).retB }}</strong>
+                    </div>
+                    <div v-if="getDriverShiftsForDay(day.fullDate).retC" class="flex justify-between text-[10px] text-gray-700">
+                      <span>{{ t('returnTrip') }} C:</span> <strong class="text-gray-900">{{ getDriverShiftsForDay(day.fullDate).retC }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ADMIN TAB: FUTURE MONTH CONFIRMATION ================= -->
+        <div v-if="activeAdminTab === 'future'" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+          <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
+            <div>
+              <h3 class="text-xl font-bold text-gray-900">{{ futureYear }}年 {{ futureMonth + 1 }}月 {{ t('futureMonthVerification') }}</h3>
+              <p class="text-xs text-gray-400 mt-1">{{ t('adminDirections') }}</p>
+            </div>
+            <!-- Apply preset trigger -->
+            <button 
+              @click="applyDefaultPresetToFuture"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+            >
+              🚀 <span>{{ t('applyPresetBtn') }}</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+            <div v-for="day in weekdays" :key="day.en" class="bg-gray-50 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              {{ lang === 'ja' ? day.ja : day.en }}
+            </div>
+            
+            <div 
+              v-for="(day, index) in futureMonthDays" 
+              :key="index"
+              @click="openAdminEditModal(day)"
+              class="min-h-[220px] bg-white p-3 flex flex-col justify-between hover:bg-gray-50 cursor-pointer transition border-r border-b border-gray-100 relative group"
+            >
+              <div class="flex justify-between items-start">
+                <span class="text-sm font-bold text-gray-800">{{ day.date }}</span>
+                <span v-if="day.holiday" class="text-[10px] text-red-500 font-bold bg-red-50 px-1 rounded truncate max-w-[70px]" :title="day.holiday">
+                  {{ day.holiday }}
+                </span>
+              </div>
+
+              <!-- Re-submission or Draft state badge -->
+              <div class="absolute top-2 right-2 flex flex-col space-y-1 items-end">
+                <span v-if="checkIfAvailabilityChangedSinceSave(day.fullDate)" class="text-[9px] bg-rose-500 text-white px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                  ⚠️ {{ t('updatedTag') }}
+                </span>
+                <span v-if="getConfirmedShiftsState(day.fullDate) === 'published'" class="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">LIVE</span>
+                <span v-else-if="getConfirmedShiftsState(day.fullDate) === 'draft'" class="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">DRAFT</span>
+              </div>
+
+              <!-- Admin Shifts display with conflict indicators -->
+              <div class="flex-grow space-y-1.5 overflow-y-auto max-h-[140px] custom-scrollbar text-2xs mt-2">
+                <!-- Grouped by hours -->
+                <div v-for="(staffs, time) in getGroupedShiftsForDay(day.fullDate)" :key="time" class="bg-indigo-50/50 border border-indigo-100 p-1.5 rounded-md">
+                  <div class="font-bold text-indigo-950 border-b border-indigo-100/50 pb-0.5 mb-0.5">{{ time }}</div>
+                  <div v-for="staff in staffs" :key="staff" class="font-medium">
+                    <!-- If conflict exists (assigned but not submitted availability), strike through and paint red -->
+                    <span :class="isStaffConflicting(day.fullDate, staff) ? 'line-through text-red-500 font-bold' : 'text-gray-600'">
+                      • {{ staff }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Driver Shifts -->
+                <div v-if="getDriverShiftsForDay(day.fullDate).hasDrivers" class="bg-gray-50 border border-gray-200 p-1.5 rounded-md mt-2">
+                  <div class="font-bold text-gray-700 border-b border-gray-200 pb-0.5 mb-1 text-[10px]">🚗 Route Drivers</div>
+                  <div class="space-y-0.5 text-[9px] text-gray-600">
+                    <span v-if="getDriverShiftsForDay(day.fullDate).outA" class="block">
+                      {{ t('outward') }} A: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).outA) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).outA }}</strong>
+                    </span>
+                    <span v-if="getDriverShiftsForDay(day.fullDate).outB" class="block">
+                      {{ t('outward') }} B: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).outB) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).outB }}</strong>
+                    </span>
+                    <span v-if="getDriverShiftsForDay(day.fullDate).outC" class="block">
+                      {{ t('outward') }} C: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).outC) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).outC }}</strong>
+                    </span>
+                    <span v-if="getDriverShiftsForDay(day.fullDate).retA" class="block">
+                      {{ t('returnTrip') }} A: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).retA) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).retA }}</strong>
+                    </span>
+                    <span v-if="getDriverShiftsForDay(day.fullDate).retB" class="block">
+                      {{ t('returnTrip') }} B: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).retB) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).retB }}</strong>
+                    </span>
+                    <span v-if="getDriverShiftsForDay(day.fullDate).retC" class="block">
+                      {{ t('returnTrip') }} C: <strong :class="isStaffConflicting(day.fullDate, getDriverShiftsForDay(day.fullDate).retC) ? 'line-through text-red-500 font-bold' : ''">{{ getDriverShiftsForDay(day.fullDate).retC }}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Hint -->
+              <div class="text-[9px] text-center text-gray-400 mt-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                ✏️ {{ t('clickToEdit') }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ADMIN TAB: STAFF MANAGEMENT ================= -->
+        <div v-if="activeAdminTab === 'staff'" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Add New Staff Form Card -->
+            <div class="bg-gray-50/50 border border-gray-100 p-6 rounded-xl h-fit">
+              <h4 class="text-base font-bold text-gray-900 mb-4 flex items-center space-x-1.5">
+                <span>👤</span>
+                <span>{{ t('addStaffBtn') }}</span>
+              </h4>
+              <div class="space-y-4 text-xs">
+                <div>
+                  <label class="block font-semibold text-gray-700 mb-1.5">{{ t('staffNameLabel') }}</label>
+                  <input 
+                    type="text" 
+                    v-model="newStaffForm.name" 
+                    placeholder="e.g. Kenji"
+                    class="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                </div>
+                <div>
+                  <label class="block font-semibold text-gray-700 mb-1.5">{{ t('initialPasswordLabel') }}</label>
+                  <input 
+                    type="text" 
+                    disabled 
+                    value="igk123" 
+                    class="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 font-mono"
+                  >
+                </div>
+                <button 
+                  @click="addStaffMember"
+                  class="w-full py-2.5 bg-gray-900 hover:bg-black text-white rounded-lg font-bold transition shadow-xs"
+                >
+                  ＋ {{ t('addStaffBtn') }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Existing Staff Members List Table -->
+            <div class="lg:col-span-2 overflow-x-auto">
+              <h4 class="text-base font-bold text-gray-900 mb-4">{{ t('staffListTitle') }}</h4>
+              <table class="w-full border border-gray-100 rounded-xl text-xs divide-y divide-gray-100 overflow-hidden">
+                <thead class="bg-gray-50 text-gray-600 font-semibold">
+                  <tr>
+                    <th class="p-3 text-left">{{ t('staffNameLabel') }}</th>
+                    <th class="p-3 text-left">Role</th>
+                    <th class="p-3 text-left">{{ t('emailNotification') }}</th>
+                    <th class="p-3 text-right">{{ t('action') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 bg-white text-gray-700">
+                  <tr v-for="u in users" :key="u.name" class="hover:bg-gray-50/40">
+                    <td class="p-3">
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold">{{ u.name }}</span>
+                        <span v-if="u.isFirstLogin" class="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold">NEW</span>
+                      </div>
+                    </td>
+                    <td class="p-3 uppercase font-mono text-[10px] tracking-wider">
+                      {{ u.role }}
+                    </td>
+                    <td class="p-3">
+                      <div v-if="u.optInEmail" class="text-green-600 flex items-center space-x-1 font-medium">
+                        <span>✓</span> <span class="truncate max-w-[150px] text-[11px]">{{ u.notifyEmail }}</span>
+                      </div>
+                      <div v-else class="text-gray-400">
+                        ✕
+                      </div>
+                    </td>
+                    <td class="p-3 text-right space-x-1">
+                      <button 
+                        @click="resetStaffPassword(u.name)" 
+                        class="px-2.5 py-1.5 border border-gray-200 hover:bg-gray-50 rounded text-[10px] font-semibold transition"
+                      >
+                        🔄 {{ t('resetPassword') }}
+                      </button>
+                      <button 
+                        @click="deleteStaffMember(u.name)" 
+                        class="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 rounded text-[10px] font-semibold transition"
+                      >
+                        🗑️ {{ t('delete') }}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-white border-t border-gray-100 py-6 text-center text-xs text-gray-400 font-mono">
+    &copy; 2026 IGK International. All Rights Reserved.
+  </footer>
+
+  <!-- ========================================== MODALS ========================================== -->
+
+  <!-- 1. Secret Admin Login Modal -->
+  <div v-if="showAdminLoginModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white border border-gray-100 p-8 rounded-2xl max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+      <h3 class="text-lg font-black text-gray-900 tracking-wide mb-2 uppercase">{{ t('adminPortalTitle') }}</h3>
+      <p class="text-xs text-gray-400 mb-6 font-medium">{{ t('adminPrompt') }}</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Admin Password</label>
+          <input 
+            type="password" 
+            v-model="adminPasswordInput" 
+            placeholder="••••"
+            @keyup.enter="authenticateAdmin"
+            class="text-center w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 transition tracking-widest text-lg"
+          >
+          <p class="text-2xs text-gray-400 mt-1">Hint: 0004</p>
+        </div>
+
+        <div class="flex space-x-3 mt-6">
+          <button @click="showAdminLoginModal = false" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold transition text-sm">
+            Cancel
+          </button>
+          <button @click="authenticateAdmin" class="w-1/2 py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition text-sm">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Force Change Password Modal & Notification Opt-In (First Time User) -->
+  <div v-if="showForcePasswordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white border border-gray-100 p-8 rounded-2xl max-w-md w-full shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-150">
+      <h3 class="text-lg font-black text-gray-900 tracking-wide mb-2">{{ t('securitySetup') }}</h3>
+      <p class="text-xs text-amber-600 mb-6 font-semibold">{{ t('changePasswordRequired') }}</p>
+
+      <div class="space-y-5 text-sm">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{{ t('newPasswordLabel') }}</label>
+          <input 
+            type="password" 
+            v-model="newPassword" 
+            placeholder="e.g. 123456"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 transition text-center tracking-widest font-mono"
+          >
+          <p class="text-2xs text-gray-400 mt-1">{{ t('passwordConstraints') }}</p>
+        </div>
+
+        <!-- Notification Opt-in section -->
+        <div class="border-t border-gray-100 pt-4">
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{{ t('notificationPreferences') }}</label>
+          <div class="flex items-center space-x-3 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <input 
+              type="checkbox" 
+              id="optInEmail" 
+              v-model="optInEmail"
+              class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            >
+            <label for="optInEmail" class="text-xs font-semibold text-gray-700 cursor-pointer">
+              {{ t('optInEmailLabel') }}
+            </label>
+          </div>
+
+          <div v-if="optInEmail" class="space-y-2">
+            <label class="block text-[11px] font-bold text-gray-600">{{ t('gmailAddressLabel') }}</label>
+            <input 
+              type="email" 
+              v-model="notificationEmail" 
+              placeholder="yourname@gmail.com"
+              class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm"
+            >
+          </div>
+        </div>
+
+        <button @click="saveNewPasswordAndPreferences" class="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition text-sm mt-4 shadow-sm">
+          {{ t('saveAndSubmit') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Part-Timer Availability Input Modal -->
+  <div v-if="showAvailabilityModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white border border-gray-100 p-8 rounded-2xl max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+      <h3 class="text-lg font-black text-gray-900 tracking-wide mb-1">
+        {{ selectedAvailabilityDay.year }}年 {{ selectedAvailabilityDay.month + 1 }}月 {{ selectedAvailabilityDay.date }}日
+      </h3>
+      <p class="text-xs text-gray-400 mb-6 font-medium">{{ t('setAvailabilityHeading') }}</p>
+
+      <!-- Input box for hour range -->
+      <div class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{{ t('timeOptionLabel') }}</label>
+          <!-- Presets -->
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            <button 
+              v-for="preset in timePresets" 
+              :key="preset"
+              @click="availabilityTimeInput = preset"
+              :class="['py-2 text-xs font-semibold rounded-lg border transition', availabilityTimeInput === preset ? 'bg-indigo-600 border-indigo-600 text-white animate-pulse' : 'border-gray-200 text-gray-600 hover:bg-gray-50']"
+            >
+              {{ preset }}
+            </button>
+          </div>
+          <!-- Custom Input -->
+          <input 
+            type="text" 
+            v-model="availabilityTimeInput" 
+            placeholder="e.g. 14-18, 15-18"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center font-semibold"
+          >
+          <p class="text-2xs text-gray-400 mt-1">{{ t('customTimePlaceholder') }}</p>
+        </div>
+
+        <!-- Copy option -->
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center">
+          <div>
+            <strong class="block text-xs text-gray-800">{{ t('batchCopyTitle') }}</strong>
+            <span class="text-2xs text-gray-400">{{ t('batchCopyDesc') }}</span>
+          </div>
+          <button 
+            @click="enterCopyMode"
+            class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold transition"
+          >
+            {{ t('selectDatesBtn') }}
+          </button>
+        </div>
+
+        <div class="flex space-x-3 mt-6">
+          <button @click="showAvailabilityModal = false" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold transition text-sm">
+            {{ t('cancel') }}
+          </button>
+          <button @click="saveAvailability" class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm">
+            {{ t('save') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Batch Copy Sub-modal -->
+  <div v-if="isCopyMode" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white border border-gray-100 p-6 rounded-2xl max-w-xl w-full shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-150">
+      <h3 class="text-lg font-black text-gray-900 mb-2">{{ t('copyAvailabilityTitle') }}</h3>
+      <p class="text-xs text-indigo-600 mb-4 font-semibold">{{ t('copyPrompt') }} <span class="bg-indigo-100 px-2 py-0.5 rounded font-bold">{{ availabilityTimeInput }}</span></p>
+
+      <!-- Multi select Calendar -->
+      <div class="grid grid-cols-7 gap-1 text-center border border-gray-100 p-3 rounded-xl mb-4 bg-gray-50">
+        <div v-for="day in weekdays" :key="day.en" class="text-[10px] font-bold text-gray-400 uppercase py-1">
+          {{ lang === 'ja' ? day.ja_short : day.en_short }}
+        </div>
+        <div 
+          v-for="day in futureMonthDays" 
+          :key="day.fullDate"
+          @click="toggleCopyTargetDate(day.fullDate)"
+          :class="[
+            'py-2 rounded-lg text-xs font-bold cursor-pointer transition select-none',
+            copyTargetDates.includes(day.fullDate) ? 'bg-indigo-600 text-white' : 'hover:bg-gray-200 text-gray-700 bg-white border border-gray-100'
+          ]"
+        >
+          {{ day.date }}
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center text-xs text-gray-500 mb-5">
+        <span>Selected <strong>{{ copyTargetDates.length }}</strong> days</span>
+        <button @click="clearCopyTargets" class="text-red-500 hover:underline font-bold">{{ t('clearAll') }}</button>
+      </div>
+
+      <div class="flex space-x-3">
+        <button @click="isCopyMode = false" class="w-1/2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold transition text-sm">
+          {{ t('cancel') }}
+        </button>
+        <button @click="applyBatchCopy" class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm">
+          {{ t('applyAndSave') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Part-Timer Working Shift Detail View Modal -->
+  <div v-if="showShiftDetailModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white border border-gray-100 p-8 rounded-2xl max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+      <h3 class="text-xl font-black text-gray-900 tracking-tight mb-2">🗓️ {{ shiftDetailDate }}</h3>
+      <p class="text-xs text-gray-400 mb-6 font-medium">{{ t('yourAssignedClassDetails') }}</p>
+
+      <div class="bg-blue-50/50 border border-blue-100 p-5 rounded-xl space-y-4 mb-6">
+        <div class="flex justify-between items-center pb-3 border-b border-blue-100/60">
+          <span class="text-xs text-gray-500 uppercase tracking-wider font-semibold">{{ t('timeSpan') }}</span>
+          <span class="text-lg font-bold text-blue-700">{{ selectedShiftDetails.time }}</span>
+        </div>
+
+        <div class="space-y-3">
+          <span class="block text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Classes Assigned (クラス割):</span>
+          <div v-for="item in selectedShiftDetails.classes" :key="item.className" class="flex justify-between text-sm bg-white p-2.5 rounded-lg border border-blue-100/50 shadow-xs">
+            <span class="font-bold text-gray-800">{{ item.className }}</span>
+            <span class="font-semibold text-blue-600">{{ item.role }}</span>
+          </div>
+        </div>
+      </div>
+
+      <button @click="showShiftDetailModal = false" class="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition text-sm">
+        {{ t('close') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- 6. Admin Manual Shift Edit Modal (GRID COMPOSER) -->
+  <div v-if="showAdminEditModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl max-w-6xl w-full shadow-2xl my-8 relative animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <h3 class="text-2xl font-black text-gray-900">✏️ {{ adminSelectedDay.fullDate }}</h3>
+          <p class="text-xs text-gray-400 font-medium mt-1">{{ t('adminComposerDesc') }}</p>
+        </div>
+        <button @click="showAdminEditModal = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+      </div>
+
+      <!-- Real-time Driver Route Conflicts Alert banner -->
+      <div v-if="hasDriverConflicts" class="mb-4 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl flex items-center space-x-2 animate-bounce">
+        <span class="font-bold text-sm">⚠️ {{ t('conflictWarningTitle') }}</span>
+        <span class="text-xs">{{ t('conflictDriverMessage') }} ({{ driverConflictsList.join(', ') }})</span>
+      </div>
+
+      <!-- Part 1: Course Schedule Matrix Grid -->
+      <div class="mb-6">
+        <h4 class="text-sm font-bold text-gray-800 mb-3 border-b pb-1">📚 Class Assignments (授業割)</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[800px] border border-gray-200 rounded-lg text-xs">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200">
+                <th class="p-3 text-left font-bold text-gray-700 w-[150px] border-r border-gray-200 font-mono">Slot</th>
+                <th v-for="room in adminEditMatrix.headers" :key="room" class="p-3 text-center font-bold text-gray-700 border-r border-gray-200 last:border-r-0">
+                  {{ room }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <!-- Row 1: 1st Half -->
+              <tr class="hover:bg-gray-50/50">
+                <td class="p-3 font-semibold bg-gray-50/40 border-r border-gray-200 font-mono text-blue-600">
+                  1st Half
+                </td>
+                <td v-for="(col, rIndex) in adminEditMatrix.row1" :key="rIndex" class="p-3 border-r border-gray-200 last:border-r-0">
+                  <div class="bg-blue-50/40 p-2 rounded-lg border border-blue-100/50">
+                    <span class="block font-bold text-blue-800 mb-2 text-center border-b border-blue-100 pb-1 text-[9px] tracking-widest uppercase">
+                      {{ col.label }}
+                    </span>
+                    <div class="space-y-1">
+                      <div v-for="staff in getAvailableStaffForDay(adminSelectedDay.fullDate)" :key="staff" class="flex items-center space-x-1.5 py-0.5">
+                        <input 
+                          type="checkbox" 
+                          :id="'r1-' + rIndex + '-' + staff"
+                          :value="staff"
+                          v-model="col.assigned"
+                          class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        >
+                        <label :for="'r1-' + rIndex + '-' + staff" class="text-[10px] text-gray-600 hover:text-gray-900 cursor-pointer">
+                          {{ staff }} <span class="text-[9px] text-gray-400">({{ getStaffTimeSpan(adminSelectedDay.fullDate, staff) }})</span>
+                        </label>
+                      </div>
+                      <div v-if="getAvailableStaffForDay(adminSelectedDay.fullDate).length === 0" class="text-[9px] text-gray-400 text-center py-1">
+                        {{ t('unsubmitted') }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 2: 2nd Half -->
+              <tr class="hover:bg-gray-50/50">
+                <td class="p-3 font-semibold bg-gray-50/40 border-r border-gray-200 font-mono text-indigo-600">
+                  2nd Half
+                </td>
+                <td v-for="(col, rIndex) in adminEditMatrix.row2" :key="rIndex" class="p-3 border-r border-gray-200 last:border-r-0">
+                  <div class="bg-indigo-50/40 p-2 rounded-lg border border-indigo-100/50">
+                    <span class="block font-bold text-indigo-800 mb-2 text-center border-b border-indigo-100 pb-1 text-[9px] tracking-widest uppercase">
+                      {{ col.label }}
+                    </span>
+                    <div class="space-y-1">
+                      <div v-for="staff in getAvailableStaffForDay(adminSelectedDay.fullDate)" :key="staff" class="flex items-center space-x-1.5 py-0.5">
+                        <input 
+                          type="checkbox" 
+                          :id="'r2-' + rIndex + '-' + staff"
+                          :value="staff"
+                          v-model="col.assigned"
+                          class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        >
+                        <label :for="'r2-' + rIndex + '-' + staff" class="text-[10px] text-gray-600 hover:text-gray-900 cursor-pointer">
+                          {{ staff }} <span class="text-[9px] text-gray-400">({{ getStaffTimeSpan(adminSelectedDay.fullDate, staff) }})</span>
+                        </label>
+                      </div>
+                      <div v-if="getAvailableStaffForDay(adminSelectedDay.fullDate).length === 0" class="text-[9px] text-gray-400 text-center py-1">
+                        {{ t('unsubmitted') }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Part 2: Route Driver Allocation -->
+      <div class="mb-8 bg-amber-50/30 border border-amber-100 p-5 rounded-xl">
+        <h4 class="text-sm font-bold text-amber-900 mb-3 flex items-center space-x-1.5 border-b border-amber-100 pb-1.5">
+          <span>🚗 Driver Assignments (司機配車)</span>
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+          <!-- Outbound Drivers -->
+          <div>
+            <strong class="block text-gray-700 mb-2 uppercase tracking-wide">Outbound Routes (往路)</strong>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">往路 A Route:</span>
+                <select v-model="adminEditDrivers.outA" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">往路 B Route:</span>
+                <select v-model="adminEditDrivers.outB" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">往路 C Route:</span>
+                <select v-model="adminEditDrivers.outC" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Return Drivers -->
+          <div>
+            <strong class="block text-gray-700 mb-2 uppercase tracking-wide">Return Routes (復路)</strong>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">復路 A Route:</span>
+                <select v-model="adminEditDrivers.retA" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">復路 B Route:</span>
+                <select v-model="adminEditDrivers.retB" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg shadow-2xs">
+                <span class="font-semibold text-gray-600">復路 C Route:</span>
+                <select v-model="adminEditDrivers.retC" class="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                  <option value="">-- No Driver --</option>
+                  <option v-for="d in driverPool" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button Grid -->
+      <div class="flex justify-end space-x-3">
+        <button 
+          @click="showAdminEditModal = false" 
+          class="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+        >
+          {{ t('cancel') }}
+        </button>
+        <button 
+          @click="saveAdminChanges(false)" 
+          class="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
+        >
+          💾 {{ t('saveDraftBtn') }}
+        </button>
+        <button 
+          @click="saveAdminChanges(true)" 
+          class="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md"
+        >
+          🚀 {{ t('confirmPublishBtn') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Vue Implementation Script -->
+<script>
+  const { createApp, ref, computed, onMounted } = Vue;
+
+  createApp({
+    setup() {
+      // Setup Locale State
+      const lang = ref('ja');
+      const translations = {
+        ja: {
+          admin: '管理者',
+          staff: 'アルバイト',
+          welcomeMsg: 'IGK 勤務管理システムへようこそ',
+          staffName: '名前を入力',
+          password: 'パスワード',
+          firstLoginHint: '初期設定：igk123',
+          loginBtn: 'ログイン',
+          currentMonthTab: '当月シフト (閲覧用)',
+          futureMonthTab: '未来シフト (提出用)',
+          deadlineNotice: '提出締切日',
+          deadlineDaySuffix: '日',
+          changeableTill: '※毎月自動ロックされます',
+          receiptAlertTitle: '🚊 交通費証明提出リマインド',
+          receiptAlertDesc: '毎月15日〜17日は、交通費の申請書類・証明写真を提出してください。',
+          scheduleOf: 'シフト状況',
+          submittingTitle: '希望シフト登録',
+          submissionGuideline: '出勤可能な時間帯を登録してください。(20日締切)',
+          locked: '締め切られました',
+          editable: '入力受付中',
+          clickToSet: 'タップして入力',
+          noAvailability: '未提出',
+          adminCurrentMonth: '当月確定シフト',
+          adminFutureMonth: '来月希望シフト編成',
+          staffManagement: 'スタッフ管理',
+          addStaffBtn: 'スタッフ新規登録',
+          staffNameLabel: '氏名',
+          initialPasswordLabel: '初期パスワード',
+          addStaffSuccess: 'スタッフが新規登録されました。',
+          staffListTitle: '登録スタッフ一覧',
+          emailNotification: '通知用メールアドレス',
+          action: '操作',
+          resetPassword: '初期化',
+          delete: '削除',
+          outward: '往路',
+          returnTrip: '復路',
+          masterSchedule: '全体勤務予定表',
+          liveMode: 'リアルタイム公開中',
+          configDeadline: '締切日の設定',
+          futureMonthVerification: '来月シフトの編成 and 確定',
+          adminDirections: 'カレンダーの日付をクリックして、割り当てや車両ルートを調整してください。',
+          applyPresetBtn: 'デフォルトの授業・配車ルールを適用',
+          securitySetup: 'セキュリティ初期設定',
+          changePasswordRequired: '初回ログインのため、新しい暗号（4〜8桁の数字）に変更し、通知設定を完了してください。',
+          newPasswordLabel: '新しいパスワード',
+          passwordConstraints: '※4桁〜8桁の半角数字のみ',
+          notificationPreferences: 'シフト確定時の自動通知 (Opt-In)',
+          optInEmailLabel: 'Gmail で通知を自動的に受け取る',
+          gmailAddressLabel: '通知先の Gmail アドレス',
+          saveAndSubmit: '保存してログイン',
+          setAvailabilityHeading: '出勤希望時間帯の入力',
+          timeOptionLabel: '希望時間帯 (選択または手動入力)',
+          customTimePlaceholder: '※時間帯を入力 (例: 14-18, 15-18)',
+          batchCopyTitle: '他の日程にコピー',
+          batchCopyDesc: 'この日と同じ時間帯を他の日付にも一括適用します',
+          selectDatesBtn: '日付を選択',
+          copyAvailabilityTitle: '希望時間の複数コピー',
+          copyPrompt: '以下の日に同じ時間帯をコピーします：',
+          clearAll: 'すべてクリア',
+          applyAndSave: '一括適用して保存',
+          cancel: 'キャンセル',
+          save: '保存',
+          yourAssignedClassDetails: '当日のクラス割り当て詳細',
+          timeSpan: '出勤時間',
+          close: '閉じる',
+          adminComposerDesc: '各コマをチェックして担当者を決定します。当日出勤希望を出したスタッフが一覧に表示されます。',
+          saveDraftBtn: '一時保存 (非公開)',
+          confirmPublishBtn: '確定保存 (即時公開)',
+          conflictWarningTitle: 'ドライバー重複割当警告',
+          conflictDriverMessage: '同一ドライバーが同じ時間帯に複数のルートに割り当てられています。',
+          updatedTag: '変更 (Updated)',
+          clickToEdit: 'クリックして編集・割当',
+          unsubmitted: '希望未提出',
+          adminPortalTitle: '管理者ポータル',
+          adminPrompt: 'システム設定および全社員のシフト割り当てを管理できます。',
+          ja_short: '日',
+          en_short: '日'
+        },
+        en: {
+          admin: 'Admin',
+          staff: 'Part-Timer',
+          welcomeMsg: 'Welcome to IGK Shift Management Portal',
+          staffName: 'Your Name',
+          password: 'Password',
+          firstLoginHint: 'Initial: igk123',
+          loginBtn: 'Log In',
+          currentMonthTab: 'Current Shifts (View)',
+          futureMonthTab: 'Future Shifts (Submit)',
+          deadlineNotice: 'Submission Deadline',
+          deadlineDaySuffix: 'th',
+          changeableTill: 'Locked automatically each month',
+          receiptAlertTitle: '🚊 Transportation Receipt Reminder',
+          receiptAlertDesc: 'Please submit your transportation certificates/receipt proofs from 15th to 17th of this month.',
+          scheduleOf: 'Shift Schedule',
+          submittingTitle: 'Register Future Availability',
+          submissionGuideline: 'Input hours you are available. (Locked on the 20th)',
+          locked: 'Submission Closed',
+          editable: 'Accepting Submissions',
+          clickToSet: 'Tap to Enter',
+          noAvailability: 'Not submitted',
+          adminCurrentMonth: 'Current Confirmed Shifts',
+          adminFutureMonth: 'Future Shift Compilation',
+          staffManagement: 'Staff Management',
+          addStaffBtn: 'Register New Staff',
+          staffNameLabel: 'Staff Name',
+          initialPasswordLabel: 'Initial Password',
+          addStaffSuccess: 'New staff registered successfully.',
+          staffListTitle: 'Registered Staff List',
+          emailNotification: 'Notification Email',
+          action: 'Action',
+          resetPassword: 'Reset',
+          delete: 'Delete',
+          outward: 'Outbound',
+          returnTrip: 'Return',
+          masterSchedule: 'Company Master Schedule',
+          liveMode: 'Live & Published',
+          configDeadline: 'Change Deadline',
+          futureMonthVerification: 'Review & Verify Next Month Shifts',
+          adminDirections: 'Click any date to assign teachers and adjust route drivers.',
+          applyPresetBtn: 'Apply Default Rule Presets',
+          securitySetup: 'Security Setup',
+          changePasswordRequired: 'As a first-time login, please update your passcode to 4-8 digits and choose notification alerts.',
+          newPasswordLabel: 'New Passcode',
+          passwordConstraints: '※Only 4-8 digits allowed',
+          notificationPreferences: 'Automatic Notification On Publish (Opt-In)',
+          optInEmailLabel: 'Receive shift confirmations automatically in Gmail',
+          gmailAddressLabel: 'Notification Gmail Address',
+          saveAndSubmit: 'Save & Proceed',
+          setAvailabilityHeading: 'Input Availability',
+          timeOptionLabel: 'Available Hours (Select or type manually)',
+          customTimePlaceholder: '※Enter time span (e.g., 14-18, 15-18)',
+          batchCopyTitle: 'Copy to other dates',
+          batchCopyDesc: 'Batch copy this time span to other calendar days',
+          selectDatesBtn: 'Select Dates',
+          copyAvailabilityTitle: 'Batch Shift Replication',
+          copyPrompt: 'Replicate this shift availability to selected days:',
+          clearAll: 'Clear All',
+          applyAndSave: 'Apply & Save',
+          cancel: 'Cancel',
+          save: 'Save',
+          yourAssignedClassDetails: 'Your assigned classes details',
+          timeSpan: 'Shift Hours',
+          close: 'Close',
+          adminComposerDesc: 'Select workers for courses. Only workers who submitted availability for this date are listed.',
+          saveDraftBtn: 'Save Draft (Invisible)',
+          confirmPublishBtn: 'Confirm & Publish Live',
+          conflictWarningTitle: 'Driver Overlap Warning',
+          conflictDriverMessage: 'Same driver is allocated to multiple routes at the same time.',
+          updatedTag: 'Updated',
+          clickToEdit: 'Click to edit or assign',
+          unsubmitted: 'No shift hours submitted',
+          adminPortalTitle: 'Admin Portal',
+          adminPrompt: 'Access master configurations and full-staff dynamic routing panels.',
+          ja_short: 'Sun',
+          en_short: 'Sun'
+        }
+      };
+
+      const t = (key) => translations[lang.value][key] || key;
+
+      const toggleLanguage = () => {
+        lang.value = lang.value === 'ja' ? 'en' : 'ja';
+      };
+
+      // Native Premium Toast state
+      const toast = ref({
+        visible: false,
+        message: '',
+        type: 'success'
+      });
+
+      const showToast = (message, type = 'success') => {
+        toast.value.message = message;
+        toast.value.type = type;
+        toast.value.visible = true;
+        setTimeout(() => {
+          toast.value.visible = false;
+        }, 4000);
+      };
+
+      // Mock Local Storage Database State
+      const defaultUsers = [
+        { name: 'Mikuma', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Taka', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Fergus', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Sammy', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Kim', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Nathan', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Mariko', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Ando', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Yoon', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Toshi', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' },
+        { name: 'Yassmyn', password: '123', isFirstLogin: true, role: 'staff', optInEmail: false, notifyEmail: '' }
+      ];
+
+      const users = ref([]);
+      const currentUser = ref(null);
+      const deadlineDay = ref(20);
+
+      // Login States
+      const loginSearchName = ref('');
+      const loginPassword = ref('');
+      const showAutocomplete = ref(false);
+      const showPassword = ref(false);
+      const filteredUsers = ref([]);
+
+      // Multi-view states
+      const activeStaffTab = ref('current');
+      const activeAdminTab = ref('current');
+
+      // Admin & Security States
+      const showAdminLoginModal = ref(false);
+      const adminPasswordInput = ref('');
+      const showForcePasswordModal = ref(false);
+      const newPassword = ref('');
+      const optInEmail = ref(false);
+      const notificationEmail = ref('');
+      const firstTimeLoginUserObj = ref(null);
+
+      // Add New Staff form state
+      const newStaffForm = ref({ name: '' });
+
+      // Calendar Calculations
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-11
+      const currentDay = today.getDate();
+
+      const futureYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+      const futureMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+
+      // Submission deadline lock logic
+      const isSubmissionLocked = computed(() => {
+        return currentDay > deadlineDay.value;
+      });
+
+      // Transport Receipt Warning active (15th-17th of current month)
+      const isTransportReceiptDay = computed(() => {
+        return currentDay >= 15 && currentDay <= 17;
+      });
+
+      const weekdays = [
+        { ja: '日', ja_short: '日', en: 'Sun', en_short: 'S' },
+        { ja: '月', ja_short: '月', en: 'Mon', en_short: 'M' },
+        { ja: '火', ja_short: '火', en: 'Tue', en_short: 'T' },
+        { ja: '水', ja_short: '水', en: 'Wed', en_short: 'W' },
+        { ja: '木', ja_short: '木', en: 'Thu', en_short: 'T' },
+        { ja: '金', ja_short: '金', en: 'Fri', en_short: 'F' },
+        { ja: '土', ja_short: '土', en: 'Sat', en_short: 'S' }
+      ];
+
+      // Standard Time Presets
+      const timePresets = ['14-18', '15-18', '14-19', '9-14', '9-18'];
+
+      // Simulated Database tables
+      const availabilities = ref({});  // format: { 'YYYY-MM-DD': { 'StaffName': { time: 'TimeRange', lastUpdated: DateTimestamp } } }
+      const confirmedShifts = ref({}); // format: { 'YYYY-MM-DD': { classes: [...], drivers: {...}, status: 'draft'|'published', lastSaved: DateTimestamp } }
+
+      // Driver static definitions
+      const driverPool = ['Mikuma', 'Taka', 'Ando', 'Mariko', 'Toshi'];
+
+      // Cache for dynamically loaded public holidays (Japanese)
+      const holidaysMap = ref({});
+
+      // Japanese Public Holidays calculation for 2026/2027
+      const getJapaneseHoliday = (year, month, day) => {
+        const key = `${month + 1}-${day}`;
+        const holidays = {
+          '1-1': '元日',
+          '1-12': '成人の日',
+          '2-11': '建国記念の日',
+          '2-23': '天皇誕生日',
+          '3-20': '春分の日',
+          '4-29': '昭和の日',
+          '5-3': '憲法記念日',
+          '5-4': 'みどりの日',
+          '5-5': 'こどもの日',
+          '7-20': '海の日',
+          '8-11': '山の日',
+          '9-21': '敬老の日',
+          '9-22': '秋分の日',
+          '10-12': 'スポーツの日',
+          '11-3': '文化の日',
+          '11-23': '勤労感謝の日'
+        };
+
+        // Fallback to local map or calendar API response cache
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return holidaysMap.value[dateStr] || holidays[key] || null;
+      };
+
+      // Fetch dynamic public holidays from Nager Holiday API (JP) on boot
+      const fetchJapaneseHolidays = async () => {
+        try {
+          const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${currentYear}/JP`);
+          if (res.ok) {
+            const data = await res.json();
+            data.forEach(h => {
+              // Store holiday translation dynamically based on selected lang or raw local
+              holidaysMap.value[h.date] = lang.value === 'ja' ? h.localName : h.name;
+            });
+          }
+        } catch (e) {
+          // Silent fallback to local offline map
+        }
+      };
+
+      // Generate Calendar Day Arrays
+      const generateMonthDays = (year, month) => {
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        const days = [];
+
+        for (let i = 1; i <= totalDays; i++) {
+          const d = new Date(year, month, i);
+          const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+          days.push({
+            date: i,
+            dayOfWeek: d.getDay(),
+            fullDate: fullDate,
+            isToday: year === currentYear && month === currentMonth && i === currentDay,
+            holiday: getJapaneseHoliday(year, month, i)
+          });
+        }
+        return days;
+      };
+
+      const currentMonthDays = computed(() => generateMonthDays(currentYear, currentMonth));
+      const futureMonthDays = computed(() => generateMonthDays(futureYear, futureMonth));
+
+      const initializeData = () => {
+        const savedUsers = localStorage.getItem('igk_users');
+        if (savedUsers) {
+          users.value = JSON.parse(savedUsers);
+        } else {
+          users.value = defaultUsers;
+          localStorage.setItem('igk_users', JSON.stringify(defaultUsers));
+        }
+
+        const savedAvail = localStorage.getItem('igk_availabilities');
+        if (savedAvail) {
+          availabilities.value = JSON.parse(savedAvail);
+        } else {
+          const nextDays = generateMonthDays(futureYear, futureMonth);
+          const mockAvail = {};
+          nextDays.forEach(day => {
+            const staffAvail = {};
+            users.value.forEach(u => {
+              if (Math.random() > 0.3) {
+                staffAvail[u.name] = {
+                  time: '14-18',
+                  lastUpdated: Date.now() - 100000
+                };
+              }
+            });
+            mockAvail[day.fullDate] = staffAvail;
+          });
+          availabilities.value = mockAvail;
+          localStorage.setItem('igk_availabilities', JSON.stringify(mockAvail));
+        }
+
+        const savedShifts = localStorage.getItem('igk_confirmed');
+        if (savedShifts) {
+          confirmedShifts.value = JSON.parse(savedShifts);
+        } else {
+          confirmedShifts.value = {};
+        }
+
+        const savedDeadline = localStorage.getItem('igk_deadline');
+        if (savedDeadline) {
+          deadlineDay.value = parseInt(savedDeadline);
+        }
+
+        filteredUsers.value = users.value;
+        fetchJapaneseHolidays();
+      };
+
+      onMounted(() => {
+        initializeData();
+      });
+
+      Vue.watch(deadlineDay, (newVal) => {
+        localStorage.setItem('igk_deadline', newVal.toString());
+      });
+
+      const filterUsers = () => {
+        if (!loginSearchName.value) {
+          filteredUsers.value = users.value;
+        } else {
+          filteredUsers.value = users.value.filter(u => 
+            u.name.toLowerCase().startsWith(loginSearchName.value.toLowerCase())
+          );
+        }
+      };
+
+      const selectLoginUser = (name) => {
+        loginSearchName.value = name;
+        showAutocomplete.value = false;
+      };
+
+      const attemptLogin = () => {
+        const found = users.value.find(u => u.name.toLowerCase() === loginSearchName.value.trim().toLowerCase());
+        if (!found) {
+          showToast(lang.value === 'ja' ? '名前を入力し、ドロップダウンから選択してください。' : 'Please type your name and select it.', 'error');
+          return;
+        }
+
+        if (loginPassword.value === 'igk123' && found.password === '123') {
+          firstTimeLoginUserObj.value = found;
+          showForcePasswordModal.value = true;
+          return;
+        }
+
+        const userPass = found.password === '123' ? 'igk123' : found.password;
+
+        if (userPass === loginPassword.value) {
+          currentUser.value = found;
+          showAutocomplete.value = false;
+          showToast(lang.value === 'ja' ? 'ログインしました。' : 'Logged in successfully.', 'success');
+        } else {
+          showToast(lang.value === 'ja' ? 'パスワードが間違っています。' : 'Incorrect Passcode.', 'error');
+        }
+      };
+
+      const saveNewPasswordAndPreferences = () => {
+        const isNumeric = /^\d+$/.test(newPassword.value);
+        if (!isNumeric || newPassword.value.length < 4 || newPassword.value.length > 8) {
+          showToast(lang.value === 'ja' ? 'パスワードは4〜8桁の半角数字である必要があります。' : 'Passcode must be only numbers, between 4 to 8 digits.', 'error');
+          return;
+        }
+
+        if (optInEmail.value && !notificationEmail.value.includes('@')) {
+          showToast(lang.value === 'ja' ? '正しいGmailアドレスを入力してください。' : 'Please enter a valid Gmail address.', 'error');
+          return;
+        }
+
+        if (firstTimeLoginUserObj.value) {
+          const dbIndex = users.value.findIndex(u => u.name === firstTimeLoginUserObj.value.name);
+          if (dbIndex !== -1) {
+            users.value[dbIndex].password = newPassword.value;
+            users.value[dbIndex].isFirstLogin = false;
+            users.value[dbIndex].optInEmail = optInEmail.value;
+            users.value[dbIndex].notifyEmail = optInEmail.value ? notificationEmail.value : '';
+            localStorage.setItem('igk_users', JSON.stringify(users.value));
+          }
+          currentUser.value = users.value[dbIndex];
+          showForcePasswordModal.value = false;
+          newPassword.value = '';
+          optInEmail.value = false;
+          notificationEmail.value = '';
+          showToast(lang.value === 'ja' ? 'セキュリティ設定と通知設定が保存されました！' : 'Security settings saved successfully!', 'success');
+        }
+      };
+
+      const triggerAdminModal = () => {
+        showAdminLoginModal.value = true;
+      };
+
+      const authenticateAdmin = () => {
+        if (adminPasswordInput.value === '0004') {
+          currentUser.value = { name: 'Director (Admin)', role: 'admin' };
+          showAdminLoginModal.value = false;
+          adminPasswordInput.value = '';
+          showToast(lang.value === 'ja' ? '管理者ログイン成功！' : 'Admin Authenticated!', 'success');
+        } else {
+          showToast(lang.value === 'ja' ? '無効な管理者ピン。' : 'Invalid Admin Passcode.', 'error');
+        }
+      };
+
+      const logout = () => {
+        currentUser.value = null;
+        loginSearchName.value = '';
+        loginPassword.value = '';
+      };
+
+      // Admin Feature: Add New Staff Member
+      const addStaffMember = () => {
+        if (!newStaffForm.value.name.trim()) {
+          showToast(lang.value === 'ja' ? 'スタッフ名を入力してください。' : 'Please type a staff name.', 'error');
+          return;
+        }
+
+        const nameExists = users.value.some(u => u.name.toLowerCase() === newStaffForm.value.name.trim().toLowerCase());
+        if (nameExists) {
+          showToast(lang.value === 'ja' ? 'このスタッフ名は既に登録されています。' : 'This staff name is already registered.', 'error');
+          return;
+        }
+
+        const newStaff = {
+          name: newStaffForm.value.name.trim(),
+          password: '123', // internally default passcode placeholder mapped to igk123
+          isFirstLogin: true,
+          role: 'staff',
+          optInEmail: false,
+          notifyEmail: ''
+        };
+
+        users.value.push(newStaff);
+        localStorage.setItem('igk_users', JSON.stringify(users.value));
+        newStaffForm.value.name = '';
+        filterUsers();
+        showToast(t('addStaffSuccess'), 'success');
+      };
+
+      // Admin Feature: Reset Staff Password to Initial State
+      const resetStaffPassword = (name) => {
+        const idx = users.value.findIndex(u => u.name === name);
+        if (idx !== -1) {
+          users.value[idx].password = '123';
+          users.value[idx].isFirstLogin = true;
+          localStorage.setItem('igk_users', JSON.stringify(users.value));
+          showToast(
+            lang.value === 'ja' 
+              ? `${name} のパスワードを「igk123」に初期化しました。` 
+              : `Password of ${name} reset to "igk123".`, 
+            'success'
+          );
+        }
+      };
+
+      // Admin Feature: Delete Staff Member
+      const deleteStaffMember = (name) => {
+        users.value = users.value.filter(u => u.name !== name);
+        localStorage.setItem('igk_users', JSON.stringify(users.value));
+        filterUsers();
+        showToast(
+          lang.value === 'ja' 
+            ? `${name} をシステムから削除しました。` 
+            : `Staff member ${name} deleted successfully.`, 
+          'success'
+        );
+      };
+
+      const showAvailabilityModal = ref(false);
+      const selectedAvailabilityDay = ref({});
+      const availabilityTimeInput = ref('');
+      const isCopyMode = ref(false);
+      const copyTargetDates = ref([]);
+
+      const openAvailabilityModal = (day) => {
+        selectedAvailabilityDay.value = day;
+        const currentAvail = getStaffSubmittedAvailability(day.fullDate);
+        availabilityTimeInput.value = currentAvail || '';
+        showAvailabilityModal.value = true;
+      };
+
+      const saveAvailability = () => {
+        if (!selectedAvailabilityDay.value.fullDate) return;
+        
+        const dateKey = selectedAvailabilityDay.value.fullDate;
+        if (!availabilities.value[dateKey]) {
+          availabilities.value[dateKey] = {};
+        }
+
+        if (availabilityTimeInput.value.trim() === '') {
+          delete availabilities.value[dateKey][currentUser.value.name];
+        } else {
+          availabilities.value[dateKey][currentUser.value.name] = {
+            time: availabilityTimeInput.value.trim(),
+            lastUpdated: Date.now()
+          };
+        }
+
+        localStorage.setItem('igk_availabilities', JSON.stringify(availabilities.value));
+        showAvailabilityModal.value = false;
+        showToast(lang.value === 'ja' ? '保存されました。' : 'Availability saved.', 'success');
+      };
+
+      const enterCopyMode = () => {
+        copyTargetDates.value = [selectedAvailabilityDay.value.fullDate];
+        isCopyMode.value = true;
+      };
+
+      const toggleCopyTargetDate = (fullDate) => {
+        if (copyTargetDates.value.includes(fullDate)) {
+          copyTargetDates.value = copyTargetDates.value.filter(d => d !== fullDate);
+        } else {
+          copyTargetDates.value.push(fullDate);
+        }
+      };
+
+      const clearCopyTargets = () => {
+        copyTargetDates.value = [];
+      };
+
+      const applyBatchCopy = () => {
+        if (availabilityTimeInput.value.trim() === '') {
+          showToast(lang.value === 'ja' ? '時間帯を設定してください。' : 'Please enter a valid time span first.', 'error');
+          return;
+        }
+
+        copyTargetDates.value.forEach(dateKey => {
+          if (!availabilities.value[dateKey]) {
+            availabilities.value[dateKey] = {};
+          }
+          availabilities.value[dateKey][currentUser.value.name] = {
+            time: availabilityTimeInput.value.trim(),
+            lastUpdated: Date.now()
+          };
+        });
+
+        localStorage.setItem('igk_availabilities', JSON.stringify(availabilities.value));
+        isCopyMode.value = false;
+        showAvailabilityModal.value = false;
+        showToast(lang.value === 'ja' ? '複数コピーが完了しました！' : 'Shift replication applied successfully!', 'success');
+      };
+
+      const getStaffSubmittedAvailability = (fullDate) => {
+        if (!currentUser.value) return null;
+        return availabilities.value[fullDate]?.[currentUser.value.name]?.time || null;
+      };
+
+      const showShiftDetailModal = ref(false);
+      const shiftDetailDate = ref('');
+      const selectedShiftDetails = ref({ time: '', classes: [] });
+
+      const getStaffConfirmedShift = (fullDate) => {
+        if (!currentUser.value) return null;
+        const record = confirmedShifts.value[fullDate];
+        if (!record || record.status !== 'published') return null;
+
+        const myClasses = [];
+        let assignedTime = '';
+
+        record.classes.forEach(c => {
+          if (c.firstAssigned.includes(currentUser.value.name)) {
+            myClasses.push({ className: c.room, role: `1st Half: ${c.firstLabel}` });
+            assignedTime = '14-18'; 
+          }
+          if (c.secondAssigned.includes(currentUser.value.name)) {
+            myClasses.push({ className: c.room, role: `2nd Half: ${c.secondLabel}` });
+            assignedTime = '14-18';
+          }
+        });
+
+        const drv = record.drivers || {};
+        const routes = [];
+        if (drv.outA === currentUser.value.name) routes.push('往路A Route (Outbound)');
+        if (drv.outB === currentUser.value.name) routes.push('往路B Route (Outbound)');
+        if (drv.outC === currentUser.value.name) routes.push('往路C Route (Outbound)');
+        if (drv.retA === currentUser.value.name) routes.push('復路A Route (Return)');
+        if (drv.retB === currentUser.value.name) routes.push('復路B Route (Return)');
+        if (drv.retC === currentUser.value.name) routes.push('復路C Route (Return)');
+
+        if (routes.length > 0) {
+          myClasses.push({ className: 'Driver (ドライバー)', role: routes.join(' & ') });
+          assignedTime = '14-18';
+        }
+
+        if (myClasses.length === 0) return null;
+
+        const hoursSubmitted = availabilities.value[fullDate]?.[currentUser.value.name]?.time || '14-18';
+
+        return {
+          time: hoursSubmitted,
+          classes: myClasses
+        };
+      };
+
+      const getStaffConfirmedShiftDetailsString = (fullDate) => {
+        const shiftObj = getStaffConfirmedShift(fullDate);
+        if (!shiftObj) return '';
+        return shiftObj.classes.map(c => `${c.className} (${c.role})`).join(', ');
+      };
+
+      const showShiftDetails = (fullDate) => {
+        const shiftObj = getStaffConfirmedShift(fullDate);
+        if (shiftObj) {
+          shiftDetailDate.value = fullDate;
+          selectedShiftDetails.value = shiftObj;
+          showShiftDetailModal.value = true;
+        }
+      };
+
+      const showAdminEditModal = ref(false);
+      const adminSelectedDay = ref({});
+      const adminEditDrivers = ref({ outA: '', outB: '', outC: '', retA: '', retB: '', retC: '' });
+      const adminEditMatrix = ref({ headers: [], row1: [], row2: [] });
+
+      const isStaffConflicting = (fullDate, staffName) => {
+        if (!staffName) return false;
+        const availableList = getAvailableStaffForDay(fullDate);
+        return !availableList.includes(staffName);
+      };
+
+      const checkIfAvailabilityChangedSinceSave = (fullDate) => {
+        const record = confirmedShifts.value[fullDate];
+        if (!record || !record.lastSaved) return false;
+
+        const dayAvails = availabilities.value[fullDate] || {};
+        let modifiedSinceSave = false;
+
+        Object.keys(dayAvails).forEach(staff => {
+          const timestamp = dayAvails[staff]?.lastUpdated || 0;
+          if (timestamp > record.lastSaved) {
+            modifiedSinceSave = true;
+          }
+        });
+
+        return modifiedSinceSave;
+      };
+
+      const hasDriverConflicts = computed(() => {
+        const outDrivers = [adminEditDrivers.value.outA, adminEditDrivers.value.outB, adminEditDrivers.value.outC].filter(Boolean);
+        const retDrivers = [adminEditDrivers.value.retA, adminEditDrivers.value.retB, adminEditDrivers.value.retC].filter(Boolean);
+
+        const outSet = new Set(outDrivers);
+        const retSet = new Set(retDrivers);
+
+        return outSet.size !== outDrivers.length || retSet.size !== retDrivers.length;
+      });
+
+      const driverConflictsList = computed(() => {
+        const conflicts = [];
+        const outDrivers = [adminEditDrivers.value.outA, adminEditDrivers.value.outB, adminEditDrivers.value.outC].filter(Boolean);
+        const retDrivers = [adminEditDrivers.value.retA, adminEditDrivers.value.retB, adminEditDrivers.value.retC].filter(Boolean);
+
+        outDrivers.forEach((d, idx) => {
+          if (outDrivers.indexOf(d) !== idx && !conflicts.includes(d)) {
+            conflicts.push(d + ' (Outbound Route / 往路)');
+          }
+        });
+        retDrivers.forEach((d, idx) => {
+          if (retDrivers.indexOf(d) !== idx && !conflicts.includes(d)) {
+            conflicts.push(d + ' (Return Route / 復路)');
+          }
+        });
+
+        return conflicts;
+      });
+
+      const getAvailableStaffForDay = (fullDate) => {
+        const staffMap = availabilities.value[fullDate] || {};
+        return Object.keys(staffMap);
+      };
+
+      const getStaffTimeSpan = (fullDate, staffName) => {
+        return availabilities.value[fullDate]?.[staffName]?.time || 'No Slot';
+      };
+
+      const getGroupedShiftsForDay = (fullDate) => {
+        const record = confirmedShifts.value[fullDate];
+        if (!record) return {};
+        
+        const groups = {};
+        record.classes.forEach(c => {
+          const firsts = c.firstAssigned || [];
+          const seconds = c.secondAssigned || [];
+          const all = [...firsts, ...seconds];
+
+          if (all.length > 0) {
+            const time = '14-18'; 
+            if (!groups[time]) groups[time] = [];
+            all.forEach(name => {
+              if (!groups[time].includes(name)) {
+                groups[time].push(name);
+              }
+            });
+          }
+        });
+        return groups;
+      };
+
+      const getDriverShiftsForDay = (fullDate) => {
+        const record = confirmedShifts.value[fullDate];
+        if (!record || !record.drivers) return { hasDrivers: false };
+        const d = record.drivers;
+        const hasDrivers = !!(d.outA || d.outB || d.outC || d.retA || d.retB || d.retC);
+        return {
+          hasDrivers,
+          outA: d.outA, outB: d.outB, outC: d.outC,
+          retA: d.retA, retB: d.retB, retC: d.retC
+        };
+      };
+
+      const getConfirmedShiftsState = (fullDate) => {
+        return confirmedShifts.value[fullDate]?.status || null;
+      };
+
+      const applyDefaultPresetToFuture = () => {
+        const nextDays = generateMonthDays(futureYear, futureMonth);
+        
+        nextDays.forEach(day => {
+          const dateObj = new Date(day.fullDate);
+          const wDay = dateObj.getDay(); 
+          
+          const dayConfig = {
+            status: 'draft', 
+            lastSaved: Date.now(),
+            classes: [
+              { room: 'Jr.1', firstLabel: '1st Blue Activity', secondLabel: '2nd Yellow TOE', firstAssigned: [], secondAssigned: [] },
+              { room: 'Jr.2', firstLabel: 'Yellow TOE', secondLabel: 'Blue Activity', firstAssigned: [], secondAssigned: [] },
+              { room: 'K1', firstLabel: 'CLIL', secondLabel: 'TOE', firstAssigned: [], secondAssigned: [] },
+              { room: 'K2', firstLabel: 'TOE', secondLabel: 'CLIL', firstAssigned: [], secondAssigned: [] },
+              { room: 'K3', firstLabel: 'TOE', secondLabel: 'CLIL', firstAssigned: [], secondAssigned: [] }
+            ],
+            drivers: { outA: '', outB: '', outC: '', retA: '', retB: '', retC: '' }
+          };
+
+          if (wDay === 1) { // Mon
+            dayConfig.classes[0].secondAssigned = ['Nathan']; 
+            dayConfig.classes[1].firstAssigned = ['Nathan'];  
+            dayConfig.classes[0].firstAssigned = ['Yoon'];    
+            dayConfig.classes[1].secondAssigned = ['Yoon'];   
+            dayConfig.classes[2].firstAssigned = ['Yassmyn']; 
+            dayConfig.classes[2].secondAssigned = ['Toshi'];  
+            dayConfig.classes[3].firstAssigned = ['Toshi'];   
+            dayConfig.classes[3].secondAssigned = ['Yassmyn'];
+          }
+          else if (wDay === 2) { // Tue
+            dayConfig.classes[0].secondAssigned = ['Yoon'];
+            dayConfig.classes[1].firstAssigned = ['Yoon'];
+            dayConfig.classes[0].firstAssigned = ['Fergus'];
+            dayConfig.classes[1].secondAssigned = ['Fergus'];
+            dayConfig.classes[2].firstAssigned = ['Yassmyn'];
+            dayConfig.classes[2].secondAssigned = ['Toshi'];
+            dayConfig.classes[3].firstAssigned = ['Toshi'];
+            dayConfig.classes[3].secondAssigned = ['Kim'];
+            dayConfig.classes[4].firstAssigned = ['Kim'];
+            dayConfig.classes[4].secondAssigned = ['Yassmyn'];
+          }
+          else if (wDay === 3) { // Wed
+            dayConfig.classes[0].secondAssigned = ['Nathan'];
+            dayConfig.classes[1].firstAssigned = ['Nathan'];
+            dayConfig.classes[0].firstAssigned = ['Yoon'];
+            dayConfig.classes[1].secondAssigned = ['Yoon'];
+            dayConfig.classes[2].firstAssigned = ['Yassmyn'];
+            dayConfig.classes[2].secondAssigned = ['Toshi'];
+            dayConfig.classes[3].firstAssigned = ['Toshi'];
+            dayConfig.classes[3].secondAssigned = ['Kim'];
+            dayConfig.classes[4].firstAssigned = ['Kim'];
+            dayConfig.classes[4].secondAssigned = ['Yassmyn'];
+          }
+          else if (wDay === 4) { // Thu
+            dayConfig.classes[0].secondAssigned = ['Nathan'];
+            dayConfig.classes[1].firstAssigned = ['Nathan'];
+            dayConfig.classes[0].firstAssigned = ['Sammy'];
+            dayConfig.classes[1].secondAssigned = ['Sammy'];
+            dayConfig.classes[2].firstAssigned = ['Yassmyn'];
+            dayConfig.classes[2].secondAssigned = ['Toshi'];
+            dayConfig.classes[3].firstAssigned = ['Toshi'];
+            dayConfig.classes[3].secondAssigned = ['Yassmyn'];
+          }
+          else if (wDay === 5) { // Fri
+            dayConfig.classes[0].secondAssigned = ['Yoon'];
+            dayConfig.classes[1].firstAssigned = ['Yoon'];
+            dayConfig.classes[0].firstAssigned = ['Sammy'];
+            dayConfig.classes[1].secondAssigned = ['Sammy'];
+            dayConfig.classes[2].firstAssigned = ['Yassmyn'];
+            dayConfig.classes[2].secondAssigned = ['Toshi'];
+            dayConfig.classes[3].firstAssigned = ['Toshi'];
+            dayConfig.classes[3].secondAssigned = ['Yassmyn'];
+          }
+
+          if (wDay === 1) { // Mon
+            dayConfig.drivers.outA = 'Mikuma'; dayConfig.drivers.outB = 'Ando';
+            dayConfig.drivers.retA = 'Mikuma';
+          } 
+          else if (wDay === 2) { // Tue
+            dayConfig.drivers.outA = 'Toshi'; dayConfig.drivers.outB = 'Taka'; dayConfig.drivers.outC = 'Mariko';
+            dayConfig.drivers.retA = 'Toshi'; dayConfig.drivers.retB = 'Taka';
+          }
+          else if (wDay === 3) { // Wed
+            dayConfig.drivers.outA = 'Mikuma'; dayConfig.drivers.outB = 'Taka';
+            dayConfig.drivers.retA = 'Toshi';
+          }
+          else if (wDay === 4) { // Thu
+            dayConfig.drivers.outA = 'Toshi'; dayConfig.drivers.outB = 'Ando'; dayConfig.drivers.outC = 'Taka';
+            dayConfig.drivers.retA = 'Toshi'; dayConfig.drivers.retB = 'Taka';
+          }
+          else if (wDay === 5) { // Fri
+            dayConfig.drivers.outA = 'Mikuma'; dayConfig.drivers.outB = 'Ando';
+            dayConfig.drivers.retA = 'Mikuma'; dayConfig.drivers.retB = 'Ando';
+          }
+
+          confirmedShifts.value[day.fullDate] = dayConfig;
+        });
+
+        localStorage.setItem('igk_confirmed', JSON.stringify(confirmedShifts.value));
+        showToast(
+          lang.value === 'ja' 
+            ? '来月のシフト案にデフォルト設定を適用しました。' 
+            : 'Default master rule presets applied to the future month plans!', 
+          'success'
+        );
+      };
+
+      const openAdminEditModal = (day) => {
+        adminSelectedDay.value = day;
+        
+        const existing = confirmedShifts.value[day.fullDate];
+        const initialClasses = existing ? existing.classes : [
+          { room: 'Jr.1', firstLabel: '1st Blue Activity', secondLabel: '2nd Yellow TOE', firstAssigned: [], secondAssigned: [] },
+          { room: 'Jr.2', firstLabel: 'Yellow TOE', secondLabel: 'Blue Activity', firstAssigned: [], secondAssigned: [] },
+          { room: 'K1', firstLabel: 'CLIL', secondLabel: 'TOE', firstAssigned: [], secondAssigned: [] },
+          { room: 'K2', firstLabel: 'TOE', secondLabel: 'CLIL', firstAssigned: [], secondAssigned: [] },
+          { room: 'K3', firstLabel: 'TOE', secondLabel: 'CLIL', firstAssigned: [], secondAssigned: [] }
+        ];
+
+        adminEditMatrix.value.headers = initialClasses.map(c => c.room);
+        adminEditMatrix.value.row1 = initialClasses.map(c => ({
+          label: c.firstLabel,
+          assigned: [...(c.firstAssigned || [])]
+        }));
+        adminEditMatrix.value.row2 = initialClasses.map(c => ({
+          label: c.secondLabel,
+          assigned: [...(c.secondAssigned || [])]
+        }));
+
+        const initialDrivers = existing ? existing.drivers : { outA: '', outB: '', outC: '', retA: '', retB: '', retC: '' };
+        adminEditDrivers.value = { ...initialDrivers };
+
+        showAdminEditModal.value = true;
+      };
+
+      const saveAdminChanges = (publishNow = false) => {
+        const dateKey = adminSelectedDay.value.fullDate;
+        
+        const classesArray = adminEditMatrix.value.headers.map((room, idx) => {
+          return {
+            room: room,
+            firstLabel: adminEditMatrix.value.row1[idx].label,
+            firstAssigned: adminEditMatrix.value.row1[idx].assigned,
+            secondLabel: adminEditMatrix.value.row2[idx].label,
+            secondAssigned: adminEditMatrix.value.row2[idx].assigned
+          };
+        });
+
+        confirmedShifts.value[dateKey] = {
+          status: publishNow ? 'published' : 'draft',
+          classes: classesArray,
+          drivers: { ...adminEditDrivers.value },
+          lastSaved: Date.now()
+        };
+
+        localStorage.setItem('igk_confirmed', JSON.stringify(confirmedShifts.value));
+        showAdminEditModal.value = false;
+        showToast(
+          publishNow 
+            ? (lang.value === 'ja' ? 'シフトが確定公開されました！' : 'Shifts successfully published live!')
+            : (lang.value === 'ja' ? '下書き保存されました！' : 'Shifts successfully saved as draft!'),
+          'success'
+        );
+      };
+
+      return {
+        lang,
+        t,
+        toast,
+        toggleLanguage,
+        currentUser,
+        users,
+        deadlineDay,
+        loginSearchName,
+        loginPassword,
+        showAutocomplete,
+        showPassword,
+        filteredUsers,
+        activeStaffTab,
+        activeAdminTab,
+        showAdminLoginModal,
+        adminPasswordInput,
+        showForcePasswordModal,
+        newPassword,
+        optInEmail,
+        notificationEmail,
+        newStaffForm,
+        today,
+        currentYear,
+        currentMonth,
+        currentDay,
+        futureYear,
+        futureMonth,
+        isSubmissionLocked,
+        isTransportReceiptDay,
+        weekdays,
+        timePresets,
+        currentMonthDays,
+        futureMonthDays,
+        driverPool,
+        filterUsers,
+        selectLoginUser,
+        attemptLogin,
+        saveNewPasswordAndPreferences,
+        triggerAdminModal,
+        authenticateAdmin,
+        logout,
+        addStaffMember,
+        resetStaffPassword,
+        deleteStaffMember,
+        showAvailabilityModal,
+        selectedAvailabilityDay,
+        availabilityTimeInput,
+        isCopyMode,
+        copyTargetDates,
+        openAvailabilityModal,
+        saveAvailability,
+        enterCopyMode,
+        toggleCopyTargetDate,
+        clearCopyTargets,
+        applyBatchCopy,
+        getStaffSubmittedAvailability,
+        showShiftDetailModal,
+        shiftDetailDate,
+        selectedShiftDetails,
+        getStaffConfirmedShift,
+        getStaffConfirmedShiftDetailsString,
+        showShiftDetails,
+        showAdminEditModal,
+        adminSelectedDay,
+        adminEditDrivers,
+        adminEditMatrix,
+        getAvailableStaffForDay,
+        getStaffTimeSpan,
+        getGroupedShiftsForDay,
+        getDriverShiftsForDay,
+        getConfirmedShiftsState,
+        applyDefaultPresetToFuture,
+        openAdminEditModal,
+        saveAdminChanges,
+        isStaffConflicting,
+        checkIfAvailabilityChangedSinceSave,
+        hasDriverConflicts,
+        driverConflictsList
+      };
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>
