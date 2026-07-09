@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IGK Time Card </title>
+  <title>IGK Time Card</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
   <!-- Google Fonts for ultimate Japanese and numeric legibility -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
 
   <style>
     body {
@@ -105,7 +105,7 @@
               <span class="text-xs font-bold hidden sm:inline">履歴</span>
             </button>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5 font-medium"みなさん、おつかれさまです。</p>
+          <p class="text-xs text-slate-500 mt-0.5 font-medium">みなさん、おつかれさまです。</p>
         </div>
       </div>
 
@@ -414,7 +414,7 @@
 
   <script>
     // System variables and standard configurations
-    let fullTimeMembers = ["Linh2308-", "葛野みのり", ""加藤友梨",","yassmyn", "Yoon", "林昊嬛"];
+    let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
     let specialPeriods = [];
     let monthlyHistory = {};
     let currentSeason = 'spring';
@@ -571,7 +571,6 @@
       }
       
       // 4. Extract Employee Name (cleaning noise like index numbers)
-      // FIX: Escaped the hyphen '[\s,\|;\t\d\.\/\-]' inside character class to prevent "Range out of order" syntax errors
       let empName = remaining.replace(/^[\s,\|;\t\d\.\/\-]+|[\s,\|;\t\d\.\/\-]+$/g, '').trim();
       empName = empName.replace(/\s+/g, ' '); 
       
@@ -675,7 +674,6 @@
 
     // Match checking for special period bounds
     function getMatchedPeriod(dateStr) {
-      // dateStr is 'YYYY/MM/DD'
       const formattedDate = dateStr.replace(/\//g, '-');
       for (let period of specialPeriods) {
         if (formattedDate >= period.startDay && formattedDate <= period.endDay) {
@@ -1067,7 +1065,7 @@
 00000646\t林 昊嬛\t退室\t2026/07/02 18:30
 00000646\t林 昊嬛\t入室\t2026/07/02 09:28
 00000646\t林 昊嬛\t退室\t2026/07/01 18:30
-00000646\t林 昊嬛\t入室\t2026/07/01 09:30;
+00000646\t林 昊嬛\t入室\t2026/07/01 09:30`;
 
       document.getElementById('rawInput').value = demoLog;
       showToast('🌰 デモ用データを読み込みました！', '🌸');
@@ -1213,6 +1211,7 @@
       showToast(`💾 アーカイブ「${name}」を保存しました。`, '🌸');
     }
 
+    // Historical list restoration
     function loadFromHistory(name) {
       if (!monthlyHistory[name]) return;
       processedData = JSON.parse(JSON.stringify(monthlyHistory[name]));
