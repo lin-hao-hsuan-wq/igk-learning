@@ -294,7 +294,7 @@
         </div>
 
         <!-- Step 3: Realtime Spreadsheet Previews (Separated by Employee) -->
-        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+        <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
@@ -683,6 +683,7 @@
       return null;
     }
 
+    // Process all attendance copy-paste data
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       document.getElementById('activeHistoryBadge').classList.remove('flex');
@@ -696,16 +697,13 @@
       }
 
       processedData = { fulltime: [], parttime: [], rawBackup: [] };
-      
-      // 1. 全ての非空行を配列に格納
-      const lines = inputText.split('\n').map(l => l.trim()).filter(l => l !== "");
       const attendanceMap = {};
 
       const defaultStart = document.getElementById('workStartTime').value || "09:30";
       const defaultEnd = document.getElementById('workEndTime').value || "18:30";
       const defaultRest = parseInt(document.getElementById('restDuration').value) || 60;
 
-      // 曜日別設定の読み込み
+      // Extract day rules
       const weeklyRules = {};
       daysArr.forEach(day => {
         weeklyRules[day] = {
@@ -716,121 +714,105 @@
         };
       });
 
-      // 判定用ヘルパー関数
-      const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?)/;
+      // 1. 全文を改行、タブ、および複数スペースで分解してフラットな単語（トークン）配列を作る
+      const tokens = inputText.split(/[\n\r\t]+|\s{2,}/).map(t => t.trim()).filter(t => t !== "");
       
-      function isAction(str) {
-        return /入室|退室|入|退|in|out/i.test(str);
-      }
-      function isId(str) {
-        return /^\d{3,10}$/.test(str);
-      }
-      function isDate(str) {
-        return dateRegex.test(str);
-      }
-      function isName(str) {
+      // トークン分類のヘルパー関数
+      const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2})/;
+      function isDateToken(str) { return dateRegex.test(str); }
+      function isActionToken(str) { return /入室|退室|入|退|in|out/i.test(str); }
+      function isIdToken(str) { return /^\d{4,10}$/.test(str); } // IDは通常4〜10桁
+      function isNameToken(str) {
         if (!str) return false;
-        if (isAction(str) || isId(str) || isDate(str)) return false;
-        if (/^[\s,\|;\t\d\.\/\-_~:]+$/.test(str)) return false; // 記号や数字のみは除外
+        if (isDateToken(str) || isActionToken(str) || isIdToken(str)) return false;
+        if (/^[\s,\|;\.\/\-_~:]+$/.test(str)) return false; // 記号のみ
+        if (/^\d+$/.test(str)) return false; // 単なる連番行（1, 2, 3..）
         return true;
       }
 
-      // 2. スライディングウィンドウ形式の超柔軟パーサー
-      lines.forEach((line, i) => {
-        const dateMatch = line.match(dateRegex);
-        if (!dateMatch) return; // 日時が含まれない行は起点としない
+      // 2. 「日付打刻時間トークン」をスキャンして近傍探索する
+      tokens.forEach((token, idx) => {
+        if (isDateToken(token)) {
+          const dateTimeVal = token.match(dateRegex)[1];
+          let empId = "";
+          let empName = "";
+          let type = "";
 
-        const dateTimeVal = dateMatch[1];
-        let empId = "";
-        let empName = "";
-        let type = "";
+          // 前後12トークンの範囲から最も近い ID、名前、アクションを探索して紐付けする
+          const searchRadius = 12;
+          let minIdDist = Infinity;
+          let minNameDist = Infinity;
+          let minActionDist = Infinity;
 
-        // 2-a. まず横一行のデータ（Tabや複数スペース区切り）として解析を試みる
-        let parts = line.split('\t');
-        if (parts.length < 3) {
-          parts = line.split(/\s{2,}/);
-        }
+          for (let offset = -searchRadius; offset <= searchRadius; offset++) {
+            const targetIdx = idx + offset;
+            if (targetIdx < 0 || targetIdx >= tokens.length || offset === 0) continue;
 
-        if (parts.length >= 3) {
-          // 横一行にデータが並んでいる場合
-          const parsed = parseLine(line);
-          if (parsed) {
-            empId = parsed.empId;
-            empName = parsed.empName;
-            type = parsed.type;
-          }
-        }
+            const checkToken = tokens[targetIdx];
+            const dist = Math.abs(offset);
 
-        // 2-b. 横解析で取得できなかった場合、または縦流れ（改行ズレ）の場合、前後5行からスマート抽出
-        if (!empId || !empName) {
-          type = line.includes("退") ? "退室" : "入室"; // 現在の行が退室かどうか
-
-          // 前後5行をスキャンしてIDと名前を逆算特定
-          const searchRange = 5;
-          const startIdx = Math.max(0, i - searchRange);
-          const endIdx = Math.min(lines.length - 1, i + searchRange);
-
-          for (let j = startIdx; j <= endLimitCheck(endIdx, lines.length); j++) {
-            const checkLine = lines[j];
-            if (isId(checkLine) && !empId) {
-              empId = checkLine;
+            if (isIdToken(checkToken)) {
+              if (dist < minIdDist) {
+                empId = checkToken;
+                minIdDist = dist;
+              }
             }
-            if (isName(checkLine) && !empName) {
-              empName = checkLine.replace(/^[\s,\|;\t\d\.\/\-]+|[\s,\|;\t\d\.\/\-]+$/g, '').trim();
+            if (isNameToken(checkToken)) {
+              if (dist < minNameDist) {
+                empName = checkToken;
+                minNameDist = dist;
+              }
             }
-            if (isAction(checkLine) && !type) {
-              type = checkLine.includes("入") ? "入室" : "退室";
+            if (isActionToken(checkToken)) {
+              if (dist < minActionDist) {
+                type = /入|in/i.test(checkToken) ? "入室" : "退室";
+                minActionDist = dist;
+              }
             }
           }
-        }
 
-        // 必要な情報が揃わなかった場合はスキップ
-        if (!empId || !empName) return;
-        if (!type) type = "入室"; // デフォルト
+          // 最低限「従業員名」と「ID」が紐付けできればログとして保存する
+          if (empId && empName) {
+            if (!type) type = "入室"; // 不明時は出勤扱い
+            processedData.rawBackup.push([empId, empName, type, dateTimeVal]);
 
-        // 原本バックアップ用ログに格納
-        processedData.rawBackup.push([empId, empName, type, dateTimeVal]);
+            const dateObj = new Date(dateTimeVal);
+            if (!isNaN(dateObj.getTime())) {
+              const dateKey = formatDate(dateObj);
+              const hmStr = formatHM(dateObj);
+              const dayOfWeek = japaneseDays[dateObj.getDay()];
 
-        const dateObj = new Date(dateTimeVal);
-        if (isNaN(dateObj.getTime())) return; 
+              const mapKey = `${empId}_${dateKey}`;
+              if (!attendanceMap[mapKey]) {
+                const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
+                const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
+                
+                attendanceMap[mapKey] = {
+                  id: empId,
+                  name: empName,
+                  date: dateKey,
+                  day: dayOfWeek,
+                  checkIn: null,
+                  checkOut: null,
+                  isFullTime: isFullTime
+                };
+              }
 
-        const dateKey = formatDate(dateObj);
-        const hmStr = formatHM(dateObj);
-        const dayOfWeek = japaneseDays[dateObj.getDay()];
-
-        const mapKey = `${empId}_${dateKey}`;
-        if (!attendanceMap[mapKey]) {
-          const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
-          const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
-          
-          attendanceMap[mapKey] = {
-            id: empId,
-            name: empName,
-            date: dateKey,
-            day: dayOfWeek,
-            checkIn: null,
-            checkOut: null,
-            isFullTime: isFullTime
-          };
-        }
-
-        if (type.includes("入")) {
-          if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) {
-            attendanceMap[mapKey].checkIn = hmStr;
-          }
-        } else if (type.includes("退")) {
-          if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) {
-            attendanceMap[mapKey].checkOut = hmStr;
+              if (type.includes("入")) {
+                if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) {
+                  attendanceMap[mapKey].checkIn = hmStr;
+                }
+              } else if (type.includes("退")) {
+                if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) {
+                  attendanceMap[mapKey].checkOut = hmStr;
+                }
+              }
+            }
           }
         }
       });
 
-      // 終了インデックスのガード
-      function endLimitCheck(end, max) {
-        return Math.min(max - 1, end);
-      }
-
-      // 集計結果の分類・計算
+      // 3. 各ペアの日付別集計・集計リスト作成
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
@@ -875,7 +857,7 @@
             const coreOut = Math.min(outMin, endLimit);
             if (coreOut > coreIn) {
               let coreWork = coreOut - coreIn;
-              if (coreWork >= 375) { // 6時間15分ルール
+              if (coreWork >= 375) { // 6時間15分連続勤務で1時間（設定分）休憩控除
                 coreWork -= restDurationVal;
               }
               regular = minsToTimeStr(coreWork);
@@ -896,7 +878,7 @@
           });
 
         } else {
-          // アルバイト計算
+          // アルバイト（打工）時給集計
           let totalWork = "00:00";
           if (item.checkIn && item.checkOut) {
             const inMin = timeToMins(item.checkIn);
@@ -922,28 +904,35 @@
         }
       }
 
-      // ソート
+      // 各勤怠配列のソート
       processedData.fulltime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
       processedData.parttime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
-      // 個別タブ生成
+      // タブメニューの再構築と画面描画
       buildEmployeeSheetTabs();
       
-      // 自動表示選択
-      const allMembers = getProcessedNames();
-      if (allMembers.length > 0) {
-        selectSheetTab(allMembers[0]);
+      const allNames = getProcessedNames();
+      if (allNames.length > 0) {
+        selectSheetTab(allNames[0]);
       } else {
         renderEmptyGrid();
       }
 
-      // ボタン活性化
+      // ダウンロードExcelボタンの有効化
       const dlBtn = document.getElementById('excel-download-btn');
       dlBtn.disabled = false;
       dlBtn.className = "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
 
-      showToast('🎉 データの集計が完了しました！', '🌸');
-      setCocoaText('「勤怠データの集計が終わりましたよ！右側のタブでお一人ずつシートの中身を確認できます♪」');
+      // 🚀 集計後に自動で「② 従業員別エクセルプレビュー」へスクロールさせる
+      const target = document.getElementById('preview-section-target');
+      if (target) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
+
+      showToast('🎉 全員の集計が完了しました！', '🌸');
+      setCocoaText('「データをバッチリ読めましたよ！下まで自動でスクロールしました。個別シートをご確認くださいね♪」');
     }
 
     // Helper name extraction
@@ -968,7 +957,6 @@
         const isFT = processedData.fulltime.some(r => r.name === name);
         const icon = isFT ? '💼' : '⏱️';
         const tabBtn = document.createElement('button');
-        // 安全に空白や特殊文字をアンダーバーに変換して有効な ID を生成
         const escapedId = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
         tabBtn.id = escapedId;
         tabBtn.className = `px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 border outline-none`;
