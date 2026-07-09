@@ -696,14 +696,16 @@
       }
 
       processedData = { fulltime: [], parttime: [], rawBackup: [] };
-      const lines = inputText.split('\n');
+      
+      // 1. 全ての非空行を配列に格納
+      const lines = inputText.split('\n').map(l => l.trim()).filter(l => l !== "");
       const attendanceMap = {};
 
       const defaultStart = document.getElementById('workStartTime').value || "09:30";
       const defaultEnd = document.getElementById('workEndTime').value || "18:30";
       const defaultRest = parseInt(document.getElementById('restDuration').value) || 60;
 
-      // Extract day rules
+      // 曜日別設定の読み込み
       const weeklyRules = {};
       daysArr.forEach(day => {
         weeklyRules[day] = {
@@ -714,12 +716,79 @@
         };
       });
 
-      // Parse loop
-      lines.forEach(line => {
-        let parsed = parseLine(line);
-        if (!parsed) return;
+      // 判定用ヘルパー関数
+      const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?)/;
+      
+      function isAction(str) {
+        return /入室|退室|入|退|in|out/i.test(str);
+      }
+      function isId(str) {
+        return /^\d{3,10}$/.test(str);
+      }
+      function isDate(str) {
+        return dateRegex.test(str);
+      }
+      function isName(str) {
+        if (!str) return false;
+        if (isAction(str) || isId(str) || isDate(str)) return false;
+        if (/^[\s,\|;\t\d\.\/\-_~:]+$/.test(str)) return false; // 記号や数字のみは除外
+        return true;
+      }
 
-        const { empId, empName, type, dateTimeVal } = parsed;
+      // 2. スライディングウィンドウ形式の超柔軟パーサー
+      lines.forEach((line, i) => {
+        const dateMatch = line.match(dateRegex);
+        if (!dateMatch) return; // 日時が含まれない行は起点としない
+
+        const dateTimeVal = dateMatch[1];
+        let empId = "";
+        let empName = "";
+        let type = "";
+
+        // 2-a. まず横一行のデータ（Tabや複数スペース区切り）として解析を試みる
+        let parts = line.split('\t');
+        if (parts.length < 3) {
+          parts = line.split(/\s{2,}/);
+        }
+
+        if (parts.length >= 3) {
+          // 横一行にデータが並んでいる場合
+          const parsed = parseLine(line);
+          if (parsed) {
+            empId = parsed.empId;
+            empName = parsed.empName;
+            type = parsed.type;
+          }
+        }
+
+        // 2-b. 横解析で取得できなかった場合、または縦流れ（改行ズレ）の場合、前後5行からスマート抽出
+        if (!empId || !empName) {
+          type = line.includes("退") ? "退室" : "入室"; // 現在の行が退室かどうか
+
+          // 前後5行をスキャンしてIDと名前を逆算特定
+          const searchRange = 5;
+          const startIdx = Math.max(0, i - searchRange);
+          const endIdx = Math.min(lines.length - 1, i + searchRange);
+
+          for (let j = startIdx; j <= endLimitCheck(endIdx, lines.length); j++) {
+            const checkLine = lines[j];
+            if (isId(checkLine) && !empId) {
+              empId = checkLine;
+            }
+            if (isName(checkLine) && !empName) {
+              empName = checkLine.replace(/^[\s,\|;\t\d\.\/\-]+|[\s,\|;\t\d\.\/\-]+$/g, '').trim();
+            }
+            if (isAction(checkLine) && !type) {
+              type = checkLine.includes("入") ? "入室" : "退室";
+            }
+          }
+        }
+
+        // 必要な情報が揃わなかった場合はスキップ
+        if (!empId || !empName) return;
+        if (!type) type = "入室"; // デフォルト
+
+        // 原本バックアップ用ログに格納
         processedData.rawBackup.push([empId, empName, type, dateTimeVal]);
 
         const dateObj = new Date(dateTimeVal);
@@ -756,7 +825,12 @@
         }
       });
 
-      // Accumulate daily stats
+      // 終了インデックスのガード
+      function endLimitCheck(end, max) {
+        return Math.min(max - 1, end);
+      }
+
+      // 集計結果の分類・計算
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
@@ -801,8 +875,7 @@
             const coreOut = Math.min(outMin, endLimit);
             if (coreOut > coreIn) {
               let coreWork = coreOut - coreIn;
-              // Apply break rules strictly if work hours are >= 6h 15m (375 mins)
-              if (coreWork >= 375) {
+              if (coreWork >= 375) { // 6時間15分ルール
                 coreWork -= restDurationVal;
               }
               regular = minsToTimeStr(coreWork);
@@ -823,7 +896,7 @@
           });
 
         } else {
-          // Part-Time calculation (pure total hours)
+          // アルバイト計算
           let totalWork = "00:00";
           if (item.checkIn && item.checkOut) {
             const inMin = timeToMins(item.checkIn);
@@ -849,14 +922,14 @@
         }
       }
 
-      // Sort logs
+      // ソート
       processedData.fulltime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
       processedData.parttime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
-      // Trigger user tabs and active preview refresh
+      // 個別タブ生成
       buildEmployeeSheetTabs();
       
-      // Select first sheet automatically
+      // 自動表示選択
       const allMembers = getProcessedNames();
       if (allMembers.length > 0) {
         selectSheetTab(allMembers[0]);
@@ -864,7 +937,7 @@
         renderEmptyGrid();
       }
 
-      // Enable actions
+      // ボタン活性化
       const dlBtn = document.getElementById('excel-download-btn');
       dlBtn.disabled = false;
       dlBtn.className = "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
