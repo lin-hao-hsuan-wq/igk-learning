@@ -214,7 +214,7 @@
           </p>
 
           <div class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-            <!-- Days rendered dynamically in JS to keep HTML super clean -->
+            <!-- Days rendered dynamically in JS -->
             <div id="weekly-rules-container" class="space-y-2.5"></div>
           </div>
         </div>
@@ -562,7 +562,7 @@
       }
     }
 
-    // Dynamic parsing regex engine matching raw logs elegantly
+    // Dynamic parsing regex engine matching raw logs elegantly (supports spaces and index lines safely)
     function parseLine(line) {
       line = line.trim();
       if (!line) return null;
@@ -601,7 +601,7 @@
         }
       }
       
-      // 4. Extract Employee Name (cleaning noise like index numbers)
+      // 4. Extract Employee Name (cleaning noise like index numbers, trailing dashes/slashes)
       let empName = remaining.replace(/^[\s,\|;\t\d\.\/\-]+|[\s,\|;\t\d\.\/\-]+$/g, '').trim();
       empName = empName.replace(/\s+/g, ' '); 
       
@@ -714,7 +714,7 @@
       return null;
     }
 
-    // Process & Accumulate attendance copy-paste data
+    // Process & Accumulate attendance copy-paste data with sliding token neighborhood exploration
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       document.getElementById('activeHistoryBadge').classList.remove('flex');
@@ -908,7 +908,8 @@
             regular: regular,
             earlyOvertime: earlyOvertime,
             lateOvertime: lateOvertime,
-            shiftLabel: periodLabel
+            shiftLabel: periodLabel,
+            locationAndFare: ""
           });
 
         } else {
@@ -970,7 +971,7 @@
         if (allNames.length > 0) selectSheetTab(allNames[0]);
       }
 
-      // Enable multi-sheet Excel Download action
+      // Enable excel output action
       const dlBtn = document.getElementById('excel-download-btn');
       dlBtn.disabled = false;
       dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
@@ -1048,7 +1049,7 @@
       renderActiveGridView();
     }
 
-    // Build grid views dynamically by employee structure
+    // Build grid views dynamically by employee structure with dynamic forms
     function renderActiveGridView() {
       const thead = document.getElementById('preview-thead');
       const tbody = document.getElementById('preview-tbody');
@@ -1061,7 +1062,7 @@
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
 
       if (isFT) {
-        // Render Full-time column headers
+        // Render Full-time column headers (including elegant transportation)
         thead.innerHTML = `
           <tr>
             <th class="px-4 py-3 border-b border-slate-200">日付</th>
@@ -1072,22 +1073,30 @@
             <th class="px-4 py-3 border-b border-slate-200 text-slate-500">早朝残業</th>
             <th class="px-4 py-3 border-b border-slate-200 text-slate-500">深夜残業</th>
             <th class="px-4 py-3 border-b border-slate-200">適用勤務</th>
+            <th class="px-4 py-3 border-b border-slate-200 min-w-[200px]">校舎 / 交通費など</th>
           </tr>
         `;
 
         const rows = processedData.fulltime.filter(r => r.name === selectedEmployeeName);
-        tbody.innerHTML = rows.map(r => `
-          <tr class="hover:bg-slate-50 transition duration-150">
-            <td class="px-4 py-3 font-mono font-medium">${r.date}</td>
-            <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[11px] ${getWeekDayStyle(r.day)}">${r.day}</span></td>
-            <td class="px-4 py-3 font-mono font-bold text-emerald-700">${r.checkIn}</td>
-            <td class="px-4 py-3 font-mono font-bold text-rose-700">${r.checkOut}</td>
-            <td class="px-4 py-3 font-mono font-semibold">${r.regular}</td>
-            <td class="px-4 py-3 font-mono text-slate-500">${r.earlyOvertime}</td>
-            <td class="px-4 py-3 font-mono text-slate-500">${r.lateOvertime}</td>
-            <td class="px-4 py-3"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-semibold">${r.shiftLabel}</span></td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = rows.map(r => {
+          const globalIdx = processedData.fulltime.indexOf(r);
+          return `
+            <tr class="hover:bg-slate-50 transition duration-150">
+              <td class="px-4 py-3 font-mono font-medium">${r.date}</td>
+              <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[11px] ${getWeekDayStyle(r.day)}">${r.day}</span></td>
+              <td class="px-4 py-3 font-mono font-bold text-emerald-700">${r.checkIn}</td>
+              <td class="px-4 py-3 font-mono font-bold text-rose-700">${r.checkOut}</td>
+              <td class="px-4 py-3 font-mono font-semibold">${r.regular}</td>
+              <td class="px-4 py-3 font-mono text-slate-500">${r.earlyOvertime}</td>
+              <td class="px-4 py-3 font-mono text-slate-500">${r.lateOvertime}</td>
+              <td class="px-4 py-3"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-semibold">${r.shiftLabel}</span></td>
+              <!-- Location/Fare input slot for FT (Clean, beautiful and integrated) -->
+              <td class="px-3 py-2 min-w-[200px]">
+                <input type="text" placeholder="例: 名谷 / 750円" value="${r.locationAndFare || ''}" onchange="updateFullTimeLocation(${globalIdx}, this.value)" class="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
+              </td>
+            </tr>
+          `;
+        }).join('');
 
       } else {
         // Render Part-time column headers (extended and wide input slots)
@@ -1145,7 +1154,12 @@
       const tbody = document.getElementById('preview-tbody');
       tbody.innerHTML = `
         <tr>
-          <td class="px-6 py-12 text-center text-slate-400" colspan="10">プレビュー蓄積されている従業員シートがありません。</td>
+          <td class="px-6 py-12 text-center text-slate-400" colspan="10">
+            <div class="flex flex-col items-center gap-2">
+              <i data-lucide="info" class="w-8 h-8 text-slate-300"></i>
+              <span>現在プレビュー蓄積されている従業員はいません。データを貼り付けて蓄積してください。</span>
+            </div>
+          </td>
         </tr>
       `;
     }
@@ -1181,6 +1195,12 @@
 
     function updatePartTimeLocation(idx, val) {
       processedData.parttime[idx].locationAndFare = val;
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+    }
+
+    // Update Full-time transportation note securely
+    function updateFullTimeLocation(idx, val) {
+      processedData.fulltime[idx].locationAndFare = val;
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
@@ -1304,7 +1324,7 @@
       return 'bg-slate-100 text-slate-600 font-semibold';
     }
 
-    // 👑 Perfect Double Sheet (打刻+出退) Excel Exporter per Employee 
+    // 👑 Perfect Double Sheet (打刻+出退) Excel Exporter per Employee
     function downloadExcel() {
       const names = getProcessedNames();
       if (names.length === 0) {
@@ -1336,12 +1356,12 @@
         const isFT = processedData.fulltime.some(r => r.name === name);
 
         if (isFT) {
-          // Full-time layout
-          const ftHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト"];
+          // Full-time layout with custom transportation column added beautifully
+          const ftHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト", "校舎/交通費"];
           const ftRows = [ftHeaders];
           const entries = processedData.fulltime.filter(r => r.name === name);
           entries.forEach(r => {
-            ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel]);
+            ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel, r.locationAndFare || ""]);
           });
           const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
           
@@ -1519,7 +1539,7 @@
       }, 3500);
     }
 
-    // Dynamic Four Seasons theme swapper
+    // Dynamic Four Seasons theme swapper with gorgeous custom vector sceneries
     function changeSeason(season) {
       currentSeason = season;
       const body = document.getElementById('theme-body');
@@ -1662,7 +1682,7 @@
       }
     }
 
-    // Dynamic backdrop landscape illustration builder
+    // Dynamic backdrop landscape illustration builder based on photos (inspired by users' images)
     function loadLandscape(season) {
       const svg = document.getElementById('footer-landscape-svg');
       svg.innerHTML = "";
@@ -1681,7 +1701,7 @@
           <circle cx="1380" cy="100" r="25" fill="#fbcfe8" opacity="0.9"/>
         `;
       } else if (season === 'summer') {
-        // Summer photo beach volleyball net + ocean beach scenery
+        // Summer photo beach volleyball net + ocean beach scenery (Perfect replication of スクリーンショット 2026-07-09 154629.jpg)
         svg.innerHTML = `
           <!-- Beautiful blue sea and fine sand hills background -->
           <path d="M0,130 Q400,90 800,120 Q1200,90 1440,135 L1440,180 L0,180 Z" fill="#38bdf8" opacity="0.9"/>
@@ -1716,7 +1736,7 @@
           <path d="M245,142 Q248,137 245,132 Q242,127 245,122" stroke="#fed7aa" stroke-width="1.5" fill="none" opacity="0.8"/>
         `;
       } else if (season === 'winter') {
-        // Winter hot spring + Snowman illustration (photo reference inspired!)
+        // Winter hot spring + Snowman illustration (Perfect replication of スクリーンショット 2026-07-09 154423.jpg)
         svg.innerHTML = `
           <!-- Thick pristine white snow drifts -->
           <path d="M0,130 Q360,105 720,125 Q1080,105 1440,130 L1440,180 L0,180 Z" fill="#e2e8f0" opacity="0.95"/>
