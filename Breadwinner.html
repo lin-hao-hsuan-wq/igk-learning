@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🍃 IGK 森の全自動勤怠管理システム ✨</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+    
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #f3f7f4 0%, #f7f9f6 50%, #faf9f5 100%);
+      overflow-x: hidden;
+      color: #1e293b; /* slate-800 */
+    }
+
+    .forest-gradient {
+      background: linear-gradient(135deg, #1e4d35 0%, #2d6a4f 50%, #40916c 100%);
+    }
+    .wood-gradient {
+      background: linear-gradient(135deg, #f7f3ed 0%, #ede3d3 100%);
+    }
+    .forest-border-glow {
+      box-shadow: 0 10px 30px rgba(45, 106, 79, 0.05);
+      border: 1px solid rgba(82, 183, 136, 0.25);
+    }
+    .cute-bounce:hover {
+      transform: scale(1.01) translateY(-1px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* ぷっくりリーフボタン - よりシンプルで可読性の高い文字へ */
+    .leaf-btn {
+      background: linear-gradient(135deg, #52b788 0%, #3e8e68 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(62, 142, 104, 0.2), inset 0 -2px 0px rgba(0,0,0,0.1);
+      border-radius: 0.75rem;
+    }
+    .leaf-btn:hover {
+      background: linear-gradient(135deg, #74c69d 0%, #52b788 100%);
+      box-shadow: 0 6px 16px rgba(62, 142, 104, 0.3);
+    }
+    
+    /* 木の実オレンジボタン */
+    .nut-btn {
+      background: linear-gradient(135deg, #e76f51 0%, #cf573a 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(207, 87, 58, 0.2), inset 0 -2px 0px rgba(0,0,0,0.1);
+      border-radius: 0.75rem;
+    }
+
+    /* 女の子キャラクターのアニメーション */
+    @keyframes girl-breath {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-3px) rotate(0.5deg); }
+    }
+    @keyframes girl-blink {
+      0%, 90%, 100% { transform: scaleY(1); }
+      93%, 97% { transform: scaleY(0.1); }
+    }
+    @keyframes tail-wag {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(4deg); }
+    }
+    .animate-breath {
+      animation: girl-breath 4s ease-in-out infinite;
+    }
+    .animate-blink {
+      animation: girl-blink 5s ease-in-out infinite;
+      transform-origin: 50% 35%;
+    }
+    .animate-tail {
+      animation: tail-wag 2s ease-in-out infinite;
+      transform-origin: 30% 80%;
+    }
+
+    /* 藤の花（ふじづる）の揺れアニメーション */
+    @keyframes fuji-sway {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(1.5deg); }
+    }
+    .animate-fuji {
+      animation: fuji-sway 8s ease-in-out infinite;
+      transform-origin: top center;
+    }
+
+    /* 花びらと木の葉が舞い落ちるアニメーション（文字が見えにくくならないよう超微細化） */
+    @keyframes petal-fall {
+      0% {
+        transform: translateY(-20px) translateX(0) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.4;
+      }
+      90% {
+        opacity: 0.4;
+      }
+      100% {
+        transform: translateY(105vh) translateX(80px) rotate(360deg);
+        opacity: 0;
+      }
+    }
+    .petal {
+      position: fixed;
+      pointer-events: none;
+      z-index: 5;
+      animation: petal-fall 16s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+
+  <!-- 舞い散る藤の花びらと木の葉エフェクト（背景：極めて薄く設定し画面を邪魔しない） -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-10 select-none opacity-40">
+    <!-- 花びら1 -->
+    <div class="petal" style="left: 8%; width: 12px; height: 12px; animation-delay: 0s; animation-duration: 15s;">
+      <svg viewBox="0 0 100 100" fill="#d8bbff"><path d="M50,0 C80,30 100,70 50,100 C0,70 20,30 50,0 Z"/></svg>
+    </div>
+    <!-- 葉っぱ1 -->
+    <div class="petal" style="left: 22%; width: 10px; height: 10px; animation-delay: 4s; animation-duration: 20s;">
+      <svg viewBox="0 0 100 100" fill="#95d5b2"><path d="M50,0 C90,20 90,80 50,100 C10,80 10,20 50,0 Z"/></svg>
+    </div>
+    <!-- 花びら2 -->
+    <div class="petal" style="left: 48%; width: 14px; height: 14px; animation-delay: 2s; animation-duration: 12s;">
+      <svg viewBox="0 0 100 100" fill="#e0aaff"><path d="M50,0 C80,30 100,70 50,100 C0,70 20,30 50,0 Z"/></svg>
+    </div>
+    <!-- 葉っぱ2 -->
+    <div class="petal" style="left: 70%; width: 11px; height: 11px; animation-delay: 6s; animation-duration: 17s;">
+      <svg viewBox="0 0 100 100" fill="#74c69d"><path d="M50,0 C90,20 90,80 50,100 C10,80 10,20 50,0 Z"/></svg>
+    </div>
+    <!-- 花びら3 -->
+    <div class="petal" style="left: 88%; width: 10px; height: 10px; animation-delay: 1s; animation-duration: 19s;">
+      <svg viewBox="0 0 100 100" fill="#b5179e"><path d="M50,0 C80,30 100,70 50,100 C0,70 20,30 50,0 Z"/></svg>
+    </div>
+  </div>
+
+  <!-- リラックスフォヘッダー（藤の花蔓の飾りのある上品なヘッダー） -->
+  <header class="forest-gradient text-white shadow-sm sticky top-0 z-50 border-b-2 border-emerald-800 relative overflow-hidden">
+    <!-- 背景に這う藤の蔓（SVG） -->
+    <div class="absolute inset-y-0 right-0 w-64 pointer-events-none opacity-20">
+      <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M 100 0 C 80 20, 90 50, 60 70 C 40 85, 70 100, 50 120" stroke="#e8dbff" stroke-width="1.5" fill="none"/>
+        <circle cx="60" cy="70" r="1.5" fill="#e0aaff" />
+        <circle cx="80" cy="30" r="2.5" fill="#f3e8ff" />
+      </svg>
+    </div>
+
+    <!-- 左側の垂れ下がる藤の花（ふじづる） -->
+    <div class="absolute left-6 top-0 h-16 w-16 pointer-events-none z-10 animate-fuji">
+      <svg class="w-full h-full" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,0 C12,15 5,25 15,35" stroke="#a7c957" stroke-width="1.2" stroke-linecap="round" />
+        <path d="M15,0 C22,12 18,22 25,30" stroke="#6a994e" stroke-width="1.0" stroke-linecap="round" />
+        <circle cx="10" cy="18" r="2.5" fill="#c77dff" />
+        <circle cx="8" cy="22" r="2.0" fill="#e0aaff" />
+        <circle cx="12" cy="24" r="2.0" fill="#f3e8ff" />
+        <circle cx="15" cy="28" r="1.5" fill="#ffffff" />
+        <circle cx="22" cy="15" r="3.5" fill="#ffffff" />
+        <circle cx="22" cy="15" r="1.0" fill="#ffb703" />
+        <circle cx="26" cy="22" r="2.5" fill="#ffccd5" />
+      </svg>
+    </div>
+
+    <!-- 右側の垂れ下がる藤の花（ふじづる） -->
+    <div class="absolute right-6 top-0 h-16 w-16 pointer-events-none z-10 animate-fuji" style="animation-delay: -3.5s;">
+      <svg class="w-full h-full" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M40,0 C38,15 45,25 35,35" stroke="#a7c957" stroke-width="1.2" stroke-linecap="round" />
+        <circle cx="38" cy="16" r="2.5" fill="#c77dff" />
+        <circle cx="41" cy="21" r="2.0" fill="#e0aaff" />
+        <circle cx="36" cy="25" r="1.5" fill="#ffffff" />
+        <circle cx="30" cy="12" r="3.5" fill="#ffffff" />
+        <circle cx="30" cy="12" r="1.0" fill="#ffb703" />
+      </svg>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-20">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/95 p-2 rounded-xl shadow-inner relative shrink-0">
+          <span class="text-2xl">🍃</span>
+          <span class="absolute -top-1 -right-1 text-sm">🌸</span>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-wide flex items-center gap-2">
+            IGK 勤怠自動集計システム <span class="text-xs bg-emerald-900/40 text-emerald-200 px-2.5 py-0.5 rounded-full font-medium">森のリラックス版 🐿️</span>
+          </h1>
+          <p class="text-xs text-emerald-100/80 mt-0.5">人件費の計算を速やかに。複雑な時間の集計を一瞬で解決します。</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="loadSampleData()" class="cute-bounce flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-950 px-4 py-2 rounded-xl text-xs font-semibold transition border border-emerald-200 shadow-sm">
+          🌰 テスト用データを読み込む
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- 左側：設定＆データ入力エリア (1/3) -->
+      <div class="lg:col-span-1 space-y-6">
+        
+        <!-- 正社員マネージャー（追加・削除機能付き） -->
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden">
+          <div class="absolute -top-6 -right-6 text-5xl opacity-10 pointer-events-none text-emerald-600">🌺</div>
+          
+          <div class="flex items-center gap-2 mb-3">
+            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">設定 1</span>
+            <h2 class="text-sm font-bold text-emerald-950 flex items-center gap-1">正社員メンバー管理 🍃</h2>
+          </div>
+          <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+            ここで登録されたお名前は「正社員」として自動判別され、指定した時間に基づき早朝・深夜残業を自動的に切り分けて集計します。それ以外の方は自動で「アルバイト」として総実労働時間を算出します。
+          </p>
+          
+          <!-- 正社員追加フォーム -->
+          <div class="flex gap-2 mb-4">
+            <input type="text" id="newMemberInput" placeholder="新しい正社員の氏名を入力..." class="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none font-medium bg-slate-50/50">
+            <button onclick="addEmployee()" class="leaf-btn text-white font-medium px-4 py-2 text-xs cute-bounce flex items-center gap-1 shrink-0">
+              ➕ 追加
+            </button>
+          </div>
+
+          <!-- 正社員リストタグエリア -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-emerald-950">現在の正社員リスト（クリックで削除できます）：</label>
+            <div id="employeeTags" class="flex flex-wrap gap-1.5 p-3 bg-emerald-50/20 rounded-xl border border-emerald-100 min-h-[80px]">
+              <!-- 動的にタグが挿入されます -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 勤務時間＆時期による変則期間の設定 -->
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden">
+          <div class="absolute -top-6 -right-6 text-5xl opacity-10 pointer-events-none text-emerald-600">⏰</div>
+          
+          <div class="flex items-center gap-2 mb-3">
+            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-200">設定 2</span>
+            <h2 class="text-sm font-bold text-emerald-950 flex items-center gap-1">通常勤務時間の設定 🌅</h2>
+          </div>
+          <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+            基準となる定時勤務時間です。数値を変更すると、全従業員の勤務表へリアルタイムに再計算が反映されます。
+          </p>
+
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-emerald-800 mb-1">🌲 始業時刻</label>
+              <input type="time" id="workStartTime" value="09:30" onchange="saveTimeSettings()" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50 text-center">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-emerald-800 mb-1">🏕️ 終業時刻</label>
+              <input type="time" id="workEndTime" value="18:30" onchange="saveTimeSettings()" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50 text-center">
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-xs font-semibold text-emerald-800 mb-1">☕ 休憩時間（分）</label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="restDuration" value="60" onchange="saveTimeSettings()" class="w-20 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50 text-center">
+              <span class="text-xs text-slate-500">分（※5時間以上の勤務で自動適用されます）</span>
+            </div>
+          </div>
+
+          <!-- 時期・期間による変則ルールの設定 -->
+          <div class="border-t border-dashed border-emerald-100 pt-4 relative">
+            <div class="absolute top-0 right-0 h-8 w-8 opacity-20 pointer-events-none">
+              <svg viewBox="0 0 50 50"><path d="M 50 0 C 40 10, 45 25, 30 35" stroke="#70e000" stroke-width="1" fill="none"/></svg>
+            </div>
+            
+            <h3 class="text-xs font-bold text-emerald-950 flex items-center gap-1 mb-1.5">
+              📅 特定の期間・季節の特別勤務設定 🌸
+            </h3>
+            <p class="text-xs text-slate-400 mb-3 leading-normal">
+              「特定の期間中のみ定時時間が変わる」「シフトが一時的に変更になる」場合はこちらに適用期間を登録してください。
+            </p>
+
+            <!-- 特別期間追加フォーム -->
+            <div class="bg-emerald-50/30 p-3 rounded-xl border border-emerald-100 space-y-2 text-xs">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-semibold text-emerald-800 mb-1">📅 開始日</label>
+                  <input type="date" id="specialStart" class="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-emerald-800 mb-1">📅 終了日</label>
+                  <input type="date" id="specialEnd" class="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs">
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-semibold text-emerald-800 mb-1">🌅 特別始業</label>
+                  <input type="time" id="specialStartTime" value="10:00" class="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-emerald-800 mb-1">🌇 特別終業</label>
+                  <input type="time" id="specialEndTime" value="19:00" class="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs">
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-1">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] font-semibold text-emerald-800">☕ 休憩</span>
+                  <input type="number" id="specialRest" value="60" class="w-12 px-1 py-0.5 border border-slate-200 rounded text-center text-xs">
+                  <span class="text-[10px] text-slate-400">分</span>
+                </div>
+                <button onclick="addSpecialPeriod()" class="leaf-btn text-white font-medium px-3 py-1 text-[11px] cute-bounce flex items-center gap-0.5">
+                  登録する
+                </button>
+              </div>
+            </div>
+
+            <!-- 特別期間リスト -->
+            <div class="mt-3 space-y-1.5">
+              <span class="block text-xs font-semibold text-emerald-800">設定中の特別期間ルール（クリックで削除）：</span>
+              <div id="specialPeriodList" class="space-y-1 max-h-[120px] overflow-y-auto pr-1">
+                <!-- 動的にリストが追加されます -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 打刻データのインポート -->
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden">
+          <div class="absolute -top-6 -right-6 text-5xl opacity-10 pointer-events-none text-emerald-600">📂</div>
+          
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">設定 3</span>
+              <h2 class="text-sm font-bold text-emerald-950 flex items-center gap-1">打刻データの取り込み 🐾</h2>
+            </div>
+            <button onclick="clearRawData()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-0.5">
+              🗑️ クリア
+            </button>
+          </div>
+          
+          <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+            システムからダウンロードした打刻ファイル（Excel / CSV）をここに直接ドロップするか、下の入力欄にコピーしたテキストをそのまま貼り付けてください。
+          </p>
+          
+          <!-- ドラッグエリア -->
+          <div id="dropZone" class="border border-dashed border-emerald-300 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-emerald-50/10 hover:bg-emerald-50/30 mb-4 flex flex-col items-center justify-center relative">
+            <span class="text-3xl mb-1.5">🌿</span>
+            <span class="text-xs font-bold text-emerald-950 block">ここに打刻ファイルをドロップ 🌳</span>
+            <span class="text-[10px] text-slate-400 block mt-1">（Excel、CSV形式に自動対応）</span>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt" class="hidden">
+          </div>
+
+          <textarea id="rawInput" rows="4" placeholder="【貼り付けフォーマット例】&#13;00000646   林 昊嬛   入室   2026/07/09 09:29..." class="w-full p-3 border border-slate-200 rounded-2xl text-[11px] font-mono focus:ring-1 focus:ring-emerald-500 outline-none resize-y bg-slate-50/50"></textarea>
+
+          <button onclick="processAttendance()" class="w-full mt-4 leaf-btn text-white py-3 px-4 rounded-xl font-bold text-xs cute-bounce shadow-sm flex items-center justify-center gap-2">
+            ✨ 全自動考勤集計を実行する
+          </button>
+        </div>
+
+      </div>
+
+      <!-- 右側：プレビュー＆Excel出力 (2/3) -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- 森の案内キャラクター：ココアちゃんのメッセージボード -->
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-5 relative overflow-hidden flex flex-col sm:flex-row items-center gap-4 border-l-4 border-emerald-600 wood-gradient">
+          <!-- 背景を飾るお花のリース -->
+          <div class="absolute right-0 top-0 w-24 h-24 pointer-events-none opacity-20">
+            <svg class="w-full h-full" viewBox="0 0 100 100">
+              <path d="M 70 0 C 65 20, 95 30, 80 50" stroke="#6a994e" stroke-width="1.2" fill="none" />
+              <circle cx="80" cy="30" r="2" fill="#c77dff" />
+              <circle cx="75" cy="40" r="1.5" fill="#ffffff" />
+            </svg>
+          </div>
+
+          <!-- 女の子（ココアちゃん）のアニメーション -->
+          <div class="w-20 h-20 shrink-0 bg-white/95 p-2 rounded-full shadow-inner border border-emerald-100 flex items-center justify-center relative">
+            <svg class="w-full h-full animate-breath" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="animate-tail" d="M 80 50 C 95 30, 95 10, 80 15 C 70 20, 75 40, 80 50 Z" fill="#b07d62" />
+              <circle cx="50" cy="50" r="32" fill="#7d4f39" />
+              <circle cx="50" cy="50" r="26" fill="#ffe5d9" />
+              <path d="M 24 50 C 24 35, 76 35, 76 50 C 76 30, 24 30, 24 50 Z" fill="#7d4f39" />
+              <path d="M 32 40 C 35 48, 45 42, 45 40 C 45 42, 55 48, 68 40" stroke="#7d4f39" stroke-width="4" stroke-linecap="round" />
+              <g class="animate-blink">
+                <ellipse cx="38" cy="50" rx="3.5" ry="5" fill="#402e2a" />
+                <circle cx="37" cy="48" r="1.2" fill="#ffffff" />
+                <ellipse cx="62" cy="50" rx="3.5" ry="5" fill="#402e2a" />
+                <circle cx="61" cy="48" r="1.2" fill="#ffffff" />
+              </g>
+              <circle cx="34" cy="55" r="3" fill="#ffb5a7" opacity="0.8" />
+              <circle cx="66" cy="55" r="3" fill="#ffb5a7" opacity="0.8" />
+              <path d="M 48 56 Q 50 59 52 56" stroke="#402e2a" stroke-width="2" stroke-linecap="round" fill="none" />
+              <path d="M 68 32 C 60 25, 60 18, 70 22 C 78 25, 75 35, 68 32 Z" fill="#80b918" />
+              <circle cx="75" cy="23" r="3.5" fill="#c77dff" />
+              <circle cx="75" cy="23" r="1" fill="#fff" />
+            </svg>
+            <span class="absolute -bottom-1 -right-1 text-sm">🌸</span>
+          </div>
+          
+          <!-- ココアちゃんのセリフ吹き出し（読みやすさを重視し十分なコントラストを確保） -->
+          <div class="flex-1 bg-white/95 rounded-2xl p-4 border border-emerald-100 shadow-sm relative">
+            <div class="absolute left-1/2 -top-2 sm:-left-2 sm:top-1/2 -translate-x-1/2 sm:translate-x-0 sm:-translate-y-1/2 w-0 h-0 border-l-6 border-l-transparent border-r-6 border-r-transparent border-b-6 border-b-white/95 sm:border-t-6 sm:border-t-transparent sm:border-b-6 sm:border-b-transparent sm:border-r-6 sm:border-r-white/95"></div>
+            <p class="text-xs font-bold text-emerald-950 mb-1 flex items-center gap-1.5">
+              <span>森の案内役・ココア</span> 
+              <span class="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">サポート中 🐿️</span>
+            </p>
+            <p id="characterBubble" class="text-xs text-slate-700 leading-relaxed font-medium">
+              こんにちは！私はココアです。ここへ勤怠データ（Excel/CSV）を運んでくだされば、私が一瞬で綺麗に整理して、可愛いExcelファイルを作っちゃいますよ 🍃 垂れ下がる美しい藤の花がとっても素敵ですね 🌸
+            </p>
+          </div>
+        </div>
+
+        <!-- Excelプレビューボード -->
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative">
+          <div class="absolute bottom-4 right-4 h-16 w-16 opacity-5 pointer-events-none">
+            <svg viewBox="0 0 50 50">
+              <circle cx="25" cy="25" r="15" fill="#ffb5a7" />
+              <circle cx="25" cy="25" r="5" fill="#fff" />
+            </svg>
+          </div>
+
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 relative z-10">
+            <div>
+              <h2 class="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                🌲 Excel リアルタイムプレビュー 🕊️
+              </h2>
+              <p class="text-xs text-slate-500">出力されるExcelの各シートに対応するレイアウトを事前に高精度で確認できます。</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+              <button onclick="exportToExcel()" id="exportBtn" disabled class="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-slate-100 text-slate-400 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition border border-slate-200/50">
+                📥 Excelファイルをダウンロード
+              </button>
+            </div>
+          </div>
+
+          <!-- タブメニュー -->
+          <div class="flex border-b border-emerald-100 mb-4 overflow-x-auto relative z-10">
+            <button onclick="switchTab('fulltime')" id="tab-fulltime" class="px-5 py-3 border-b-2 border-emerald-600 text-emerald-950 font-bold text-xs flex items-center gap-1.5 transition outline-none shrink-0">
+              💼 正社員レポート 
+              <span id="fulltime-count" class="bg-emerald-50 text-emerald-900 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+            </button>
+            <button onclick="switchTab('parttime')" id="tab-parttime" class="px-5 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-600 font-bold text-xs flex items-center gap-1.5 transition outline-none shrink-0">
+              ⏰ アルバイトレポート (A/B自動連動) 
+              <span id="parttime-count" class="bg-slate-50 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+            </button>
+          </div>
+
+          <!-- 正社員用グリッドテーブル -->
+          <div id="table-fulltime-container" class="overflow-x-auto border border-slate-200 rounded-xl max-h-[450px] relative z-10 bg-white">
+            <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
+              <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0 shadow-sm backdrop-blur">
+                <tr>
+                  <th class="px-4 py-3">社員ID</th>
+                  <th class="px-4 py-3">氏名</th>
+                  <th class="px-4 py-3">日付</th>
+                  <th class="px-4 py-3">曜日</th>
+                  <th class="px-4 py-3 text-emerald-800">入室時刻</th>
+                  <th class="px-4 py-3 text-rose-800">退室時刻</th>
+                  <th class="px-4 py-3">適用勤務</th>
+                  <th class="px-4 py-3">通常労働</th>
+                  <th class="px-4 py-3 text-emerald-800">早朝残業</th>
+                  <th class="px-4 py-3 text-rose-800">深夜残業</th>
+                </tr>
+              </thead>
+              <tbody id="fulltime-tbody" class="divide-y divide-slate-100 bg-white">
+                <tr>
+                  <td colspan="10" class="px-4 py-16 text-center text-slate-400">
+                    <span class="text-2xl block mb-2">🐾</span>
+                    打刻データが読み込まれていません。右上の「テスト用データ」をお試しください ✨
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- アルバイト用グリッドテーブル -->
+          <div id="table-parttime-container" class="hidden overflow-x-auto border border-slate-200 rounded-xl max-h-[450px] relative z-10 bg-white">
+            <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
+              <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0 shadow-sm backdrop-blur">
+                <tr>
+                  <th class="px-4 py-3">スタッフID</th>
+                  <th class="px-4 py-3">氏名</th>
+                  <th class="px-4 py-3">日付</th>
+                  <th class="px-4 py-3">曜日</th>
+                  <th class="px-4 py-3 text-emerald-800">入室時刻</th>
+                  <th class="px-4 py-3 text-rose-800">退室時刻</th>
+                  <th class="px-4 py-3 bg-amber-50/50">総実労働時間</th>
+                  <th class="px-4 py-3 bg-emerald-50/30 text-emerald-950">IGKグループA (上課)</th>
+                  <th class="px-4 py-3 bg-blue-50/30 text-blue-950">IGKグループB (自動計算)</th>
+                  <th class="px-4 py-3">勤務場所 / 交通費</th>
+                </tr>
+              </thead>
+              <tbody id="parttime-tbody" class="divide-y divide-slate-100 bg-white">
+                <tr>
+                  <td colspan="10" class="px-4 py-16 text-center text-slate-400">
+                    <span class="text-2xl block mb-2">🐾</span>
+                    アルバイトスタッフのデータはまだありません。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 説明とお知らせ -->
+          <div class="mt-4 p-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl text-xs text-emerald-950 leading-relaxed space-y-1.5 relative z-10">
+            <h4 class="font-bold flex items-center gap-1.5 text-xs text-emerald-950">
+              🌱 効率よく計算するためのヒント：
+            </h4>
+            <p>🌟 <strong>アルバイト管理：</strong>ダウンロードしたExcelファイルでは、「IGKグループA」に数値を入力すると、「IGKグループB」が自動計算されます。</p>
+            <p>🌟 <strong>正社員の変則時間：</strong>「変則期間設定」に重なる日のデータは、自動的にその期間中の基準時間に基づいて残業代が別計算されます！</p>
+            <p>🌟 <strong>自動保存：</strong>設定した内容（正社員リスト、通常勤務時間、特別ルール）はブラウザに安全に保存されます 🍃</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-emerald-950 text-emerald-100 border border-emerald-500/30 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition duration-300 z-50">
+    <span id="toast-icon" class="text-lg">✨</span>
+    <span id="toast-text" class="text-xs font-semibold">メッセージがここに表示されます</span>
+  </div>
+
+  <script>
+    // Lucideアイコン初期化
+    lucide.createIcons();
+
+    // 正社員メンバーの初期リスト
+    let fullTimeMembers = ["Linh2308-", "葛野みのり", "yassmyn", "Yoon", "林昊嬛"];
+    // 特別期間ルールの初期リスト
+    let specialPeriods = [];
+
+    // ローカルストレージからの復元
+    if (localStorage.getItem("igk_fulltime_members")) {
+      try {
+        fullTimeMembers = JSON.parse(localStorage.getItem("igk_fulltime_members"));
+      } catch (e) {
+        console.error("データの読み込みに失敗しました:", e);
+      }
+    }
+    if (localStorage.getItem("igk_special_periods")) {
+      try {
+        specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
+      } catch (e) {
+        console.error("特別期間データの読み込みに失敗しました:", e);
+      }
+    }
+
+    // ページの読み込み完了時に設定を復元して描画
+    window.onload = function() {
+      if (localStorage.getItem("igk_work_start")) {
+        document.getElementById('workStartTime').value = localStorage.getItem("igk_work_start");
+      }
+      if (localStorage.getItem("igk_work_end")) {
+        document.getElementById('workEndTime').value = localStorage.getItem("igk_work_end");
+      }
+      if (localStorage.getItem("igk_rest_duration")) {
+        document.getElementById('restDuration').value = localStorage.getItem("igk_rest_duration");
+      }
+      renderEmployeeTags();
+      renderSpecialPeriods();
+    };
+
+    // ココアちゃんの吹き出しセリフ変更機能
+    function updateCocoaTalk(message) {
+      document.getElementById('characterBubble').innerText = message;
+    }
+
+    // 通常時間設定の保存
+    function saveTimeSettings() {
+      const start = document.getElementById('workStartTime').value;
+      const end = document.getElementById('workEndTime').value;
+      const rest = document.getElementById('restDuration').value;
+
+      localStorage.setItem("igk_work_start", start);
+      localStorage.setItem("igk_work_end", end);
+      localStorage.setItem("igk_rest_duration", rest);
+
+      showToast('💖 設定した定時時間の保存に成功しました！', '🍃');
+      updateCocoaTalk('基準時間が新しくなりました！もう一度「集計ボタン」を押せば、最新ルールで瞬時に計算し直しますよ 🌸');
+
+      if (document.getElementById('rawInput').value.trim()) {
+        processAttendance();
+      }
+    }
+
+    let currentTab = 'fulltime';
+    let processedData = {
+      fulltime: [],
+      parttime: [],
+      rawBackup: []
+    };
+
+    // 正社員メンバーのDOMタグレンダリング
+    function renderEmployeeTags() {
+      const container = document.getElementById('employeeTags');
+      container.innerHTML = '';
+      
+      fullTimeMembers.forEach((name) => {
+        const tag = document.createElement('div');
+        tag.className = 'cute-bounce flex items-center gap-1.5 bg-gradient-to-r from-emerald-100/60 to-emerald-50/60 text-emerald-950 font-bold text-[11px] px-3 py-1.5 rounded-lg border border-emerald-200 cursor-pointer shadow-sm';
+        tag.innerHTML = `
+          <span>👤 ${name}</span>
+          <span class="text-rose-500 font-extrabold hover:text-rose-700 ml-1">×</span>
+        `;
+        tag.onclick = () => removeEmployee(name);
+        container.appendChild(tag);
+      });
+    }
+
+    // 正社員の追加
+    function addEmployee() {
+      const input = document.getElementById('newMemberInput');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('⚠️ お名前を入力してください！', '🍄');
+        return;
+      }
+      if (fullTimeMembers.includes(name)) {
+        showToast('⚠️ 既にリストに登録されています。', '💡');
+        return;
+      }
+      fullTimeMembers.push(name);
+      saveToStorage();
+      renderEmployeeTags();
+      input.value = '';
+      showToast(`🎉 「${name}」さんを正社員として登録しました！`, '💖');
+      updateCocoaTalk(`「${name}」さんの追加を記録しました。この方が打刻データに入っていれば、全自動で正社員計算します！`);
+      
+      if (document.getElementById('rawInput').value.trim()) {
+        processAttendance();
+      }
+    }
+
+    // 正社員の削除
+    function removeEmployee(name) {
+      fullTimeMembers = fullTimeMembers.filter(m => m !== name);
+      saveToStorage();
+      renderEmployeeTags();
+      showToast(`❌ 「${name}」さんをリストから削除しました`, '🐾');
+      updateCocoaTalk(`「${name}」さんをリストから外しました。今後はアルバイト扱いとして集計されます 🍃`);
+      
+      if (document.getElementById('rawInput').value.trim()) {
+        processAttendance();
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
+    }
+
+    // 特別期間ルールの追加
+    function addSpecialPeriod() {
+      const start = document.getElementById('specialStart').value;
+      const end = document.getElementById('specialEnd').value;
+      const sTime = document.getElementById('specialStartTime').value;
+      const eTime = document.getElementById('specialEndTime').value;
+      const rest = parseInt(document.getElementById('specialRest').value) || 60;
+
+      if (!start || !end) {
+        showToast('⚠️ 開始日と終了日を設定してください！', '📅');
+        return;
+      }
+      if (start > end) {
+        showToast('⚠️ 開始日は終了日より前の日付にしてください！', '📅');
+        return;
+      }
+
+      const newPeriod = {
+        id: Date.now().toString(),
+        start,
+        end,
+        startTime: sTime,
+        endTime: eTime,
+        rest
+      };
+
+      specialPeriods.push(newPeriod);
+      localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
+      renderSpecialPeriods();
+      showToast('🎉 変則勤務期間を追加しました！', '✨');
+      updateCocoaTalk(`${start} ～ ${end} は特別勤務期間（${sTime}～${eTime}）として上書き計算します 🍁`);
+
+      if (document.getElementById('rawInput').value.trim()) {
+        processAttendance();
+      }
+    }
+
+    // 特別期間ルールの削除
+    function removeSpecialPeriod(id) {
+      specialPeriods = specialPeriods.filter(p => p.id !== id);
+      localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
+      renderSpecialPeriods();
+      showToast('❌ 変則ルールを削除しました', '🐾');
+      updateCocoaTalk('特別勤務ルールを1件削除しました。');
+
+      if (document.getElementById('rawInput').value.trim()) {
+        processAttendance();
+      }
+    }
+
+    // 特別期間の表示
+    function renderSpecialPeriods() {
+      const container = document.getElementById('specialPeriodList');
+      if (specialPeriods.length === 0) {
+        container.innerHTML = '<span class="text-[11px] text-slate-400 italic block pl-1">登録されている期間はありません。</span>';
+        return;
+      }
+      container.innerHTML = '';
+      specialPeriods.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'cute-bounce flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl px-3 py-2 text-[11px] text-slate-700 cursor-pointer shadow-sm';
+        item.innerHTML = `
+          <div class="flex flex-col">
+            <span class="font-semibold text-amber-950">📅 ${p.start.replace(/-/g, '/')} ～ ${p.end.replace(/-/g, '/')}</span>
+            <span class="text-slate-500 mt-0.5">🕒 勤務: ${p.startTime} - ${p.endTime} (休憩${p.rest}分)</span>
+          </div>
+          <span class="text-rose-600 font-bold hover:text-rose-800 shrink-0 ml-2">削除</span>
+        `;
+        item.onclick = () => removeSpecialPeriod(p.id);
+        container.appendChild(item);
+      });
+    }
+
+    // 日付が特別期間に含まれるか判定
+    function getMatchedPeriod(dateStr) {
+      const targetDate = dateStr.replace(/\//g, '-');
+      for (const p of specialPeriods) {
+        if (targetDate >= p.start && targetDate <= p.end) {
+          return p;
+        }
+      }
+      return null;
+    }
+
+    // ドラッグ＆ドロップ
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-emerald-500', 'bg-emerald-50/20');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/20');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/20');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFile(files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    // ファイル読み込み (防塵フィルター付き)
+    function handleFile(file) {
+      const extension = file.name.split('.').pop().toLowerCase();
+      
+      if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'pdf', 'heic'].includes(extension)) {
+        showToast(`❌ 画像やPDFファイル（${extension}）は非対応です！`, '🍄');
+        updateCocoaTalk('あれれ？ 画像やPDFファイルは私の森では読み込めないんです…ExcelかCSVのデータを持ってきてね 🐾');
+        return;
+      }
+
+      const reader = new FileReader();
+
+      if (extension === 'csv' || extension === 'txt') {
+        reader.onload = function(e) {
+          document.getElementById('rawInput').value = e.target.result;
+          showToast(`📂 データを読み込みました：${file.name}`, '🍃');
+          updateCocoaTalk(`打刻データ「${file.name}」をインポートしたよ！「集計ボタン」を押してね 🐿️`);
+          processAttendance();
+        };
+        reader.readAsText(file);
+      } 
+      else if (extension === 'xlsx' || extension === 'xls') {
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const txt = XLSX.utils.sheet_to_txt(firstSheet);
+            
+            document.getElementById('rawInput').value = txt;
+            showToast(`💎 Excelデータを読み込みました：${file.name}`, '🌳');
+            updateCocoaTalk(`Excelファイル「${file.name}」を解析したよ！すぐに集計をスタートしてみよう ✨`);
+            processAttendance();
+          } catch (err) {
+            console.error(err);
+            showToast('⚠️ Excelデータの読み込みに失敗しました。', '🐾');
+            updateCocoaTalk('ごめんなさい、このExcelファイルは壊れているか非公式なフォーマットかもしれません 💦');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } 
+      else {
+        showToast('⚠️ サポートされていないファイル形式です。', '💡');
+      }
+    }
+
+    // デモ用データ
+    const sampleRawData = `00000646\t林 昊嬛\t入室\t2026/07/09 09:29
+00000646\t林 昊嬛\t退室\t2026/07/08 18:31
+00000646\t林 昊嬛\t入室\t2026/07/08 09:29
+00000646\t林 昊嬛\t退室\t2026/07/07 18:33
+00000646\t林 昊嬛\t入室\t2026/07/07 09:30
+00000646\t林 昊嬛\t退室\t2026/07/06 18:30
+00000646\t林 昊嬛\t入室\t2026/07/06 09:30
+00000646\t林 昊嬛\t退室\t2026/07/02 18:30
+00000646\t林 昊嬛\t入室\t2026/07/02 09:28
+00000646\t林 昊嬛\t退室\t2026/07/01 18:30
+00000646\t林 昊嬛\t入室\t2026/07/01 09:30
+00000888\tCostard Fergus\t入室\t2026/06/09 15:00
+00000888\tCostard Fergus\t退室\t2026/06/09 18:00
+00000888\tCostard Fergus\t入室\t2026/06/05 14:00
+00000888\tCostard Fergus\t退室\t2026/06/05 18:02
+00000888\tCostard Fergus\t入室\t2026/06/03 14:00
+00000888\tCostard Fergus\t退室\t2026/06/03 18:02
+00000888\tCostard Fergus\t入室\t2026/06/02 14:59
+00000888\tCostard Fergus\t退室\t2026/06/02 18:08
+00000888\tCostard Fergus\t入室\t2026/05/29 14:00
+00000888\tCostard Fergus\t退室\t2026/05/29 18:01`;
+
+    function loadSampleData() {
+      document.getElementById('rawInput').value = sampleRawData;
+      showToast('🐾 デモデータを読み込みました！', '🍃');
+      updateCocoaTalk('デモデータを読み込みました！林昊嬛さんとFergus先生のデータです。さっそく集計ボタンを押してみてね！');
+      processAttendance();
+    }
+
+    function clearRawData() {
+      document.getElementById('rawInput').value = '';
+      showToast('ごみ箱へぽいっ 🧹 空にしました！', '🍃');
+      updateCocoaTalk('準備完了！新しいデータを貼り付けるかファイルをドロップしてね。');
+    }
+
+    // 高級トースト表示
+    function showToast(message, icon = '🍃') {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      const iconEl = document.getElementById('toast-icon');
+      text.innerText = message;
+      iconEl.innerText = icon;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3500);
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const ftBtn = document.getElementById('tab-fulltime');
+      const ptBtn = document.getElementById('tab-parttime');
+      const ftTable = document.getElementById('table-fulltime-container');
+      const ptTable = document.getElementById('table-parttime-container');
+
+      if (tab === 'fulltime') {
+        ftBtn.className = "px-5 py-3 border-b-2 border-emerald-600 text-emerald-950 font-bold text-xs flex items-center gap-1.5 transition outline-none shrink-0";
+        ptBtn.className = "px-5 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-600 font-medium text-xs flex items-center gap-1.5 transition outline-none shrink-0";
+        ftTable.classList.remove('hidden');
+        ptTable.classList.add('hidden');
+      } else {
+        ptBtn.className = "px-5 py-3 border-b-2 border-emerald-600 text-emerald-950 font-bold text-xs flex items-center gap-1.5 transition outline-none shrink-0";
+        ftBtn.className = "px-5 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-600 font-medium text-xs flex items-center gap-1.5 transition outline-none shrink-0";
+        ptTable.classList.remove('hidden');
+        ftTable.classList.add('hidden');
+      }
+    }
+
+    // コア計算ロジック（時期によるダイナミック時間設定対応版）
+    function processAttendance() {
+      const inputText = document.getElementById('rawInput').value.trim();
+      const lowerFullTimeNames = fullTimeMembers.map(name => name.replace(/\s+/g, '').toLowerCase());
+
+      if (!inputText) {
+        showToast('⚠️ 打刻データが空っぽです！', '🍄');
+        return;
+      }
+
+      processedData = { fulltime: [], parttime: [], rawBackup: [] };
+      const lines = inputText.split('\n');
+      const attendanceMap = {};
+      const daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"];
+
+      // 画面から通常の基準設定を取得
+      const defaultStart = document.getElementById('workStartTime').value || "09:30";
+      const defaultEnd = document.getElementById('workEndTime').value || "18:30";
+      const defaultRest = parseInt(document.getElementById('restDuration').value) || 60;
+
+      lines.forEach(line => {
+        let parts = line.split('\t');
+        if (parts.length < 4) {
+          parts = line.split(/\s{2,}/); 
+        }
+        if (parts.length < 4) return; 
+
+        const empId = parts[0].trim();
+        const empName = parts[1].trim();
+        const type = parts[2].trim(); 
+        const timeStr = parts[3].trim();
+
+        // 原本バックアップ用
+        processedData.rawBackup.push([empId, empName, type, timeStr]);
+
+        const dateObj = new Date(timeStr);
+        if (isNaN(dateObj.getTime())) return; 
+
+        const dateKey = formatDate(dateObj);
+        const hmStr = formatHM(dateObj);
+        const dayOfWeek = daysOfWeek[dateObj.getDay()];
+
+        const mapKey = `${empId}_${dateKey}`;
+        if (!attendanceMap[mapKey]) {
+          const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
+          const isFullTime = lowerFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
+          
+          attendanceMap[mapKey] = {
+            id: empId,
+            name: empName,
+            date: dateKey,
+            day: dayOfWeek,
+            checkIn: null,
+            checkOut: null,
+            isFullTime: isFullTime
+          };
+        }
+
+        if (type.includes("入")) {
+          if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) {
+            attendanceMap[mapKey].checkIn = hmStr;
+          }
+        } else if (type.includes("退")) {
+          if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) {
+            attendanceMap[mapKey].checkOut = hmStr;
+          }
+        }
+      });
+
+      // 時刻データの一括生成
+      for (const key in attendanceMap) {
+        const item = attendanceMap[key];
+
+        if (item.isFullTime) {
+          // 【正社員】：特別期間(変則シフト)に当てはまるかチェック
+          const matchedPeriod = getMatchedPeriod(item.date);
+          let startTimeVal = defaultStart;
+          let endTimeVal = defaultEnd;
+          let restDurationVal = defaultRest;
+          let periodLabel = "通常時間";
+
+          if (matchedPeriod) {
+            startTimeVal = matchedPeriod.startTime;
+            endTimeVal = matchedPeriod.endTime;
+            restDurationVal = matchedPeriod.rest;
+            periodLabel = `特別 (${startTimeVal}-${endTimeVal})`;
+          }
+
+          let regular = "00:00";
+          let earlyOvertime = "00:00";
+          let lateOvertime = "00:00";
+
+          if (item.checkIn && item.checkOut) {
+            const inMin = timeToMins(item.checkIn);
+            const outMin = timeToMins(item.checkOut);
+            
+            const startLimit = timeToMins(startTimeVal); 
+            const endLimit = timeToMins(endTimeVal);     
+
+            // 早朝残業 (指定された始業時間より前の労働)
+            if (inMin < startLimit) {
+              earlyOvertime = minsToTimeStr(startLimit - inMin);
+            }
+            // 深夜残業 (指定された終業時間より後の労働)
+            if (outMin > endLimit) {
+              lateOvertime = minsToTimeStr(outMin - endLimit);
+            }
+
+            // 通常内労働 (指定された勤務時間の枠内)
+            const coreIn = Math.max(inMin, startLimit);
+            const coreOut = Math.min(outMin, endLimit);
+            if (coreOut > coreIn) {
+              let coreWork = coreOut - coreIn;
+              // 5時間(300分)以上の場合は自動的に休憩時間をマイナス
+              if (coreWork > 300) {
+                coreWork -= restDurationVal;
+              }
+              regular = minsToTimeStr(coreWork);
+            }
+          }
+
+          processedData.fulltime.push({
+            id: item.id,
+            name: item.name,
+            date: item.date,
+            day: item.day,
+            checkIn: item.checkIn || "未打刻",
+            checkOut: item.checkOut || "未打刻",
+            regular: regular,
+            earlyOvertime: earlyOvertime,
+            lateOvertime: lateOvertime,
+            shiftLabel: periodLabel
+          });
+
+        } else {
+          // 【アルバイト】：そのままの総時間を集計
+          let totalWork = "00:00";
+          if (item.checkIn && item.checkOut) {
+            const inMin = timeToMins(item.checkIn);
+            const outMin = timeToMins(item.checkOut);
+            if (outMin > inMin) {
+              totalWork = minsToTimeStr(outMin - inMin);
+            }
+          }
+
+          processedData.parttime.push({
+            id: item.id,
+            name: item.name,
+            date: item.date,
+            day: item.day,
+            checkIn: item.checkIn || "未打刻",
+            checkOut: item.checkOut || "未打刻",
+            totalWork: totalWork,
+            groupA: "", 
+            groupBFormula: "", 
+            location: "" 
+          });
+        }
+      }
+
+      // 表示をソート
+      processedData.fulltime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+      processedData.parttime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+
+      // テーブルの描画
+      renderFulltimeTable();
+      renderParttimeTable();
+
+      // バッジ表示の更新
+      document.getElementById('fulltime-count').innerText = processedData.fulltime.length;
+      document.getElementById('parttime-count').innerText = processedData.parttime.length;
+
+      // プレミアムボタンのアクティブ化
+      const exportBtn = document.getElementById('exportBtn');
+      exportBtn.disabled = false;
+      exportBtn.className = "flex-1 sm:flex-initial flex items-center justify-center gap-2 leaf-btn text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer cute-bounce";
+
+      showToast(`✨ 計算に成功しました！ 💖`, '🌲');
+      updateCocoaTalk(`お待たせしました！集計が完了しました ✨ 正社員 ${processedData.fulltime.length}件、アルバイト ${processedData.parttime.length}件です。右上のボタンからExcelファイルをダウンロードしてね 🐿️`);
+    }
+
+    function renderFulltimeTable() {
+      const tbody = document.getElementById('fulltime-tbody');
+      if (processedData.fulltime.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-12 text-center text-slate-400">現在、データがありません</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = processedData.fulltime.map(row => `
+        <tr class="hover:bg-slate-50 transition duration-150">
+          <td class="px-4 py-2.5 font-mono text-slate-500 font-medium">${row.id}</td>
+          <td class="px-4 py-2.5 font-semibold text-slate-900">${row.name}</td>
+          <td class="px-4 py-2.5 text-slate-600 font-mono">${row.date}</td>
+          <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[10px] ${getWeekColor(row.day)}">${row.day}</span></td>
+          <td class="px-4 py-2.5 font-mono text-emerald-700 font-bold">${row.checkIn}</td>
+          <td class="px-4 py-2.5 font-mono text-rose-700 font-bold">${row.checkOut}</td>
+          <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-medium border border-emerald-100">${row.shiftLabel}</span></td>
+          <td class="px-4 py-2.5 font-mono font-medium">${row.regular}</td>
+          <td class="px-4 py-2.5 font-mono text-slate-500">${row.earlyOvertime}</td>
+          <td class="px-4 py-2.5 font-mono text-slate-500">${row.lateOvertime}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderParttimeTable() {
+      const tbody = document.getElementById('parttime-tbody');
+      if (processedData.parttime.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-12 text-center text-slate-400">現在、データがありません</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = processedData.parttime.map((row, index) => {
+        const rowNum = index + 2; 
+        return `
+          <tr class="hover:bg-slate-50 transition duration-150">
+            <td class="px-4 py-2.5 font-mono text-slate-500">${row.id}</td>
+            <td class="px-4 py-2.5 font-semibold text-slate-900">${row.name}</td>
+            <td class="px-4 py-2.5 text-slate-600 font-mono">${row.date}</td>
+            <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[10px] ${getWeekColor(row.day)}">${row.day}</span></td>
+            <td class="px-4 py-2.5 font-mono text-emerald-700 font-medium">${row.checkIn}</td>
+            <td class="px-4 py-2.5 font-mono text-rose-700 font-medium">${row.checkOut}</td>
+            <td class="px-4 py-2.5 font-mono font-bold bg-amber-50/20 text-amber-950" id="total-${index}">${row.totalWork}</td>
+            <td class="px-4 py-1.5 bg-emerald-50/20 text-center">
+              <input type="text" placeholder="例: 02:00" oninput="updateBFormula(${index}, this.value)" class="w-20 px-2 py-1 text-center font-mono border border-emerald-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-xs bg-white" value="${row.groupA}">
+            </td>
+            <td class="px-4 py-2.5 font-mono font-bold text-blue-800 bg-blue-50/20" id="groupB-${index}">
+              ${row.groupA ? calculateTimeDiff(row.totalWork, row.groupA) : `<span class="text-slate-400 text-[10px]">公式: =G${rowNum}-H${rowNum}</span>`}
+            </td>
+            <td class="px-4 py-1.5">
+              <input type="text" placeholder="例: 名谷 / 750" class="w-full px-2 py-1 text-slate-600 border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-xs bg-white" value="${row.location}" onchange="processedData.parttime[${index}].location = this.value">
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateBFormula(index, aValue) {
+      processedData.parttime[index].groupA = aValue;
+      const bCell = document.getElementById(`groupB-${index}`);
+      const totalWork = processedData.parttime[index].totalWork;
+      const rowNum = index + 2;
+
+      if (!aValue) {
+        bCell.innerHTML = `<span class="text-slate-400 text-[10px]">公式: =G${rowNum}-H${rowNum}</span>`;
+        return;
+      }
+
+      bCell.innerHTML = calculateTimeDiff(totalWork, aValue);
+    }
+
+    function calculateTimeDiff(t1, t2) {
+      try {
+        const m1 = timeToMins(t1);
+        const m2 = timeToMins(t2);
+        if (m1 >= m2) {
+          return minsToTimeStr(m1 - m2);
+        }
+        return "00:00";
+      } catch (e) {
+        return "エラー";
+      }
+    }
+
+    // Excel（xlsx）の書き出し＆ダウンロード
+    function exportToExcel() {
+      if (processedData.fulltime.length === 0 && processedData.parttime.length === 0) {
+        showToast('⚠️ 出力するデータがありません！', '🐾');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      // 1. 原本バックアップ分頁
+      if (processedData.rawBackup.length > 0) {
+        const rawBackupData = [
+          ["生徒ID", "氏名", "入室/退室", "入退室日時"]
+        ];
+        processedData.rawBackup.forEach(row => {
+          rawBackupData.push(row);
+        });
+        const ws_raw = XLSX.utils.aoa_to_sheet(rawBackupData);
+        XLSX.utils.book_append_sheet(wb, ws_raw, "打刻記録IGK(原本)");
+      }
+
+      // 2. 正社員分頁
+      if (processedData.fulltime.length > 0) {
+        const ftData = [
+          ["社員ID", "氏名", "日付", "曜日", "入室時刻", "退室時刻", "適用ルール", "通常労働", "早朝残業", "深夜残業"]
+        ];
+        processedData.fulltime.forEach(row => {
+          ftData.push([row.id, row.name, row.date, row.day, row.checkIn, row.checkOut, row.shiftLabel, row.regular, row.earlyOvertime, row.lateOvertime]);
+        });
+        const ws_ft = XLSX.utils.aoa_to_sheet(ftData);
+        XLSX.utils.book_append_sheet(wb, ws_ft, "正社員勤怠表");
+      }
+
+      // 3. アルバイト分頁（数式付き）
+      if (processedData.parttime.length > 0) {
+        const ptData = [
+          ["スタッフID", "氏名", "日付", "曜日", "入室時刻", "退室時刻", "総実労働時間", "IGKグループA(上課)", "IGKグループB(自動計算)", "勤務場所・交通費"]
+        ];
+        
+        processedData.parttime.forEach(row => {
+          ptData.push([
+            row.id, row.name, row.date, row.day, row.checkIn, row.checkOut, row.totalWork, 
+            row.groupA || "", 
+            "", // Excel数式バインド用の空スペース
+            row.location || ""
+          ]);
+        });
+
+        const ws_pt = XLSX.utils.aoa_to_sheet(ptData);
+
+        // 各行に数式を代入 (IF判定と時間引き算)
+        for (let i = 0; i < processedData.parttime.length; i++) {
+          const excelRowIdx = i + 2; 
+          const cellRef = `I${excelRowIdx}`; 
+          
+          ws_pt[cellRef] = {
+            t: 's', 
+            f: `IF(H${excelRowIdx}="","",G${excelRowIdx}-H${excelRowIdx})` 
+          };
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws_pt, "アルバイト勤怠表");
+      }
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      XLSX.writeFile(wb, `IGK_森の自動集計勤怠表_${dateStr}.xlsx`);
+      showToast('💖 Excelダウンロードに成功しました！', '🌳');
+      updateCocoaTalk('Excelファイルのダウンロードが完了しました！無事に会計さんへ提出できますね。お疲れ様でした 🌸✨');
+    }
+
+    function timeToMins(timeStr) {
+      if (!timeStr || !timeStr.includes(':')) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function minsToTimeStr(totalMins) {
+      if (totalMins <= 0) return "00:00";
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = (date.getMonth() + 1).toString().padStart(2, '0');
+      const d = date.getDate().toString().padStart(2, '0');
+      return `${y}/${m}/${d}`;
+    }
+
+    function formatHM(date) {
+      const h = date.getHours().toString().padStart(2, '0');
+      const m = date.getMinutes().toString().padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function getWeekColor(day) {
+      if (day === '日' || day === '土') {
+        return 'bg-rose-50 text-rose-700 font-semibold';
+      }
+      return 'bg-slate-100 text-slate-700';
+    }
+  </script>
+</body>
+</html>
