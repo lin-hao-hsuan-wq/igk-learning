@@ -283,13 +283,13 @@
             </div>
           </div>
           <p class="text-xs text-slate-400 mb-3">
-            後台システムから取得したCSVや履歴テキストをそのままコピーして下に貼り付けてください（先頭のインデックス数字が含まれていても補正されます）。
+            後台システムから取得したCSVや履歴テキストをそのままコピーして下に貼り付けてください。追加された従業員データは蓄積され、一括でExcel出力できます。
           </p>
 
           <textarea id="rawInput" rows="7" placeholder="1   00000646   林 昊嬛   入室   2026/07/09 09:29&#10;2   00000646   林 昊嬛   退室   2026/07/08 18:31" class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
 
           <button onclick="processAttendance()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-2">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを判読して一新集計する
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを判読して蓄積リストに登録する
           </button>
         </div>
 
@@ -301,13 +301,23 @@
               <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
                 <i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別エクセルプレビュー
               </h2>
-              <p class="text-xs text-slate-400 mt-0.5">※ 出力されるエクセル活頁簿に合わせ、個人別にシートを分けてプレビューできます。</p>
+              <p class="text-xs text-slate-400 mt-0.5">※ 名前が表示されている従業員のデータが現在保存されています（一括ダウンロード対象）。</p>
             </div>
             
-            <!-- Download Button -->
-            <button id="excel-download-btn" disabled onclick="downloadExcel()" class="w-full sm:w-auto bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-              <i data-lucide="download" class="w-4 h-4"></i> マルチシートExcelで保存 (.xlsx)
-            </button>
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <!-- 🗑️ Delete active employee data -->
+              <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()">
+                <i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除
+              </button>
+              <!-- 🧹 Reset whole list -->
+              <button onclick="clearAccumulatedData()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm border border-slate-200/30">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> 全員クリア
+              </button>
+              <!-- Download Button -->
+              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                <i data-lucide="download" class="w-4 h-4"></i> 一括マルチシートExcel保存 (.xlsx)
+              </button>
+            </div>
           </div>
 
           <!-- Active History Badge (shown when checking historical records) -->
@@ -319,7 +329,7 @@
           <!-- Employee Sheet Navigation (Sub-tabs) -->
           <div class="border-b border-slate-100 pb-2 mb-4 overflow-x-auto">
             <div id="employee-sheets-nav" class="flex gap-1.5 min-w-full">
-              <span class="text-xs text-slate-400 py-2">データを集計するとここにシート（個人タブ）が表示されます。</span>
+              <span class="text-xs text-slate-400 py-2">データを集計するとここに蓄積された従業員シート名が表示されます。</span>
             </div>
           </div>
 
@@ -334,7 +344,7 @@
                   <td class="px-6 py-12 text-center text-slate-400" colspan="10">
                     <div class="flex flex-col items-center gap-2">
                       <i data-lucide="info" class="w-8 h-8 text-slate-300"></i>
-                      <span>現在プレビューする data はありません。データを入力するかデモを読み込んでください。</span>
+                      <span>現在プレビュー蓄積されている従業員はいません。データを貼り付けて蓄積してください。</span>
                     </div>
                   </td>
                 </tr>
@@ -453,6 +463,27 @@
       // Restore special range rules
       if (localStorage.getItem("igk_special_periods")) {
         specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
+      }
+
+      // Restore accumulated process data if available in browser memory
+      if (localStorage.getItem("igk_active_processed_data")) {
+        try {
+          processedData = JSON.parse(localStorage.getItem("igk_active_processed_data"));
+          if (processedData.fulltime.length > 0 || processedData.parttime.length > 0) {
+            buildEmployeeSheetTabs();
+            const allNames = getProcessedNames();
+            if (allNames.length > 0) {
+              selectSheetTab(allNames[0]);
+            }
+            
+            // Enable download Excel button
+            const dlBtn = document.getElementById('excel-download-btn');
+            dlBtn.disabled = false;
+            dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
+          }
+        } catch (e) {
+          console.error("Error restoring accumulated data:", e);
+        }
       }
 
       // Build day selector DOM components
@@ -683,7 +714,7 @@
       return null;
     }
 
-    // Process all attendance copy-paste data
+    // Process & Accumulate attendance copy-paste data
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       document.getElementById('activeHistoryBadge').classList.remove('flex');
@@ -696,7 +727,11 @@
         return;
       }
 
-      processedData = { fulltime: [], parttime: [], rawBackup: [] };
+      // Temporary holding areas for the newly calculated chunk
+      const newlyParsedNames = new Set();
+      const tempFulltime = [];
+      const tempParttime = [];
+      const tempRawBackup = [];
       const attendanceMap = {};
 
       const defaultStart = document.getElementById('workStartTime').value || "09:30";
@@ -714,23 +749,23 @@
         };
       });
 
-      // 1. 全文を改行、タブ、および複数スペースで分解してフラットな単語（トークン）配列を作る
+      // 1. Split pasted string into raw tokens
       const tokens = inputText.split(/[\n\r\t]+|\s{2,}/).map(t => t.trim()).filter(t => t !== "");
       
-      // トークン分類のヘルパー関数
+      // Token matcher rules
       const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2})/;
       function isDateToken(str) { return dateRegex.test(str); }
       function isActionToken(str) { return /入室|退室|入|退|in|out/i.test(str); }
-      function isIdToken(str) { return /^\d{4,10}$/.test(str); } // IDは通常4〜10桁
+      function isIdToken(str) { return /^\d{4,10}$/.test(str); }
       function isNameToken(str) {
         if (!str) return false;
         if (isDateToken(str) || isActionToken(str) || isIdToken(str)) return false;
-        if (/^[\s,\|;\.\/\-_~:]+$/.test(str)) return false; // 記号のみ
-        if (/^\d+$/.test(str)) return false; // 単なる連番行（1, 2, 3..）
+        if (/^[\s,\|;\.\/\-_~:]+$/.test(str)) return false;
+        if (/^\d+$/.test(str)) return false;
         return true;
       }
 
-      // 2. 「日付打刻時間トークン」をスキャンして近傍探索する
+      // 2. Scan and bind tokens together into specific stamp entries
       tokens.forEach((token, idx) => {
         if (isDateToken(token)) {
           const dateTimeVal = token.match(dateRegex)[1];
@@ -738,7 +773,6 @@
           let empName = "";
           let type = "";
 
-          // 前後12トークンの範囲から最も近い ID、名前、アクションを探索して紐付けする
           const searchRadius = 12;
           let minIdDist = Infinity;
           let minNameDist = Infinity;
@@ -771,10 +805,10 @@
             }
           }
 
-          // 最低限「従業員名」と「ID」が紐付けできればログとして保存する
           if (empId && empName) {
-            if (!type) type = "入室"; // 不明時は出勤扱い
-            processedData.rawBackup.push([empId, empName, type, dateTimeVal]);
+            if (!type) type = "入室";
+            tempRawBackup.push([empId, empName, type, dateTimeVal]);
+            newlyParsedNames.add(empName);
 
             const dateObj = new Date(dateTimeVal);
             if (!isNaN(dateObj.getTime())) {
@@ -812,7 +846,7 @@
         }
       });
 
-      // 3. 各ペアの日付別集計・集計リスト作成
+      // 3. Process each parsed pair
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
@@ -857,14 +891,14 @@
             const coreOut = Math.min(outMin, endLimit);
             if (coreOut > coreIn) {
               let coreWork = coreOut - coreIn;
-              if (coreWork >= 375) { // 6時間15分連続勤務で1時間（設定分）休憩控除
+              if (coreWork >= 375) { 
                 coreWork -= restDurationVal;
               }
               regular = minsToTimeStr(coreWork);
             }
           }
 
-          processedData.fulltime.push({
+          tempFulltime.push({
             id: item.id,
             name: item.name,
             date: item.date,
@@ -878,7 +912,7 @@
           });
 
         } else {
-          // アルバイト（打工）時給集計
+          // Part-Time hourly metrics calculation
           let totalWork = "00:00";
           if (item.checkIn && item.checkOut) {
             const inMin = timeToMins(item.checkIn);
@@ -888,7 +922,7 @@
             }
           }
 
-          processedData.parttime.push({
+          tempParttime.push({
             id: item.id,
             name: item.name,
             date: item.date,
@@ -904,26 +938,44 @@
         }
       }
 
-      // 各勤怠配列のソート
+      // 🌟 INCREMENTAL OVERWRITE/MERGE logic
+      // Filter out existing entries of names that were parsed in THIS block to replace them perfectly
+      const namesToOverwrite = Array.from(newlyParsedNames);
+      if (namesToOverwrite.length > 0) {
+        processedData.fulltime = processedData.fulltime.filter(r => !namesToOverwrite.includes(r.name));
+        processedData.parttime = processedData.parttime.filter(r => !namesToOverwrite.includes(r.name));
+        processedData.rawBackup = processedData.rawBackup.filter(r => !namesToOverwrite.includes(r[1]));
+      }
+
+      // Merge new calculations with the existing accumulated pool
+      processedData.fulltime = [...processedData.fulltime, ...tempFulltime];
+      processedData.parttime = [...processedData.parttime, ...tempParttime];
+      processedData.rawBackup = [...processedData.rawBackup, ...tempRawBackup];
+
+      // Sort logs alphabetically/date-wise
       processedData.fulltime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
       processedData.parttime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
-      // タブメニューの再構築と画面描画
+      // Cache persistent session state in browser local storage
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+      // Rebuild tab components and redraw target grid
       buildEmployeeSheetTabs();
       
-      const allNames = getProcessedNames();
-      if (allNames.length > 0) {
-        selectSheetTab(allNames[0]);
+      // Auto-select the newly added employee
+      if (namesToOverwrite.length > 0) {
+        selectSheetTab(namesToOverwrite[0]);
       } else {
-        renderEmptyGrid();
+        const allNames = getProcessedNames();
+        if (allNames.length > 0) selectSheetTab(allNames[0]);
       }
 
-      // ダウンロードExcelボタンの有効化
+      // Enable multi-sheet Excel Download action
       const dlBtn = document.getElementById('excel-download-btn');
       dlBtn.disabled = false;
-      dlBtn.className = "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
+      dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
 
-      // 🚀 集計後に自動で「② 従業員別エクセルプレビュー」へスクロールさせる
+      // 🚀 Smooth scroll down directly into individual Employee preview panel
       const target = document.getElementById('preview-section-target');
       if (target) {
         setTimeout(() => {
@@ -931,8 +983,8 @@
         }, 150);
       }
 
-      showToast('🎉 全員の集計が完了しました！', '🌸');
-      setCocoaText('「データをバッチリ読めましたよ！下まで自動でスクロールしました。個別シートをご確認くださいね♪」');
+      showToast(`🎉 ${namesToOverwrite.join(', ')} さんのデータを蓄積リストに追加しました！`, '🌸');
+      setCocoaText(`「お疲れ様です！新しく追加した ${namesToOverwrite.join(', ')} さんの考勤を算出し、名簿に蓄積しました！Excelを出力すると、登録されている全員分のシートが一挙に生成されますよ♪」`);
     }
 
     // Helper name extraction
@@ -949,7 +1001,7 @@
       const names = getProcessedNames();
 
       if (names.length === 0) {
-        container.innerHTML = `<span class="text-xs text-slate-400 py-2">データを集計するとここにシートが表示されます。</span>`;
+        container.innerHTML = `<span class="text-xs text-slate-400 py-2">データを集計するとここにシート（個人タブ）が表示されます。</span>`;
         return;
       }
 
@@ -980,6 +1032,18 @@
           }
         }
       });
+
+      // Show/Hide specific active employee delete option dynamically
+      const delBtn = document.getElementById('delete-selected-employee-btn');
+      if (delBtn) {
+        if (name) {
+          delBtn.classList.remove('hidden');
+          delBtn.classList.add('inline-flex');
+        } else {
+          delBtn.classList.remove('inline-flex');
+          delBtn.classList.add('hidden');
+        }
+      }
 
       renderActiveGridView();
     }
@@ -1081,7 +1145,7 @@
       const tbody = document.getElementById('preview-tbody');
       tbody.innerHTML = `
         <tr>
-          <td class="px-6 py-12 text-center text-slate-400" colspan="10">プレビューする従業員シートがありません。</td>
+          <td class="px-6 py-12 text-center text-slate-400" colspan="10">プレビュー蓄積されている従業員シートがありません。</td>
         </tr>
       `;
     }
@@ -1090,11 +1154,13 @@
       const minutes = parseInt(val) || 0;
       processedData.parttime[idx].restMin = minutes;
       recalculatePartTimeB(idx);
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
     function updatePartTimeGroupA(idx, val) {
       processedData.parttime[idx].groupA = val;
       recalculatePartTimeB(idx);
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
     function recalculatePartTimeB(idx) {
@@ -1115,6 +1181,63 @@
 
     function updatePartTimeLocation(idx, val) {
       processedData.parttime[idx].locationAndFare = val;
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+    }
+
+    // 🗑️ Delete specific employee from the accumulated list
+    function deleteEmployee(name) {
+      showCustomConfirm(`従業員「${name}」のデータをこのリストから削除しますか？`, "一括エクセルダウンロード対象からも除外されます。", () => {
+        processedData.fulltime = processedData.fulltime.filter(r => r.name !== name);
+        processedData.parttime = processedData.parttime.filter(r => r.name !== name);
+        processedData.rawBackup = processedData.rawBackup.filter(r => r[1] !== name);
+        
+        localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+        selectedEmployeeName = "";
+        
+        buildEmployeeSheetTabs();
+        const allNames = getProcessedNames();
+        if (allNames.length > 0) {
+          selectSheetTab(allNames[0]);
+        } else {
+          renderEmptyGrid();
+          // Disable download Excel button
+          const dlBtn = document.getElementById('excel-download-btn');
+          dlBtn.disabled = true;
+          dlBtn.className = "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+        }
+        
+        showToast(`🗑️ ${name} さんのデータを削除しました`, '🍂');
+      });
+    }
+
+    function deleteSelectedEmployee() {
+      if (selectedEmployeeName) {
+        deleteEmployee(selectedEmployeeName);
+      }
+    }
+
+    // 🧹 Reset / Clear Accumulated session Data completely
+    function clearAccumulatedData() {
+      showCustomConfirm("蓄積されたすべての従業員データをクリアしますか？", "これにより、プレビュー名簿および一括ダウンロード内容が完全にリセットされます。", () => {
+        processedData = { fulltime: [], parttime: [], rawBackup: [] };
+        selectedEmployeeName = "";
+        localStorage.removeItem("igk_active_processed_data");
+        
+        buildEmployeeSheetTabs();
+        renderEmptyGrid();
+        
+        // Hide delete option
+        const delBtn = document.getElementById('delete-selected-employee-btn');
+        if (delBtn) delBtn.className = "hidden";
+
+        // Disable Excel Download button
+        const dlBtn = document.getElementById('excel-download-btn');
+        dlBtn.disabled = true;
+        dlBtn.className = "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+        
+        showToast("🧹 蓄積データを完全にクリアしました", "🍃");
+        setCocoaText("「名簿をきれいに初期化しましたよ！新しい打刻データを貼り付けて、再度従業員を追加してくださいね。」");
+      });
     }
 
     // Demo Data loading logic (Enriched with both full-time and part-time records)
@@ -1181,6 +1304,7 @@
       return 'bg-slate-100 text-slate-600 font-semibold';
     }
 
+    // 👑 Perfect Double Sheet (打刻+出退) Excel Exporter per Employee 
     function downloadExcel() {
       const names = getProcessedNames();
       if (names.length === 0) {
@@ -1190,18 +1314,29 @@
 
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Audit Backup Log Sheet
-      const logHeaders = ["従業員ID", "従業員名", "タイプ", "打刻日時"];
-      const logRows = [logHeaders];
-      processedData.rawBackup.forEach(r => logRows.push(r));
-      const ws_logs = XLSX.utils.aoa_to_sheet(logRows);
-      XLSX.utils.book_append_sheet(wb, ws_logs, "打刻原本ログ保管シート");
-
-      // Sheet 2+: Generate an individual sheet tab per employee
+      // Loop through each processed employee to create EXACTLY 2 distinct tabs for each: "打刻" + name and "出退" + name
       names.forEach(name => {
+        
+        // -------------------------------------------------------------
+        // SHEET 1: [打刻 + Name] — Individual Raw Stamps Logs
+        // -------------------------------------------------------------
+        const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
+        const logHeaders = ["従業員ID", "従業員名", "タイプ", "打刻日時"];
+        const logRows = [logHeaders];
+        personalRawLogs.forEach(r => logRows.push(r));
+        const ws_stamps = XLSX.utils.aoa_to_sheet(logRows);
+        
+        // Excel worksheet names limit to 31 characters
+        const stampsSheetTabName = `打刻${name}`.substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws_stamps, stampsSheetTabName);
+
+        // -------------------------------------------------------------
+        // SHEET 2: [出退 + Name] — Individual Monthly Compiled Details
+        // -------------------------------------------------------------
         const isFT = processedData.fulltime.some(r => r.name === name);
 
         if (isFT) {
+          // Full-time layout
           const ftHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト"];
           const ftRows = [ftHeaders];
           const entries = processedData.fulltime.filter(r => r.name === name);
@@ -1209,47 +1344,49 @@
             ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel]);
           });
           const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
-          XLSX.utils.book_append_sheet(wb, ws_ft, name);
+          
+          const detailsSheetTabName = `出退${name}`.substring(0, 31);
+          XLSX.utils.book_append_sheet(wb, ws_ft, detailsSheetTabName);
 
         } else {
-          // Part-Time individual sheet tabs with injected formulas
+          // Part-Time layout containing smart Excel formulas
           const ptHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "総在勤時間", "休憩時間(分)", "IGK A(授業)", "IGK B(勤務)", "校舎/交通費"];
           const ptRows = [ptHeaders];
           const entries = processedData.parttime.filter(r => r.name === name);
           
-          // Row calculation loop
           entries.forEach(r => {
             ptRows.push([
               r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, 
               r.totalWork, 
               parseInt(r.restMin) || 0,
               r.groupA || "",
-              "", // Leave column empty to bind excel formula
+              "", // Reserved cell for bound Excel Formula
               r.locationAndFare || ""
             ]);
           });
 
           const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
 
-          // Apply Formula to Column 10 (IGK Group B) dynamically: `=TotalWork - Break - GroupA`
+          // Apply bound dynamic formulas on Column J (IGK Group B) dynamically: `=TotalWork - Break - GroupA`
           for (let i = 0; i < entries.length; i++) {
-            const excelRowIndex = i + 2; // Column index (header is row 1)
-            const cellReference = `J${excelRowIndex}`; // Column J represents Group B
+            const excelRowIndex = i + 2; 
+            const cellReference = `J${excelRowIndex}`; // Column J in Excel matches "IGK B"
             ws_pt[cellReference] = {
               t: 's',
               f: `IF(G${excelRowIndex}="","",G${excelRowIndex}-H${excelRowIndex}/1440-IF(I${excelRowIndex}="","00:00",I${excelRowIndex}))`
             };
           }
 
-          XLSX.utils.book_append_sheet(wb, ws_pt, name);
+          const detailsSheetTabName = `出退${name}`.substring(0, 31);
+          XLSX.utils.book_append_sheet(wb, ws_pt, detailsSheetTabName);
         }
       });
 
-      // Write excel workbook file
+      // Export file
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       XLSX.writeFile(wb, `IGK_勤怠管理_${stamp}.xlsx`);
-      showToast('👑 マルチシートExcelを出力しました！', '🌸');
-      setCocoaText('「Excelファイルがダウンロードされましたよ！従業員ごとにタブが綺麗に分かれているので、チェックがすごく楽になります♪」');
+      showToast('👑 一括マルチシートExcelを出力しました！', '🌸');
+      setCocoaText('「Excelファイルの出力が成功しましたよ！従業員ごとに『打刻人名』と『出退人名』の2つの専用タブが綺麗に並んでいるので、人事チェックが非常にスムーズです♪」');
     }
 
     function toggleHistoryModal() {
@@ -1304,7 +1441,7 @@
       // Enable actions
       const dlBtn = document.getElementById('excel-download-btn');
       dlBtn.disabled = false;
-      dlBtn.className = "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
+      dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
 
       toggleHistoryModal();
       showToast(`📂 アーカイブ「${name}」を復元・レビューしています`, '🌸');
