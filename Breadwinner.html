@@ -895,7 +895,9 @@
         const isFT = processedData.fulltime.some(r => r.name === name);
         const icon = isFT ? '💼' : '⏱️';
         const tabBtn = document.createElement('button');
-        tabBtn.id = `sheet-tab-${name}`;
+        // 安全に空白や特殊文字をアンダーバーに変換して有効な ID を生成
+        const escapedId = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
+        tabBtn.id = escapedId;
         tabBtn.className = `px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 border outline-none`;
         tabBtn.innerHTML = `<span>${icon} ${name}</span>`;
         tabBtn.onclick = () => selectSheetTab(name);
@@ -907,7 +909,8 @@
       selectedEmployeeName = name;
       const names = getProcessedNames();
       names.forEach(n => {
-        const btn = document.getElementById(`sheet-tab-${n}`);
+        const escapedId = `sheet-tab-${n.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
+        const btn = document.getElementById(escapedId);
         if (btn) {
           if (n === name) {
             btn.className = "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 border bg-slate-800 text-white border-slate-800 shadow-sm";
@@ -1053,7 +1056,7 @@
       processedData.parttime[idx].locationAndFare = val;
     }
 
-    // Demo Data loading logic
+    // Demo Data loading logic (Enriched with both full-time and part-time records)
     function loadDemoData() {
       const demoLog = `00000646\t林 昊嬛\t入室\t2026/07/09 09:29
 00000646\t林 昊嬛\t退室\t2026/07/08 18:31
@@ -1065,7 +1068,13 @@
 00000646\t林 昊嬛\t退室\t2026/07/02 18:30
 00000646\t林 昊嬛\t入室\t2026/07/02 09:28
 00000646\t林 昊嬛\t退室\t2026/07/01 18:30
-00000646\t林 昊嬛\t入室\t2026/07/01 09:30`;
+00000646\t林 昊嬛\t入室\t2026/07/01 09:30
+00000888\tCostard Fergus\t入室\t2026/07/09 15:00
+00000888\tCostard Fergus\t退室\t2026/07/09 18:00
+00000888\tCostard Fergus\t入室\t2026/07/08 13:57
+00000888\tCostard Fergus\t退室\t2026/07/08 18:05
+00000888\tCostard Fergus\t入室\t2026/07/07 14:00
+00000888\tCostard Fergus\t退室\t2026/07/07 18:03`;
 
       document.getElementById('rawInput').value = demoLog;
       showToast('🌰 デモ用データを読み込みました！', '🌸');
