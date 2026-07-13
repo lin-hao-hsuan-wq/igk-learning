@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGK Time Card</title>
   
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS (Excel Generation & Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts for ultimate Japanese and numeric legibility -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
@@ -49,12 +53,14 @@
 </head>
 <body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
 
+  <!-- Elegant Hanging Leaves/Flowers (SVG Container) -->
   <div class="absolute top-0 left-0 w-full overflow-hidden pointer-events-none z-10 h-32">
     <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
   <div id="particle-container" class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0"></div>
 
+  <!-- Top Header -->
   <header class="relative z-20 max-w-7xl mx-auto px-6 pt-8 pb-4">
     <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-emerald-100/40">
       <div class="flex items-center gap-4">
@@ -73,6 +79,7 @@
         </div>
       </div>
 
+      <!-- Theme Selector -->
       <div class="flex items-center gap-3 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/50">
         <span class="text-xs font-bold text-slate-600 px-2">四季切り替え:</span>
         <div class="flex gap-1">
@@ -85,22 +92,26 @@
     </div>
   </header>
 
+  <!-- Main Grid System -->
   <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
+      <!-- Left Column Settings -->
       <div class="space-y-6 lg:col-span-1">
+        <!-- Cocoa Board -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden border border-slate-100">
           <div class="flex items-start gap-4">
             <div class="w-16 h-16 shrink-0 relative"><svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg></div>
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「お疲れ様です！文字の貼り付け以外に、Excelファイル(.xlsx/.csv)の直接インポートにも対応しましたよ♪」
+                「お疲れ様です！テキストの貼り付けだけでなく、ExcelやCSVファイルの直接インポートにも対応しましたよ♪」
               </p>
             </div>
           </div>
         </div>
 
+        <!-- Employee Manager -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i> 正社員メンバー管理
@@ -113,6 +124,7 @@
           <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
         </div>
 
+        <!-- Time Settings -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="clock" class="w-4 h-4 text-emerald-600"></i> 基準勤務時間設定
@@ -133,17 +145,19 @@
           </div>
         </div>
 
+        <!-- Weekly Rules -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の設定</h3>
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の一括設定</h3>
           </div>
           <div class="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
             <div id="weekly-rules-container" class="space-y-2.5"></div>
           </div>
         </div>
 
+        <!-- Special Days -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別の日</h3>
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別期間ルール</h3>
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50 space-y-3">
             <div class="grid grid-cols-2 gap-2">
               <div><input type="date" id="special-start-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
@@ -160,11 +174,13 @@
         </div>
       </div>
 
+      <!-- Middle & Right Columns -->
       <div class="lg:col-span-2 space-y-6">
+        <!-- Input Panel -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
-              <i data-lucide="clipboard-signature" class="text-emerald-600"></i> ① 原始打刻データの貼り付け / 試算表導入
+              <i data-lucide="clipboard-signature" class="text-emerald-600"></i> ① 打刻データの貼り付け / インポート
             </h2>
             <div class="flex flex-wrap gap-2">
               <button onclick="loadDemoData()" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg font-bold transition">🌰 デモデータ</button>
@@ -172,26 +188,28 @@
             </div>
           </div>
           
+          <!-- File Importer -->
           <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
             <div class="flex items-center gap-3">
               <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
-              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV 檔案を直接インポート：</span>
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルをここにインポート：</span>
             </div>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
           </div>
 
-          <textarea id="rawInput" rows="5" placeholder="【文字貼上區域】也可直接貼上文字數據..." class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
+          <textarea id="rawInput" rows="5" placeholder="【テキスト貼り付けエリア】ファイルがない場合は、ここに直接打刻テキストを貼り付けることも可能です..." class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
 
           <button onclick="processAttendance()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-2">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを判読して蓄積リストに登録する
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを解析してリストに蓄積する
           </button>
         </div>
 
+        <!-- Preview Section -->
         <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
-              <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5"><i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別エクセルプレビュー</h2>
-              <p class="text-xs text-slate-400 mt-0.5">※ 兼職人員遲到時，精算工時會自動無條件進位至下一個 5 分鐘計算法。</p>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5"><i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別プレビュー</h2>
+              <p class="text-xs text-slate-400 mt-0.5">※ アルバイトが遅刻した場合、精算工時は自動的に5分単位で切り上げ計算されます。</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()"><i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除</button>
@@ -223,6 +241,7 @@
     </div>
   </main>
 
+  <!-- Modals & Dialogs -->
   <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-amber-100 relative max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center pb-4 border-b border-slate-100">
@@ -247,13 +266,18 @@
 
   <div id="confirm-dialog" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl p-5 shadow-xl max-w-xs w-full text-center">
-      <h4 class="font-bold text-slate-800 text-sm mb-2" id="confirm-title">本当に削除します開？</h4>
+      <h4 class="font-bold text-slate-800 text-sm mb-2" id="confirm-title">本当に対象データを削除しますか？</h4>
       <p class="text-xs text-slate-500 mb-4" id="confirm-desc">この操作は取り消せません。</p>
       <div class="flex gap-2 justify-center">
         <button id="confirm-cancel-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-4 py-2 rounded-lg font-bold">キャンセル</button>
-        <button id="confirm-ok-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-lg font-bold">確定</button>
+        <button id="confirm-ok-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-lg font-bold">確定する</button>
       </div>
     </div>
+  </div>
+
+  <!-- Seamless Seasonal Footer Scenery -->
+  <div class="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none h-44 flex items-end">
+    <svg id="footer-landscape-svg" viewBox="0 0 1440 180" class="w-full h-full opacity-95 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
   <script>
@@ -272,7 +296,6 @@
       if (localStorage.getItem("igk_monthly_history")) monthlyHistory = JSON.parse(localStorage.getItem("igk_monthly_history"));
       if (localStorage.getItem("igk_special_periods")) specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
       
-      // Setup file selector listener
       document.getElementById('excelFileInput').addEventListener('change', handleFileSelect, false);
 
       if (localStorage.getItem("igk_active_processed_data")) {
@@ -308,14 +331,12 @@
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convert to array of arrays
         const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
         if (jsonRows.length <= 1) {
-          showToast('⚠️ 試算表內無有效數據。', '🍄');
+          showToast('⚠️ ファイル内に有効なデータがありません。', '🍄');
           return;
         }
 
-        // Auto align columns mapping keywords intelligently
         let idCol = -1, nameCol = -1, typeCol = -1, timeCol = -1;
         const firstRow = jsonRows[0].map(c => String(c || '').trim().toLowerCase());
 
@@ -323,10 +344,9 @@
           if (cell.includes('id') || cell.includes('工号') || cell.includes('コード') || cell.includes('番号')) idCol = idx;
           if (cell.includes('名') || cell.includes('氏名') || cell.includes('従業員')) nameCol = idx;
           if (cell.includes('タイプ') || cell.includes('状態') || cell.includes('出入') || cell.includes('区分')) typeCol = idx;
-          if (cell.includes('時') || cell.includes('日時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
+          if (cell.includes('時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
         });
 
-        // Fallback standard structure alignment if headers missing
         if (idCol === -1) idCol = 0;
         if (nameCol === -1) nameCol = 1;
         if (typeCol === -1) typeCol = 2;
@@ -344,7 +364,6 @@
 
           if (!empName || !rawTime) continue;
           
-          // Re-format Excel date serial pointers if numeric
           if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
             const dateObj = XLSX.utils.sheet_to_date(worksheet[XLSX.utils.encode_cell({c:timeCol, r:i})]);
             if(dateObj) rawTime = formatDate(dateObj) + " " + formatHM(dateObj);
@@ -355,9 +374,9 @@
 
         if (accumulatedText) {
           document.getElementById('rawInput').value = accumulatedText;
-          showToast('📥 試算表データの読み込みに成功！解析ボタンを押して確定してください。', '🟢');
+          showToast('📥 データの読み込みに成功しました！解析ボタンを押して確定してください。', '🟢');
         } else {
-          showToast('⚠️ 有効な打刻列をマッピングできませんでした。', '🍄');
+          showToast('⚠️ 打刻列のマッピングに失敗しました。', '🍄');
         }
       };
       reader.readAsArrayBuffer(file);
@@ -443,7 +462,7 @@
     }
 
     function removeFullTimeMember(name) {
-      showCustomConfirm(`正社員リストから「${name}」を削除？`, '', () => {
+      showCustomConfirm(`正社員リストから「${name}」を削除しますか？`, '', () => {
         fullTimeMembers = fullTimeMembers.filter(m => m !== name);
         localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
         renderEmployeeTags();
@@ -492,7 +511,6 @@
       return null;
     }
 
-    // Process attendance algorithm core
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       const inputText = document.getElementById('rawInput').value.trim();
@@ -523,7 +541,6 @@
         };
       });
 
-      // Split lines dynamically checking spacing boundaries safely
       const lines = inputText.split('\n');
       lines.forEach(line => {
         if(!line.trim()) return;
@@ -532,7 +549,6 @@
 
         let empId = "", empName = "", type = "入室", dateTimeVal = "";
         
-        // Dynamic search parameters mapping
         tokens.forEach(t => {
           if (/入|in/i.test(t)) type = "入室";
           else if (/退|out/i.test(t)) type = "退室";
@@ -576,7 +592,6 @@
         const item = attendanceMap[key];
 
         if (item.isFullTime) {
-          // Fulltime system configurations logic mapping
           const matchedPeriod = getMatchedPeriod(item.date);
           let startTimeVal = defaultStart, endTimeVal = defaultEnd, restDurationVal = defaultRest, periodLabel = "通常勤務";
 
@@ -609,7 +624,7 @@
           });
 
         } else {
-          // 【兼職人員：整合預定班表、遲到 5 分鐘切齊、早到切齊邏輯】
+          // 【アルバイト：シフト調整、遅刻5分切り上げ、早出切り捨て】
           let schedStart = "14:00", schedEnd = "18:00";
           
           if (item.checkIn) {
@@ -628,15 +643,14 @@
             const sMin = timeToMins(schedStart);
             const eMin = timeToMins(schedEnd);
 
-            // 1. 遲到處理：如果晚於排班開始，無條件進位到 5 分鐘倍數
+            // 遅刻の場合：5分単位で切り上げ計算
             if (inMin > sMin) {
               inMin = Math.ceil(inMin / 5) * 5;
             } else {
-              // 早到處理：切齊到排班預定開始
+              // 早出の場合：予定シフトに切り捨て
               inMin = sMin;
             }
 
-            // 2. 早退延遲處理：最長不超過排班結束時間
             const effectiveOut = Math.min(outMin, eMin);
 
             if (effectiveOut > inMin) {
@@ -710,19 +724,19 @@
     function renderActiveGridView() {
       const thead = document.getElementById('preview-thead');
       const tbody = document.getElementById('preview-tbody');
-      if (!selectedEmployeeName) { thead.innerHTML = ""; tbody.innerHTML = "<tr><td>空。</td></tr>"; return; }
+      if (!selectedEmployeeName) { thead.innerHTML = ""; tbody.innerHTML = "<tr><td>名簿が空です。</td></tr>"; return; }
 
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
 
       if (isFT) {
-        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2">出勤</th><th class="px-4 py-2">退勤</th><th class="px-4 py-2">通常</th><th class="px-4 py-2">早朝</th><th class="px-4 py-2">深夜</th><th class="px-4 py-2">シフト</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2">出勤時間</th><th class="px-4 py-2">退勤時間</th><th class="px-4 py-2">通常勤務</th><th class="px-4 py-2">早朝残業</th><th class="px-4 py-2">深夜残業</th><th class="px-4 py-2">シフト</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
         const rows = processedData.fulltime.filter(r => r.name === selectedEmployeeName);
         tbody.innerHTML = rows.map(r => {
           const gIdx = processedData.fulltime.indexOf(r);
           return `<tr class="text-xs"><td class="px-4 py-2">${r.date}</td><td class="px-4 py-2">${r.day}</td><td class="px-4 py-2 text-emerald-700 font-bold">${r.checkIn}</td><td class="px-4 py-2 text-rose-700 font-bold">${r.checkOut}</td><td class="px-4 py-2">${r.regular}</td><td class="px-4 py-2">${r.earlyOvertime}</td><td class="px-4 py-2">${r.lateOvertime}</td><td class="px-4 py-2">${r.shiftLabel}</td><td><input type="text" value="${r.locationAndFare}" onchange="updateFullTimeLocation(${gIdx}, this.value)" class="border px-2 py-0.5 rounded text-xs w-full"></td></tr>`;
         }).join('');
       } else {
-        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定シフト</th><th class="px-4 py-2 bg-amber-50">精算工時</th><th class="px-4 py-2">休憩</th><th class="px-4 py-2">IGK A</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定シフト</th><th class="px-4 py-2 bg-amber-50">精算工時</th><th class="px-4 py-2">休憩</th><th class="px-4 py-2">IGK A(授業)</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B(勤務)</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
         const rows = processedData.parttime.filter(r => r.name === selectedEmployeeName);
         tbody.innerHTML = rows.map(r => {
           const gIdx = processedData.parttime.indexOf(r);
@@ -736,7 +750,7 @@
               </td>
               <td class="px-4 py-2 font-bold bg-amber-50/40" id="pt-totalwork-cell-${gIdx}">${r.totalWork}</td>
               <td><input type="number" value="${r.restMin}" oninput="updatePartTimeRest(${gIdx}, this.value)" class="border w-12 text-center rounded"></td>
-              <td><input type="text" value="${r.groupA}" oninput="updatePartTimeGroupA(${gIdx}, this.value)" class="border w-14 text-center rounded"></td>
+              <td><input type="text" value="${r.groupA}" oninput="updatePartTimeGroupA(${gIdx}, this.value)" class="border w-14 text-center rounded" placeholder="00:00"></td>
               <td class="px-4 py-2 font-bold text-indigo-700 bg-indigo-50/20" id="pt-groupb-cell-${gIdx}">${r.groupB}</td>
               <td><input type="text" value="${r.locationAndFare}" onchange="updatePartTimeLocation(${gIdx}, this.value)" class="border px-2 py-0.5 rounded text-xs w-full"></td>
             </tr>`;
@@ -794,7 +808,7 @@
     function deleteSelectedEmployee() { if(selectedEmployeeName) deleteEmployee(selectedEmployeeName); }
 
     function deleteEmployee(name) {
-      showCustomConfirm(`従業員「${name}」を削除しますか？`, '', () => {
+      showCustomConfirm(`従業員「${name}」のデータを削除しますか？`, '', () => {
         processedData.fulltime = processedData.fulltime.filter(r => r.name !== name);
         processedData.parttime = processedData.parttime.filter(r => r.name !== name);
         processedData.rawBackup = processedData.rawBackup.filter(r => r[1] !== name);
@@ -807,7 +821,7 @@
     }
 
     function clearAccumulatedData() {
-      showCustomConfirm("すべてのデータを完全にリセットしますか？", '', () => {
+      showCustomConfirm("すべての蓄積データを完全に初期化しますか？", '', () => {
         processedData = { fulltime: [], parttime: [], rawBackup: [] };
         selectedEmployeeName = "";
         localStorage.removeItem("igk_active_processed_data");
@@ -894,7 +908,7 @@
     }
 
     function deleteFromHistory(name) {
-      showCustomConfirm(`アーカイブ「${name}」を完全に削除？`, '', () => {
+      showCustomConfirm(`アーカイブ「${name}」を完全に削除しますか？`, '', () => {
         delete monthlyHistory[name];
         localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
         renderHistoryList();
