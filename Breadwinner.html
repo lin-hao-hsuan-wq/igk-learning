@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGK Time Card</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS (Excel Generation) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Google Fonts for ultimate Japanese and numeric legibility -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
@@ -23,7 +19,6 @@
       overflow-x: hidden;
     }
     
-    /* Smooth transitions for active theme panels */
     .forest-border-glow {
       box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.1);
       transition: all 0.5s ease;
@@ -32,7 +27,6 @@
       box-shadow: 0 10px 25px -2px rgba(16, 185, 129, 0.18);
     }
 
-    /* Particles animation for falling items */
     .leaf-particle {
       position: absolute;
       pointer-events: none;
@@ -41,57 +35,28 @@
     }
 
     @keyframes fall {
-      0% {
-        transform: translateY(-20px) rotate(0deg);
-        opacity: 0;
-      }
-      10% {
-        opacity: 0.8;
-      }
-      90% {
-        opacity: 0.8;
-      }
-      100% {
-        transform: translateY(105vh) rotate(360deg);
-        opacity: 0;
-      }
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.8; }
+      90% { opacity: 0.8; }
+      100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
     }
 
-    /* Custom Scrollbar for elegant grid systems */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.03);
-      border-radius: 99px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(16, 185, 129, 0.3);
-      border-radius: 99px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(16, 185, 129, 0.5);
-    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.03); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
   </style>
 </head>
 <body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
 
-  <!-- Elegant Hanging Leaves/Flowers (SVG Container) -->
   <div class="absolute top-0 left-0 w-full overflow-hidden pointer-events-none z-10 h-32">
-    <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none">
-      <!-- Dynamically rendered via JS depending on theme -->
-    </svg>
+    <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
-  <!-- Background Particles Container -->
   <div id="particle-container" class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0"></div>
 
-  <!-- Top Luxury Header -->
   <header class="relative z-20 max-w-7xl mx-auto px-6 pt-8 pb-4">
     <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-emerald-100/40">
-      
-      <!-- Logo and Title Area -->
       <div class="flex items-center gap-4">
         <div id="header-icon-container" class="bg-emerald-100 text-emerald-800 p-3 rounded-xl shadow-inner transition-colors duration-500">
           <i data-lucide="leaf" class="w-6 h-6"></i>
@@ -99,7 +64,6 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 id="main-title" class="text-xl font-bold tracking-tight text-emerald-950">IGK 勤怠管理システム</h1>
-            <!-- 📅 Luxury Calendar History Toggle -->
             <button onclick="toggleHistoryModal()" class="bg-amber-100 text-amber-800 hover:bg-amber-200 p-1.5 rounded-lg transition shadow-sm ml-1 flex items-center gap-1.5" title="履歴管理システム">
               <i data-lucide="calendar" class="w-4 h-4"></i>
               <span class="text-xs font-bold hidden sm:inline">履歴</span>
@@ -109,81 +73,50 @@
         </div>
       </div>
 
-      <!-- Theme Selector (Four Seasons) -->
       <div class="flex items-center gap-3 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/50">
         <span class="text-xs font-bold text-slate-600 px-2">四季切り替え:</span>
         <div class="flex gap-1">
-          <button onclick="changeSeason('spring')" id="btn-spring" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-            🌸
-          </button>
-          <button onclick="changeSeason('summer')" id="btn-summer" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-            🌊
-          </button>
-          <button onclick="changeSeason('autumn')" id="btn-autumn" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-            🍁
-          </button>
-          <button onclick="changeSeason('winter')" id="btn-winter" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-            ❄️
-          </button>
+          <button onclick="changeSeason('spring')" id="btn-spring" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🌸</button>
+          <button onclick="changeSeason('summer')" id="btn-summer" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🌊</button>
+          <button onclick="changeSeason('autumn')" id="btn-autumn" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🍁</button>
+          <button onclick="changeSeason('winter')" id="btn-winter" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">❄️</button>
         </div>
       </div>
-
     </div>
   </header>
 
-  <!-- Main Grid System -->
   <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-      <!-- Left Column: Configurations & Rule Setters -->
       <div class="space-y-6 lg:col-span-1">
-        
-        <!-- Welcome Board: Cocoa-chan's Message Board -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden border border-slate-100">
           <div class="flex items-start gap-4">
-            <!-- Cocoa-chan Avatar Container -->
-            <div class="w-16 h-16 shrink-0 relative">
-              <svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg>
-            </div>
-            <!-- Speech Bubble -->
+            <div class="w-16 h-16 shrink-0 relative"><svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg></div>
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「お疲れ様です！データを貼り付けて集計ボタンを押すだけで、個別シートに分かれたExcelを作りますよ♪」
+                「お疲れ様です！文字の貼り付け以外に、Excelファイル(.xlsx/.csv)の直接インポートにも対応しましたよ♪」
               </p>
             </div>
           </div>
         </div>
 
-        <!-- 👑 Employee Manager Section -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i> 正社員メンバー管理
           </h3>
-          <p class="text-[11px] text-slate-500 mb-4">
-            登録された社員は 09:30~18:30 ルールを自動適用し、それ以外の方は「アルバイト」として総時間数が算出されます。
-          </p>
-
-          <!-- Add Member Input -->
+          <p class="text-[11px] text-slate-500 mb-4">登録された社員は基準ルールを自動適用し、それ以外の方は「アルバイト」として算出されます。</p>
           <div class="flex gap-2 mb-4">
             <input type="text" id="new-member-name" placeholder="新しい正社員の氏名を入力..." class="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none">
-            <button onclick="addFullTimeMember()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
-              <i data-lucide="plus" class="w-3.5 h-3.5"></i> 追加
-            </button>
+            <button onclick="addFullTimeMember()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition"><i data-lucide="plus" class="w-3.5 h-3.5"></i> 追加</button>
           </div>
-
-          <!-- Existing tags container -->
-          <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
         </div>
 
-        <!-- 📅 Standard Working Time Settings -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="clock" class="w-4 h-4 text-emerald-600"></i> 基準勤務時間設定
           </h3>
-          
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div>
               <label class="block text-[11px] font-bold text-slate-600 mb-1">通常始業時間</label>
@@ -197,339 +130,263 @@
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">休憩時間 (分)</label>
             <input type="number" id="restDuration" value="60" min="0" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
-            <p class="text-[10px] text-slate-400 mt-1">※ 連続勤務が6時間15分以上のみ。</p>
           </div>
         </div>
 
-        <!-- 📅 Shift Rules by Day of the Week (Campus shifts settings) -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">新機能</span>
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              📅 曜日別の設定
-            </h3>
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の設定</h3>
           </div>
-          <p class="text-[11px] text-slate-500 mb-4">
-            曜日別に異なる場合、チェックを入れ時間を設定してください（通常時間より優先されます）。
-          </p>
-
-          <div class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-            <!-- Days rendered dynamically in JS -->
+          <div class="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
             <div id="weekly-rules-container" class="space-y-2.5"></div>
           </div>
         </div>
 
-        <!-- 📅 Special Period Rule Overrides -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2">
-            <i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別の日
-          </h3>
-          <p class="text-[11px] text-slate-500 mb-4">勤務時間を変更したい場合はこちらに期間を設定します。</p>
-
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別の日</h3>
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50 space-y-3">
             <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[10px] text-slate-500">開始日</label>
-                <input type="date" id="special-start-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white">
-              </div>
-              <div>
-                <label class="block text-[10px] text-slate-500">終了日</label>
-                <input type="date" id="special-end-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white">
-              </div>
+              <div><input type="date" id="special-start-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+              <div><input type="date" id="special-end-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
             </div>
             <div class="grid grid-cols-3 gap-1.5">
-              <div>
-                <label class="block text-[10px] text-slate-500">出勤</label>
-                <input type="time" id="special-start-time" value="10:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white">
-              </div>
-              <div>
-                <label class="block text-[10px] text-slate-500">退勤</label>
-                <input type="time" id="special-end-time" value="19:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white">
-              </div>
-              <div>
-                <label class="block text-[10px] text-slate-500">休憩分</label>
-                <input type="number" id="special-rest" value="60" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white text-center">
-              </div>
+              <div><input type="time" id="special-start-time" value="10:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+              <div><input type="time" id="special-end-time" value="19:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+              <div><input type="number" id="special-rest" value="60" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white text-center"></div>
             </div>
-            <button onclick="addSpecialPeriod()" class="w-full bg-slate-800 hover:bg-slate-950 text-white py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 transition">
-              <i data-lucide="plus" class="w-3 h-3"></i> 特別期間ルールを追加する
-            </button>
+            <button onclick="addSpecialPeriod()" class="w-full bg-slate-800 hover:bg-slate-950 text-white py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 transition">特別期間追加</button>
           </div>
-
-          <!-- Existing Rules list -->
-          <div id="special-rules-list" class="mt-4 space-y-2 max-h-[140px] overflow-y-auto pr-1">
-            <!-- Special rules dynamically loaded -->
-          </div>
+          <div id="special-rules-list" class="mt-4 space-y-2 max-h-[120px] overflow-y-auto pr-1"></div>
         </div>
-
       </div>
 
-      <!-- Middle and Right Column: Data Entry & Real-time Employee Tab Previews -->
       <div class="lg:col-span-2 space-y-6">
-        
-        <!-- Step 2: Input Raw Copy/Paste Data -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
-              <i data-lucide="clipboard-signature" class="text-emerald-600"></i> ① 原始打刻データの貼り付け
+              <i data-lucide="clipboard-signature" class="text-emerald-600"></i> ① 原始打刻データの貼り付け / 試算表導入
             </h2>
-            <div class="flex gap-2">
-              <button onclick="loadDemoData()" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 shadow-sm">
-                🌰 デモ用データを読み込む
-              </button>
-              <button onclick="clearTextarea()" class="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> クリア
-              </button>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="loadDemoData()" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg font-bold transition">🌰 デモデータ</button>
+              <button onclick="clearTextarea()" class="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> クリア</button>
             </div>
           </div>
-          <p class="text-xs text-slate-400 mb-3">
-            後台システムから取得したCSVや履歴テキストをそのままコピーして下に貼り付けてください。追加された従業員データは蓄積され、一括でExcel出力できます。
-          </p>
+          
+          <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
+            <div class="flex items-center gap-3">
+              <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV 檔案を直接インポート：</span>
+            </div>
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
+          </div>
 
-          <textarea id="rawInput" rows="7" placeholder="1   00000646   林 昊嬛   入室   2026/07/09 09:29&#10;2   00000646   林 昊嬛   退室   2026/07/08 18:31" class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
+          <textarea id="rawInput" rows="5" placeholder="【文字貼上區域】也可直接貼上文字數據..." class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
 
           <button onclick="processAttendance()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-2">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを判読して蓄積リストに登録する
           </button>
         </div>
 
-        <!-- Step 3: Realtime Spreadsheet Previews (Separated by Employee) -->
         <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
-          
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
-              <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
-                <i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別エクセルプレビュー
-              </h2>
-              <p class="text-xs text-slate-400 mt-0.5">※ 名前が表示されている従業員のデータが現在保存されています（一括ダウンロード対象）。</p>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5"><i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別エクセルプレビュー</h2>
+              <p class="text-xs text-slate-400 mt-0.5">※ 兼職人員遲到時，精算工時會自動無條件進位至下一個 5 分鐘計算法。</p>
             </div>
-            
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              <!-- 🗑️ Delete active employee data -->
-              <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()">
-                <i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除
-              </button>
-              <!-- 🧹 Reset whole list -->
-              <button onclick="clearAccumulatedData()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm border border-slate-200/30">
-                <i data-lucide="trash-2" class="w-4 h-4"></i> 全員クリア
-              </button>
-              <!-- Download Button -->
-              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                <i data-lucide="download" class="w-4 h-4"></i> 一括マルチシートExcel保存 (.xlsx)
-              </button>
+              <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()"><i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除</button>
+              <button onclick="clearAccumulatedData()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i> 全員クリア</button>
+              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="download" class="w-4 h-4"></i> 一括マルチシートExcel保存 (.xlsx)</button>
             </div>
           </div>
 
-          <!-- Active History Badge (shown when checking historical records) -->
           <div id="activeHistoryBadge" class="hidden items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-100 text-xs px-3 py-2 rounded-lg mb-4 font-semibold">
-            <i data-lucide="history" class="w-4 h-4"></i>
-            現在、過去のアーカイブ「<span id="activeHistoryName">-</span>」を閲覧しています。新規集計すると戻ります。
+            <i data-lucide="history" class="w-4 h-4"></i>現在、過去のアーカイブ「<span id="activeHistoryName">-</span>」を閲覧しています。
           </div>
 
-          <!-- Employee Sheet Navigation (Sub-tabs) -->
           <div class="border-b border-slate-100 pb-2 mb-4 overflow-x-auto">
             <div id="employee-sheets-nav" class="flex gap-1.5 min-w-full">
-              <span class="text-xs text-slate-400 py-2">データを集計するとここに蓄積された従業員シート名が表示されます。</span>
+              <span class="text-xs text-slate-400 py-2">データを集計するとここにシート名が表示されます。</span>
             </div>
           </div>
 
-          <!-- Grid Data view -->
           <div id="preview-grid-wrapper" class="overflow-x-auto border border-slate-100 rounded-xl bg-slate-50/20 max-h-[480px]">
             <table class="min-w-full text-xs text-left">
-              <thead id="preview-thead" class="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200/60 shadow-sm z-10">
-                <!-- Columns dynamically rendered depending on Employee Type -->
-              </thead>
+              <thead id="preview-thead" class="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200/60 shadow-sm z-10"></thead>
               <tbody id="preview-tbody" class="divide-y divide-slate-100 bg-white">
-                <tr>
-                  <td class="px-6 py-12 text-center text-slate-400" colspan="10">
-                    <div class="flex flex-col items-center gap-2">
-                      <i data-lucide="info" class="w-8 h-8 text-slate-300"></i>
-                      <span>現在プレビュー蓄積されている従業員はいません。データを貼り付けて蓄積してください。</span>
-                    </div>
-                  </td>
-                </tr>
+                <tr><td class="px-6 py-12 text-center text-slate-400" colspan="10">データをインポートしてください。</td></tr>
               </tbody>
             </table>
           </div>
-
         </div>
-
       </div>
-
     </div>
   </main>
 
-  <!-- 📅 Custom History Modal -->
-  <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-all duration-300">
+  <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-amber-100 relative max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center pb-4 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
-          <i data-lucide="archive" class="w-5 h-5 text-amber-600"></i> 月別履歴アーカイブ
-        </h3>
-        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-600">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <h3 class="font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="archive" class="w-5 h-5 text-amber-600"></i> 月別履歴アーカイブ</h3>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-
       <div class="py-4 space-y-4 flex-1 overflow-y-auto">
-        <!-- Save Active Record -->
         <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100/50">
-          <label class="block text-[11px] font-bold text-slate-700 mb-1.5">現在のプレビュー状態を保存する</label>
           <div class="flex gap-2">
-            <input type="text" id="history-save-name" placeholder="例: 2026年06月支給度" class="flex-1 px-3 py-1.5 text-xs border border-amber-200 rounded-lg outline-none bg-white">
-            <button onclick="saveToHistory()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
-              保存
-            </button>
+            <input type="text" id="history-save-name" placeholder="例: 2026年06月支給度" class="flex-1 px-3 py-1.5 text-xs border border-amber-200 rounded-lg outline-none">
+            <button onclick="saveToHistory()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">保存</button>
           </div>
         </div>
-
-        <!-- Historical list -->
-        <div class="space-y-2">
-          <label class="block text-[11px] font-bold text-slate-600">保存済みリスト</label>
-          <div id="history-items-list" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
-            <!-- Historical entries list -->
-            <p class="text-xs text-slate-400 text-center py-6">保存された履歴はありません。</p>
-          </div>
-        </div>
+        <div id="history-items-list" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1"></div>
       </div>
     </div>
   </div>
 
-  <!-- 🔒 Custom Notification and Confirmation Dialogue Box -->
   <div id="toast-notif" class="fixed top-6 right-6 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 flex items-center gap-2 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs font-semibold">
-    <span id="toast-notif-icon">🌟</span>
-    <span id="toast-notif-text">-</span>
+    <span id="toast-notif-icon">🌟</span><span id="toast-notif-text">-</span>
   </div>
 
   <div id="confirm-dialog" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl p-5 shadow-xl max-w-xs w-full text-center">
-      <div class="bg-rose-100 text-rose-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-      </div>
-      <h4 class="font-bold text-slate-800 text-sm mb-2" id="confirm-title">本当に削除しますか？</h4>
+      <h4 class="font-bold text-slate-800 text-sm mb-2" id="confirm-title">本当に削除します開？</h4>
       <p class="text-xs text-slate-500 mb-4" id="confirm-desc">この操作は取り消せません。</p>
       <div class="flex gap-2 justify-center">
-        <button id="confirm-cancel-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-4 py-2 rounded-lg font-bold transition">キャンセル</button>
-        <button id="confirm-ok-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-lg font-bold transition">削除する</button>
+        <button id="confirm-cancel-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-4 py-2 rounded-lg font-bold">キャンセル</button>
+        <button id="confirm-ok-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-lg font-bold">確定</button>
       </div>
     </div>
   </div>
 
-  <!-- Seamless Seasonal Footer Scenery -->
-  <div class="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none h-44 flex items-end">
-    <svg id="footer-landscape-svg" viewBox="0 0 1440 180" class="w-full h-full opacity-95 transition-all duration-1000" preserveAspectRatio="none">
-      <!-- Embedded custom scenery loaded by JS -->
-    </svg>
-  </div>
-
   <script>
-    // System variables and standard configurations
     let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
     let specialPeriods = [];
     let monthlyHistory = {};
     let currentSeason = 'spring';
-    
-    // Tracking active sheet view
     let selectedEmployeeName = ""; 
     let processedData = { fulltime: [], parttime: [], rawBackup: [] };
 
-    // Day of week mapping
     const daysArr = ["月", "火", "水", "木", "金", "土", "日"];
     const japaneseDays = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // On Load Initialization
     window.onload = function() {
-      // Restore cached member lists
-      if (localStorage.getItem("igk_fulltime_members")) {
-        fullTimeMembers = JSON.parse(localStorage.getItem("igk_fulltime_members"));
-      }
+      if (localStorage.getItem("igk_fulltime_members")) fullTimeMembers = JSON.parse(localStorage.getItem("igk_fulltime_members"));
+      if (localStorage.getItem("igk_monthly_history")) monthlyHistory = JSON.parse(localStorage.getItem("igk_monthly_history"));
+      if (localStorage.getItem("igk_special_periods")) specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
       
-      // Restore standard configuration inputs
-      if (localStorage.getItem("igk_work_start")) {
-        document.getElementById('workStartTime').value = localStorage.getItem("igk_work_start");
-      }
-      if (localStorage.getItem("igk_work_end")) {
-        document.getElementById('workEndTime').value = localStorage.getItem("igk_work_end");
-      }
-      if (localStorage.getItem("igk_rest_duration")) {
-        document.getElementById('restDuration').value = localStorage.getItem("igk_rest_duration");
-      }
-      
-      // Restore history archive maps
-      if (localStorage.getItem("igk_monthly_history")) {
-        monthlyHistory = JSON.parse(localStorage.getItem("igk_monthly_history"));
-      }
+      // Setup file selector listener
+      document.getElementById('excelFileInput').addEventListener('change', handleFileSelect, false);
 
-      // Restore special range rules
-      if (localStorage.getItem("igk_special_periods")) {
-        specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
-      }
-
-      // Restore accumulated process data if available in browser memory
       if (localStorage.getItem("igk_active_processed_data")) {
         try {
           processedData = JSON.parse(localStorage.getItem("igk_active_processed_data"));
           if (processedData.fulltime.length > 0 || processedData.parttime.length > 0) {
             buildEmployeeSheetTabs();
             const allNames = getProcessedNames();
-            if (allNames.length > 0) {
-              selectSheetTab(allNames[0]);
-            }
-            
-            // Enable download Excel button
-            const dlBtn = document.getElementById('excel-download-btn');
-            dlBtn.disabled = false;
-            dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
+            if (allNames.length > 0) selectSheetTab(allNames[0]);
+            toggleDownloadBtn(true);
           }
-        } catch (e) {
-          console.error("Error restoring accumulated data:", e);
-        }
+        } catch (e) { console.error(e); }
       }
 
-      // Build day selector DOM components
       buildWeeklyRulesDOM();
-      
-      // Restore weekly configuration rules
       loadWeeklyRules();
-
-      // Render tags and setup initial theme look
       renderEmployeeTags();
       renderSpecialPeriods();
       changeSeason(currentSeason);
-      
-      // Initialize Lucide Icons
       lucide.createIcons();
     };
 
-    // Draw Day-of-Week configuration panel elements
+    // Excel/CSV File Import Engine
+    function handleFileSelect(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to array of arrays
+        const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        if (jsonRows.length <= 1) {
+          showToast('⚠️ 試算表內無有效數據。', '🍄');
+          return;
+        }
+
+        // Auto align columns mapping keywords intelligently
+        let idCol = -1, nameCol = -1, typeCol = -1, timeCol = -1;
+        const firstRow = jsonRows[0].map(c => String(c || '').trim().toLowerCase());
+
+        firstRow.forEach((cell, idx) => {
+          if (cell.includes('id') || cell.includes('工号') || cell.includes('コード') || cell.includes('番号')) idCol = idx;
+          if (cell.includes('名') || cell.includes('氏名') || cell.includes('従業員')) nameCol = idx;
+          if (cell.includes('タイプ') || cell.includes('状態') || cell.includes('出入') || cell.includes('区分')) typeCol = idx;
+          if (cell.includes('時') || cell.includes('日時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
+        });
+
+        // Fallback standard structure alignment if headers missing
+        if (idCol === -1) idCol = 0;
+        if (nameCol === -1) nameCol = 1;
+        if (typeCol === -1) typeCol = 2;
+        if (timeCol === -1) timeCol = 3;
+
+        let accumulatedText = "";
+        for (let i = 1; i < jsonRows.length; i++) {
+          const row = jsonRows[i];
+          if (!row || row.length < 2) continue;
+          
+          let empId = String(row[idCol] || '').trim();
+          let empName = String(row[nameCol] || '').trim();
+          let typeStr = String(row[typeCol] || '').trim();
+          let rawTime = String(row[timeCol] || '').trim();
+
+          if (!empName || !rawTime) continue;
+          
+          // Re-format Excel date serial pointers if numeric
+          if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
+            const dateObj = XLSX.utils.sheet_to_date(worksheet[XLSX.utils.encode_cell({c:timeCol, r:i})]);
+            if(dateObj) rawTime = formatDate(dateObj) + " " + formatHM(dateObj);
+          }
+
+          accumulatedText += `${empId}\t${empName}\t${typeStr}\t${rawTime}\n`;
+        }
+
+        if (accumulatedText) {
+          document.getElementById('rawInput').value = accumulatedText;
+          showToast('📥 試算表データの読み込みに成功！解析ボタンを押して確定してください。', '🟢');
+        } else {
+          showToast('⚠️ 有効な打刻列をマッピングできませんでした。', '🍄');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
     function buildWeeklyRulesDOM() {
       const container = document.getElementById("weekly-rules-container");
       container.innerHTML = "";
-      
       daysArr.forEach(day => {
         const isWeekend = (day === "土" || day === "日");
         const badgeColor = isWeekend ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800";
-        
         const row = document.createElement("div");
-        row.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-100 bg-slate-50/50";
+        row.className = "flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50/50 text-[11px]";
         row.innerHTML = `
-          <label class="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
-            <input type="checkbox" id="week-use-${day}" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" onchange="saveWeeklyRules()">
-            <span class="${badgeColor} px-2 py-0.5 rounded text-[10px]">${day}</span>
+          <label class="flex items-center gap-1 font-bold text-slate-700 shrink-0">
+            <input type="checkbox" id="week-use-${day}" class="w-3.5 h-3.5 text-emerald-600" onchange="saveWeeklyRules()">
+            <span class="${badgeColor} px-1.5 py-0.5 rounded text-[10px]">${day}</span>
           </label>
-          <div class="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
-            <input type="time" id="week-start-${day}" value="09:30" class="px-2 py-1 text-[11px] border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none w-20" onchange="saveWeeklyRules()">
+          <div class="flex items-center gap-1">
+            <input type="time" id="week-start-${day}" value="09:30" class="px-1.5 py-0.5 border border-slate-200 rounded outline-none w-16" onchange="saveWeeklyRules()">
             <span class="text-slate-400">~</span>
-            <input type="time" id="week-end-${day}" value="18:30" class="px-2 py-1 text-[11px] border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none w-20" onchange="saveWeeklyRules()">
-            <input type="number" id="week-rest-${day}" value="60" min="0" class="px-1.5 py-1 text-[11px] border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none w-12 text-center" placeholder="休憩" onchange="saveWeeklyRules()">
-            <span class="text-[10px] text-slate-400 shrink-0">分休</span>
+            <input type="time" id="week-end-${day}" value="18:30" class="px-1.5 py-0.5 border border-slate-200 rounded outline-none w-16" onchange="saveWeeklyRules()">
+            <input type="number" id="week-rest-${day}" value="60" class="w-10 px-1 py-0.5 border rounded text-center" onchange="saveWeeklyRules()">分
           </div>
         `;
         container.appendChild(row);
       });
     }
 
-    // Save/Load Day-of-week custom rules from local storage
     function saveWeeklyRules() {
       const rules = {};
       daysArr.forEach(day => {
@@ -541,7 +398,6 @@
         };
       });
       localStorage.setItem("igk_weekly_rules", JSON.stringify(rules));
-      showToast('⚙️ 曜日別設定を更新しました！', '🌸');
     }
 
     function loadWeeklyRules() {
@@ -557,70 +413,16 @@
             document.getElementById(`week-rest-${day}`).value = rules[day].rest !== undefined ? rules[day].rest : 60;
           }
         });
-      } catch (e) {
-        console.error("Error restoring weekly configurations:", e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // Dynamic parsing regex engine matching raw logs elegantly (supports spaces and index lines safely)
-    function parseLine(line) {
-      line = line.trim();
-      if (!line) return null;
-      
-      // 1. Identify Timestamp patterns (Ex: 2026/07/09 09:29)
-      const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?)/;
-      const dateMatch = line.match(dateRegex);
-      if (!dateMatch) return null;
-      const dateTimeVal = dateMatch[1];
-      
-      let remaining = line.replace(dateTimeVal, '').trim();
-      
-      // 2. Identify Check-In/Check-Out status strings
-      let type = "";
-      if (/入室|入|in/i.test(remaining)) {
-        type = "入室";
-        remaining = remaining.replace(/入室|入|in/i, '').trim();
-      } else if (/退室|退|out/i.test(remaining)) {
-        type = "退室";
-        remaining = remaining.replace(/退室|退|out/i, '').trim();
-      } else {
-        return null; 
-      }
-      
-      // 3. Extract numeric Employee Identification
-      const digitBlocks = remaining.match(/\d+/g) || [];
-      let empId = "";
-      if (digitBlocks.length > 0) {
-        const longId = digitBlocks.find(b => b.length >= 3);
-        if (longId) {
-          empId = longId;
-          remaining = remaining.replace(empId, '').trim();
-        } else {
-          empId = digitBlocks[0];
-          remaining = remaining.replace(empId, '').trim();
-        }
-      }
-      
-      // 4. Extract Employee Name (cleaning noise like index numbers, trailing dashes/slashes)
-      let empName = remaining.replace(/^[\s,\|;\t\d\.\/\-]+|[\s,\|;\t\d\.\/\-]+$/g, '').trim();
-      empName = empName.replace(/\s+/g, ' '); 
-      
-      if (!empId || !empName) return null;
-      
-      return { empId, empName, type, dateTimeVal };
-    }
-
-    // Employee list manipulation
     function renderEmployeeTags() {
       const container = document.getElementById('member-tags-container');
       container.innerHTML = "";
       fullTimeMembers.forEach(name => {
         const tag = document.createElement('div');
-        tag.className = 'bg-emerald-50 hover:bg-rose-50 text-emerald-800 hover:text-rose-800 text-xs px-2.5 py-1 rounded-lg border border-emerald-100 hover:border-rose-150 transition flex items-center gap-1 cursor-pointer font-medium';
-        tag.innerHTML = `
-          <span>${name}</span>
-          <i data-lucide="x" class="w-3 h-3 opacity-60"></i>
-        `;
+        tag.className = 'bg-emerald-50 text-emerald-800 text-xs px-2 py-0.5 rounded-lg border border-emerald-100 flex items-center gap-1 cursor-pointer';
+        tag.innerHTML = `<span>${name}</span><i data-lucide="x" class="w-3 h-3 opacity-60"></i>`;
         tag.onclick = () => removeFullTimeMember(name);
         container.appendChild(tag);
       });
@@ -631,47 +433,32 @@
       const nameInput = document.getElementById('new-member-name');
       const name = nameInput.value.trim();
       if (!name) return;
-      if (fullTimeMembers.includes(name)) {
-        showToast('⚠️ その従業員は既に登録されています', '🍂');
-        return;
+      if (!fullTimeMembers.includes(name)) {
+        fullTimeMembers.push(name);
+        localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
+        nameInput.value = "";
+        renderEmployeeTags();
+        showToast(`✨ ${name} さんを追加しました`, '🌸');
       }
-      fullTimeMembers.push(name);
-      localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
-      nameInput.value = "";
-      renderEmployeeTags();
-      showToast(`✨ ${name} さんを正社員として追加しました`, '🌸');
     }
 
     function removeFullTimeMember(name) {
-      showCustomConfirm(`正社員リストから「${name}」を削除しますか？`, '', () => {
+      showCustomConfirm(`正社員リストから「${name}」を削除？`, '', () => {
         fullTimeMembers = fullTimeMembers.filter(m => m !== name);
         localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
         renderEmployeeTags();
-        showToast(`🗑️ ${name} さんをリストから削除しました`, '🍂');
       });
     }
 
-    // Special range override rules implementation
     function renderSpecialPeriods() {
       const container = document.getElementById('special-rules-list');
       container.innerHTML = "";
-      
-      if (specialPeriods.length === 0) {
-        container.innerHTML = `<p class="text-[10px] text-slate-400 text-center py-2">特別シフトは登録されていません。</p>`;
-        return;
-      }
-
       specialPeriods.forEach((period, idx) => {
         const row = document.createElement('div');
-        row.className = 'bg-slate-50 border border-slate-100 p-2 rounded-lg flex items-center justify-between text-[11px]';
+        row.className = 'bg-slate-50 border p-2 rounded flex items-center justify-between text-[11px]';
         row.innerHTML = `
-          <div>
-            <span class="font-bold text-slate-700">${period.startDay} ~ ${period.endDay}</span>
-            <div class="text-slate-500 font-mono text-[10px]">${period.startTime}-${period.endTime} (休${period.rest}分)</div>
-          </div>
-          <button onclick="removeSpecialPeriod(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-            <i data-lucide="trash" class="w-3 h-3"></i>
-          </button>
+          <div><span class="font-bold">${period.startDay} ~ ${period.endDay}</span> (${period.startTime}-${period.endTime})</div>
+          <button onclick="removeSpecialPeriod(${idx})" class="text-rose-500"><i data-lucide="trash" class="w-3 h-3"></i></button>
         `;
         container.appendChild(row);
       });
@@ -684,50 +471,38 @@
       const startTime = document.getElementById('special-start-time').value;
       const endTime = document.getElementById('special-end-time').value;
       const rest = parseInt(document.getElementById('special-rest').value) || 60;
-
-      if (!startDay || !endDay) {
-        showToast('⚠️ 開始日と終了日を正しく選択してください。', '🍁');
-        return;
+      if (startDay && endDay) {
+        specialPeriods.push({ startDay, endDay, startTime, endTime, rest });
+        localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
+        renderSpecialPeriods();
       }
-
-      specialPeriods.push({ startDay, endDay, startTime, endTime, rest });
-      localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
-      renderSpecialPeriods();
-      showToast('✨ シーズン期間を登録しました', '🌸');
     }
 
     function removeSpecialPeriod(idx) {
       specialPeriods.splice(idx, 1);
       localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
       renderSpecialPeriods();
-      showToast('🗑️ シーズンシフトを削除しました', '🍂');
     }
 
-    // Match checking for special period bounds
     function getMatchedPeriod(dateStr) {
       const formattedDate = dateStr.replace(/\//g, '-');
       for (let period of specialPeriods) {
-        if (formattedDate >= period.startDay && formattedDate <= period.endDay) {
-          return period;
-        }
+        if (formattedDate >= period.startDay && formattedDate <= period.endDay) return period;
       }
       return null;
     }
 
-    // Process & Accumulate attendance copy-paste data with sliding token neighborhood exploration
+    // Process attendance algorithm core
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
-      document.getElementById('activeHistoryBadge').classList.remove('flex');
-
       const inputText = document.getElementById('rawInput').value.trim();
       const normalizedFullTimeNames = fullTimeMembers.map(name => name.replace(/\s+/g, '').toLowerCase());
 
       if (!inputText) {
-        showToast('⚠️ 貼り付けデータが空です！', '🍄');
+        showToast('⚠️ 打刻データが見つかりません。', '🍄');
         return;
       }
 
-      // Temporary holding areas for the newly calculated chunk
       const newlyParsedNames = new Set();
       const tempFulltime = [];
       const tempParttime = [];
@@ -738,7 +513,6 @@
       const defaultEnd = document.getElementById('workEndTime').value || "18:30";
       const defaultRest = parseInt(document.getElementById('restDuration').value) || 60;
 
-      // Extract day rules
       const weeklyRules = {};
       daysArr.forEach(day => {
         weeklyRules[day] = {
@@ -749,198 +523,135 @@
         };
       });
 
-      // 1. Split pasted string into raw tokens
-      const tokens = inputText.split(/[\n\r\t]+|\s{2,}/).map(t => t.trim()).filter(t => t !== "");
-      
-      // Token matcher rules
-      const dateRegex = /(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2})/;
-      function isDateToken(str) { return dateRegex.test(str); }
-      function isActionToken(str) { return /入室|退室|入|退|in|out/i.test(str); }
-      function isIdToken(str) { return /^\d{4,10}$/.test(str); }
-      function isNameToken(str) {
-        if (!str) return false;
-        if (isDateToken(str) || isActionToken(str) || isIdToken(str)) return false;
-        if (/^[\s,\|;\.\/\-_~:]+$/.test(str)) return false;
-        if (/^\d+$/.test(str)) return false;
-        return true;
-      }
+      // Split lines dynamically checking spacing boundaries safely
+      const lines = inputText.split('\n');
+      lines.forEach(line => {
+        if(!line.trim()) return;
+        const tokens = line.split(/[\t]+|\s{2,}/).map(t => t.trim()).filter(t => t);
+        if(tokens.length < 2) return;
 
-      // 2. Scan and bind tokens together into specific stamp entries
-      tokens.forEach((token, idx) => {
-        if (isDateToken(token)) {
-          const dateTimeVal = token.match(dateRegex)[1];
-          let empId = "";
-          let empName = "";
-          let type = "";
+        let empId = "", empName = "", type = "入室", dateTimeVal = "";
+        
+        // Dynamic search parameters mapping
+        tokens.forEach(t => {
+          if (/入|in/i.test(t)) type = "入室";
+          else if (/退|out/i.test(t)) type = "退室";
+          else if (/^(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2})/.test(t)) dateTimeVal = t;
+          else if (/^\d{4,9}$/.test(t)) empId = t;
+          else if (t.length > 1 && !empName) empName = t;
+        });
 
-          const searchRadius = 12;
-          let minIdDist = Infinity;
-          let minNameDist = Infinity;
-          let minActionDist = Infinity;
+        if(!empName || !dateTimeVal) return;
+        if(!empId) empId = "0000";
 
-          for (let offset = -searchRadius; offset <= searchRadius; offset++) {
-            const targetIdx = idx + offset;
-            if (targetIdx < 0 || targetIdx >= tokens.length || offset === 0) continue;
+        tempRawBackup.push([empId, empName, type, dateTimeVal]);
+        newlyParsedNames.add(empName);
 
-            const checkToken = tokens[targetIdx];
-            const dist = Math.abs(offset);
+        const dateObj = new Date(dateTimeVal.replace(/-/g, '/'));
+        if (isNaN(dateObj.getTime())) return;
 
-            if (isIdToken(checkToken)) {
-              if (dist < minIdDist) {
-                empId = checkToken;
-                minIdDist = dist;
-              }
-            }
-            if (isNameToken(checkToken)) {
-              if (dist < minNameDist) {
-                empName = checkToken;
-                minNameDist = dist;
-              }
-            }
-            if (isActionToken(checkToken)) {
-              if (dist < minActionDist) {
-                type = /入|in/i.test(checkToken) ? "入室" : "退室";
-                minActionDist = dist;
-              }
-            }
-          }
+        const dateKey = formatDate(dateObj);
+        const hmStr = formatHM(dateObj);
+        const dayOfWeek = japaneseDays[dateObj.getDay()];
+        const mapKey = `${empId}_${dateKey}`;
 
-          if (empId && empName) {
-            if (!type) type = "入室";
-            tempRawBackup.push([empId, empName, type, dateTimeVal]);
-            newlyParsedNames.add(empName);
+        if (!attendanceMap[mapKey]) {
+          const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
+          const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
+          
+          attendanceMap[mapKey] = {
+            id: empId, name: empName, date: dateKey, day: dayOfWeek,
+            checkIn: null, checkOut: null, isFullTime: isFullTime
+          };
+        }
 
-            const dateObj = new Date(dateTimeVal);
-            if (!isNaN(dateObj.getTime())) {
-              const dateKey = formatDate(dateObj);
-              const hmStr = formatHM(dateObj);
-              const dayOfWeek = japaneseDays[dateObj.getDay()];
-
-              const mapKey = `${empId}_${dateKey}`;
-              if (!attendanceMap[mapKey]) {
-                const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
-                const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
-                
-                attendanceMap[mapKey] = {
-                  id: empId,
-                  name: empName,
-                  date: dateKey,
-                  day: dayOfWeek,
-                  checkIn: null,
-                  checkOut: null,
-                  isFullTime: isFullTime
-                };
-              }
-
-              if (type.includes("入")) {
-                if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) {
-                  attendanceMap[mapKey].checkIn = hmStr;
-                }
-              } else if (type.includes("退")) {
-                if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) {
-                  attendanceMap[mapKey].checkOut = hmStr;
-                }
-              }
-            }
-          }
+        if (type === "入室") {
+          if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) attendanceMap[mapKey].checkIn = hmStr;
+        } else {
+          if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) attendanceMap[mapKey].checkOut = hmStr;
         }
       });
 
-      // 3. Process each parsed pair
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
         if (item.isFullTime) {
+          // Fulltime system configurations logic mapping
           const matchedPeriod = getMatchedPeriod(item.date);
-          let startTimeVal = defaultStart;
-          let endTimeVal = defaultEnd;
-          let restDurationVal = defaultRest;
-          let periodLabel = "通常勤務";
+          let startTimeVal = defaultStart, endTimeVal = defaultEnd, restDurationVal = defaultRest, periodLabel = "通常勤務";
 
           if (matchedPeriod) {
-            startTimeVal = matchedPeriod.startTime;
-            endTimeVal = matchedPeriod.endTime;
-            restDurationVal = matchedPeriod.rest;
-            periodLabel = `特別 (${startTimeVal}-${endTimeVal})`;
+            startTimeVal = matchedPeriod.startTime; endTimeVal = matchedPeriod.endTime; restDurationVal = matchedPeriod.rest; periodLabel = "特別";
           } else if (weeklyRules[item.day] && weeklyRules[item.day].enabled) {
-            startTimeVal = weeklyRules[item.day].start;
-            endTimeVal = weeklyRules[item.day].end;
-            restDurationVal = weeklyRules[item.day].rest;
-            periodLabel = `曜日別 (${startTimeVal}-${endTimeVal})`;
+            startTimeVal = weeklyRules[item.day].start; endTimeVal = weeklyRules[item.day].end; restDurationVal = weeklyRules[item.day].rest; periodLabel = "曜日別";
           }
 
-          let regular = "00:00";
-          let earlyOvertime = "00:00";
-          let lateOvertime = "00:00";
-
+          let regular = "00:00", earlyOvertime = "00:00", lateOvertime = "00:00";
           if (item.checkIn && item.checkOut) {
-            const inMin = timeToMins(item.checkIn);
-            const outMin = timeToMins(item.checkOut);
-            
-            const startLimit = timeToMins(startTimeVal); 
-            const endLimit = timeToMins(endTimeVal);     
+            const inMin = timeToMins(item.checkIn), outMin = timeToMins(item.checkOut);
+            const startLimit = timeToMins(startTimeVal), endLimit = timeToMins(endTimeVal);
 
-            if (inMin < startLimit) {
-              earlyOvertime = minsToTimeStr(startLimit - inMin);
-            }
-            if (outMin > endLimit) {
-              lateOvertime = minsToTimeStr(outMin - endLimit);
-            }
+            if (inMin < startLimit) earlyOvertime = minsToTimeStr(startLimit - inMin);
+            if (outMin > endLimit) lateOvertime = minsToTimeStr(outMin - endLimit);
 
-            const coreIn = Math.max(inMin, startLimit);
-            const coreOut = Math.min(outMin, endLimit);
+            const coreIn = Math.max(inMin, startLimit), coreOut = Math.min(outMin, endLimit);
             if (coreOut > coreIn) {
               let coreWork = coreOut - coreIn;
-              if (coreWork >= 375) { 
-                coreWork -= restDurationVal;
-              }
+              if (coreWork >= 375) coreWork -= restDurationVal;
               regular = minsToTimeStr(coreWork);
             }
           }
 
           tempFulltime.push({
-            id: item.id,
-            name: item.name,
-            date: item.date,
-            day: item.day,
-            checkIn: item.checkIn || "未打刻",
-            checkOut: item.checkOut || "未打刻",
-            regular: regular,
-            earlyOvertime: earlyOvertime,
-            lateOvertime: lateOvertime,
-            shiftLabel: periodLabel,
-            locationAndFare: ""
+            id: item.id, name: item.name, date: item.date, day: item.day,
+            checkIn: item.checkIn || "未打刻", checkOut: item.checkOut || "未打刻",
+            regular, earlyOvertime, lateOvertime, shiftLabel: periodLabel, locationAndFare: ""
           });
 
         } else {
-          // Part-Time hourly metrics calculation
+          // 【兼職人員：整合預定班表、遲到 5 分鐘切齊、早到切齊邏輯】
+          let schedStart = "14:00", schedEnd = "18:00";
+          
+          if (item.checkIn) {
+            const mins = timeToMins(item.checkIn);
+            schedStart = minsToTimeStr(Math.ceil(mins / 30) * 30);
+          }
+          if (item.checkOut) {
+            const mins = timeToMins(item.checkOut);
+            schedEnd = minsToTimeStr(Math.floor(mins / 30) * 30);
+          }
+
           let totalWork = "00:00";
           if (item.checkIn && item.checkOut) {
-            const inMin = timeToMins(item.checkIn);
-            const outMin = timeToMins(item.checkOut);
-            if (outMin > inMin) {
-              totalWork = minsToTimeStr(outMin - inMin);
+            let inMin = timeToMins(item.checkIn);
+            let outMin = timeToMins(item.checkOut);
+            const sMin = timeToMins(schedStart);
+            const eMin = timeToMins(schedEnd);
+
+            // 1. 遲到處理：如果晚於排班開始，無條件進位到 5 分鐘倍數
+            if (inMin > sMin) {
+              inMin = Math.ceil(inMin / 5) * 5;
+            } else {
+              // 早到處理：切齊到排班預定開始
+              inMin = sMin;
+            }
+
+            // 2. 早退延遲處理：最長不超過排班結束時間
+            const effectiveOut = Math.min(outMin, eMin);
+
+            if (effectiveOut > inMin) {
+              totalWork = minsToTimeStr(effectiveOut - inMin);
             }
           }
 
           tempParttime.push({
-            id: item.id,
-            name: item.name,
-            date: item.date,
-            day: item.day,
-            checkIn: item.checkIn || "未打刻",
-            checkOut: item.checkOut || "未打刻",
-            totalWork: totalWork,
-            restMin: 0,
-            groupA: "",
-            groupB: totalWork,
-            locationAndFare: ""
+            id: item.id, name: item.name, date: item.date, day: item.day,
+            checkIn: item.checkIn || "未打刻", checkOut: item.checkOut || "未打刻",
+            schedStart, schedEnd, totalWork, restMin: 0, groupA: "", groupB: totalWork, locationAndFare: ""
           });
         }
       }
 
-      // 🌟 INCREMENTAL OVERWRITE/MERGE logic
-      // Filter out existing entries of names that were parsed in THIS block to replace them perfectly
       const namesToOverwrite = Array.from(newlyParsedNames);
       if (namesToOverwrite.length > 0) {
         processedData.fulltime = processedData.fulltime.filter(r => !namesToOverwrite.includes(r.name));
@@ -948,47 +659,18 @@
         processedData.rawBackup = processedData.rawBackup.filter(r => !namesToOverwrite.includes(r[1]));
       }
 
-      // Merge new calculations with the existing accumulated pool
       processedData.fulltime = [...processedData.fulltime, ...tempFulltime];
       processedData.parttime = [...processedData.parttime, ...tempParttime];
       processedData.rawBackup = [...processedData.rawBackup, ...tempRawBackup];
 
-      // Sort logs alphabetically/date-wise
-      processedData.fulltime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-      processedData.parttime.sort((a,b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-
-      // Cache persistent session state in browser local storage
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
 
-      // Rebuild tab components and redraw target grid
       buildEmployeeSheetTabs();
-      
-      // Auto-select the newly added employee
-      if (namesToOverwrite.length > 0) {
-        selectSheetTab(namesToOverwrite[0]);
-      } else {
-        const allNames = getProcessedNames();
-        if (allNames.length > 0) selectSheetTab(allNames[0]);
-      }
-
-      // Enable excel output action
-      const dlBtn = document.getElementById('excel-download-btn');
-      dlBtn.disabled = false;
-      dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
-
-      // 🚀 Smooth scroll down directly into individual Employee preview panel
-      const target = document.getElementById('preview-section-target');
-      if (target) {
-        setTimeout(() => {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-      }
-
-      showToast(`🎉 ${namesToOverwrite.join(', ')} さんのデータを蓄積リストに追加しました！`, '🌸');
-      setCocoaText(`「お疲れ様です！新しく追加した ${namesToOverwrite.join(', ')} さんの考勤を算出し、名簿に蓄積しました！Excelを出力すると、登録されている全員分のシートが一挙に生成されますよ♪」`);
+      if (getProcessedNames().length > 0) selectSheetTab(getProcessedNames()[0]);
+      toggleDownloadBtn(true);
+      showToast('🎉 リストを更新・蓄積しました！', '🌸');
     }
 
-    // Helper name extraction
     function getProcessedNames() {
       const names = new Set();
       processedData.fulltime.forEach(r => names.add(r.name));
@@ -1000,20 +682,16 @@
       const container = document.getElementById('employee-sheets-nav');
       container.innerHTML = "";
       const names = getProcessedNames();
-
       if (names.length === 0) {
-        container.innerHTML = `<span class="text-xs text-slate-400 py-2">データを集計するとここにシート（個人タブ）が表示されます。</span>`;
+        container.innerHTML = `<span class="text-xs text-slate-400 py-2">名簿が空です。</span>`;
         return;
       }
-
       names.forEach(name => {
         const isFT = processedData.fulltime.some(r => r.name === name);
-        const icon = isFT ? '💼' : '⏱️';
         const tabBtn = document.createElement('button');
-        const escapedId = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
-        tabBtn.id = escapedId;
-        tabBtn.className = `px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 border outline-none`;
-        tabBtn.innerHTML = `<span>${icon} ${name}</span>`;
+        tabBtn.id = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
+        tabBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold border whitespace-nowrap`;
+        tabBtn.innerHTML = `<span>${isFT ? '💼' : '⏱️'} ${name}</span>`;
         tabBtn.onclick = () => selectSheetTab(name);
         container.appendChild(tabBtn);
       });
@@ -1021,152 +699,77 @@
 
     function selectSheetTab(name) {
       selectedEmployeeName = name;
-      const names = getProcessedNames();
-      names.forEach(n => {
-        const escapedId = `sheet-tab-${n.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
-        const btn = document.getElementById(escapedId);
-        if (btn) {
-          if (n === name) {
-            btn.className = "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 border bg-slate-800 text-white border-slate-800 shadow-sm";
-          } else {
-            btn.className = "px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 border bg-white text-slate-600 border-slate-200 hover:bg-slate-50";
-          }
-        }
+      getProcessedNames().forEach(n => {
+        const btn = document.getElementById(`sheet-tab-${n.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`);
+        if (btn) btn.className = n === name ? "px-3 py-1.5 rounded-xl text-xs font-bold border bg-slate-800 text-white" : "px-3 py-1.5 rounded-xl text-xs font-semibold border bg-white text-slate-600";
       });
-
-      // Show/Hide specific active employee delete option dynamically
-      const delBtn = document.getElementById('delete-selected-employee-btn');
-      if (delBtn) {
-        if (name) {
-          delBtn.classList.remove('hidden');
-          delBtn.classList.add('inline-flex');
-        } else {
-          delBtn.classList.remove('inline-flex');
-          delBtn.classList.add('hidden');
-        }
-      }
-
+      document.getElementById('delete-selected-employee-btn').className = name ? "inline-flex bg-rose-50 text-rose-700 px-3 py-2 rounded-xl text-xs font-bold" : "hidden";
       renderActiveGridView();
     }
 
-    // Build grid views dynamically by employee structure with dynamic forms
     function renderActiveGridView() {
       const thead = document.getElementById('preview-thead');
       const tbody = document.getElementById('preview-tbody');
-
-      if (!selectedEmployeeName) {
-        renderEmptyGrid();
-        return;
-      }
+      if (!selectedEmployeeName) { thead.innerHTML = ""; tbody.innerHTML = "<tr><td>空。</td></tr>"; return; }
 
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
 
       if (isFT) {
-        // Render Full-time column headers (including elegant transportation)
-        thead.innerHTML = `
-          <tr>
-            <th class="px-4 py-3 border-b border-slate-200">日付</th>
-            <th class="px-4 py-3 border-b border-slate-200">曜日</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-emerald-800 font-bold">出勤時間</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-rose-800 font-bold">退勤時間</th>
-            <th class="px-4 py-3 border-b border-slate-200">通常勤務時間</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-slate-500">早朝残業</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-slate-500">深夜残業</th>
-            <th class="px-4 py-3 border-b border-slate-200">適用勤務</th>
-            <th class="px-4 py-3 border-b border-slate-200 min-w-[200px]">校舎 / 交通費など</th>
-          </tr>
-        `;
-
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2">出勤</th><th class="px-4 py-2">退勤</th><th class="px-4 py-2">通常</th><th class="px-4 py-2">早朝</th><th class="px-4 py-2">深夜</th><th class="px-4 py-2">シフト</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
         const rows = processedData.fulltime.filter(r => r.name === selectedEmployeeName);
         tbody.innerHTML = rows.map(r => {
-          const globalIdx = processedData.fulltime.indexOf(r);
-          return `
-            <tr class="hover:bg-slate-50 transition duration-150">
-              <td class="px-4 py-3 font-mono font-medium">${r.date}</td>
-              <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[11px] ${getWeekDayStyle(r.day)}">${r.day}</span></td>
-              <td class="px-4 py-3 font-mono font-bold text-emerald-700">${r.checkIn}</td>
-              <td class="px-4 py-3 font-mono font-bold text-rose-700">${r.checkOut}</td>
-              <td class="px-4 py-3 font-mono font-semibold">${r.regular}</td>
-              <td class="px-4 py-3 font-mono text-slate-500">${r.earlyOvertime}</td>
-              <td class="px-4 py-3 font-mono text-slate-500">${r.lateOvertime}</td>
-              <td class="px-4 py-3"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-semibold">${r.shiftLabel}</span></td>
-              <!-- Location/Fare input slot for FT (Clean, beautiful and integrated) -->
-              <td class="px-3 py-2 min-w-[200px]">
-                <input type="text" placeholder="例: 名谷 / 750円" value="${r.locationAndFare || ''}" onchange="updateFullTimeLocation(${globalIdx}, this.value)" class="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
-              </td>
-            </tr>
-          `;
+          const gIdx = processedData.fulltime.indexOf(r);
+          return `<tr class="text-xs"><td class="px-4 py-2">${r.date}</td><td class="px-4 py-2">${r.day}</td><td class="px-4 py-2 text-emerald-700 font-bold">${r.checkIn}</td><td class="px-4 py-2 text-rose-700 font-bold">${r.checkOut}</td><td class="px-4 py-2">${r.regular}</td><td class="px-4 py-2">${r.earlyOvertime}</td><td class="px-4 py-2">${r.lateOvertime}</td><td class="px-4 py-2">${r.shiftLabel}</td><td><input type="text" value="${r.locationAndFare}" onchange="updateFullTimeLocation(${gIdx}, this.value)" class="border px-2 py-0.5 rounded text-xs w-full"></td></tr>`;
         }).join('');
-
       } else {
-        // Render Part-time column headers (extended and wide input slots)
-        thead.innerHTML = `
-          <tr>
-            <th class="px-4 py-3 border-b border-slate-200">日付</th>
-            <th class="px-4 py-3 border-b border-slate-200">曜日</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-emerald-800 font-bold">出勤</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-rose-800 font-bold">退勤</th>
-            <th class="px-4 py-3 border-b border-slate-200 bg-amber-50 text-amber-900 font-bold">総在勤時間</th>
-            <th class="px-4 py-3 border-b border-slate-200 text-slate-500">休憩 (分)</th>
-            <th class="px-4 py-3 border-b border-slate-200 bg-emerald-50 text-emerald-900">IGK A (授業)</th>
-            <th class="px-4 py-3 border-b border-slate-200 bg-blue-50 text-blue-900 font-bold">IGK B (勤務)</th>
-            <th class="px-4 py-3 border-b border-slate-200 min-w-[200px]">校舎 / 交通費など</th>
-          </tr>
-        `;
-
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定シフト</th><th class="px-4 py-2 bg-amber-50">精算工時</th><th class="px-4 py-2">休憩</th><th class="px-4 py-2">IGK A</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B</th><th class="px-4 py-2">校舎/交通費</th></tr>`;
         const rows = processedData.parttime.filter(r => r.name === selectedEmployeeName);
-        tbody.innerHTML = rows.map((r, idx) => {
-          const globalIdx = processedData.parttime.indexOf(r);
+        tbody.innerHTML = rows.map(r => {
+          const gIdx = processedData.parttime.indexOf(r);
           return `
-            <tr class="hover:bg-slate-50 transition duration-150">
-              <td class="px-4 py-3 font-mono font-medium">${r.date}</td>
-              <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[11px] ${getWeekDayStyle(r.day)}">${r.day}</span></td>
-              <td class="px-4 py-3 font-mono text-emerald-700">${r.checkIn}</td>
-              <td class="px-4 py-3 font-mono text-rose-700">${r.checkOut}</td>
-              <td class="px-4 py-3 font-mono font-bold bg-amber-50/40 text-amber-950">${r.totalWork}</td>
-              
-              <!-- Break input slot -->
-              <td class="px-3 py-2">
-                <input type="number" value="${r.restMin}" min="0" oninput="updatePartTimeRest(${globalIdx}, this.value)" class="w-14 px-1.5 py-1 text-center font-mono border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-xs bg-white">
+            <tr class="text-xs">
+              <td class="px-4 py-2">${r.date}</td><td class="px-4 py-2">${r.day}</td>
+              <td class="px-4 py-2 text-slate-400">${r.checkIn}</td><td class="px-4 py-2 text-slate-400">${r.checkOut}</td>
+              <td class="px-2 py-1">
+                <input type="time" value="${r.schedStart}" onchange="updatePartTimeSchedule(${gIdx}, 'start', this.value)" class="border rounded text-[11px] font-mono w-[65px]">~
+                <input type="time" value="${r.schedEnd}" onchange="updatePartTimeSchedule(${gIdx}, 'end', this.value)" class="border rounded text-[11px] font-mono w-[65px]">
               </td>
-
-              <!-- Group A input slot -->
-              <td class="px-3 py-2 bg-emerald-50/20">
-                <input type="text" placeholder="例: 02:00" value="${r.groupA}" oninput="updatePartTimeGroupA(${globalIdx}, this.value)" class="w-20 px-2 py-1 text-center font-mono border border-emerald-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-xs bg-white">
-              </td>
-
-              <!-- Group B automatic reactive display -->
-              <td class="px-4 py-3 font-mono font-bold text-blue-700 bg-blue-50/20" id="pt-groupb-cell-${globalIdx}">
-                ${r.groupB}
-              </td>
-
-              <!-- Location/Fare input slot (Highly visible width) -->
-              <td class="px-3 py-2 min-w-[200px]">
-                <input type="text" placeholder="例: 名谷 / 750円" value="${r.locationAndFare}" onchange="updatePartTimeLocation(${globalIdx}, this.value)" class="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
-              </td>
-            </tr>
-          `;
+              <td class="px-4 py-2 font-bold bg-amber-50/40" id="pt-totalwork-cell-${gIdx}">${r.totalWork}</td>
+              <td><input type="number" value="${r.restMin}" oninput="updatePartTimeRest(${gIdx}, this.value)" class="border w-12 text-center rounded"></td>
+              <td><input type="text" value="${r.groupA}" oninput="updatePartTimeGroupA(${gIdx}, this.value)" class="border w-14 text-center rounded"></td>
+              <td class="px-4 py-2 font-bold text-indigo-700 bg-indigo-50/20" id="pt-groupb-cell-${gIdx}">${r.groupB}</td>
+              <td><input type="text" value="${r.locationAndFare}" onchange="updatePartTimeLocation(${gIdx}, this.value)" class="border px-2 py-0.5 rounded text-xs w-full"></td>
+            </tr>`;
         }).join('');
       }
     }
 
-    function renderEmptyGrid() {
-      const tbody = document.getElementById('preview-tbody');
-      tbody.innerHTML = `
-        <tr>
-          <td class="px-6 py-12 text-center text-slate-400" colspan="10">
-            <div class="flex flex-col items-center gap-2">
-              <i data-lucide="info" class="w-8 h-8 text-slate-300"></i>
-              <span>現在プレビュー蓄積されている従業員はいません。データを貼り付けて蓄積してください。</span>
-            </div>
-          </td>
-        </tr>
-      `;
+    function updatePartTimeSchedule(idx, type, val) {
+      const item = processedData.parttime[idx];
+      if (type === 'start') item.schedStart = val;
+      if (type === 'end') item.schedEnd = val;
+
+      if (item.checkIn && item.checkOut && item.checkIn !== "未打刻" && item.checkOut !== "未打刻") {
+        let inMin = timeToMins(item.checkIn);
+        let outMin = timeToMins(item.checkOut);
+        const sMin = timeToMins(item.schedStart);
+        const eMin = timeToMins(item.schedEnd);
+
+        if (inMin > sMin) inMin = Math.ceil(inMin / 5) * 5;
+        else inMin = sMin;
+
+        const effectiveOut = Math.min(outMin, eMin);
+        item.totalWork = (effectiveOut > inMin) ? minsToTimeStr(effectiveOut - inMin) : "00:00";
+      }
+      
+      const twCell = document.getElementById(`pt-totalwork-cell-${idx}`);
+      if (twCell) twCell.innerText = item.totalWork;
+      recalculatePartTimeB(idx);
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
     function updatePartTimeRest(idx, val) {
-      const minutes = parseInt(val) || 0;
-      processedData.parttime[idx].restMin = minutes;
+      processedData.parttime[idx].restMin = parseInt(val) || 0;
       recalculatePartTimeB(idx);
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
@@ -1180,299 +783,121 @@
     function recalculatePartTimeB(idx) {
       const item = processedData.parttime[idx];
       const totalMins = timeToMins(item.totalWork);
-      const restMins = parseInt(item.restMin) || 0;
-      const groupAMins = timeToMins(item.groupA);
-
-      const netMins = Math.max(0, totalMins - restMins - groupAMins);
-      const groupBVal = minsToTimeStr(netMins);
-      item.groupB = groupBVal;
-
+      const netMins = Math.max(0, totalMins - (parseInt(item.restMin) || 0) - timeToMins(item.groupA));
+      item.groupB = minsToTimeStr(netMins);
       const cell = document.getElementById(`pt-groupb-cell-${idx}`);
-      if (cell) {
-        cell.innerText = groupBVal;
-      }
+      if (cell) cell.innerText = item.groupB;
     }
 
-    function updatePartTimeLocation(idx, val) {
-      processedData.parttime[idx].locationAndFare = val;
-      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
-    }
+    function updatePartTimeLocation(idx, val) { processedData.parttime[idx].locationAndFare = val; localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData)); }
+    function updateFullTimeLocation(idx, val) { processedData.fulltime[idx].locationAndFare = val; localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData)); }
+    function deleteSelectedEmployee() { if(selectedEmployeeName) deleteEmployee(selectedEmployeeName); }
 
-    // Update Full-time transportation note securely
-    function updateFullTimeLocation(idx, val) {
-      processedData.fulltime[idx].locationAndFare = val;
-      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
-    }
-
-    // 🗑️ Delete specific employee from the accumulated list
     function deleteEmployee(name) {
-      showCustomConfirm(`従業員「${name}」のデータをこのリストから削除しますか？`, "一括エクセルダウンロード対象からも除外されます。", () => {
+      showCustomConfirm(`従業員「${name}」を削除しますか？`, '', () => {
         processedData.fulltime = processedData.fulltime.filter(r => r.name !== name);
         processedData.parttime = processedData.parttime.filter(r => r.name !== name);
         processedData.rawBackup = processedData.rawBackup.filter(r => r[1] !== name);
-        
         localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
         selectedEmployeeName = "";
-        
         buildEmployeeSheetTabs();
-        const allNames = getProcessedNames();
-        if (allNames.length > 0) {
-          selectSheetTab(allNames[0]);
-        } else {
-          renderEmptyGrid();
-          // Disable download Excel button
-          const dlBtn = document.getElementById('excel-download-btn');
-          dlBtn.disabled = true;
-          dlBtn.className = "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
-        }
-        
-        showToast(`🗑️ ${name} さんのデータを削除しました`, '🍂');
+        const names = getProcessedNames();
+        if(names.length > 0) selectSheetTab(names[0]); else { toggleDownloadBtn(false); }
       });
     }
 
-    function deleteSelectedEmployee() {
-      if (selectedEmployeeName) {
-        deleteEmployee(selectedEmployeeName);
-      }
-    }
-
-    // 🧹 Reset / Clear Accumulated session Data completely
     function clearAccumulatedData() {
-      showCustomConfirm("蓄積されたすべての従業員データをクリアしますか？", "これにより、プレビュー名簿および一括ダウンロード内容が完全にリセットされます。", () => {
+      showCustomConfirm("すべてのデータを完全にリセットしますか？", '', () => {
         processedData = { fulltime: [], parttime: [], rawBackup: [] };
         selectedEmployeeName = "";
         localStorage.removeItem("igk_active_processed_data");
-        
         buildEmployeeSheetTabs();
-        renderEmptyGrid();
-        
-        // Hide delete option
-        const delBtn = document.getElementById('delete-selected-employee-btn');
-        if (delBtn) delBtn.className = "hidden";
-
-        // Disable Excel Download button
-        const dlBtn = document.getElementById('excel-download-btn');
-        dlBtn.disabled = true;
-        dlBtn.className = "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
-        
-        showToast("🧹 蓄積データを完全にクリアしました", "🍃");
-        setCocoaText("「名簿をきれいに初期化しましたよ！新しい打刻データを貼り付けて、再度従業員を追加してくださいね。」");
+        renderActiveGridView();
+        toggleDownloadBtn(false);
       });
     }
 
-    // Demo Data loading logic (Enriched with both full-time and part-time records)
-    function loadDemoData() {
-      const demoLog = `00000646\t林 昊嬛\t入室\t2026/07/09 09:29
-00000646\t林 昊嬛\t退室\t2026/07/08 18:31
-00000646\t林 昊嬛\t入室\t2026/07/08 09:29
-00000646\t林 昊嬛\t退室\t2026/07/07 18:33
-00000646\t林 昊嬛\t入室\t2026/07/07 09:30
-00000646\t林 昊嬛\t退室\t2026/07/06 18:30
-00000646\t林 昊嬛\t入室\t2026/07/06 09:30
-00000646\t林 昊嬛\t退室\t2026/07/02 18:30
-00000646\t林 昊嬛\t入室\t2026/07/02 09:28
-00000646\t林 昊嬛\t退室\t2026/07/01 18:30
-00000646\t林 昊嬛\t入室\t2026/07/01 09:30
-00000888\tCostard Fergus\t入室\t2026/07/09 15:00
-00000888\tCostard Fergus\t退室\t2026/07/09 18:00
-00000888\tCostard Fergus\t入室\t2026/07/08 13:57
-00000888\tCostard Fergus\t退室\t2026/07/08 18:05
-00000888\tCostard Fergus\t入室\t2026/07/07 14:00
-00000888\tCostard Fergus\t退室\t2026/07/07 18:03`;
+    function toggleDownloadBtn(enable) {
+      const dlBtn = document.getElementById('excel-download-btn');
+      dlBtn.disabled = !enable;
+      dlBtn.className = enable ? "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm";
+    }
 
-      document.getElementById('rawInput').value = demoLog;
-      showToast('🌰 デモ用データを読み込みました！', '🌸');
+    function loadDemoData() {
+      document.getElementById('rawInput').value = `00000888\tCostard Fergus\t入室\t2026/07/09 14:03\n00000888\tCostard Fergus\t退室\t2026/07/09 18:00\n00000646\t林 昊嬛\t入室\t2026/07/09 09:29\n00000646\t林 昊嬛\t退室\t2026/07/09 18:31`;
       processAttendance();
     }
+    function clearTextarea() { document.getElementById('rawInput').value = ''; }
+    function timeToMins(t) { if(!t || !t.includes(':')) return 0; const [h,m] = t.split(':').map(Number); return h*60+m; }
+    function minsToTimeStr(m) { if(m<=0) return "00:00"; return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; }
+    function formatDate(d) { return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`; }
+    function formatHM(d) { return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; }
+    function getWeekDayStyle(d) { return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; }
 
-    function clearTextarea() {
-      document.getElementById('rawInput').value = '';
-      showToast('🧹 入力領域をクリアしました', '🍂');
-    }
-
-    // Helper functions: Time and formats
-    function timeToMins(timeStr) {
-      if (!timeStr || !timeStr.includes(':')) return 0;
-      const [h, m] = timeStr.split(':').map(Number);
-      return h * 60 + m;
-    }
-
-    function minsToTimeStr(totalMins) {
-      if (totalMins <= 0) return "00:00";
-      const h = Math.floor(totalMins / 60);
-      const m = totalMins % 60;
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    }
-
-    function formatDate(date) {
-      const y = date.getFullYear();
-      const m = (date.getMonth() + 1).toString().padStart(2, '0');
-      const d = date.getDate().toString().padStart(2, '0');
-      return `${y}/${m}/${d}`;
-    }
-
-    function formatHM(date) {
-      const h = date.getHours().toString().padStart(2, '0');
-      const m = date.getMinutes().toString().padStart(2, '0');
-      return `${h}:${m}`;
-    }
-
-    function getWeekDayStyle(day) {
-      if (day === '土' || day === '日') {
-        return 'bg-rose-50 text-rose-700 font-bold';
-      }
-      return 'bg-slate-100 text-slate-600 font-semibold';
-    }
-
-    // 👑 Perfect Double Sheet (打刻+出退) Excel Exporter per Employee
     function downloadExcel() {
       const names = getProcessedNames();
-      if (names.length === 0) {
-        showToast('⚠️ 出力する集計データがありません！', '🍂');
-        return;
-      }
-
+      if (names.length === 0) return;
       const wb = XLSX.utils.book_new();
 
-      // Loop through each processed employee to create EXACTLY 2 distinct tabs for each: "打刻" + name and "出退" + name
       names.forEach(name => {
-        
-        // -------------------------------------------------------------
-        // SHEET 1: [打刻 + Name] — Individual Raw Stamps Logs
-        // -------------------------------------------------------------
         const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
-        const logHeaders = ["従業員ID", "従業員名", "タイプ", "打刻日時"];
-        const logRows = [logHeaders];
-        personalRawLogs.forEach(r => logRows.push(r));
-        const ws_stamps = XLSX.utils.aoa_to_sheet(logRows);
-        
-        // Excel worksheet names limit to 31 characters
-        const stampsSheetTabName = `打刻${name}`.substring(0, 31);
-        XLSX.utils.book_append_sheet(wb, ws_stamps, stampsSheetTabName);
+        const logRows = [["従業員ID", "従業員名", "タイプ", "打刻日時"], ...personalRawLogs];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(logRows), `打刻${name}`.substring(0, 31));
 
-        // -------------------------------------------------------------
-        // SHEET 2: [出退 + Name] — Individual Monthly Compiled Details
-        // -------------------------------------------------------------
         const isFT = processedData.fulltime.some(r => r.name === name);
-
         if (isFT) {
-          // Full-time layout with custom transportation column added beautifully
-          const ftHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト", "校舎/交通費"];
-          const ftRows = [ftHeaders];
           const entries = processedData.fulltime.filter(r => r.name === name);
-          entries.forEach(r => {
-            ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel, r.locationAndFare || ""]);
-          });
-          const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
-          
-          const detailsSheetTabName = `出退${name}`.substring(0, 31);
-          XLSX.utils.book_append_sheet(wb, ws_ft, detailsSheetTabName);
-
+          const ftRows = [["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト", "校舎/交通費"]];
+          entries.forEach(r => ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel, r.locationAndFare]));
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ftRows), `出退${name}`.substring(0, 31));
         } else {
-          // Part-Time layout containing smart Excel formulas
-          const ptHeaders = ["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "総在勤時間", "休憩時間(分)", "IGK A(授業)", "IGK B(勤務)", "校舎/交通費"];
-          const ptRows = [ptHeaders];
           const entries = processedData.parttime.filter(r => r.name === name);
-          
-          entries.forEach(r => {
-            ptRows.push([
-              r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, 
-              r.totalWork, 
-              parseInt(r.restMin) || 0,
-              r.groupA || "",
-              "", // Reserved cell for bound Excel Formula
-              r.locationAndFare || ""
-            ]);
-          });
-
+          const ptRows = [["従業員ID", "氏名", "日付", "曜日", "打刻入室", "打刻退室", "予定始業", "予定終業", "精算工時", "休憩(分)", "IGK A(授業)", "IGK B(勤務)", "校舎/交通費"]];
+          entries.forEach(r => ptRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.schedStart, r.schedEnd, r.totalWork, parseInt(r.restMin)||0, r.groupA, "", r.locationAndFare]));
           const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
-
-          // Apply bound dynamic formulas on Column J (IGK Group B) dynamically: `=TotalWork - Break - GroupA`
           for (let i = 0; i < entries.length; i++) {
-            const excelRowIndex = i + 2; 
-            const cellReference = `J${excelRowIndex}`; // Column J in Excel matches "IGK B"
-            ws_pt[cellReference] = {
-              t: 's',
-              f: `IF(G${excelRowIndex}="","",G${excelRowIndex}-H${excelRowIndex}/1440-IF(I${excelRowIndex}="","00:00",I${excelRowIndex}))`
-            };
+            const rIdx = i + 2;
+            ws_pt[`L${rIdx}`] = { t: 's', f: `IF(I${rIdx}="","",I${rIdx}-J${rIdx}/1440-IF(K${rIdx}="","00:00",K${rIdx}))` };
           }
-
-          const detailsSheetTabName = `出退${name}`.substring(0, 31);
-          XLSX.utils.book_append_sheet(wb, ws_pt, detailsSheetTabName);
+          XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
         }
       });
-
-      // Export file
-      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      XLSX.writeFile(wb, `IGK_勤怠管理_${stamp}.xlsx`);
-      showToast('👑 一括マルチシートExcelを出力しました！', '🌸');
-      setCocoaText('「Excelファイルの出力が成功しましたよ！従業員ごとに『打刻人名』と『出退人名』の2つの専用タブが綺麗に並んでいるので、人事チェックが非常にスムーズです♪」');
+      XLSX.writeFile(wb, `IGK_勤怠管理_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
     }
 
     function toggleHistoryModal() {
-      const modal = document.getElementById('history-modal');
-      modal.classList.toggle('hidden');
-      modal.classList.toggle('flex');
-      if (!modal.classList.contains('hidden')) {
-        renderHistoryList();
-      }
+      const m = document.getElementById('history-modal');
+      m.className = m.classList.contains('hidden') ? "fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : "hidden";
+      if(!m.classList.contains('hidden')) renderHistoryList();
     }
 
     function saveToHistory() {
-      const input = document.getElementById('history-save-name');
-      const name = input.value.trim();
-      if (!name) {
-        showToast('⚠️ アーカイブの名前を入力してください。', '🍁');
-        return;
+      const name = document.getElementById('history-save-name').value.trim();
+      if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0)) {
+        monthlyHistory[name] = JSON.parse(JSON.stringify(processedData));
+        localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
+        document.getElementById('history-save-name').value = "";
+        renderHistoryList();
+        showToast('💾 アーカイブを保存しました。', '🌸');
       }
-
-      if (processedData.fulltime.length === 0 && processedData.parttime.length === 0) {
-        showToast('⚠️ 保存するためのデータがありません。', '🍂');
-        return;
-      }
-
-      monthlyHistory[name] = JSON.parse(JSON.stringify(processedData));
-      localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
-      input.value = "";
-      renderHistoryList();
-      showToast(`💾 アーカイブ「${name}」を保存しました。`, '🌸');
     }
 
-    // Historical list restoration
     function loadFromHistory(name) {
       if (!monthlyHistory[name]) return;
       processedData = JSON.parse(JSON.stringify(monthlyHistory[name]));
-      
       buildEmployeeSheetTabs();
-      
-      const allNames = getProcessedNames();
-      if (allNames.length > 0) {
-        selectSheetTab(allNames[0]);
-      } else {
-        renderEmptyGrid();
-      }
-
-      // Show historical badge warnings
-      const badge = document.getElementById('activeHistoryBadge');
-      badge.classList.remove('hidden');
-      badge.classList.add('flex');
+      if (getProcessedNames().length > 0) selectSheetTab(getProcessedNames()[0]);
+      document.getElementById('activeHistoryBadge').classList.remove('hidden');
       document.getElementById('activeHistoryName').innerText = name;
-
-      // Enable actions
-      const dlBtn = document.getElementById('excel-download-btn');
-      dlBtn.disabled = false;
-      dlBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer";
-
+      toggleDownloadBtn(true);
       toggleHistoryModal();
-      showToast(`📂 アーカイブ「${name}」を復元・レビューしています`, '🌸');
     }
 
     function deleteFromHistory(name) {
-      showCustomConfirm(`アーカイブ「${name}」を完全に削除しますか？`, 'この操作は取り消せません。', () => {
+      showCustomConfirm(`アーカイブ「${name}」を完全に削除？`, '', () => {
         delete monthlyHistory[name];
         localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
         renderHistoryList();
-        showToast(`🗑️ アーカイブを削除しました`, '🍂');
       });
     }
 
@@ -1480,296 +905,42 @@
       const container = document.getElementById('history-items-list');
       container.innerHTML = "";
       const keys = Object.keys(monthlyHistory);
-
-      if (keys.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">保存された履歴はありません。</p>`;
-        return;
-      }
-
+      if(keys.length === 0) { container.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">履歴はありません。</p>`; return; }
       keys.forEach(key => {
-        const item = document.createElement('div');
-        item.className = 'bg-slate-50 hover:bg-slate-100 p-2.5 rounded-xl flex items-center justify-between border border-slate-200/50 transition';
-        item.innerHTML = `
-          <span class="text-xs font-semibold text-slate-700 truncate max-w-[180px]">${key}</span>
-          <div class="flex gap-1.5 shrink-0">
-            <button onclick="loadFromHistory('${key}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-1 rounded font-bold transition">表示</button>
-            <button onclick="deleteFromHistory('${key}')" class="bg-rose-50 hover:bg-rose-100 text-rose-800 p-1 rounded transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-          </div>
-        `;
-        container.appendChild(item);
+        const div = document.createElement('div');
+        div.className = 'bg-slate-50 p-2 rounded flex justify-between items-center text-xs';
+        div.innerHTML = `<span>${key}</span><div class="flex gap-1"><button onclick="loadFromHistory('${key}')" class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">表示</button><button onclick="deleteFromHistory('${key}')" class="text-rose-600"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`;
+        container.appendChild(div);
       });
       lucide.createIcons();
     }
 
-    // CUSTOM ALERT dialog box handling
-    let currentConfirmCallback = null;
-    function showCustomConfirm(title, desc, onOk) {
-      const dialog = document.getElementById('confirm-dialog');
-      document.getElementById('confirm-title').innerText = title;
-      document.getElementById('confirm-desc').innerText = desc || "この操作は取り消せません。";
-      currentConfirmCallback = onOk;
-      dialog.classList.remove('hidden');
-      dialog.classList.add('flex');
-    }
-
-    document.getElementById('confirm-cancel-btn').onclick = function() {
-      document.getElementById('confirm-dialog').classList.add('hidden');
-      document.getElementById('confirm-dialog').classList.remove('flex');
-    };
-
-    document.getElementById('confirm-ok-btn').onclick = function() {
-      if (currentConfirmCallback) currentConfirmCallback();
-      document.getElementById('confirm-dialog').classList.add('hidden');
-      document.getElementById('confirm-dialog').classList.remove('flex');
-    };
-
-    // Cocoa speech helper
-    function setCocoaText(text) {
-      document.getElementById('cocoa-bubble-text').innerText = text;
-    }
-
-    function showToast(msg, icon = '🌟') {
-      const notif = document.getElementById('toast-notif');
-      document.getElementById('toast-notif-icon').innerText = icon;
-      document.getElementById('toast-notif-text').innerText = msg;
-      
-      notif.classList.remove('translate-y-[-100px]', 'opacity-0');
-      setTimeout(() => {
-        notif.classList.add('translate-y-[-100px]', 'opacity-0');
-      }, 3500);
-    }
-
-    // Dynamic Four Seasons theme swapper with gorgeous custom vector sceneries
     function changeSeason(season) {
       currentSeason = season;
-      const body = document.getElementById('theme-body');
-      const vines = document.getElementById('vines-svg');
-      const iconContainer = document.getElementById('header-icon-container');
-      const title = document.getElementById('main-title');
-      const container = document.getElementById('particle-container');
-
-      // Clear falling leaves
-      container.innerHTML = "";
-
-      // Initialize Cocoa-chan vector avatar state
-      const avatarSvg = document.getElementById('cocoa-avatar');
-
-      // Reset button classes
-      ['spring', 'summer', 'autumn', 'winter'].forEach(s => {
-        const btn = document.getElementById(`btn-${s}`);
-        if (btn) btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-white text-slate-700 shadow-sm border border-slate-200/50";
-      });
-
-      // Highlight active season button
-      const activeBtn = document.getElementById(`btn-${season}`);
-
-      if (season === 'spring') {
-        body.className = "bg-gradient-to-b from-rose-50 via-emerald-50/20 to-rose-50/50 min-h-screen text-slate-800 relative pb-48";
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-rose-500 text-white shadow-md border-rose-500";
-        vines.innerHTML = `
-          <!-- Falling gorgeous cherry blossoms hanging limbs -->
-          <path d="M0,0 Q180,60 360,10 Q540,80 720,20 Q900,90 1080,30 Q1260,70 1440,20 L1440,0 L0,0 Z" fill="#fbcfe8" opacity="0.35"/>
-          <circle cx="120" cy="45" r="12" fill="#f9a8d4" opacity="0.6"/>
-          <circle cx="125" cy="40" r="8" fill="#fda4af" opacity="0.8"/>
-          <circle cx="480" cy="30" r="10" fill="#f9a8d4" opacity="0.7"/>
-          <circle cx="850" cy="50" r="15" fill="#fbcfe8" opacity="0.8"/>
-          <circle cx="1210" cy="35" r="11" fill="#fda4af" opacity="0.7"/>
-        `;
-        iconContainer.className = "bg-rose-100 text-rose-800 p-3 rounded-xl shadow-inner transition-colors duration-500";
-        title.className = "text-xl font-bold tracking-tight text-rose-950";
-        
-        // Cocoa vector avatar wearing pretty cherry blossom
-        avatarSvg.innerHTML = `
-          <circle cx="50" cy="50" r="45" fill="#fbcfe8" opacity="0.4"/>
-          <path d="M50,20 C35,20 28,32 28,45 C28,60 40,78 50,78 C60,78 72,60 72,45 C72,32 65,20 50,20 Z" fill="#92400e"/>
-          <circle cx="50" cy="52" r="21" fill="#fed7aa"/>
-          <path d="M36,45 C38,32 62,32 64,45" fill="#78350f"/>
-          <circle cx="43" cy="50" r="3" fill="#1e293b"/>
-          <circle cx="57" cy="50" r="3" fill="#1e293b"/>
-          <path d="M47,58 Q50,61 53,58" stroke="#1e293b" stroke-width="2" fill="none"/>
-          <!-- Sweet Blossom ornament -->
-          <path d="M32,32 L38,34 L34,38 L28,36 Z" fill="#fda4af"/>
-          <circle cx="33" cy="35" r="2" fill="#fff"/>
-        `;
-
-        // Load spring landscape on bottom
-        loadLandscape('spring');
+      const b = document.getElementById('theme-body');
+      const v = document.getElementById('vines-svg');
+      const av = document.getElementById('cocoa-avatar');
+      
+      if(season==='spring') {
+        b.className = "bg-gradient-to-b from-rose-50 via-emerald-50/20 to-rose-50/50 min-h-screen text-slate-800 relative pb-48";
+        v.innerHTML = `<path d="M0,0 Q180,60 360,10 Q540,80 720,20 L1440,0 Z" fill="#fbcfe8" opacity="0.35"/>`;
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#fbcfe8"/><circle cx="40" cy="45" r="3" fill="#000"/><circle cx="60" cy="45" r="3" fill="#000"/><path d="M45,55 Q50,60 55,55" stroke="#000" fill="none"/>`;
         startFallingEffect('🌸');
-
-      } else if (season === 'summer') {
-        body.className = "bg-gradient-to-b from-sky-50 via-teal-50/20 to-amber-50/40 min-h-screen text-slate-800 relative pb-48";
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-sky-500 text-white shadow-md border-sky-500";
-        vines.innerHTML = `
-          <!-- Tropical leaves / Starfish vines -->
-          <path d="M0,0 Q180,40 360,15 Q540,65 720,25 Q900,55 1080,20 Q1260,50 1440,15 L1440,0 L0,0 Z" fill="#06b6d4" opacity="0.25"/>
-          <polygon points="200,30 205,45 220,45 208,55 212,70 200,60 188,70 192,55 180,45 195,45" fill="#f43f5e" opacity="0.8"/>
-          <polygon points="980,40 983,50 993,50 985,57 988,67 980,60 972,67 975,57 967,50 977,50" fill="#f59e0b" opacity="0.8"/>
-        `;
-        iconContainer.className = "bg-sky-100 text-sky-800 p-3 rounded-xl shadow-inner transition-colors duration-500";
-        title.className = "text-xl font-bold tracking-tight text-sky-950";
-
-        avatarSvg.innerHTML = `
-          <circle cx="50" cy="50" r="45" fill="#06b6d4" opacity="0.2"/>
-          <path d="M50,20 C35,20 28,32 28,45 C28,60 40,78 50,78 C60,78 72,60 72,45 C72,32 65,20 50,20 Z" fill="#92400e"/>
-          <circle cx="50" cy="52" r="21" fill="#fed7aa"/>
-          <path d="M36,45 C38,32 62,32 64,45" fill="#78350f"/>
-          <circle cx="43" cy="50" r="3" fill="#1e293b"/>
-          <circle cx="57" cy="50" r="3" fill="#1e293b"/>
-          <path d="M47,58 Q50,61 53,58" stroke="#1e293b" stroke-width="2" fill="none"/>
-          <!-- Cocoa wearing a cool Straw hat -->
-          <ellipse cx="50" cy="30" rx="25" ry="6" fill="#fbbf24"/>
-          <path d="M38,28 C38,18 62,18 62,28 Z" fill="#d97706"/>
-        `;
-
-        loadLandscape('summer');
+      } else if (season==='summer') {
+        b.className = "bg-gradient-to-b from-sky-50 via-teal-50/20 min-h-screen text-slate-800 relative pb-48";
+        v.innerHTML = `<path d="M0,0 Q180,40 360,15 L1440,0 Z" fill="#06b6d4" opacity="0.2"/>`;
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#fbbf24"/><circle cx="40" cy="45" r="3" fill="#000"/><circle cx="60" cy="45" r="3" fill="#000"/>`;
         startFallingEffect('🌊');
-
-      } else if (season === 'autumn') {
-        body.className = "bg-gradient-to-b from-amber-50 via-orange-50/20 to-amber-100/35 min-h-screen text-slate-800 relative pb-48";
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-amber-600 text-white shadow-md border-amber-600";
-        vines.innerHTML = `
-          <!-- Golden Maple hanging leaves -->
-          <path d="M0,0 Q180,50 360,20 Q540,70 720,30 Q900,80 1080,25 Q1260,65 1440,20 L1440,0 L0,0 Z" fill="#d97706" opacity="0.3"/>
-          <circle cx="300" cy="40" r="14" fill="#b45309" opacity="0.6"/>
-          <circle cx="310" cy="35" r="9" fill="#ea580c" opacity="0.8"/>
-          <circle cx="1120" cy="45" r="13" fill="#b45309" opacity="0.7"/>
-        `;
-        iconContainer.className = "bg-amber-100 text-amber-800 p-3 rounded-xl shadow-inner transition-colors duration-500";
-        title.className = "text-xl font-bold tracking-tight text-amber-950";
-
-        avatarSvg.innerHTML = `
-          <circle cx="50" cy="50" r="45" fill="#f59e0b" opacity="0.2"/>
-          <path d="M50,20 C35,20 28,32 28,45 C28,60 40,78 50,78 C60,78 72,60 72,45 C72,32 65,20 50,20 Z" fill="#78350f"/>
-          <circle cx="50" cy="52" r="21" fill="#fed7aa"/>
-          <path d="M36,45 C38,32 62,32 64,45" fill="#451a03"/>
-          <circle cx="43" cy="50" r="3" fill="#1e293b"/>
-          <circle cx="57" cy="50" r="3" fill="#1e293b"/>
-          <path d="M47,58 Q50,61 53,58" stroke="#1e293b" stroke-width="2" fill="none"/>
-          <!-- Sweet Chestnut accessory -->
-          <path d="M30,34 Q34,31 38,34 Q36,40 32,38 Z" fill="#d97706"/>
-          <path d="M32,38 Q34,39 36,40" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
-        `;
-
-        loadLandscape('autumn');
+      } else if (season==='autumn') {
+        b.className = "bg-gradient-to-b from-amber-50 via-orange-50/20 min-h-screen text-slate-800 relative pb-48";
+        v.innerHTML = `<path d="M0,0 Q180,50 360,20 L1440,0 Z" fill="#d97706" opacity="0.25"/>`;
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#f59e0b"/><circle cx="40" cy="45" r="3" fill="#000"/>`;
         startFallingEffect('🍁');
-
-      } else if (season === 'winter') {
-        body.className = "bg-gradient-to-b from-sky-100/60 via-slate-50 to-blue-50/50 min-h-screen text-slate-800 relative pb-48";
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-slate-600 text-white shadow-md border-slate-600";
-        vines.innerHTML = `
-          <!-- Frost/Pine needles branches -->
-          <path d="M0,0 Q180,45 360,15 Q540,60 720,20 Q900,50 1080,15 Q1260,55 1440,15 L1440,0 L0,0 Z" fill="#94a3b8" opacity="0.3"/>
-          <path d="M150,25 Q160,50 170,25" stroke="#cbd5e1" stroke-width="3" fill="none" opacity="0.8"/>
-          <path d="M1250,20 Q1260,45 1270,20" stroke="#cbd5e1" stroke-width="3" fill="none" opacity="0.8"/>
-        `;
-        iconContainer.className = "bg-slate-200 text-slate-800 p-3 rounded-xl shadow-inner transition-colors duration-500";
-        title.className = "text-xl font-bold tracking-tight text-slate-950";
-
-        avatarSvg.innerHTML = `
-          <circle cx="50" cy="50" r="45" fill="#38bdf8" opacity="0.2"/>
-          <path d="M50,20 C35,20 28,32 28,45 C28,60 40,78 50,78 C60,78 72,60 72,45 C72,32 65,20 50,20 Z" fill="#451a03"/>
-          <circle cx="50" cy="52" r="21" fill="#fed7aa"/>
-          <path d="M36,45 C38,32 62,32 64,45" fill="#1c1917"/>
-          <circle cx="43" cy="50" r="3" fill="#1e293b"/>
-          <circle cx="57" cy="50" r="3" fill="#1e293b"/>
-          <path d="M47,58 Q50,61 53,58" stroke="#1e293b" stroke-width="2" fill="none"/>
-          <!-- Cozy knit scarf wrap around neck -->
-          <path d="M35,66 Q50,75 65,66 L62,74 Q50,82 38,74 Z" fill="#e11d48"/>
-        `;
-
-        loadLandscape('winter');
+      } else if (season==='winter') {
+        b.className = "bg-gradient-to-b from-sky-100/60 via-slate-50 min-h-screen text-slate-800 relative pb-48";
+        v.innerHTML = `<path d="M0,0 Q180,45 360,15 L1440,0 Z" fill="#94a3b8" opacity="0.2"/>`;
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#cbd5e1"/>`;
         startFallingEffect('❄️');
-      }
-    }
-
-    // Dynamic backdrop landscape illustration builder based on photos (inspired by users' images)
-    function loadLandscape(season) {
-      const svg = document.getElementById('footer-landscape-svg');
-      svg.innerHTML = "";
-
-      if (season === 'spring') {
-        svg.innerHTML = `
-          <!-- Soft green grassy hills with beautiful cherry tree trunks and blooms -->
-          <path d="M0,150 Q360,110 720,140 Q1080,110 1440,150 L1440,180 L0,180 Z" fill="#86efac" opacity="0.9"/>
-          <path d="M0,165 Q450,135 900,160 Q1350,135 1440,165 L1440,180 L0,180 Z" fill="#4ade80" opacity="0.7"/>
-          
-          <!-- Classic Cherry blossom trunk on the right edge -->
-          <path d="M1300,180 L1310,120 Q1330,80 1370,70 L1380,70 Q1340,90 1330,120 L1340,180 Z" fill="#78350f"/>
-          <!-- Sweet cherry blossoms vector cloud -->
-          <circle cx="1320" cy="110" r="28" fill="#fbcfe8" opacity="0.9"/>
-          <circle cx="1350" cy="90" r="32" fill="#fda4af" opacity="0.85"/>
-          <circle cx="1380" cy="100" r="25" fill="#fbcfe8" opacity="0.9"/>
-        `;
-      } else if (season === 'summer') {
-        // Summer photo beach volleyball net + ocean beach scenery (Perfect replication of スクリーンショット 2026-07-09 154629.jpg)
-        svg.innerHTML = `
-          <!-- Beautiful blue sea and fine sand hills background -->
-          <path d="M0,130 Q400,90 800,120 Q1200,90 1440,135 L1440,180 L0,180 Z" fill="#38bdf8" opacity="0.9"/>
-          <path d="M0,150 Q450,125 900,155 Q1350,125 1440,150 L1440,180 L0,180 Z" fill="#fef08a" opacity="0.95"/>
-          
-          <!-- Cute miniature beach volleyball net line on the left -->
-          <line x1="120" y1="110" x2="120" y2="170" stroke="#78350f" stroke-width="4"/>
-          <line x1="280" y1="110" x2="280" y2="170" stroke="#78350f" stroke-width="4"/>
-          <rect x="120" y="115" width="160" height="25" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3,3"/>
-          
-          <!-- Splendid Palm trees framing the right side -->
-          <path d="M1360,180 Q1350,120 1380,80" stroke="#78350f" stroke-width="6" fill="none"/>
-          <path d="M1380,80 Q1320,80 1310,95 M1380,80 Q1350,60 1345,40 M1380,80 Q1420,50 1440,65" stroke="#15803d" stroke-width="4" fill="none"/>
-        `;
-      } else if (season === 'autumn') {
-        // Autumn cozy falling leaves and steaming sweet potato!
-        svg.innerHTML = `
-          <!-- Warm coppery earth paths with wooden branches and roasted sweet potato illustration -->
-          <path d="M0,140 Q360,115 720,135 Q1080,115 1440,140 L1440,180 L0,180 Z" fill="#d97706" opacity="0.8"/>
-          <path d="M0,155 Q450,130 900,150 Q1350,130 1440,155 L1440,180 L0,180 Z" fill="#92400e" opacity="0.95"/>
-          
-          <!-- Beautiful small campfire pile with fire sparkles on the left -->
-          <circle cx="200" cy="155" r="16" fill="#f97316" opacity="0.85"/>
-          <circle cx="200" cy="152" r="10" fill="#facc15" opacity="0.9"/>
-          <line x1="185" y1="165" x2="215" y2="155" stroke="#451a03" stroke-width="4"/>
-          <line x1="215" y1="165" x2="185" y2="155" stroke="#451a03" stroke-width="4"/>
-          
-          <!-- Roasted Sweet potato icon on a plate with steam curves rising! -->
-          <path d="M225,160 Q240,145 255,160 Q240,175 225,160 Z" fill="#701a75"/>
-          <!-- Steaming waves rising -->
-          <path d="M235,140 Q238,135 235,130 Q232,125 235,120" stroke="#fed7aa" stroke-width="1.5" fill="none" opacity="0.8"/>
-          <path d="M245,142 Q248,137 245,132 Q242,127 245,122" stroke="#fed7aa" stroke-width="1.5" fill="none" opacity="0.8"/>
-        `;
-      } else if (season === 'winter') {
-        // Winter hot spring + Snowman illustration (Perfect replication of スクリーンショット 2026-07-09 154423.jpg)
-        svg.innerHTML = `
-          <!-- Thick pristine white snow drifts -->
-          <path d="M0,130 Q360,105 720,125 Q1080,105 1440,130 L1440,180 L0,180 Z" fill="#e2e8f0" opacity="0.95"/>
-          <path d="M0,145 Q450,125 900,140 Q1350,125 1440,145 L1440,180 L0,180 Z" fill="#f1f5f9" opacity="1"/>
-          
-          <!-- Real Photo inspired Hot Spring (Onsen Pool) in the center-left! -->
-          <!-- Rock border -->
-          <ellipse cx="400" cy="155" rx="140" ry="25" fill="#475569"/>
-          <!-- Onsen blue steaming water -->
-          <ellipse cx="400" cy="155" rx="130" ry="18" fill="#38bdf8" opacity="0.85"/>
-          <!-- Beautiful Rising Steam waves -->
-          <path d="M360,135 Q364,125 360,115" stroke="#f1f5f9" stroke-width="2.5" fill="none" opacity="0.7"/>
-          <path d="M400,132 Q404,120 400,110" stroke="#f1f5f9" stroke-width="2.5" fill="none" opacity="0.7"/>
-          <path d="M440,136 Q444,126 440,116" stroke="#f1f5f9" stroke-width="2.5" fill="none" opacity="0.7"/>
-          
-          <!-- Cute Miniature Snowman wearing a blue knit cap and scarf on the right side -->
-          <!-- Bottom body ball -->
-          <circle cx="1000" cy="150" r="18" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
-          <!-- Head ball -->
-          <circle cx="1000" cy="122" r="12" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
-          <!-- Face features (eyes & cute orange carrot nose) -->
-          <circle cx="996" cy="120" r="1.5" fill="#0f172a"/>
-          <circle cx="1004" cy="120" r="1.5" fill="#0f172a"/>
-          <polygon points="1000,122 1008,124 1000,126" fill="#f97316"/>
-          <!-- Cute Blue Knit Cap (replacing generic buckets!) -->
-          <path d="M988,116 C988,106 1012,106 1012,116 Z" fill="#0284c7"/>
-          <circle cx="1000" cy="104" r="3" fill="#fff"/>
-          <!-- Cozy knit scarf wrap around neck -->
-          <path d="M990,131 L1010,131 L1005,145 L997,145 Z" fill="#0284c7"/>
-          <!-- Branch hands -->
-          <line x1="983" y1="140" x2="965" y2="135" stroke="#78350f" stroke-width="2"/>
-          <line x1="1017" y1="140" x2="1035" y2="135" stroke="#78350f" stroke-width="2"/>
-        `;
       }
     }
 
@@ -1777,27 +948,14 @@
     function startFallingEffect(emoji) {
       if (particleTimer) clearInterval(particleTimer);
       const container = document.getElementById('particle-container');
-      
       particleTimer = setInterval(() => {
-        if (container.childElementCount > 25) {
-          container.removeChild(container.firstChild);
-        }
-
-        const particle = document.createElement('div');
-        particle.className = 'leaf-particle text-sm select-none';
-        particle.innerText = emoji;
-        particle.style.left = Math.random() * 98 + 'vw';
-        particle.style.top = '-20px';
-        
-        // Random falling sizes and speed limits
-        const size = Math.random() * 12 + 10;
-        particle.style.fontSize = size + 'px';
-        
-        const duration = Math.random() * 5 + 6; // 6 to 11s duration
-        particle.style.animationDuration = duration + 's';
-        
-        container.appendChild(particle);
-      }, 1400);
+        if (container.childElementCount > 15) container.removeChild(container.firstChild);
+        const p = document.createElement('div');
+        p.className = 'leaf-particle text-sm select-none';
+        p.innerText = emoji; p.style.left = Math.random() * 95 + 'vw'; p.style.top = '-20px';
+        p.style.animationDuration = (Math.random() * 4 + 5) + 's';
+        container.appendChild(p);
+      }, 2000);
     }
   </script>
 </body>
