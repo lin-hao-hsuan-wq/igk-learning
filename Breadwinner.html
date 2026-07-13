@@ -175,7 +175,7 @@
           <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
             <div class="flex items-center gap-3">
               <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
-              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) 或者 CSV 檔案を直接インポート：</span>
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルをここにインポート：</span>
             </div>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
           </div>
@@ -261,6 +261,48 @@
   </div>
 
   <script>
+    // Global UI Helpers (Declared early to prevent ReferenceErrors)
+    function showToast(msg, icon = '🌟') {
+      const notif = document.getElementById('toast-notif');
+      if (!notif) return;
+      document.getElementById('toast-notif-icon').innerText = icon;
+      document.getElementById('toast-notif-text').innerText = msg;
+      
+      notif.classList.remove('translate-y-[-100px]', 'opacity-0');
+      setTimeout(() => {
+        notif.classList.add('translate-y-[-100px]', 'opacity-0');
+      }, 3500);
+    }
+
+    function setCocoaText(text) {
+      const el = document.getElementById('cocoa-bubble-text');
+      if (el) el.innerText = text;
+    }
+
+    function timeToMins(t) { 
+      if(!t || !t.includes(':')) return 0; 
+      const [h,m] = t.split(':').map(Number); 
+      return h*60+m; 
+    }
+    
+    function minsToTimeStr(m) { 
+      if(m<=0) return "00:00"; 
+      return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; 
+    }
+    
+    function formatDate(d) { 
+      return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`; 
+    }
+    
+    function formatHM(d) { 
+      return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; 
+    }
+    
+    function getWeekDayStyle(d) { 
+      return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; 
+    }
+
+    // System variables and standard configurations
     let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
     let specialPeriods = [];
     let monthlyHistory = {};
@@ -298,7 +340,7 @@
       lucide.createIcons();
     };
 
-    // Excel/CSV File Import Engine
+    // Corrected Excel/CSV File Import parsing engine
     function handleFileSelect(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -306,57 +348,67 @@
       const reader = new FileReader();
 
       reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-        if (jsonRows.length <= 1) {
-          showToast('⚠️ ファイル内に有効なデータがありません。', '🍄');
-          return;
-        }
-
-        let idCol = -1, nameCol = -1, typeCol = -1, timeCol = -1;
-        const firstRow = jsonRows[0].map(c => String(c || '').trim().toLowerCase());
-
-        firstRow.forEach((cell, idx) => {
-          if (cell.includes('id') || cell.includes('工号') || cell.includes('コード') || cell.includes('番号')) idCol = idx;
-          if (cell.includes('名') || cell.includes('氏名') || cell.includes('従業員')) nameCol = idx;
-          if (cell.includes('タイプ') || cell.includes('状態') || cell.includes('出入') || cell.includes('区分')) typeCol = idx;
-          if (cell.includes('時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
-        });
-
-        if (idCol === -1) idCol = 0;
-        if (nameCol === -1) nameCol = 1;
-        if (typeCol === -1) typeCol = 2;
-        if (timeCol === -1) timeCol = 3;
-
-        let accumulatedText = "";
-        for (let i = 1; i < jsonRows.length; i++) {
-          const row = jsonRows[i];
-          if (!row || row.length < 2) continue;
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
           
-          let empId = String(row[idCol] || '').trim();
-          let empName = String(row[nameCol] || '').trim();
-          let typeStr = String(row[typeCol] || '').trim();
-          let rawTime = String(row[timeCol] || '').trim();
-
-          if (!empName || !rawTime) continue;
-          
-          if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
-            const dateObj = XLSX.utils.sheet_to_date(worksheet[XLSX.utils.encode_cell({c:timeCol, r:i})]);
-            if(dateObj) rawTime = formatDate(dateObj) + " " + formatHM(dateObj);
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+          if (jsonRows.length <= 1) {
+            showToast('⚠️ ファイル内に有効なデータがありません。', '🍄');
+            return;
           }
 
-          accumulatedText += `${empId}\t${empName}\t${typeStr}\t${rawTime}\n`;
-        }
+          let idCol = -1, nameCol = -1, typeCol = -1, timeCol = -1;
+          const firstRow = jsonRows[0].map(c => String(c || '').trim().toLowerCase());
 
-        if (accumulatedText) {
-          document.getElementById('rawInput').value = accumulatedText;
-          showToast('📥 データの読み込みに成功しました！解析ボタンを押して確定してください。', '🟢');
-        } else {
-          showToast('⚠️ 打刻列のマッピングに失敗しました。', '🍄');
+          firstRow.forEach((cell, idx) => {
+            if (cell.includes('id') || cell.includes('工号') || cell.includes('コード') || cell.includes('番号')) idCol = idx;
+            if (cell.includes('名') || cell.includes('氏名') || cell.includes('従業員')) nameCol = idx;
+            if (cell.includes('タイプ') || cell.includes('状態') || cell.includes('出入') || cell.includes('区分')) typeCol = idx;
+            if (cell.includes('時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
+          });
+
+          if (idCol === -1) idCol = 0;
+          if (nameCol === -1) nameCol = 1;
+          if (typeCol === -1) typeCol = 2;
+          if (timeCol === -1) timeCol = 3;
+
+          let accumulatedText = "";
+          for (let i = 1; i < jsonRows.length; i++) {
+            const row = jsonRows[i];
+            if (!row || row.length < 2) continue;
+            
+            let empId = String(row[idCol] || '').trim();
+            let empName = String(row[nameCol] || '').trim();
+            let typeStr = String(row[typeCol] || '').trim();
+            let rawTime = String(row[timeCol] || '').trim();
+
+            if (!empName || !rawTime) continue;
+            
+            // Fixed: Standard JS Safe date conversions for Excel serial numeric timestamps
+            if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
+              const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+              const days = parseFloat(rawTime);
+              const dateObj = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+              if(!isNaN(dateObj.getTime())) {
+                rawTime = formatDate(dateObj) + " " + formatHM(dateObj);
+              }
+            }
+
+            accumulatedText += `${empId}\t${empName}\t${typeStr}\t${rawTime}\n`;
+          }
+
+          if (accumulatedText) {
+            document.getElementById('rawInput').value = accumulatedText;
+            showToast('📥 データの読み込みに成功しました！解析ボタンを押して確定してください。', '🟢');
+          } else {
+            showToast('⚠️ 打刻列のマッピングに失敗しました。', '🍄');
+          }
+        } catch(err) {
+          console.error(err);
+          showToast('⚠️ ファイルの解析中にエラーが発生しました。', '🍄');
         }
       };
       reader.readAsArrayBuffer(file);
@@ -364,6 +416,7 @@
 
     function buildWeeklyRulesDOM() {
       const container = document.getElementById("weekly-rules-container");
+      if(!container) return;
       container.innerHTML = "";
       daysArr.forEach(day => {
         const isWeekend = (day === "土" || day === "日");
@@ -417,6 +470,7 @@
 
     function renderEmployeeTags() {
       const container = document.getElementById('member-tags-container');
+      if(!container) return;
       container.innerHTML = "";
       fullTimeMembers.forEach(name => {
         const tag = document.createElement('div');
@@ -451,6 +505,7 @@
 
     function renderSpecialPeriods() {
       const container = document.getElementById('special-rules-list');
+      if(!container) return;
       container.innerHTML = "";
       specialPeriods.forEach((period, idx) => {
         const row = document.createElement('div');
@@ -673,6 +728,7 @@
 
     function buildEmployeeSheetTabs() {
       const container = document.getElementById('employee-sheets-nav');
+      if(!container) return;
       container.innerHTML = "";
       const names = getProcessedNames();
       if (names.length === 0) {
@@ -722,7 +778,7 @@
     function renderActiveGridView() {
       const thead = document.getElementById('preview-thead');
       const tbody = document.getElementById('preview-tbody');
-      if (!selectedEmployeeName) { thead.innerHTML = ""; tbody.innerHTML = "<tr><td>名簿が空です。</td></tr>"; return; }
+      if (!selectedEmployeeName) { if(thead) thead.innerHTML = ""; if(tbody) tbody.innerHTML = "<tr><td>名簿が空です。</td></tr>"; return; }
 
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
 
@@ -869,6 +925,7 @@
 
     function toggleDownloadBtn(enable) {
       const dlBtn = document.getElementById('excel-download-btn');
+      if (!dlBtn) return;
       dlBtn.disabled = !enable;
       dlBtn.className = enable ? "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm";
     }
@@ -877,12 +934,8 @@
       document.getElementById('rawInput').value = `00000888\tCostard Fergus\t入室\t2026/07/09 14:03\n00000888\tCostard Fergus\t退室\t2026/07/09 18:00\n00000646\t林 昊嬛\t入室\t2026/07/09 09:29\n00000646\t林 昊嬛\t退室\t2026/07/09 18:31`;
       processAttendance();
     }
+    
     function clearTextarea() { document.getElementById('rawInput').value = ''; }
-    function timeToMins(t) { if(!t || !t.includes(':')) return 0; const [h,m] = t.split(':').map(Number); return h*60+m; }
-    function minsToTimeStr(m) { if(m<=0) return "00:00"; return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; }
-    function formatDate(d) { return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`; }
-    function formatHM(d) { return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; }
-    function getWeekDayStyle(d) { return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; }
 
     function downloadExcel() {
       const names = getProcessedNames();
@@ -922,6 +975,7 @@
 
     function toggleHistoryModal() {
       const m = document.getElementById('history-modal');
+      if(!m) return;
       m.className = m.classList.contains('hidden') ? "fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : "hidden";
       if(!m.classList.contains('hidden')) renderHistoryList();
     }
@@ -958,6 +1012,7 @@
 
     function renderHistoryList() {
       const container = document.getElementById('history-items-list');
+      if(!container) return;
       container.innerHTML = "";
       const keys = Object.keys(monthlyHistory);
       if(keys.length === 0) { container.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">履歴はありません。</p>`; return; }
@@ -970,11 +1025,34 @@
       lucide.createIcons();
     }
 
+    let currentConfirmCallback = null;
+    function showCustomConfirm(title, desc, onOk) {
+      const dialog = document.getElementById('confirm-dialog');
+      if(!dialog) return;
+      document.getElementById('confirm-title').innerText = title;
+      document.getElementById('confirm-desc').innerText = desc || "この操作は取り消せません。";
+      currentConfirmCallback = onOk;
+      dialog.classList.remove('hidden');
+      dialog.classList.add('flex');
+    }
+
+    document.getElementById('confirm-cancel-btn').onclick = function() {
+      document.getElementById('confirm-dialog').classList.add('hidden');
+      document.getElementById('confirm-dialog').classList.remove('flex');
+    };
+
+    document.getElementById('confirm-ok-btn').onclick = function() {
+      if (currentConfirmCallback) currentConfirmCallback();
+      document.getElementById('confirm-dialog').classList.add('hidden');
+      document.getElementById('confirm-dialog').classList.remove('flex');
+    };
+
     function changeSeason(season) {
       currentSeason = season;
       const b = document.getElementById('theme-body');
       const v = document.getElementById('vines-svg');
       const av = document.getElementById('cocoa-avatar');
+      if(!b || !v || !av) return;
       
       if(season==='spring') {
         b.className = "bg-gradient-to-b from-rose-50 via-emerald-50/20 to-rose-50/50 min-h-screen text-slate-800 relative pb-48";
@@ -1003,6 +1081,7 @@
     function startFallingEffect(emoji) {
       if (particleTimer) clearInterval(particleTimer);
       const container = document.getElementById('particle-container');
+      if(!container) return;
       particleTimer = setInterval(() => {
         if (container.childElementCount > 15) container.removeChild(container.firstChild);
         const p = document.createElement('div');
