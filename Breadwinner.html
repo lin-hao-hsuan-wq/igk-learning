@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGK Time Card</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS (Excel Generation & Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Google Fonts for ultimate Japanese and numeric legibility -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
@@ -53,14 +49,12 @@
 </head>
 <body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
 
-  <!-- Elegant Hanging Leaves/Flowers (SVG Container) -->
   <div class="absolute top-0 left-0 w-full overflow-hidden pointer-events-none z-10 h-32">
     <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
   <div id="particle-container" class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0"></div>
 
-  <!-- Top Header -->
   <header class="relative z-20 max-w-7xl mx-auto px-6 pt-8 pb-4">
     <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-emerald-100/40">
       <div class="flex items-center gap-4">
@@ -79,7 +73,6 @@
         </div>
       </div>
 
-      <!-- Theme Selector -->
       <div class="flex items-center gap-3 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/50">
         <span class="text-xs font-bold text-slate-600 px-2">四季切り替え:</span>
         <div class="flex gap-1">
@@ -92,13 +85,10 @@
     </div>
   </header>
 
-  <!-- Main Grid System -->
   <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-      <!-- Left Column Settings -->
       <div class="space-y-6 lg:col-span-1">
-        <!-- Cocoa Board -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden border border-slate-100">
           <div class="flex items-start gap-4">
             <div class="w-16 h-16 shrink-0 relative"><svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg></div>
@@ -111,7 +101,6 @@
           </div>
         </div>
 
-        <!-- Employee Manager -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i> 正社員メンバー管理
@@ -124,7 +113,6 @@
           <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
         </div>
 
-        <!-- Time Settings -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="clock" class="w-4 h-4 text-emerald-600"></i> 基準勤務時間設定
@@ -145,7 +133,6 @@
           </div>
         </div>
 
-        <!-- Weekly Rules -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex items-center gap-2 mb-3">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の一括設定</h3>
@@ -155,7 +142,6 @@
           </div>
         </div>
 
-        <!-- Special Days -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別期間ルール</h3>
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50 space-y-3">
@@ -174,9 +160,7 @@
         </div>
       </div>
 
-      <!-- Middle & Right Columns -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- Input Panel -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -188,11 +172,10 @@
             </div>
           </div>
           
-          <!-- File Importer -->
           <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
             <div class="flex items-center gap-3">
               <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
-              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルをここにインポート：</span>
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) 或者 CSV 檔案を直接インポート：</span>
             </div>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
           </div>
@@ -204,7 +187,6 @@
           </button>
         </div>
 
-        <!-- Preview Section -->
         <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
@@ -241,7 +223,6 @@
     </div>
   </main>
 
-  <!-- Modals & Dialogs -->
   <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-amber-100 relative max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center pb-4 border-b border-slate-100">
@@ -275,7 +256,6 @@
     </div>
   </div>
 
-  <!-- Seamless Seasonal Footer Scenery -->
   <div class="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none h-44 flex items-end">
     <svg id="footer-landscape-svg" viewBox="0 0 1440 180" class="w-full h-full opacity-95 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
@@ -720,7 +700,6 @@
       renderActiveGridView();
     }
 
-    // 【新增：校舎一括変更のコア処理】
     function bulkUpdateCampus(campusValue) {
       if (!selectedEmployeeName || !campusValue) return;
       
@@ -747,7 +726,6 @@
 
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
 
-      // 共通の校舎セレクターHTML（ヘッダー一括用）
       const bulkSelectorHtml = `
         <select onchange="bulkUpdateCampus(this.value)" class="text-[10px] px-1 py-0.5 rounded border border-slate-300 font-normal bg-white text-slate-700 outline-none">
           <option value="">一括設定</option>
@@ -806,7 +784,6 @@
       }
     }
 
-    // 【新增：校舎と交通費データの個別保存処理】
     function updateCampus(idx, type, val) {
       if (type === 'fulltime') processedData.fulltime[idx].campus = val;
       else processedData.parttime[idx].campus = val;
@@ -934,13 +911,13 @@
           const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
           for (let i = 0; i < entries.length; i++) {
             const rIdx = i + 2;
-            ws_pt Mik = `L${rIdx}`;
             ws_pt[`L${rIdx}`] = { t: 's', f: `IF(I${rIdx}="","",I${rIdx}-J${rIdx}/1440-IF(K${rIdx}="","00:00",K${rIdx}))` };
           }
           XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
         }
       });
       XLSX.writeFile(wb, `IGK_勤怠管理_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
+      showToast('👑 一括マルチシートExcelを出力しました！', '🌸');
     }
 
     function toggleHistoryModal() {
