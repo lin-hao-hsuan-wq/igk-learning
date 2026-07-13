@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGK Time Card</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS (Excel Generation & Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Google Fonts for ultimate Japanese and numeric legibility -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
@@ -53,14 +49,12 @@
 </head>
 <body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
 
-  <!-- Elegant Hanging Leaves/Flowers (SVG Container) -->
   <div class="absolute top-0 left-0 w-full overflow-hidden pointer-events-none z-10 h-32">
     <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
   <div id="particle-container" class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0"></div>
 
-  <!-- Top Header -->
   <header class="relative z-20 max-w-7xl mx-auto px-6 pt-8 pb-4">
     <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-emerald-100/40">
       <div class="flex items-center gap-4">
@@ -79,7 +73,6 @@
         </div>
       </div>
 
-      <!-- Theme Selector -->
       <div class="flex items-center gap-3 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/50">
         <span class="text-xs font-bold text-slate-600 px-2">四季切り替え:</span>
         <div class="flex gap-1">
@@ -92,26 +85,22 @@
     </div>
   </header>
 
-  <!-- Main Grid System -->
   <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-      <!-- Left Column Settings -->
       <div class="space-y-6 lg:col-span-1">
-        <!-- Cocoa Board -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden border border-slate-100">
           <div class="flex items-start gap-4">
             <div class="w-16 h-16 shrink-0 relative"><svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg></div>
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「校舎の一括選択機能を追加しました！『名谷校』か『六甲校』を選んで、一気に変更することも個別に選ぶこともできますよ♪」
+                「お疲れ様です！テキストの貼り付けだけでなく、ExcelやCSVファイルの直接インポートにも対応しましたよ♪」
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Employee Manager -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i> 正社員メンバー管理
@@ -124,7 +113,6 @@
           <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
         </div>
 
-        <!-- Time Settings -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
             <i data-lucide="clock" class="w-4 h-4 text-emerald-600"></i> 基準勤務時間設定
@@ -145,7 +133,6 @@
           </div>
         </div>
 
-        <!-- Weekly Rules -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex items-center gap-2 mb-3">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の一括設定</h3>
@@ -155,7 +142,6 @@
           </div>
         </div>
 
-        <!-- Special Days -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別期間ルール</h3>
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50 space-y-3">
@@ -174,9 +160,7 @@
         </div>
       </div>
 
-      <!-- Middle & Right Columns -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- Input Panel -->
         <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -188,23 +172,21 @@
             </div>
           </div>
           
-          <!-- File Importer -->
           <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
             <div class="flex items-center gap-3">
               <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
-              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルをここにインポート：</span>
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルを直接インポート：</span>
             </div>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
           </div>
 
-          <textarea id="rawInput" rows="5" placeholder="【テキスト貼り付けエリア】ファイルがない場合は、ここに直接打刻テキストを貼り付けることも可能です..." class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
+          <textarea id="rawInput" rows="7" placeholder="【テキスト貼り付けエリア】ファイルがない場合は、ここに直接打刻テキストを貼り付けることも可能です。縦方向でも横方向でも、自動で判読します！" class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
 
           <button onclick="processAttendance()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-2">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを解析してリストに蓄積する
           </button>
         </div>
 
-        <!-- Preview Section -->
         <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
@@ -241,7 +223,6 @@
     </div>
   </main>
 
-  <!-- Modals & Dialogs -->
   <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-amber-100 relative max-h-[90vh] flex flex-col">
       <div class="flex justify-between items-center pb-4 border-b border-slate-100">
@@ -275,13 +256,12 @@
     </div>
   </div>
 
-  <!-- Seamless Seasonal Footer Scenery -->
   <div class="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none h-44 flex items-end">
     <svg id="footer-landscape-svg" viewBox="0 0 1440 180" class="w-full h-full opacity-95 transition-all duration-1000" preserveAspectRatio="none"></svg>
   </div>
 
   <script>
-    // Global UI Helpers (Declared early to prevent ReferenceErrors)
+    // Global UI Helpers
     function showToast(msg, icon = '🌟') {
       const notif = document.getElementById('toast-notif');
       if (!notif) return;
@@ -360,7 +340,7 @@
       lucide.createIcons();
     };
 
-    // Robust Excel File Parsing
+    // Excel File Import Engine
     function handleFileSelect(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -407,6 +387,7 @@
 
             if (!empName || !rawTime) continue;
             
+            // Excel Date Format handler
             if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
               const excelEpoch = new Date(Date.UTC(1899, 11, 30));
               const days = parseFloat(rawTime);
@@ -565,7 +546,7 @@
       return null;
     }
 
-    // 【終極超強完整解析引擎：完美解決空格組合、安全切分與日期判定】
+    // 【終極超強解析引擎：完美對應檔案與各種斷行的複製貼上格式】
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       const inputText = document.getElementById('rawInput').value.trim();
@@ -596,83 +577,90 @@
         };
       });
 
-      // 支援任何平台產生的換行
-      const lines = inputText.split(/\r?\n/);
-      lines.forEach(line => {
-        if(!line.trim()) return;
+      // 核心修正：將所有文字（不管換行或空格）切成單一個一個的 Token
+      const tokens = inputText.split(/[\s\t\u3000\r\n]+/);
+      let lastRecordEnd = 0;
+
+      for (let i = 0; i < tokens.length; i++) {
+        let t = tokens[i];
+        let dateTimeVal = "";
+        let tokensToAdvance = 0;
         
-        // 修正核心：不管是半形空格、全形空格還是 Tab，全數切開
-        const tokens = line.split(/[\s\t\u3000]+/).map(t => t.trim()).filter(t => t);
-        if(tokens.length < 2) return;
-
-        let empId = "", empName = "", type = "入室", dateTimeVal = "";
-        let datePart = "", timePart = "";
+        // 情況A：日期與時間被空白切開 (例如 "2026/06/16" 跟 "09:13")
+        if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(t) && i + 1 < tokens.length && /^\d{1,2}:\d{2}(:\d{2})?$/.test(tokens[i+1])) {
+            dateTimeVal = t + " " + tokens[i+1];
+            tokensToAdvance = 2;
+        } 
+        // 情況B：日期與時間連在一起 (例如檔案匯入的結果)
+        else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}/.test(t)) {
+            dateTimeVal = t;
+            tokensToAdvance = 1;
+        }
         
-        tokens.forEach(t => {
-          if (/入室|入|in/i.test(t)) {
-            type = "入室";
-          } else if (/退室|退|out/i.test(t)) {
-            type = "退室";
-          } else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(t)) {
-            datePart = t; 
-          } else if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) {
-            timePart = t; 
-          } else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}/.test(t)) {
-            dateTimeVal = t; 
-          } else if (/^\d{4,9}$/.test(t)) {
-            empId = t; 
-          } else if (t.length > 1 && !empName && !/^\d+$/.test(t)) {
-            empName = t; 
-          }
-        });
+        // 只要找到打卡時間，就往回抓上一筆時間以後的所有字，當作一組資料
+        if (dateTimeVal) {
+            let chunk = tokens.slice(lastRecordEnd, i);
+            let empId = "";
+            let action = "入室";
+            let nameArr = [];
+            
+            chunk.forEach(word => {
+                if (/^入室?|in$/i.test(word)) { action = "入室"; }
+                else if (/^退室?|out$/i.test(word)) { action = "退室"; }
+                else if (/^\d{4,10}$/.test(word)) { empId = word; }
+                else if (word !== "") { nameArr.push(word); } // 剩下的字就是姓名
+            });
+            
+            let empName = nameArr.join(" ");
+            if (!empId) empId = "0000";
+            if (!empName) empName = "不明";
+            
+            // 安全處理日期格式，防呆 JS 報錯
+            let cleanTimeStr = dateTimeVal.replace(/-/g, '/');
+            const parts = cleanTimeStr.split(/[\s\/:]+/);
+            
+            if (parts.length >= 5) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const day = parseInt(parts[2], 10);
+                const hour = parseInt(parts[3], 10);
+                const minute = parseInt(parts[4], 10);
 
-        // 🌟 核心防呆：如果日期跟時間在不同格子，立刻將兩者用空格組合起來
-        if (!dateTimeVal && datePart && timePart) {
-          dateTimeVal = datePart + " " + timePart;
+                const dateObj = new Date(year, month, day, hour, minute);
+                
+                if (!isNaN(dateObj.getTime())) {
+                    tempRawBackup.push([empId, empName, action, dateTimeVal]);
+                    newlyParsedNames.add(empName);
+
+                    const dateKey = formatDate(dateObj);
+                    const hmStr = formatHM(dateObj);
+                    const dayOfWeek = japaneseDays[dateObj.getDay()];
+                    const mapKey = `${empId}_${dateKey}`;
+
+                    if (!attendanceMap[mapKey]) {
+                      const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
+                      const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
+                      
+                      attendanceMap[mapKey] = {
+                        id: empId, name: empName, date: dateKey, day: dayOfWeek,
+                        checkIn: null, checkOut: null, isFullTime: isFullTime
+                      };
+                    }
+
+                    if (action === "入室") {
+                      if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) attendanceMap[mapKey].checkIn = hmStr;
+                    } else {
+                      if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) attendanceMap[mapKey].checkOut = hmStr;
+                    }
+                }
+            }
+            // 更新游標位置
+            lastRecordEnd = i + tokensToAdvance;
+            i += (tokensToAdvance - 1);
         }
+      }
 
-        if(!empName || !dateTimeVal) return;
-        if(!empId) empId = "0000";
-
-        // 🌟 核心防呆二：採用最安全的各別日期零件提取，防堵 JS 解析 NaN
-        let cleanTimeStr = dateTimeVal.replace(/-/g, '/');
-        const parts = cleanTimeStr.split(/[\s\/:]+/);
-        if(parts.length < 5) return; // 格式不符則跳過
-
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const day = parseInt(parts[2], 10);
-        const hour = parseInt(parts[3], 10);
-        const minute = parseInt(parts[4], 10);
-
-        const dateObj = new Date(year, month, day, hour, minute);
-        if (isNaN(dateObj.getTime())) return;
-
-        tempRawBackup.push([empId, empName, type, dateTimeVal]);
-        newlyParsedNames.add(empName);
-
-        const dateKey = formatDate(dateObj);
-        const hmStr = formatHM(dateObj);
-        const dayOfWeek = japaneseDays[dateObj.getDay()];
-        const mapKey = `${empId}_${dateKey}`;
-
-        if (!attendanceMap[mapKey]) {
-          const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
-          const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
-          
-          attendanceMap[mapKey] = {
-            id: empId, name: empName, date: dateKey, day: dayOfWeek,
-            checkIn: null, checkOut: null, isFullTime: isFullTime
-          };
-        }
-
-        if (type === "入室") {
-          if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) attendanceMap[mapKey].checkIn = hmStr;
-        } else {
-          if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) attendanceMap[mapKey].checkOut = hmStr;
-        }
-      });
-
+      // 以下開始計算考勤工時
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
@@ -822,7 +810,7 @@
       
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
       renderActiveGridView();
-      showToast suicide = (`🏢 校舎を「${campusValue}」に一括変更しました！`, '🌸');
+      showToast(`🏢 校舎を「${campusValue}」に一括変更しました！`, '🌸');
     }
 
     function renderActiveGridView() {
@@ -981,7 +969,8 @@
     }
 
     function loadDemoData() {
-      document.getElementById('rawInput').value = `00000888\tCostard Fergus\t入室\t2026/07/09 14:03\n00000888\tCostard Fergus\t退室\t2026/07/09 18:00\n00000646\t林 昊嬛\t入室\t2026/07/09 09:29\n00000646\t林 昊嬛\t退室\t2026/07/09 18:31`;
+      // 提供垂直格式的測試資料，證明解析引擎完全升級
+      document.getElementById('rawInput').value = `00000888\nCostard Fergus\n\n入室\n2026/07/09 14:03\n00000888\nCostard Fergus\n退室\n2026/07/09 18:00\n00000646\n林 昊嬛\n入室\n2026/07/09 09:29\n00000646\n林 昊嬛\n退室\n2026/07/09 18:31`;
       processAttendance();
     }
     
@@ -1030,7 +1019,6 @@
       if(!m.classList.contains('hidden')) renderHistoryList();
     }
 
-    // History logs mappings
     function saveToHistory() {
       const name = document.getElementById('history-save-name').value.trim();
       if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0)) {
