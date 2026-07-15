@@ -6,7 +6,6 @@
   <title>IGK Time Card</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Replace vanilla xlsx with xlsx-js-style for styling support -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,7 +95,7 @@
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「お疲れ様です！Excelファイルのエクスポートが、老闆娘さん希望の専用フォーマットになりましたよ♪」
+                「お疲れ様です！Excel出力時、自動的に『前月16日～当月15日』の全天候カレンダーを生成するように改修しましたよ♪」
               </p>
             </div>
           </div>
@@ -262,7 +261,6 @@
   </div>
 
   <script>
-    // Global UI Helpers
     function showToast(msg, icon = '🌟') {
       const notif = document.getElementById('toast-notif');
       if (!notif) return;
@@ -303,7 +301,6 @@
       return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; 
     }
 
-    // System variables and standard configurations
     let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
     let specialPeriods = [];
     let monthlyHistory = {};
@@ -341,7 +338,6 @@
       lucide.createIcons();
     };
 
-    // Excel File Import Engine
     function handleFileSelect(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -388,7 +384,6 @@
 
             if (!empName || !rawTime) continue;
             
-            // Excel Date Format handler
             if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
               const excelEpoch = new Date(Date.UTC(1899, 11, 30));
               const days = parseFloat(rawTime);
@@ -968,11 +963,45 @@
     
     function clearTextarea() { document.getElementById('rawInput').value = ''; }
 
-    // ====== NEW EXCEL GENERATION LOGIC ======
+    // ====== 老闆娘專用 EXCEL 一人兩頁且強制產生「前月16號至當月15號」的輸出邏輯 ======
     function downloadExcel() {
       const names = getProcessedNames();
       if (names.length === 0) return;
       const wb = XLSX.utils.book_new();
+
+      // 自動偵測匯入資料的週期
+      let maxTime = 0;
+      processedData.rawBackup.forEach(r => {
+        const dateStr = r[3].split(' ')[0].replace(/-/g, '/');
+        const d = new Date(dateStr);
+        if(!isNaN(d.getTime()) && d.getTime() > maxTime) maxTime = d.getTime();
+      });
+      
+      const refDate = maxTime > 0 ? new Date(maxTime) : new Date();
+      let startYear = refDate.getFullYear();
+      let startMonth = refDate.getMonth();
+      if (refDate.getDate() <= 15) {
+        startMonth -= 1;
+        if (startMonth < 0) { startMonth = 11; startYear -= 1; }
+      }
+      let endYear = startYear;
+      let endMonth = startMonth + 1;
+      if (endMonth > 11) { endMonth = 0; endYear += 1; }
+      
+      const startDate = new Date(startYear, startMonth, 16);
+      const endDate = new Date(endYear, endMonth, 15);
+      
+      // 生成週期內完整的日期陣列
+      const periodDates = [];
+      let curr = new Date(startDate);
+      while (curr <= endDate) {
+        periodDates.push({
+          dateStr: `${curr.getFullYear()}/${(curr.getMonth()+1).toString().padStart(2,'0')}/${curr.getDate().toString().padStart(2,'0')}`,
+          dayStr: japaneseDays[curr.getDay()],
+          isWeekend: curr.getDay() === 0 || curr.getDay() === 6
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
 
       function toBossDate(dateStr) {
         if(!dateStr) return "";
@@ -987,7 +1016,6 @@
       }
       function tStr(val) { return val === "未打刻" ? "" : (val || ""); }
 
-      // Standard border style
       const borderThin = {
         top: {style: "thin", color: {rgb: "000000"}},
         bottom: {style: "thin", color: {rgb: "000000"}},
@@ -996,11 +1024,32 @@
       };
 
       names.forEach(name => {
+        // 第一張工作表：打刻流水帳資料
+        const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
+        const logRows = [
+          ["従業員ID", "従業員名", "タイプ", "打刻日時"].map(h => ({v: h, s: {border: borderThin, fill: {fgColor: {rgb: "E2EFDA"}}, font: {bold: true}}}))
+        ];
+        personalRawLogs.forEach(r => {
+          logRows.push([
+            {v: r[0], s: {border: borderThin}},
+            {v: r[1], s: {border: borderThin}},
+            {v: r[2], s: {border: borderThin, alignment: {horizontal: "center"}}},
+            {v: r[3], s: {border: borderThin}}
+          ]);
+        });
+        const ws_log = XLSX.utils.aoa_to_sheet(logRows);
+        ws_log['!cols'] = [{wpx: 80}, {wpx: 120}, {wpx: 60}, {wpx: 140}];
+        XLSX.utils.book_append_sheet(wb, ws_log, `打刻${name}`.substring(0, 31));
+
+        // 第二張工作表：考勤與薪水計算
         const isFT = processedData.fulltime.some(r => r.name === name);
+        
         if (isFT) {
           const entries = processedData.fulltime.filter(r => r.name === name);
+          const entryMap = {};
+          entries.forEach(r => { entryMap[r.date] = r; });
+
           const ftRows = [];
-          
           ftRows.push([
             "", "",
             {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
@@ -1015,26 +1064,39 @@
           const header2 = ["", "", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "早残業", "後残業", "合計", "交通費", "校舎名"];
           ftRows.push(header2.map(h => h ? {v: h, s: {border: borderThin, alignment: {horizontal: "center"}}} : ""));
 
-          entries.forEach(r => {
-            const isWeekend = (r.day === "土" || r.day === "日");
-            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: isWeekend ? "FF0000" : "000000" } } };
+          periodDates.forEach(pd => {
+            const r = entryMap[pd.dateStr];
+            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
             const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
             
-            ftRows.push([
-                {v: toBossDate(r.date), s: dateStyle},
-                {v: r.day, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                {v: tStr(r.checkIn), s: timeStyle},
-                {v: tStr(r.checkOut), s: timeStyle},
-                {v: "1:00", s: timeStyle},
-                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                {v: r.earlyOvertime === "00:00" ? "" : r.earlyOvertime, s: timeStyle},
-                {v: r.lateOvertime === "00:00" ? "" : r.lateOvertime, s: timeStyle},
-                {v: r.regular, s: timeStyle},
-                {v: r.locationAndFare, s: timeStyle},
-                {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}
-            ]);
+            if (r) {
+              ftRows.push([
+                  {v: toBossDate(r.date), s: dateStyle},
+                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: tStr(r.checkIn), s: timeStyle},
+                  {v: tStr(r.checkOut), s: timeStyle},
+                  {v: "1:00", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: r.earlyOvertime === "00:00" ? "" : r.earlyOvertime, s: timeStyle},
+                  {v: r.lateOvertime === "00:00" ? "" : r.lateOvertime, s: timeStyle},
+                  {v: r.regular === "00:00" ? "" : r.regular, s: timeStyle},
+                  {v: r.locationAndFare || "", s: timeStyle},
+                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}
+              ]);
+            } else {
+              ftRows.push([
+                  {v: toBossDate(pd.dateStr), s: dateStyle},
+                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}
+              ]);
+            }
           });
           
           const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
@@ -1046,14 +1108,17 @@
               { s: { r: 0, c: 14 }, e: { r: 0, c: 16 } }
           ];
           ws_ft['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 80}, {wpx: 80}];
-          XLSX.utils.book_append_sheet(wb, ws_ft, `正社員_${name}`.substring(0, 31));
+          XLSX.utils.book_append_sheet(wb, ws_ft, `出退${name}`.substring(0, 31));
 
         } else {
           const entries = processedData.parttime.filter(r => r.name === name);
+          const entryMap = {};
+          entries.forEach(r => { entryMap[r.date] = r; });
+
           const ptRows = [];
           
           ptRows.push([
-              {v: entries[0]?.campus === "未設定" ? "名谷校" : entries[0]?.campus, s: {font: {sz: 12, bold: true}}}, "", "", "", "", "", "", "",
+              {v: entries[0]?.campus === "未設定" ? "名谷校" : (entries[0]?.campus || "名谷校"), s: {font: {sz: 12, bold: true}}}, "", "", "", "", "", "", "",
               {v: "氏名", s: {alignment: {horizontal: "right"}}},
               {v: name, s: {font: {sz: 11, bold: true}}}
           ]);
@@ -1074,36 +1139,50 @@
               {v: "備考欄", s: hdStyle}
           ]);
 
-          entries.forEach(r => {
-              const isWeekend = (r.day === "土" || r.day === "日");
-              const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: isWeekend ? "FF0000" : "000000" } } };
-              const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
-              const outStyle = { font: {color: {rgb: "FF0000"}}, border: borderThin, alignment: {horizontal: "center"} };
+          periodDates.forEach(pd => {
+            const r = entryMap[pd.dateStr];
+            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
+            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+            const outStyle = { font: {color: {rgb: "FF0000"}}, border: borderThin, alignment: {horizontal: "center"} };
 
+            if (r) {
               ptRows.push([
                   {v: toBossDate(r.date), s: dateStyle},
-                  {v: r.day, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
                   {v: tStr(r.checkIn), s: timeStyle},
                   {v: tStr(r.checkOut), s: timeStyle},
                   {v: toBossRest(r.restMin), s: outStyle},
                   {v: r.groupA, s: outStyle},
-                  {v: r.groupB, s: outStyle},
+                  {v: r.groupB === "00:00" ? "" : r.groupB, s: outStyle},
                   {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
-                  {v: r.locationAndFare, s: timeStyle},
+                  {v: r.locationAndFare || "", s: timeStyle},
                   {v: "", s: timeStyle} 
               ]);
+            } else {
+              ptRows.push([
+                  {v: toBossDate(pd.dateStr), s: dateStyle},
+                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: "", s: timeStyle},
+                  {v: "", s: timeStyle},
+                  {v: "", s: outStyle},
+                  {v: "", s: outStyle},
+                  {v: "", s: outStyle},
+                  {v: "", s: timeStyle},
+                  {v: "", s: timeStyle},
+                  {v: "", s: timeStyle} 
+              ]);
+            }
           });
           
           const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
           ws_pt['!cols'] = [{wpx: 70}, {wpx: 40}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 80}, {wpx: 60}, {wpx: 120}];
-          XLSX.utils.book_append_sheet(wb, ws_pt, `打工_${name}`.substring(0, 31));
+          XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
         }
       });
       
       XLSX.writeFile(wb, `IGK_給与計算_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
       showToast('👑 老闆娘専用Excel出力完了！', '🌸');
     }
-    // ====================================
 
     function toggleHistoryModal() {
       const m = document.getElementById('history-modal');
