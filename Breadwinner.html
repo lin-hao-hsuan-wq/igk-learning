@@ -1,3 +1,2302 @@
+
+Gemini との会話
+老將，這是打工者的薪水結算試算表畫面(1)跟正社員的薪水結算試算表畫面(2)，是老闆娘習慣的畫面。
+
+我們上次做的網頁匯出成試算表後我會貼到這裡。
+
+你能幫我把匯出的格式改成這樣嗎？
+
+以下是該網頁的程式碼
+
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>IGK Time Card</title>
+
+  
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+JP:wght=300;400;500;700&display=swap" rel="stylesheet">
+
+
+
+  <style>
+
+    body {
+
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+
+      transition: background-color 0.8s ease, color 0.5s ease;
+
+      overflow-x: hidden;
+
+    }
+
+    
+
+    .forest-border-glow {
+
+      box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.1);
+
+      transition: all 0.5s ease;
+
+    }
+
+    .forest-border-glow:hover {
+
+      box-shadow: 0 10px 25px -2px rgba(16, 185, 129, 0.18);
+
+    }
+
+
+
+    .leaf-particle {
+
+      position: absolute;
+
+      pointer-events: none;
+
+      z-index: 5;
+
+      animation: fall linear forwards;
+
+    }
+
+
+
+    @keyframes fall {
+
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+
+      10% { opacity: 0.8; }
+
+      90% { opacity: 0.8; }
+
+      100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+
+    }
+
+
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.03); border-radius: 99px; }
+
+    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 99px; }
+
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
+
+  </style>
+
+</head>
+
+<body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
+
+
+
+  <div class="absolute top-0 left-0 w-full overflow-hidden pointer-events-none z-10 h-32">
+
+    <svg id="vines-svg" viewBox="0 0 1440 120" class="w-full h-full opacity-90 transition-all duration-1000" preserveAspectRatio="none"></svg>
+
+  </div>
+
+
+
+  <div id="particle-container" class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0"></div>
+
+
+
+  <header class="relative z-20 max-w-7xl mx-auto px-6 pt-8 pb-4">
+
+    <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-emerald-100/40">
+
+      <div class="flex items-center gap-4">
+
+        <div id="header-icon-container" class="bg-emerald-100 text-emerald-800 p-3 rounded-xl shadow-inner transition-colors duration-500">
+
+          <i data-lucide="leaf" class="w-6 h-6"></i>
+
+        </div>
+
+        <div>
+
+          <div class="flex items-center gap-2">
+
+            <h1 id="main-title" class="text-xl font-bold tracking-tight text-emerald-950">IGK 勤怠管理システム</h1>
+
+            <button onclick="toggleHistoryModal()" class="bg-amber-100 text-amber-800 hover:bg-amber-200 p-1.5 rounded-lg transition shadow-sm ml-1 flex items-center gap-1.5" title="履歴管理システム">
+
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+
+              <span class="text-xs font-bold hidden sm:inline">履歴</span>
+
+            </button>
+
+          </div>
+
+          <p class="text-xs text-slate-500 mt-0.5 font-medium">みなさん、おつかれさまです。</p>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="flex items-center gap-3 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/50">
+
+        <span class="text-xs font-bold text-slate-600 px-2">四季切り替え:</span>
+
+        <div class="flex gap-1">
+
+          <button onclick="changeSeason('spring')" id="btn-spring" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🌸</button>
+
+          <button onclick="changeSeason('summer')" id="btn-summer" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🌊</button>
+
+          <button onclick="changeSeason('autumn')" id="btn-autumn" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">🍁</button>
+
+          <button onclick="changeSeason('winter')" id="btn-winter" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">❄️</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+
+  <main class="max-w-7xl mx-auto px-6 py-8 relative z-20">
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      
+
+      <div class="space-y-6 lg:col-span-1">
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative overflow-hidden border border-slate-100">
+
+          <div class="flex items-start gap-4">
+
+            <div class="w-16 h-16 shrink-0 relative"><svg id="cocoa-avatar" viewBox="0 0 100 100" class="w-full h-full"></svg></div>
+
+            <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
+
+              <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
+
+              <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
+
+                「お疲れ様です！テキストの貼り付けだけでなく、ExcelやCSVファイルの直接インポートにも対応しましたよ♪」
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
+
+            <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i> 正社員メンバー管理
+
+          </h3>
+
+          <p class="text-[11px] text-slate-500 mb-4">登録された社員は基準ルールを自動適用し、それ以外の方は「アルバイト」として算出されます。</p>
+
+          <div class="flex gap-2 mb-4">
+
+            <input type="text" id="new-member-name" placeholder="新しい正社員の氏名を入力..." class="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none">
+
+            <button onclick="addFullTimeMember()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition"><i data-lucide="plus" class="w-3.5 h-3.5"></i> 追加</button>
+
+          </div>
+
+          <div id="member-tags-container" class="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
+
+        </div>
+
+
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-3">
+
+            <i data-lucide="clock" class="w-4 h-4 text-emerald-600"></i> 基準勤務時間設定
+
+          </h3>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+
+            <div>
+
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">通常始業時間</label>
+
+              <input type="time" id="workStartTime" value="09:30" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+
+            </div>
+
+            <div>
+
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">通常終業時間</label>
+
+              <input type="time" id="workEndTime" value="18:30" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+
+            </div>
+
+          </div>
+
+          <div>
+
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">休憩時間 (分)</label>
+
+            <input type="number" id="restDuration" value="60" min="0" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+
+          </div>
+
+        </div>
+
+
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <div class="flex items-center gap-2 mb-3">
+
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">📅 曜日別の一括設定</h3>
+
+          </div>
+
+          <div class="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+
+            <div id="weekly-rules-container" class="space-y-2.5"></div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 mb-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 特別期間ルール</h3>
+
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50 space-y-3">
+
+            <div class="grid grid-cols-2 gap-2">
+
+              <div><input type="date" id="special-start-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+
+              <div><input type="date" id="special-end-date" class="w-full px-1.5 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5">
+
+              <div><input type="time" id="special-start-time" value="10:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+
+              <div><input type="time" id="special-end-time" value="19:00" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white"></div>
+
+              <div><input type="number" id="special-rest" value="60" class="w-full px-1 py-1 text-xs border border-slate-200 rounded outline-none bg-white text-center"></div>
+
+            </div>
+
+            <button onclick="addSpecialPeriod()" class="w-full bg-slate-800 hover:bg-slate-950 text-white py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 transition">特別期間追加</button>
+
+          </div>
+
+          <div id="special-rules-list" class="mt-4 space-y-2 max-h-[120px] overflow-y-auto pr-1"></div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="lg:col-span-2 space-y-6">
+
+        <div class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
+
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+
+              <i data-lucide="clipboard-signature" class="text-emerald-600"></i> ① 打刻データの貼り付け / インポート
+
+            </h2>
+
+            <div class="flex flex-wrap gap-2">
+
+              <button onclick="loadDemoData()" class="text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg font-bold transition">🌰 デモデータ</button>
+
+              <button onclick="clearTextarea()" class="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> クリア</button>
+
+            </div>
+
+          </div>
+
+          
+
+          <div class="mb-4 p-4 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 flex flex-col items-center justify-center gap-2">
+
+            <div class="flex items-center gap-3">
+
+              <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-600"></i>
+
+              <span class="text-xs text-slate-600 font-medium">Excel (.xlsx) または CSV ファイルを直接インポート：</span>
+
+            </div>
+
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
+
+          </div>
+
+
+
+          <textarea id="rawInput" rows="7" placeholder="【テキスト貼り付けエリア】ファイルがない場合は、ここに直接打刻テキストを貼り付けることも可能です。縦方向でも横方向でも、自動で判読します！" class="w-full p-4 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-emerald-500 outline-none bg-slate-50/50 resize-y"></textarea>
+
+
+
+          <button onclick="processAttendance()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-2">
+
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> データを解析してリストに蓄積する
+
+          </button>
+
+        </div>
+
+
+
+        <div id="preview-section-target" class="bg-white rounded-2xl shadow-sm forest-border-glow p-6 relative border border-slate-100">
+
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+
+            <div>
+
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5"><i data-lucide="table-properties" class="text-emerald-600"></i> ② 従業員別プレビュー</h2>
+
+              <p class="text-xs text-slate-400 mt-0.5">※ アルバイトが遅刻した場合、精算工時は自動的に5分単位で切り上げ計算されます。</p>
+
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+
+              <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()"><i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除</button>
+
+              <button onclick="clearAccumulatedData()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i> 全員クリア</button>
+
+              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="download" class="w-4 h-4"></i> 一括マルチシートExcel保存 (.xlsx)</button>
+
+            </div>
+
+          </div>
+
+
+
+          <div id="activeHistoryBadge" class="hidden items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-100 text-xs px-3 py-2 rounded-lg mb-4 font-semibold">
+
+            <i data-lucide="history" class="w-4 h-4"></i>現在、過去のアーカイブ「<span id="activeHistoryName">-</span>」を閲覧しています。
+
+          </div>
+
+
+
+          <div class="border-b border-slate-100 pb-2 mb-4 overflow-x-auto">
+
+            <div id="employee-sheets-nav" class="flex gap-1.5 min-w-full">
+
+              <span class="text-xs text-slate-400 py-2">データを集計するとここにシート名が表示されます。</span>
+
+            </div>
+
+          </div>
+
+
+
+          <div id="preview-grid-wrapper" class="overflow-x-auto border border-slate-100 rounded-xl bg-slate-50/20 max-h-[480px]">
+
+            <table class="min-w-full text-xs text-left">
+
+              <thead id="preview-thead" class="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200/60 shadow-sm z-10"></thead>
+
+              <tbody id="preview-tbody" class="divide-y divide-slate-100 bg-white">
+
+                <tr><td class="px-6 py-12 text-center text-slate-400" colspan="10">データをインポートしてください。</td></tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+
+  <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+
+    <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-amber-100 relative max-h-[90vh] flex flex-col">
+
+      <div class="flex justify-between items-center pb-4 border-b border-slate-100">
+
+        <h3 class="font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="archive" class="w-5 h-5 text-amber-600"></i> 月別履歴アーカイブ</h3>
+
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+
+      </div>
+
+      <div class="py-4 space-y-4 flex-1 overflow-y-auto">
+
+        <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100/50">
+
+          <div class="flex gap-2">
+
+            <input type="text" id="history-save-name" placeholder="例: 2026年06月支給度" class="flex-1 px-3 py-1.5 text-xs border border-amber-200 rounded-lg outline-none">
+
+            <button onclick="saveToHistory()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">保存</button>
+
+          </div>
+
+        </div>
+
+        <div id="history-items-list" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <div id="toast-notif" class="fixed top-6 right-6 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 flex items-center gap-2 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs font-semibold">
+
+    <span id="toast-notif-icon">🌟</span><span id="toast-notif-text">-</span>
+
+  </div>
+
+
+
+  <div id="confirm-dialog" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+
+    <div class="bg-white rounded-2xl p-5 shadow-xl max-w-xs w-full text-center">
+
+      <h4 class="font-bold text-slate-800 text-sm mb-2" id="confirm-title">本当に対象データを削除しますか？</h4>
+
+      <p class="text-xs text-slate-500 mb-4" id="confirm-desc">この操作は取り消せません。</p>
+
+      <div class="flex gap-2 justify-center">
+
+        <button id="confirm-cancel-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-4 py-2 rounded-lg font-bold">キャンセル</button>
+
+        <button id="confirm-ok-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded-lg font-bold">確定する</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="absolute bottom-0 left-0 w-full overflow-hidden pointer-events-none h-44 flex items-end">
+
+    <svg id="footer-landscape-svg" viewBox="0 0 1440 180" class="w-full h-full opacity-95 transition-all duration-1000" preserveAspectRatio="none"></svg>
+
+  </div>
+
+
+
+  <script>
+
+    // Global UI Helpers
+
+    function showToast(msg, icon = '🌟') {
+
+      const notif = document.getElementById('toast-notif');
+
+      if (!notif) return;
+
+      document.getElementById('toast-notif-icon').innerText = icon;
+
+      document.getElementById('toast-notif-text').innerText = msg;
+
+      
+
+      notif.classList.remove('translate-y-[-100px]', 'opacity-0');
+
+      setTimeout(() => {
+
+        notif.classList.add('translate-y-[-100px]', 'opacity-0');
+
+      }, 3500);
+
+    }
+
+
+
+    function setCocoaText(text) {
+
+      const el = document.getElementById('cocoa-bubble-text');
+
+      if (el) el.innerText = text;
+
+    }
+
+
+
+    function timeToMins(t) { 
+
+      if(!t || !t.includes(':')) return 0; 
+
+      const [h,m] = t.split(':').map(Number); 
+
+      return h*60+m; 
+
+    }
+
+    
+
+    function minsToTimeStr(m) { 
+
+      if(m<=0) return "00:00"; 
+
+      return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; 
+
+    }
+
+    
+
+    function formatDate(d) { 
+
+      return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`; 
+
+    }
+
+    
+
+    function formatHM(d) { 
+
+      return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; 
+
+    }
+
+    
+
+    function getWeekDayStyle(d) { 
+
+      return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; 
+
+    }
+
+
+
+    // System variables and standard configurations
+
+    let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
+
+    let specialPeriods = [];
+
+    let monthlyHistory = {};
+
+    let currentSeason = 'spring';
+
+    let selectedEmployeeName = ""; 
+
+    let processedData = { fulltime: [], parttime: [], rawBackup: [] };
+
+
+
+    const daysArr = ["月", "火", "水", "木", "金", "土", "日"];
+
+    const japaneseDays = ["日", "月", "火", "水", "木", "金", "土"];
+
+
+
+    window.onload = function() {
+
+      if (localStorage.getItem("igk_fulltime_members")) fullTimeMembers = JSON.parse(localStorage.getItem("igk_fulltime_members"));
+
+      if (localStorage.getItem("igk_monthly_history")) monthlyHistory = JSON.parse(localStorage.getItem("igk_monthly_history"));
+
+      if (localStorage.getItem("igk_special_periods")) specialPeriods = JSON.parse(localStorage.getItem("igk_special_periods"));
+
+      
+
+      document.getElementById('excelFileInput').addEventListener('change', handleFileSelect, false);
+
+
+
+      if (localStorage.getItem("igk_active_processed_data")) {
+
+        try {
+
+          processedData = JSON.parse(localStorage.getItem("igk_active_processed_data"));
+
+          if (processedData.fulltime.length > 0 || processedData.parttime.length > 0) {
+
+            buildEmployeeSheetTabs();
+
+            const allNames = getProcessedNames();
+
+            if (allNames.length > 0) selectSheetTab(allNames[0]);
+
+            toggleDownloadBtn(true);
+
+          }
+
+        } catch (e) { console.error(e); }
+
+      }
+
+
+
+      buildWeeklyRulesDOM();
+
+      loadWeeklyRules();
+
+      renderEmployeeTags();
+
+      renderSpecialPeriods();
+
+      changeSeason(currentSeason);
+
+      lucide.createIcons();
+
+    };
+
+
+
+    // Excel File Import Engine
+
+    function handleFileSelect(e) {
+
+      const files = e.target.files;
+
+      if (!files || files.length === 0) return;
+
+      const file = files[0];
+
+      const reader = new FileReader();
+
+
+
+      reader.onload = function(e) {
+
+        try {
+
+          const data = new Uint8Array(e.target.result);
+
+          const workbook = XLSX.read(data, {type: 'array'});
+
+          const firstSheetName = workbook.SheetNames[0];
+
+          const worksheet = workbook.Sheets[firstSheetName];
+
+          
+
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+          if (jsonRows.length <= 1) {
+
+            showToast('⚠️ ファイル内に有効なデータがありません。', '🍄');
+
+            return;
+
+          }
+
+
+
+          let idCol = -1, nameCol = -1, typeCol = -1, timeCol = -1;
+
+          const firstRow = jsonRows[0].map(c => String(c || '').trim().toLowerCase());
+
+
+
+          firstRow.forEach((cell, idx) => {
+
+            if (cell.includes('id') || cell.includes('工号') || cell.includes('コード') || cell.includes('番号')) idCol = idx;
+
+            if (cell.includes('名') || cell.includes('氏名') || cell.includes('従業員')) nameCol = idx;
+
+            if (cell.includes('タイプ') || cell.includes('状態') || cell.includes('出入') || cell.includes('区分')) typeCol = idx;
+
+            if (cell.includes('時') || cell.includes('日時') || cell.includes('タイム')) timeCol = idx;
+
+          });
+
+
+
+          if (idCol === -1) idCol = 0;
+
+          if (nameCol === -1) nameCol = 1;
+
+          if (typeCol === -1) typeCol = 2;
+
+          if (timeCol === -1) timeCol = 3;
+
+
+
+          let accumulatedText = "";
+
+          for (let i = 1; i < jsonRows.length; i++) {
+
+            const row = jsonRows[i];
+
+            if (!row || row.length < 2) continue;
+
+            
+
+            let empId = String(row[idCol] || '').trim();
+
+            let empName = String(row[nameCol] || '').trim();
+
+            let typeStr = String(row[typeCol] || '').trim();
+
+            let rawTime = String(row[timeCol] || '').trim();
+
+
+
+            if (!empName || !rawTime) continue;
+
+            
+
+            // Excel Date Format handler
+
+            if (!isNaN(rawTime) && rawTime.length > 5 && parseFloat(rawTime) > 40000) {
+
+              const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+
+              const days = parseFloat(rawTime);
+
+              const dateObj = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+
+              if(!isNaN(dateObj.getTime())) {
+
+                rawTime = formatDate(dateObj) + " " + formatHM(dateObj);
+
+              }
+
+            }
+
+
+
+            accumulatedText += `${empId}\t${empName}\t${typeStr}\t${rawTime}\n`;
+
+          }
+
+
+
+          if (accumulatedText) {
+
+            document.getElementById('rawInput').value = accumulatedText;
+
+            showToast('📥 データの読み込みに成功しました！解析ボタンを押して確定してください。', '🟢');
+
+          } else {
+
+            showToast('⚠️ 打刻列のマッピングに失敗しました。', '🍄');
+
+          }
+
+        } catch(err) {
+
+          console.error(err);
+
+          showToast('⚠️ ファイルの解析中にエラーが発生しました。', '🍄');
+
+        }
+
+      };
+
+      reader.readAsArrayBuffer(file);
+
+    }
+
+
+
+    function buildWeeklyRulesDOM() {
+
+      const container = document.getElementById("weekly-rules-container");
+
+      if(!container) return;
+
+      container.innerHTML = "";
+
+      daysArr.forEach(day => {
+
+        const isWeekend = (day === "土" || day === "日");
+
+        const badgeColor = isWeekend ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800";
+
+        const row = document.createElement("div");
+
+        row.className = "flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-100 bg-slate-50/50 text-[11px]";
+
+        row.innerHTML = `
+
+          <label class="flex items-center gap-1 font-bold text-slate-700 shrink-0">
+
+            <input type="checkbox" id="week-use-${day}" class="w-3.5 h-3.5 text-emerald-600" onchange="saveWeeklyRules()">
+
+            <span class="${badgeColor} px-1.5 py-0.5 rounded text-[10px]">${day}</span>
+
+          </label>
+
+          <div class="flex items-center gap-1">
+
+            <input type="time" id="week-start-${day}" value="09:30" class="px-1.5 py-0.5 border border-slate-200 rounded outline-none w-16" onchange="saveWeeklyRules()">
+
+            <span class="text-slate-400">~</span>
+
+            <input type="time" id="week-end-${day}" value="18:30" class="px-1.5 py-0.5 border border-slate-200 rounded outline-none w-16" onchange="saveWeeklyRules()">
+
+            <input type="number" id="week-rest-${day}" value="60" class="w-10 px-1 py-0.5 border rounded text-center" onchange="saveWeeklyRules()">分
+
+          </div>
+
+        `;
+
+        container.appendChild(row);
+
+      });
+
+    }
+
+
+
+    function saveWeeklyRules() {
+
+      const rules = {};
+
+      daysArr.forEach(day => {
+
+        rules[day] = {
+
+          enabled: document.getElementById(`week-use-${day}`).checked,
+
+          start: document.getElementById(`week-start-${day}`).value,
+
+          end: document.getElementById(`week-end-${day}`).value,
+
+          rest: parseInt(document.getElementById(`week-rest-${day}`).value) || 60
+
+        };
+
+      });
+
+      localStorage.setItem("igk_weekly_rules", JSON.stringify(rules));
+
+    }
+
+
+
+    function loadWeeklyRules() {
+
+      const saved = localStorage.getItem("igk_weekly_rules");
+
+      if (!saved) return;
+
+      try {
+
+        const rules = JSON.parse(saved);
+
+        daysArr.forEach(day => {
+
+          if (rules[day]) {
+
+            document.getElementById(`week-use-${day}`).checked = rules[day].enabled || false;
+
+            document.getElementById(`week-start-${day}`).value = rules[day].start || "09:30";
+
+            document.getElementById(`week-end-${day}`).value = rules[day].end || "18:30";
+
+            document.getElementById(`week-rest-${day}`).value = rules[day].rest !== undefined ? rules[day].rest : 60;
+
+          }
+
+        });
+
+      } catch (e) { console.error(e); }
+
+    }
+
+
+
+    function renderEmployeeTags() {
+
+      const container = document.getElementById('member-tags-container');
+
+      if(!container) return;
+
+      container.innerHTML = "";
+
+      fullTimeMembers.forEach(name => {
+
+        const tag = document.createElement('div');
+
+        tag.className = 'bg-emerald-50 text-emerald-800 text-xs px-2 py-0.5 rounded-lg border border-emerald-100 flex items-center gap-1 cursor-pointer';
+
+        tag.innerHTML = `<span>${name}</span><i data-lucide="x" class="w-3 h-3 opacity-60"></i>`;
+
+        tag.onclick = () => removeFullTimeMember(name);
+
+        container.appendChild(tag);
+
+      });
+
+      lucide.createIcons();
+
+    }
+
+
+
+    function addFullTimeMember() {
+
+      const nameInput = document.getElementById('new-member-name');
+
+      const name = nameInput.value.trim();
+
+      if (!name) return;
+
+      if (!fullTimeMembers.includes(name)) {
+
+        fullTimeMembers.push(name);
+
+        localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
+
+        nameInput.value = "";
+
+        renderEmployeeTags();
+
+        showToast(`✨ ${name} さんを追加しました`, '🌸');
+
+      }
+
+    }
+
+
+
+    function removeFullTimeMember(name) {
+
+      showCustomConfirm(`正社員リストから「${name}」を削除しますか？`, '', () => {
+
+        fullTimeMembers = fullTimeMembers.filter(m => m !== name);
+
+        localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
+
+        renderEmployeeTags();
+
+      });
+
+    }
+
+
+
+    function renderSpecialPeriods() {
+
+      const container = document.getElementById('special-rules-list');
+
+      if(!container) return;
+
+      container.innerHTML = "";
+
+      specialPeriods.forEach((period, idx) => {
+
+        const row = document.createElement('div');
+
+        row.className = 'bg-slate-50 border p-2 rounded flex items-center justify-between text-[11px]';
+
+        row.innerHTML = `
+
+          <div><span class="font-bold">${period.startDay} ~ ${period.endDay}</span> (${period.startTime}-${period.endTime})</div>
+
+          <button onclick="removeSpecialPeriod(${idx})" class="text-rose-500"><i data-lucide="trash" class="w-3 h-3"></i></button>
+
+        `;
+
+        container.appendChild(row);
+
+      });
+
+      lucide.createIcons();
+
+    }
+
+
+
+    function addSpecialPeriod() {
+
+      const startDay = document.getElementById('special-start-date').value;
+
+      const endDay = document.getElementById('special-end-date').value;
+
+      const startTime = document.getElementById('special-start-time').value;
+
+      const endTime = document.getElementById('special-end-time').value;
+
+      const rest = parseInt(document.getElementById('special-rest').value) || 60;
+
+      if (startDay && endDay) {
+
+        specialPeriods.push({ startDay, endDay, startTime, endTime, rest });
+
+        localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
+
+        renderSpecialPeriods();
+
+      }
+
+    }
+
+
+
+    function removeSpecialPeriod(idx) {
+
+      specialPeriods.splice(idx, 1);
+
+      localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
+
+      renderSpecialPeriods();
+
+    }
+
+
+
+    function getMatchedPeriod(dateStr) {
+
+      const formattedDate = dateStr.replace(/\//g, '-');
+
+      for (let period of specialPeriods) {
+
+        if (formattedDate >= period.startDay && formattedDate <= period.endDay) return period;
+
+      }
+
+      return null;
+
+    }
+
+
+
+    // 【終極超強解析引擎：完美對應檔案與各種斷行的複製貼上格式】
+
+    function processAttendance() {
+
+      document.getElementById('activeHistoryBadge').classList.add('hidden');
+
+      const inputText = document.getElementById('rawInput').value.trim();
+
+      const normalizedFullTimeNames = fullTimeMembers.map(name => name.replace(/\s+/g, '').toLowerCase());
+
+
+
+      if (!inputText) {
+
+        showToast('⚠️ 打刻データが見つかりません。', '🍄');
+
+        return;
+
+      }
+
+
+
+      const newlyParsedNames = new Set();
+
+      const tempFulltime = [];
+
+      const tempParttime = [];
+
+      const tempRawBackup = [];
+
+      const attendanceMap = {};
+
+
+
+      const defaultStart = document.getElementById('workStartTime').value || "09:30";
+
+      const defaultEnd = document.getElementById('workEndTime').value || "18:30";
+
+      const defaultRest = parseInt(document.getElementById('restDuration').value) || 60;
+
+
+
+      const weeklyRules = {};
+
+      daysArr.forEach(day => {
+
+        weeklyRules[day] = {
+
+          enabled: document.getElementById(`week-use-${day}`).checked,
+
+          start: document.getElementById(`week-start-${day}`).value || "09:30",
+
+          end: document.getElementById(`week-end-${day}`).value || "18:30",
+
+          rest: parseInt(document.getElementById(`week-rest-${day}`).value) || 60
+
+        };
+
+      });
+
+
+
+      // 核心修正：將所有文字（不管換行或空格）切成單一個一個的 Token
+
+      const tokens = inputText.split(/[\s\t\u3000\r\n]+/);
+
+      let lastRecordEnd = 0;
+
+
+
+      for (let i = 0; i < tokens.length; i++) {
+
+        let t = tokens[i];
+
+        let dateTimeVal = "";
+
+        let tokensToAdvance = 0;
+
+        
+
+        // 情況A：日期與時間被空白切開 (例如 "2026/06/16" 跟 "09:13")
+
+        if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(t) && i + 1 < tokens.length && /^\d{1,2}:\d{2}(:\d{2})?$/.test(tokens[i+1])) {
+
+            dateTimeVal = t + " " + tokens[i+1];
+
+            tokensToAdvance = 2;
+
+        } 
+
+        // 情況B：日期與時間連在一起 (例如檔案匯入的結果)
+
+        else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}/.test(t)) {
+
+            dateTimeVal = t;
+
+            tokensToAdvance = 1;
+
+        }
+
+        
+
+        // 只要找到打卡時間，就往回抓上一筆時間以後的所有字，當作一組資料
+
+        if (dateTimeVal) {
+
+            let chunk = tokens.slice(lastRecordEnd, i);
+
+            let empId = "";
+
+            let action = "入室";
+
+            let nameArr = [];
+
+            
+
+            chunk.forEach(word => {
+
+                if (/^入室?|in$/i.test(word)) { action = "入室"; }
+
+                else if (/^退室?|out$/i.test(word)) { action = "退室"; }
+
+                else if (/^\d{4,10}$/.test(word)) { empId = word; }
+
+                else if (word !== "") { nameArr.push(word); } // 剩下的字就是姓名
+
+            });
+
+            
+
+            let empName = nameArr.join(" ");
+
+            if (!empId) empId = "0000";
+
+            if (!empName) empName = "不明";
+
+            
+
+            // 安全處理日期格式，防呆 JS 報錯
+
+            let cleanTimeStr = dateTimeVal.replace(/-/g, '/');
+
+            const parts = cleanTimeStr.split(/[\s\/:]+/);
+
+            
+
+            if (parts.length >= 5) {
+
+                const year = parseInt(parts[0], 10);
+
+                const month = parseInt(parts[1], 10) - 1;
+
+                const day = parseInt(parts[2], 10);
+
+                const hour = parseInt(parts[3], 10);
+
+                const minute = parseInt(parts[4], 10);
+
+
+
+                const dateObj = new Date(year, month, day, hour, minute);
+
+                
+
+                if (!isNaN(dateObj.getTime())) {
+
+                    tempRawBackup.push([empId, empName, action, dateTimeVal]);
+
+                    newlyParsedNames.add(empName);
+
+
+
+                    const dateKey = formatDate(dateObj);
+
+                    const hmStr = formatHM(dateObj);
+
+                    const dayOfWeek = japaneseDays[dateObj.getDay()];
+
+                    const mapKey = `${empId}_${dateKey}`;
+
+
+
+                    if (!attendanceMap[mapKey]) {
+
+                      const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
+
+                      const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
+
+                      
+
+                      attendanceMap[mapKey] = {
+
+                        id: empId, name: empName, date: dateKey, day: dayOfWeek,
+
+                        checkIn: null, checkOut: null, isFullTime: isFullTime
+
+                      };
+
+                    }
+
+
+
+                    if (action === "入室") {
+
+                      if (!attendanceMap[mapKey].checkIn || hmStr < attendanceMap[mapKey].checkIn) attendanceMap[mapKey].checkIn = hmStr;
+
+                    } else {
+
+                      if (!attendanceMap[mapKey].checkOut || hmStr > attendanceMap[mapKey].checkOut) attendanceMap[mapKey].checkOut = hmStr;
+
+                    }
+
+                }
+
+            }
+
+            // 更新游標位置
+
+            lastRecordEnd = i + tokensToAdvance;
+
+            i += (tokensToAdvance - 1);
+
+        }
+
+      }
+
+
+
+      // 以下開始計算考勤工時
+
+      for (const key in attendanceMap) {
+
+        const item = attendanceMap[key];
+
+
+
+        if (item.isFullTime) {
+
+          const matchedPeriod = getMatchedPeriod(item.date);
+
+          let startTimeVal = defaultStart, endTimeVal = defaultEnd, restDurationVal = defaultRest, periodLabel = "通常勤務";
+
+
+
+          if (matchedPeriod) {
+
+            startTimeVal = matchedPeriod.startTime; endTimeVal = matchedPeriod.endTime; restDurationVal = matchedPeriod.rest; periodLabel = "特別";
+
+          } else if (weeklyRules[item.day] && weeklyRules[item.day].enabled) {
+
+            startTimeVal = weeklyRules[item.day].start; endTimeVal = weeklyRules[item.day].end; restDurationVal = weeklyRules[item.day].rest; periodLabel = "曜日別";
+
+          }
+
+
+
+          let regular = "00:00", earlyOvertime = "00:00", lateOvertime = "00:00";
+
+          if (item.checkIn && item.checkOut) {
+
+            const inMin = timeToMins(item.checkIn), outMin = timeToMins(item.checkOut);
+
+            const startLimit = timeToMins(startTimeVal), endLimit = timeToMins(endTimeVal);
+
+
+
+            if (inMin < startLimit) earlyOvertime = minsToTimeStr(startLimit - inMin);
+
+            if (outMin > endLimit) lateOvertime = minsToTimeStr(outMin - endLimit);
+
+
+
+            const coreIn = Math.max(inMin, startLimit), coreOut = Math.min(outMin, endLimit);
+
+            if (coreOut > coreIn) {
+
+              let coreWork = coreOut - coreIn;
+
+              if (coreWork >= 375) coreWork -= restDurationVal;
+
+              regular = minsToTimeStr(coreWork);
+
+            }
+
+          }
+
+
+
+          tempFulltime.push({
+
+            id: item.id, name: item.name, date: item.date, day: item.day,
+
+            checkIn: item.checkIn || "未打刻", checkOut: item.checkOut || "未打刻",
+
+            regular, earlyOvertime, lateOvertime, shiftLabel: periodLabel, 
+
+            campus: "未設定", locationAndFare: ""
+
+          });
+
+
+
+        } else {
+
+          let schedStart = "14:00", schedEnd = "18:00";
+
+          
+
+          if (item.checkIn) {
+
+            const mins = timeToMins(item.checkIn);
+
+            schedStart = minsToTimeStr(Math.ceil(mins / 30) * 30);
+
+          }
+
+          if (item.checkOut) {
+
+            const mins = timeToMins(item.checkOut);
+
+            schedEnd = minsToTimeStr(Math.floor(mins / 30) * 30);
+
+          }
+
+
+
+          let totalWork = "00:00";
+
+          if (item.checkIn && item.checkOut) {
+
+            let inMin = timeToMins(item.checkIn);
+
+            let outMin = timeToMins(item.checkOut);
+
+            const sMin = timeToMins(schedStart);
+
+            const eMin = timeToMins(schedEnd);
+
+
+
+            if (inMin > sMin) {
+
+              inMin = Math.ceil(inMin / 5) * 5; 
+
+            } else {
+
+              inMin = sMin; 
+
+            }
+
+
+
+            const effectiveOut = Math.min(outMin, eMin);
+
+
+
+            if (effectiveOut > inMin) {
+
+              totalWork = minsToTimeStr(effectiveOut - inMin);
+
+            }
+
+          }
+
+
+
+          tempParttime.push({
+
+            id: item.id, name: item.name, date: item.date, day: item.day,
+
+            checkIn: item.checkIn || "未打刻", checkOut: item.checkOut || "未打刻",
+
+            schedStart, schedEnd, totalWork, restMin: 0, groupA: "", groupB: totalWork, 
+
+            campus: "未設定", locationAndFare: ""
+
+          });
+
+        }
+
+      }
+
+
+
+      const namesToOverwrite = Array.from(newlyParsedNames);
+
+      if (namesToOverwrite.length > 0) {
+
+        processedData.fulltime = processedData.fulltime.filter(r => !namesToOverwrite.includes(r.name));
+
+        processedData.parttime = processedData.parttime.filter(r => !namesToOverwrite.includes(r.name));
+
+        processedData.rawBackup = processedData.rawBackup.filter(r => !namesToOverwrite.includes(r[1]));
+
+      }
+
+
+
+      processedData.fulltime = [...processedData.fulltime, ...tempFulltime];
+
+      processedData.parttime = [...processedData.parttime, ...tempParttime];
+
+      processedData.rawBackup = [...processedData.rawBackup, ...tempRawBackup];
+
+
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+
+
+      buildEmployeeSheetTabs();
+
+      if (getProcessedNames().length > 0) selectSheetTab(getProcessedNames()[0]);
+
+      toggleDownloadBtn(true);
+
+      showToast('🎉 リストを更新・蓄積しました！', '🌸');
+
+    }
+
+
+
+    function getProcessedNames() {
+
+      const names = new Set();
+
+      processedData.fulltime.forEach(r => names.add(r.name));
+
+      processedData.parttime.forEach(r => names.add(r.name));
+
+      return Array.from(names);
+
+    }
+
+
+
+    function buildEmployeeSheetTabs() {
+
+      const container = document.getElementById('employee-sheets-nav');
+
+      if(!container) return;
+
+      container.innerHTML = "";
+
+      const names = getProcessedNames();
+
+      if (names.length === 0) {
+
+        container.innerHTML = `<span class="text-xs text-slate-400 py-2">名簿が空です。</span>`;
+
+        return;
+
+      }
+
+      names.forEach(name => {
+
+        const isFT = processedData.fulltime.some(r => r.name === name);
+
+        const tabBtn = document.createElement('button');
+
+        tabBtn.id = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
+
+        tabBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold border whitespace-nowrap`;
+
+        tabBtn.innerHTML = `<span>${isFT ? '💼' : '⏱️'} ${name}</span>`;
+
+        tabBtn.onclick = () => selectSheetTab(name);
+
+        container.appendChild(tabBtn);
+
+      });
+
+    }
+
+
+
+    function selectSheetTab(name) {
+
+      selectedEmployeeName = name;
+
+      getProcessedNames().forEach(n => {
+
+        const btn = document.getElementById(`sheet-tab-${n.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`);
+
+        if (btn) btn.className = n === name ? "px-3 py-1.5 rounded-xl text-xs font-bold border bg-slate-800 text-white" : "px-3 py-1.5 rounded-xl text-xs font-semibold border bg-white text-slate-600";
+
+      });
+
+      document.getElementById('delete-selected-employee-btn').className = name ? "inline-flex bg-rose-50 text-rose-700 px-3 py-2 rounded-xl text-xs font-bold" : "hidden";
+
+      renderActiveGridView();
+
+    }
+
+
+
+    function bulkUpdateCampus(campusValue) {
+
+      if (!selectedEmployeeName || !campusValue) return;
+
+      
+
+      const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
+
+      if (isFT) {
+
+        processedData.fulltime.forEach(r => {
+
+          if (r.name === selectedEmployeeName) r.campus = campusValue;
+
+        });
+
+      } else {
+
+        processedData.parttime.forEach(r => {
+
+          if (r.name === selectedEmployeeName) r.campus = campusValue;
+
+        });
+
+      }
+
+      
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+      renderActiveGridView();
+
+      showToast(`🏢 校舎を「${campusValue}」に一括変更しました！`, '🌸');
+
+    }
+
+
+
+    function renderActiveGridView() {
+
+      const thead = document.getElementById('preview-thead');
+
+      const tbody = document.getElementById('preview-tbody');
+
+      if (!selectedEmployeeName) { if(thead) thead.innerHTML = ""; if(tbody) tbody.innerHTML = "<tr><td>名簿が空です。</td></tr>"; return; }
+
+
+
+      const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
+
+
+
+      const bulkSelectorHtml = `
+
+        <select onchange="bulkUpdateCampus(this.value)" class="text-[10px] px-1 py-0.5 rounded border border-slate-300 font-normal bg-white text-slate-700 outline-none">
+
+          <option value="">一括設定</option>
+
+          <option value="名谷校">名谷校</option>
+
+          <option value="六甲校">六甲校</option>
+
+        </select>
+
+      `;
+
+
+
+      if (isFT) {
+
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2">出勤</th><th class="px-4 py-2">退勤</th><th class="px-4 py-2">通常</th><th class="px-4 py-2">早朝</th><th class="px-4 py-2">深夜</th><th class="px-4 py-2">シフト</th><th class="px-4 py-2 min-w-[240px]">校舎 ${bulkSelectorHtml} / 交通費</th></tr>`;
+
+        const rows = processedData.fulltime.filter(r => r.name === selectedEmployeeName);
+
+        tbody.innerHTML = rows.map(r => {
+
+          const gIdx = processedData.fulltime.indexOf(r);
+
+          return `
+
+            <tr class="text-xs">
+
+              <td class="px-4 py-2">${r.date}</td><td class="px-4 py-2">${r.day}</td>
+
+              <td class="px-4 py-2 text-emerald-700 font-bold">${r.checkIn}</td><td class="px-4 py-2 text-rose-700 font-bold">${r.checkOut}</td>
+
+              <td class="px-4 py-2">${r.regular}</td><td class="px-4 py-2">${r.earlyOvertime}</td><td class="px-4 py-2">${r.lateOvertime}</td><td class="px-4 py-2">${r.shiftLabel}</td>
+
+              <td class="px-2 py-1 flex items-center gap-1 min-w-[240px]">
+
+                <select onchange="updateCampus(${gIdx}, 'fulltime', this.value)" class="border px-1 py-0.5 rounded text-xs bg-white w-20">
+
+                  <option value="未設定" ${r.campus === '未設定' ? 'selected' : ''}>未設定</option>
+
+                  <option value="名谷校" ${r.campus === '名谷校' ? 'selected' : ''}>名谷校</option>
+
+                  <option value="六甲校" ${r.campus === '六甲校' ? 'selected' : ''}>六甲校</option>
+
+                </select>
+
+                <input type="text" value="${r.locationAndFare || ''}" placeholder="例: / 750円" onchange="updateLocationFare(${gIdx}, 'fulltime', this.value)" class="border px-2 py-0.5 rounded text-xs flex-1">
+
+              </td>
+
+            </tr>`;
+
+        }).join('');
+
+      } else {
+
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定</th><th class="px-4 py-2 bg-amber-50">精算</th><th class="px-4 py-2">休憩</th><th class="px-4 py-2">IGK A</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B</th><th class="px-4 py-2 min-w-[240px]">校舎 ${bulkSelectorHtml} / 交通費</th></tr>`;
+
+        const rows = processedData.parttime.filter(r => r.name === selectedEmployeeName);
+
+        tbody.innerHTML = rows.map(r => {
+
+          const gIdx = processedData.parttime.indexOf(r);
+
+          return `
+
+            <tr class="text-xs">
+
+              <td class="px-4 py-2">${r.date}</td><td class="px-4 py-2">${r.day}</td>
+
+              <td class="px-4 py-2 text-slate-400">${r.checkIn}</td><td class="px-4 py-2 text-slate-400">${r.checkOut}</td>
+
+              <td class="px-1 py-1">
+
+                <input type="time" value="${r.schedStart}" onchange="updatePartTimeSchedule(${gIdx}, 'start', this.value)" class="border rounded text-[11px] font-mono w-[65px]">~
+
+                <input type="time" value="${r.schedEnd}" onchange="updatePartTimeSchedule(${gIdx}, 'end', this.value)" class="border rounded text-[11px] font-mono w-[65px]">
+
+              </td>
+
+              <td class="px-4 py-2 font-bold bg-amber-50/40" id="pt-totalwork-cell-${gIdx}">${r.totalWork}</td>
+
+              <td><input type="number" value="${r.restMin}" oninput="updatePartTimeRest(${gIdx}, this.value)" class="border w-12 text-center rounded"></td>
+
+              <td><input type="text" value="${r.groupA}" oninput="updatePartTimeGroupA(${gIdx}, this.value)" class="border w-14 text-center rounded" placeholder="00:00"></td>
+
+              <td class="px-4 py-2 font-bold text-indigo-700 bg-indigo-50/20" id="pt-groupb-cell-${gIdx}">${r.groupB}</td>
+
+              <td class="px-2 py-1 flex items-center gap-1 min-w-[240px]">
+
+                <select onchange="updateCampus(${gIdx}, 'parttime', this.value)" class="border px-1 py-0.5 rounded text-xs bg-white w-20">
+
+                  <option value="未設定" ${r.campus === '未設定' ? 'selected' : ''}>未設定</option>
+
+                  <option value="名谷校" ${r.campus === '名谷校' ? 'selected' : ''}>名谷校</option>
+
+                  <option value="六甲校" ${r.campus === '六甲校' ? 'selected' : ''}>六甲校</option>
+
+                </select>
+
+                <input type="text" value="${r.locationAndFare || ''}" placeholder="例: / 750円" onchange="updateLocationFare(${gIdx}, 'parttime', this.value)" class="border px-2 py-0.5 rounded text-xs flex-1">
+
+              </td>
+
+            </tr>`;
+
+        }).join('');
+
+      }
+
+    }
+
+
+
+    function updateCampus(idx, type, val) {
+
+      if (type === 'fulltime') processedData.fulltime[idx].campus = val;
+
+      else processedData.parttime[idx].campus = val;
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+    }
+
+
+
+    function updateLocationFare(idx, type, val) {
+
+      if (type === 'fulltime') processedData.fulltime[idx].locationAndFare = val;
+
+      else processedData.parttime[idx].locationAndFare = val;
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+    }
+
+
+
+    function updatePartTimeSchedule(idx, type, val) {
+
+      const item = processedData.parttime[idx];
+
+      if (type === 'start') item.schedStart = val;
+
+      if (type === 'end') item.schedEnd = val;
+
+
+
+      if (item.checkIn && item.checkOut && item.checkIn !== "未打刻" && item.checkOut !== "未打刻") {
+
+        let inMin = timeToMins(item.checkIn);
+
+        let outMin = timeToMins(item.checkOut);
+
+        const sMin = timeToMins(item.schedStart);
+
+        const eMin = timeToMins(item.schedEnd);
+
+
+
+        if (inMin > sMin) inMin = Math.ceil(inMin / 5) * 5;
+
+        else inMin = sMin;
+
+
+
+        const effectiveOut = Math.min(outMin, eMin);
+
+        item.totalWork = (effectiveOut > inMin) ? minsToTimeStr(effectiveOut - inMin) : "00:00";
+
+      }
+
+      
+
+      const twCell = document.getElementById(`pt-totalwork-cell-${idx}`);
+
+      if (twCell) twCell.innerText = item.totalWork;
+
+      recalculatePartTimeB(idx);
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+    }
+
+
+
+    function updatePartTimeRest(idx, val) {
+
+      processedData.parttime[idx].restMin = parseInt(val) || 0;
+
+      recalculatePartTimeB(idx);
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+    }
+
+
+
+    function updatePartTimeGroupA(idx, val) {
+
+      processedData.parttime[idx].groupA = val;
+
+      recalculatePartTimeB(idx);
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+    }
+
+
+
+    function recalculatePartTimeB(idx) {
+
+      const item = processedData.parttime[idx];
+
+      const totalMins = timeToMins(item.totalWork);
+
+      const netMins = Math.max(0, totalMins - (parseInt(item.restMin) || 0) - timeToMins(item.groupA));
+
+      item.groupB = minsToTimeStr(netMins);
+
+      const cell = document.getElementById(`pt-groupb-cell-${idx}`);
+
+      if (cell) cell.innerText = item.groupB;
+
+    }
+
+
+
+    function deleteSelectedEmployee() { if(selectedEmployeeName) deleteEmployee(selectedEmployeeName); }
+
+
+
+    function deleteEmployee(name) {
+
+      showCustomConfirm(`従業員「${name}」のデータを削除しますか？`, '', () => {
+
+        processedData.fulltime = processedData.fulltime.filter(r => r.name !== name);
+
+        processedData.parttime = processedData.parttime.filter(r => r.name !== name);
+
+        processedData.rawBackup = processedData.rawBackup.filter(r => r[1] !== name);
+
+        localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+
+        selectedEmployeeName = "";
+
+        buildEmployeeSheetTabs();
+
+        const names = getProcessedNames();
+
+        if(names.length > 0) selectSheetTab(names[0]); else { toggleDownloadBtn(false); }
+
+      });
+
+    }
+
+
+
+    function clearAccumulatedData() {
+
+      showCustomConfirm("すべての蓄積データを完全に初期化しますか？", '', () => {
+
+        processedData = { fulltime: [], parttime: [], rawBackup: [] };
+
+        selectedEmployeeName = "";
+
+        localStorage.removeItem("igk_active_processed_data");
+
+        buildEmployeeSheetTabs();
+
+        renderActiveGridView();
+
+        toggleDownloadBtn(false);
+
+      });
+
+    }
+
+
+
+    function toggleDownloadBtn(enable) {
+
+      const dlBtn = document.getElementById('excel-download-btn');
+
+      if (!dlBtn) return;
+
+      dlBtn.disabled = !enable;
+
+      dlBtn.className = enable ? "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm";
+
+    }
+
+
+
+    function loadDemoData() {
+
+      // 提供垂直格式的測試資料，證明解析引擎完全升級
+
+      document.getElementById('rawInput').value = `00000888\nCostard Fergus\n\n入室\n2026/07/09 14:03\n00000888\nCostard Fergus\n退室\n2026/07/09 18:00\n00000646\n林 昊嬛\n入室\n2026/07/09 09:29\n00000646\n林 昊嬛\n退室\n2026/07/09 18:31`;
+
+      processAttendance();
+
+    }
+
+    
+
+    function clearTextarea() { document.getElementById('rawInput').value = ''; }
+
+
+
+    function downloadExcel() {
+
+      const names = getProcessedNames();
+
+      if (names.length === 0) return;
+
+      const wb = XLSX.utils.book_new();
+
+
+
+      names.forEach(name => {
+
+        const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
+
+        const logRows = [["従業員ID", "従業員名", "タイプ", "打刻日時"], ...personalRawLogs];
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(logRows), `打刻${name}`.substring(0, 31));
+
+
+
+        const isFT = processedData.fulltime.some(r => r.name === name);
+
+        if (isFT) {
+
+          const entries = processedData.fulltime.filter(r => r.name === name);
+
+          const ftRows = [["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト", "校舎", "交通費など"]];
+
+          entries.forEach(r => {
+
+            ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel, r.campus || "未設定", r.locationAndFare || ""]);
+
+          });
+
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ftRows), `出退${name}`.substring(0, 31));
+
+        } else {
+
+          const entries = processedData.parttime.filter(r => r.name === name);
+
+          const ptRows = [["従業員ID", "氏名", "日付", "曜日", "打刻入室", "打刻退室", "予定始業", "予定終業", "精算工時", "休憩(分)", "IGK A(授業)", "IGK B(勤務)", "校舎", "交通費など"]];
+
+          entries.forEach(r => {
+
+            ptRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.schedStart, r.schedEnd, r.totalWork, parseInt(r.restMin)||0, r.groupA, "", r.campus || "未設定", r.locationAndFare || ""]);
+
+          });
+
+          const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
+
+          for (let i = 0; i < entries.length; i++) {
+
+            const rIdx = i + 2;
+
+            ws_pt[`L${rIdx}`] = { t: 's', f: `IF(I${rIdx}="","",I${rIdx}-J${rIdx}/1440-IF(K${rIdx}="","00:00",K${rIdx}))` };
+
+          }
+
+          XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
+
+        }
+
+      });
+
+      XLSX.writeFile(wb, `IGK_勤怠管理_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
+
+      showToast('👑 一括マルチシートExcelを出力しました！', '🌸');
+
+    }
+
+
+
+    function toggleHistoryModal() {
+
+      const m = document.getElementById('history-modal');
+
+      if(!m) return;
+
+      m.className = m.classList.contains('hidden') ? "fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : "hidden";
+
+      if(!m.classList.contains('hidden')) renderHistoryList();
+
+    }
+
+
+
+    function saveToHistory() {
+
+      const name = document.getElementById('history-save-name').value.trim();
+
+      if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0)) {
+
+        monthlyHistory[name] = JSON.parse(JSON.stringify(processedData));
+
+        localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
+
+        document.getElementById('history-save-name').value = "";
+
+        renderHistoryList();
+
+        showToast('💾 アーカイブを保存しました。', '🌸');
+
+      }
+
+    }
+
+
+
+    function loadFromHistory(name) {
+
+      if (!monthlyHistory[name]) return;
+
+      processedData = JSON.parse(JSON.stringify(monthlyHistory[name]));
+
+      buildEmployeeSheetTabs();
+
+      if (getProcessedNames().length > 0) selectSheetTab(getProcessedNames()[0]);
+
+      document.getElementById('activeHistoryBadge').classList.remove('hidden');
+
+      document.getElementById('activeHistoryName').innerText = name;
+
+      toggleDownloadBtn(true);
+
+      toggleHistoryModal();
+
+    }
+
+
+
+    function deleteFromHistory(name) {
+
+      showCustomConfirm(`アーカイブ「${name}」を完全に削除しますか？`, '', () => {
+
+        delete monthlyHistory[name];
+
+        localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
+
+        renderHistoryList();
+
+      });
+
+    }
+
+
+
+    function renderHistoryList() {
+
+      const container = document.getElementById('history-items-list');
+
+      if(!container) return;
+
+      container.innerHTML = "";
+
+      const keys = Object.keys(monthlyHistory);
+
+      if(keys.length === 0) { container.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">履歴はありません。</p>`; return; }
+
+      keys.forEach(key => {
+
+        const div = document.createElement('div');
+
+        div.className = 'bg-slate-50 p-2 rounded flex justify-between items-center text-xs';
+
+        div.innerHTML = `<span>${key}</span><div class="flex gap-1"><button onclick="loadFromHistory('${key}')" class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">表示</button><button onclick="deleteFromHistory('${key}')" class="text-rose-600"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`;
+
+        container.appendChild(div);
+
+      });
+
+      lucide.createIcons();
+
+    }
+
+
+
+    let currentConfirmCallback = null;
+
+    function showCustomConfirm(title, desc, onOk) {
+
+      const dialog = document.getElementById('confirm-dialog');
+
+      if(!dialog) return;
+
+      document.getElementById('confirm-title').innerText = title;
+
+      document.getElementById('confirm-desc').innerText = desc || "この操作は取り消せません。";
+
+      currentConfirmCallback = onOk;
+
+      dialog.classList.remove('hidden');
+
+      dialog.classList.add('flex');
+
+    }
+
+
+
+    document.getElementById('confirm-cancel-btn').onclick = function() {
+
+      document.getElementById('confirm-dialog').classList.add('hidden');
+
+      document.getElementById('confirm-dialog').classList.remove('flex');
+
+    };
+
+
+
+    document.getElementById('confirm-ok-btn').onclick = function() {
+
+      if (currentConfirmCallback) currentConfirmCallback();
+
+      document.getElementById('confirm-dialog').classList.add('hidden');
+
+      document.getElementById('confirm-dialog').classList.remove('flex');
+
+    };
+
+
+
+    function changeSeason(season) {
+
+      currentSeason = season;
+
+      const b = document.getElementById('theme-body');
+
+      const v = document.getElementById('vines-svg');
+
+      const av = document.getElementById('cocoa-avatar');
+
+      if(!b || !v || !av) return;
+
+      
+
+      if(season==='spring') {
+
+        b.className = "bg-gradient-to-b from-rose-50 via-emerald-50/20 to-rose-50/50 min-h-screen text-slate-800 relative pb-48";
+
+        v.innerHTML = `<path d="M0,0 Q180,60 360,10 Q540,80 720,20 L1440,0 Z" fill="#fbcfe8" opacity="0.35"/>`;
+
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#fbcfe8"/><circle cx="40" cy="45" r="3" fill="#000"/><circle cx="60" cy="45" r="3" fill="#000"/><path d="M45,55 Q50,60 55,55" stroke="#000" fill="none"/>`;
+
+        startFallingEffect('🌸');
+
+      } else if (season==='summer') {
+
+        b.className = "bg-gradient-to-b from-sky-50 via-teal-50/20 min-h-screen text-slate-800 relative pb-48";
+
+        v.innerHTML = `<path d="M0,0 Q180,40 360,15 L1440,0 Z" fill="#06b6d4" opacity="0.2"/>`;
+
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#fbbf24"/><circle cx="40" cy="45" r="3" fill="#000"/><circle cx="60" cy="45" r="3" fill="#000"/>`;
+
+        startFallingEffect('🌊');
+
+      } else if (season==='autumn') {
+
+        b.className = "bg-gradient-to-b from-amber-50 via-orange-50/20 min-h-screen text-slate-800 relative pb-48";
+
+        v.innerHTML = `<path d="M0,0 Q180,50 360,20 L1440,0 Z" fill="#d97706" opacity="0.25"/>`;
+
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#f59e0b"/><circle cx="40" cy="45" r="3" fill="#000"/>`;
+
+        startFallingEffect('🍁');
+
+      } else if (season==='winter') {
+
+        b.className = "bg-gradient-to-b from-sky-100/60 via-slate-50 min-h-screen text-slate-800 relative pb-48";
+
+        v.innerHTML = `<path d="M0,0 Q180,45 360,15 L1440,0 Z" fill="#94a3b8" opacity="0.2"/>`;
+
+        av.innerHTML = `<circle cx="50" cy="50" r="40" fill="#cbd5e1"/>`;
+
+        startFallingEffect('❄️');
+
+      }
+
+    }
+
+
+
+    let particleTimer = null;
+
+    function startFallingEffect(emoji) {
+
+      if (particleTimer) clearInterval(particleTimer);
+
+      const container = document.getElementById('particle-container');
+
+      if(!container) return;
+
+      particleTimer = setInterval(() => {
+
+        if (container.childElementCount > 15) container.removeChild(container.firstChild);
+
+        const p = document.createElement('div');
+
+        p.className = 'leaf-particle text-sm select-none';
+
+        p.innerText = emoji; p.style.left = Math.random() * 95 + 'vw'; p.style.top = '-20px';
+
+        p.style.animationDuration = (Math.random() * 4 + 5) + 's';
+
+        container.appendChild(p);
+
+      }, 2000);
+
+    }
+
+  </script>
+
+</body>
+
+</html>
+
+Your HTML file is ready
+HTML のアイコン
+igk_timecard_updated
+ HTML 
+開く
+
+沒問題！為了達成老闆娘習慣的格式（包含合併儲存格、欄位底色、文字顏色，與多重表頭），我對原本的網頁程式碼進行了以下兩項重要升級：
+
+更換試算表核心庫：將原本不支援樣式的 xlsx.js 升級替換為社群加強版的 xlsx-js-style 核心庫。
+
+重寫 downloadExcel 輸出邏輯：完全按照您提供的打工者(Arubaito)及正社員(Seishain)兩張截圖的格式進行重構，加入了邊框、置中對齊、紅字週末自動標記以及多重合併的表頭設定。
+
+您現在可以直接下載上方的 HTML 檔案並在瀏覽器中開啟。只要匯入考勤資料並點擊「老闆娘専用Excel出力」按鈕，輸出的 Excel 就會擁有完美排版，無須手動調整！
+
+
+
+
+株式会社ユナイト のチャットはモデルのトレーニングには使用されません。Gemini は AI であり、間違えることがあります。プライバシーと Gemini新しいウィンドウで開く
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -6,7 +2305,8 @@
   <title>IGK Time Card</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Replace vanilla xlsx with xlsx-js-style for styling support -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,7 +2395,7 @@
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「お疲れ様です！テキストの貼り付けだけでなく、ExcelやCSVファイルの直接インポートにも対応しましたよ♪」
+                「お疲れ様です！Excelファイルのエクスポートが、老闆娘さん希望の専用フォーマットになりましたよ♪」
               </p>
             </div>
           </div>
@@ -196,7 +2496,7 @@
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <button id="delete-selected-employee-btn" class="hidden bg-rose-50 text-rose-700 hover:bg-rose-100 px-3.5 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shadow-sm" onclick="deleteSelectedEmployee()"><i data-lucide="user-minus" class="w-4 h-4"></i> 選択中を削除</button>
               <button onclick="clearAccumulatedData()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i> 全員クリア</button>
-              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="download" class="w-4 h-4"></i> 一括マルチシートExcel保存 (.xlsx)</button>
+              <button id="excel-download-btn" disabled onclick="downloadExcel()" class="bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="download" class="w-4 h-4"></i> 老闆娘専用Excel出力</button>
             </div>
           </div>
 
@@ -546,7 +2846,6 @@
       return null;
     }
 
-    // 【終極超強解析引擎：完美對應檔案與各種斷行的複製貼上格式】
     function processAttendance() {
       document.getElementById('activeHistoryBadge').classList.add('hidden');
       const inputText = document.getElementById('rawInput').value.trim();
@@ -577,7 +2876,6 @@
         };
       });
 
-      // 核心修正：將所有文字（不管換行或空格）切成單一個一個的 Token
       const tokens = inputText.split(/[\s\t\u3000\r\n]+/);
       let lastRecordEnd = 0;
 
@@ -586,18 +2884,15 @@
         let dateTimeVal = "";
         let tokensToAdvance = 0;
         
-        // 情況A：日期與時間被空白切開 (例如 "2026/06/16" 跟 "09:13")
         if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(t) && i + 1 < tokens.length && /^\d{1,2}:\d{2}(:\d{2})?$/.test(tokens[i+1])) {
             dateTimeVal = t + " " + tokens[i+1];
             tokensToAdvance = 2;
         } 
-        // 情況B：日期與時間連在一起 (例如檔案匯入的結果)
         else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}/.test(t)) {
             dateTimeVal = t;
             tokensToAdvance = 1;
         }
         
-        // 只要找到打卡時間，就往回抓上一筆時間以後的所有字，當作一組資料
         if (dateTimeVal) {
             let chunk = tokens.slice(lastRecordEnd, i);
             let empId = "";
@@ -608,14 +2903,13 @@
                 if (/^入室?|in$/i.test(word)) { action = "入室"; }
                 else if (/^退室?|out$/i.test(word)) { action = "退室"; }
                 else if (/^\d{4,10}$/.test(word)) { empId = word; }
-                else if (word !== "") { nameArr.push(word); } // 剩下的字就是姓名
+                else if (word !== "") { nameArr.push(word); }
             });
             
             let empName = nameArr.join(" ");
             if (!empId) empId = "0000";
             if (!empName) empName = "不明";
             
-            // 安全處理日期格式，防呆 JS 報錯
             let cleanTimeStr = dateTimeVal.replace(/-/g, '/');
             const parts = cleanTimeStr.split(/[\s\/:]+/);
             
@@ -654,13 +2948,11 @@
                     }
                 }
             }
-            // 更新游標位置
             lastRecordEnd = i + tokensToAdvance;
             i += (tokensToAdvance - 1);
         }
       }
 
-      // 以下開始計算考勤工時
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
 
@@ -969,48 +3261,148 @@
     }
 
     function loadDemoData() {
-      // 提供垂直格式的測試資料，證明解析引擎完全升級
       document.getElementById('rawInput').value = `00000888\nCostard Fergus\n\n入室\n2026/07/09 14:03\n00000888\nCostard Fergus\n退室\n2026/07/09 18:00\n00000646\n林 昊嬛\n入室\n2026/07/09 09:29\n00000646\n林 昊嬛\n退室\n2026/07/09 18:31`;
       processAttendance();
     }
     
     function clearTextarea() { document.getElementById('rawInput').value = ''; }
 
+    // ====== NEW EXCEL GENERATION LOGIC ======
     function downloadExcel() {
       const names = getProcessedNames();
       if (names.length === 0) return;
       const wb = XLSX.utils.book_new();
 
-      names.forEach(name => {
-        const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
-        const logRows = [["従業員ID", "従業員名", "タイプ", "打刻日時"], ...personalRawLogs];
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(logRows), `打刻${name}`.substring(0, 31));
+      function toBossDate(dateStr) {
+        if(!dateStr) return "";
+        const parts = dateStr.split('/');
+        if(parts.length === 3) return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+        return dateStr;
+      }
+      function toBossRest(mins) {
+        const m = parseInt(mins) || 0;
+        if (m === 0) return "";
+        return `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}`;
+      }
+      function tStr(val) { return val === "未打刻" ? "" : (val || ""); }
 
+      // Standard border style
+      const borderThin = {
+        top: {style: "thin", color: {rgb: "000000"}},
+        bottom: {style: "thin", color: {rgb: "000000"}},
+        left: {style: "thin", color: {rgb: "000000"}},
+        right: {style: "thin", color: {rgb: "000000"}}
+      };
+
+      names.forEach(name => {
         const isFT = processedData.fulltime.some(r => r.name === name);
         if (isFT) {
           const entries = processedData.fulltime.filter(r => r.name === name);
-          const ftRows = [["従業員ID", "氏名", "日付", "曜日", "出勤時刻", "退勤時刻", "通常勤務時間", "早朝残業", "深夜残業", "適用シフト", "校舎", "交通費など"]];
+          const ftRows = [];
+          
+          ftRows.push([
+            "", "",
+            {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
+            {v: "①通常時給出勤", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+            {v: "②残業", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+            {v: "③休出（日曜日）", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+            {v: "計", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
+            "",
+            {v: "勤務校舎名", s: {alignment: {horizontal: "center"}, font: {bold: true}}}
+          ]);
+          
+          const header2 = ["", "", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "早残業", "後残業", "合計", "交通費", "校舎名"];
+          ftRows.push(header2.map(h => h ? {v: h, s: {border: borderThin, alignment: {horizontal: "center"}}} : ""));
+
           entries.forEach(r => {
-            ftRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.regular, r.earlyOvertime, r.lateOvertime, r.shiftLabel, r.campus || "未設定", r.locationAndFare || ""]);
+            const isWeekend = (r.day === "土" || r.day === "日");
+            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: isWeekend ? "FF0000" : "000000" } } };
+            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+            
+            ftRows.push([
+                {v: toBossDate(r.date), s: dateStyle},
+                {v: r.day, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                {v: tStr(r.checkIn), s: timeStyle},
+                {v: tStr(r.checkOut), s: timeStyle},
+                {v: "1:00", s: timeStyle},
+                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                {v: r.earlyOvertime === "00:00" ? "" : r.earlyOvertime, s: timeStyle},
+                {v: r.lateOvertime === "00:00" ? "" : r.lateOvertime, s: timeStyle},
+                {v: r.regular, s: timeStyle},
+                {v: r.locationAndFare, s: timeStyle},
+                {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}
+            ]);
           });
-          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ftRows), `出退${name}`.substring(0, 31));
+          
+          const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
+          ws_ft['!merges'] = [
+              { s: { r: 0, c: 2 }, e: { r: 0, c: 4 } },
+              { s: { r: 0, c: 5 }, e: { r: 0, c: 7 } },
+              { s: { r: 0, c: 8 }, e: { r: 0, c: 10 } },
+              { s: { r: 0, c: 11 }, e: { r: 0, c: 13 } },
+              { s: { r: 0, c: 14 }, e: { r: 0, c: 16 } }
+          ];
+          ws_ft['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 80}, {wpx: 80}];
+          XLSX.utils.book_append_sheet(wb, ws_ft, `正社員_${name}`.substring(0, 31));
+
         } else {
           const entries = processedData.parttime.filter(r => r.name === name);
-          const ptRows = [["従業員ID", "氏名", "日付", "曜日", "打刻入室", "打刻退室", "予定始業", "予定終業", "精算工時", "休憩(分)", "IGK A(授業)", "IGK B(勤務)", "校舎", "交通費など"]];
+          const ptRows = [];
+          
+          ptRows.push([
+              {v: entries[0]?.campus === "未設定" ? "名谷校" : entries[0]?.campus, s: {font: {sz: 12, bold: true}}}, "", "", "", "", "", "", "",
+              {v: "氏名", s: {alignment: {horizontal: "right"}}},
+              {v: name, s: {font: {sz: 11, bold: true}}}
+          ]);
+          
+          const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
+          const hdRedStyle = {font: {color: {rgb: "FF0000"}}, fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
+          
+          ptRows.push([
+              {v: "月日", s: hdStyle},
+              {v: "曜日", s: hdStyle},
+              {v: "出勤時刻", s: hdStyle},
+              {v: "退出時刻", s: hdStyle},
+              {v: "休憩時間", s: hdStyle},
+              {v: "GK集団A", s: hdStyle},
+              {v: "GK集団B", s: hdRedStyle},
+              {v: "勤務場所", s: hdStyle},
+              {v: "交通費", s: hdStyle},
+              {v: "備考欄", s: hdStyle}
+          ]);
+
           entries.forEach(r => {
-            ptRows.push([r.id, r.name, r.date, r.day, r.checkIn, r.checkOut, r.schedStart, r.schedEnd, r.totalWork, parseInt(r.restMin)||0, r.groupA, "", r.campus || "未設定", r.locationAndFare || ""]);
+              const isWeekend = (r.day === "土" || r.day === "日");
+              const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: isWeekend ? "FF0000" : "000000" } } };
+              const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+              const outStyle = { font: {color: {rgb: "FF0000"}}, border: borderThin, alignment: {horizontal: "center"} };
+
+              ptRows.push([
+                  {v: toBossDate(r.date), s: dateStyle},
+                  {v: r.day, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: tStr(r.checkIn), s: timeStyle},
+                  {v: tStr(r.checkOut), s: timeStyle},
+                  {v: toBossRest(r.restMin), s: outStyle},
+                  {v: r.groupA, s: outStyle},
+                  {v: r.groupB, s: outStyle},
+                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
+                  {v: r.locationAndFare, s: timeStyle},
+                  {v: "", s: timeStyle} 
+              ]);
           });
+          
           const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
-          for (let i = 0; i < entries.length; i++) {
-            const rIdx = i + 2;
-            ws_pt[`L${rIdx}`] = { t: 's', f: `IF(I${rIdx}="","",I${rIdx}-J${rIdx}/1440-IF(K${rIdx}="","00:00",K${rIdx}))` };
-          }
-          XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
+          ws_pt['!cols'] = [{wpx: 70}, {wpx: 40}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 80}, {wpx: 60}, {wpx: 120}];
+          XLSX.utils.book_append_sheet(wb, ws_pt, `打工_${name}`.substring(0, 31));
         }
       });
-      XLSX.writeFile(wb, `IGK_勤怠管理_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
-      showToast('👑 一括マルチシートExcelを出力しました！', '🌸');
+      
+      XLSX.writeFile(wb, `IGK_給与計算_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
+      showToast('👑 老闆娘専用Excel出力完了！', '🌸');
     }
+    // ====================================
 
     function toggleHistoryModal() {
       const m = document.getElementById('history-modal');
@@ -1133,3 +3525,5 @@
   </script>
 </body>
 </html>
+igk_timecard_updated.html
+「igk_timecard_updated.html」を表示しています。
