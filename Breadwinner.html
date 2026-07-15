@@ -45,6 +45,17 @@
     ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.03); border-radius: 99px; }
     ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 99px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
+
+    /* 司機專用表格樣式 */
+    .driver-th {
+      @apply px-2 py-1.5 border border-slate-200 bg-slate-100/50 text-center text-slate-600 font-bold align-middle whitespace-nowrap;
+    }
+    .driver-td {
+      @apply px-2 py-1.5 border border-slate-100 text-center whitespace-nowrap align-middle;
+    }
+    .driver-input {
+      @apply border border-slate-200 rounded text-[11px] font-mono px-1 py-0.5 w-[65px] text-center outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all;
+    }
   </style>
 </head>
 <body id="theme-body" class="bg-gradient-to-b from-emerald-50 to-teal-50 min-h-screen text-slate-800 relative pb-48">
@@ -95,7 +106,7 @@
             <div class="bg-emerald-50/80 border border-emerald-100/50 p-3.5 rounded-2xl text-xs text-emerald-950 relative">
               <div class="absolute -left-2 top-6 w-0 h-0 border-t-[8px] border-t-transparent border-r-[10px] border-r-emerald-50/80 border-b-[8px] border-b-transparent"></div>
               <p class="font-semibold leading-relaxed" id="cocoa-bubble-text">
-                「お疲れ様です！Excel出力時、自動的に『前月16日～当月15日』の全天候カレンダーを生成するように改修しましたよ♪」
+                「お疲れ様です！一部の運転手さん（上山さん、實熊さん、安藤さん）専用の画面を追加しましたよ🚗✨」
               </p>
             </div>
           </div>
@@ -210,11 +221,11 @@
             </div>
           </div>
 
-          <div id="preview-grid-wrapper" class="overflow-x-auto border border-slate-100 rounded-xl bg-slate-50/20 max-h-[480px]">
-            <table class="min-w-full text-xs text-left">
+          <div id="preview-grid-wrapper" class="overflow-x-auto border border-slate-100 rounded-xl bg-slate-50/20 max-h-[500px]">
+            <table class="min-w-full text-xs text-left border-collapse">
               <thead id="preview-thead" class="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200/60 shadow-sm z-10"></thead>
               <tbody id="preview-tbody" class="divide-y divide-slate-100 bg-white">
-                <tr><td class="px-6 py-12 text-center text-slate-400" colspan="10">データをインポートしてください。</td></tr>
+                <tr><td class="px-6 py-12 text-center text-slate-400" colspan="14">データをインポートしてください。</td></tr>
               </tbody>
             </table>
           </div>
@@ -261,6 +272,9 @@
   </div>
 
   <script>
+    // === 司機專屬名單設定 ===
+    const driverMembers = ["上山貴行", "實熊", "安藤"];
+
     function showToast(msg, icon = '🌟') {
       const notif = document.getElementById('toast-notif');
       if (!notif) return;
@@ -273,11 +287,6 @@
       }, 3500);
     }
 
-    function setCocoaText(text) {
-      const el = document.getElementById('cocoa-bubble-text');
-      if (el) el.innerText = text;
-    }
-
     function timeToMins(t) { 
       if(!t || !t.includes(':')) return 0; 
       const [h,m] = t.split(':').map(Number); 
@@ -285,8 +294,8 @@
     }
     
     function minsToTimeStr(m) { 
-      if(m<=0) return "00:00"; 
-      return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; 
+      if(m<=0) return "0:00"; 
+      return `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}`; 
     }
     
     function formatDate(d) { 
@@ -297,16 +306,12 @@
       return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; 
     }
     
-    function getWeekDayStyle(d) { 
-      return (d === '土' || d === '日') ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-slate-100 text-slate-600'; 
-    }
-
     let fullTimeMembers = ["Linh2308-", "葛野みのり", "加藤友梨", "yassmyn", "Yoon", "林昊嬛"];
     let specialPeriods = [];
     let monthlyHistory = {};
     let currentSeason = 'spring';
     let selectedEmployeeName = ""; 
-    let processedData = { fulltime: [], parttime: [], rawBackup: [] };
+    let processedData = { fulltime: [], parttime: [], drivers: [], rawBackup: [] };
 
     const daysArr = ["月", "火", "水", "木", "金", "土", "日"];
     const japaneseDays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -321,7 +326,8 @@
       if (localStorage.getItem("igk_active_processed_data")) {
         try {
           processedData = JSON.parse(localStorage.getItem("igk_active_processed_data"));
-          if (processedData.fulltime.length > 0 || processedData.parttime.length > 0) {
+          if (!processedData.drivers) processedData.drivers = []; // 向後兼容
+          if (processedData.fulltime.length > 0 || processedData.parttime.length > 0 || processedData.drivers.length > 0) {
             buildEmployeeSheetTabs();
             const allNames = getProcessedNames();
             if (allNames.length > 0) selectSheetTab(allNames[0]);
@@ -410,7 +416,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function buildWeeklyRulesDOM() {
+    function buildWeeklyRulesDOM() { /* 略 (維持不變) */ 
       const container = document.getElementById("weekly-rules-container");
       if(!container) return;
       container.innerHTML = "";
@@ -435,7 +441,7 @@
       });
     }
 
-    function saveWeeklyRules() {
+    function saveWeeklyRules() { /* 略 */ 
       const rules = {};
       daysArr.forEach(day => {
         rules[day] = {
@@ -448,7 +454,7 @@
       localStorage.setItem("igk_weekly_rules", JSON.stringify(rules));
     }
 
-    function loadWeeklyRules() {
+    function loadWeeklyRules() { /* 略 */ 
       const saved = localStorage.getItem("igk_weekly_rules");
       if (!saved) return;
       try {
@@ -464,7 +470,7 @@
       } catch (e) { console.error(e); }
     }
 
-    function renderEmployeeTags() {
+    function renderEmployeeTags() { /* 略 */ 
       const container = document.getElementById('member-tags-container');
       if(!container) return;
       container.innerHTML = "";
@@ -478,7 +484,7 @@
       lucide.createIcons();
     }
 
-    function addFullTimeMember() {
+    function addFullTimeMember() { /* 略 */ 
       const nameInput = document.getElementById('new-member-name');
       const name = nameInput.value.trim();
       if (!name) return;
@@ -491,7 +497,7 @@
       }
     }
 
-    function removeFullTimeMember(name) {
+    function removeFullTimeMember(name) { /* 略 */ 
       showCustomConfirm(`正社員リストから「${name}」を削除しますか？`, '', () => {
         fullTimeMembers = fullTimeMembers.filter(m => m !== name);
         localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
@@ -499,7 +505,7 @@
       });
     }
 
-    function renderSpecialPeriods() {
+    function renderSpecialPeriods() { /* 略 */ 
       const container = document.getElementById('special-rules-list');
       if(!container) return;
       container.innerHTML = "";
@@ -515,7 +521,7 @@
       lucide.createIcons();
     }
 
-    function addSpecialPeriod() {
+    function addSpecialPeriod() { /* 略 */ 
       const startDay = document.getElementById('special-start-date').value;
       const endDay = document.getElementById('special-end-date').value;
       const startTime = document.getElementById('special-start-time').value;
@@ -528,13 +534,13 @@
       }
     }
 
-    function removeSpecialPeriod(idx) {
+    function removeSpecialPeriod(idx) { /* 略 */ 
       specialPeriods.splice(idx, 1);
       localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
       renderSpecialPeriods();
     }
 
-    function getMatchedPeriod(dateStr) {
+    function getMatchedPeriod(dateStr) { /* 略 */ 
       const formattedDate = dateStr.replace(/\//g, '-');
       for (let period of specialPeriods) {
         if (formattedDate >= period.startDay && formattedDate <= period.endDay) return period;
@@ -555,6 +561,7 @@
       const newlyParsedNames = new Set();
       const tempFulltime = [];
       const tempParttime = [];
+      const tempDrivers = [];
       const tempRawBackup = [];
       const attendanceMap = {};
 
@@ -628,12 +635,9 @@
                     const mapKey = `${empId}_${dateKey}`;
 
                     if (!attendanceMap[mapKey]) {
-                      const normalizedEmpName = empName.replace(/\s+/g, '').toLowerCase();
-                      const isFullTime = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
-                      
                       attendanceMap[mapKey] = {
                         id: empId, name: empName, date: dateKey, day: dayOfWeek,
-                        checkIn: null, checkOut: null, isFullTime: isFullTime
+                        checkIn: null, checkOut: null
                       };
                     }
 
@@ -651,8 +655,31 @@
 
       for (const key in attendanceMap) {
         const item = attendanceMap[key];
+        const normalizedEmpName = item.name.replace(/\s+/g, '').toLowerCase();
+        
+        // 判斷是否為特殊司機名單
+        const isDriver = driverMembers.some(dName => item.name.includes(dName));
+        const isFT = normalizedFullTimeNames.some(ftName => normalizedEmpName.includes(ftName));
 
-        if (item.isFullTime) {
+        if (isDriver) {
+          // 司機邏輯初始化
+          let totalWorkMins = 0;
+          if (item.checkIn && item.checkOut) {
+            totalWorkMins = Math.max(0, timeToMins(item.checkOut) - timeToMins(item.checkIn));
+          }
+          
+          tempDrivers.push({
+            id: item.id, name: item.name, date: item.date, day: item.day,
+            checkIn: item.checkIn || "未打刻", checkOut: item.checkOut || "未打刻",
+            drive1Start: "", drive1End: "", drive2Start: "", drive2End: "",
+            restMin: 0,
+            driveTotal: "0:00",
+            igkOther: minsToTimeStr(totalWorkMins), // 初始預設全部進入 IGK其他
+            campus: "未設定", locationAndFare: "", remarks: ""
+          });
+
+        } else if (isFT) {
+          // 正職邏輯
           const matchedPeriod = getMatchedPeriod(item.date);
           let startTimeVal = defaultStart, endTimeVal = defaultEnd, restDurationVal = defaultRest, periodLabel = "通常勤務";
 
@@ -686,6 +713,7 @@
           });
 
         } else {
+          // 打工邏輯
           let schedStart = "14:00", schedEnd = "18:00";
           
           if (item.checkIn) {
@@ -730,11 +758,13 @@
       if (namesToOverwrite.length > 0) {
         processedData.fulltime = processedData.fulltime.filter(r => !namesToOverwrite.includes(r.name));
         processedData.parttime = processedData.parttime.filter(r => !namesToOverwrite.includes(r.name));
+        processedData.drivers = processedData.drivers.filter(r => !namesToOverwrite.includes(r.name));
         processedData.rawBackup = processedData.rawBackup.filter(r => !namesToOverwrite.includes(r[1]));
       }
 
       processedData.fulltime = [...processedData.fulltime, ...tempFulltime];
       processedData.parttime = [...processedData.parttime, ...tempParttime];
+      processedData.drivers = [...processedData.drivers, ...tempDrivers];
       processedData.rawBackup = [...processedData.rawBackup, ...tempRawBackup];
 
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
@@ -749,6 +779,7 @@
       const names = new Set();
       processedData.fulltime.forEach(r => names.add(r.name));
       processedData.parttime.forEach(r => names.add(r.name));
+      processedData.drivers.forEach(r => names.add(r.name));
       return Array.from(names);
     }
 
@@ -763,10 +794,16 @@
       }
       names.forEach(name => {
         const isFT = processedData.fulltime.some(r => r.name === name);
+        const isDr = processedData.drivers.some(r => r.name === name);
+        
+        let icon = '⏱️';
+        if (isFT) icon = '💼';
+        if (isDr) icon = '🚗';
+
         const tabBtn = document.createElement('button');
         tabBtn.id = `sheet-tab-${name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`;
         tabBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold border whitespace-nowrap`;
-        tabBtn.innerHTML = `<span>${isFT ? '💼' : '⏱️'} ${name}</span>`;
+        tabBtn.innerHTML = `<span>${icon} ${name}</span>`;
         tabBtn.onclick = () => selectSheetTab(name);
         container.appendChild(tabBtn);
       });
@@ -786,14 +823,14 @@
       if (!selectedEmployeeName || !campusValue) return;
       
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
+      const isDr = processedData.drivers.some(r => r.name === selectedEmployeeName);
+      
       if (isFT) {
-        processedData.fulltime.forEach(r => {
-          if (r.name === selectedEmployeeName) r.campus = campusValue;
-        });
+        processedData.fulltime.forEach(r => { if (r.name === selectedEmployeeName) r.campus = campusValue; });
+      } else if (isDr) {
+        processedData.drivers.forEach(r => { if (r.name === selectedEmployeeName) r.campus = campusValue; });
       } else {
-        processedData.parttime.forEach(r => {
-          if (r.name === selectedEmployeeName) r.campus = campusValue;
-        });
+        processedData.parttime.forEach(r => { if (r.name === selectedEmployeeName) r.campus = campusValue; });
       }
       
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
@@ -807,6 +844,7 @@
       if (!selectedEmployeeName) { if(thead) thead.innerHTML = ""; if(tbody) tbody.innerHTML = "<tr><td>名簿が空です。</td></tr>"; return; }
 
       const isFT = processedData.fulltime.some(r => r.name === selectedEmployeeName);
+      const isDr = processedData.drivers.some(r => r.name === selectedEmployeeName);
 
       const bulkSelectorHtml = `
         <select onchange="bulkUpdateCampus(this.value)" class="text-[10px] px-1 py-0.5 rounded border border-slate-300 font-normal bg-white text-slate-700 outline-none">
@@ -817,6 +855,7 @@
       `;
 
       if (isFT) {
+        // 正職畫面
         thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2">出勤</th><th class="px-4 py-2">退勤</th><th class="px-4 py-2">通常</th><th class="px-4 py-2">早朝</th><th class="px-4 py-2">深夜</th><th class="px-4 py-2">シフト</th><th class="px-4 py-2 min-w-[240px]">校舎 ${bulkSelectorHtml} / 交通費</th></tr>`;
         const rows = processedData.fulltime.filter(r => r.name === selectedEmployeeName);
         tbody.innerHTML = rows.map(r => {
@@ -836,8 +875,63 @@
               </td>
             </tr>`;
         }).join('');
+
+      } else if (isDr) {
+        // 司機專屬畫面
+        thead.innerHTML = `
+          <tr>
+            <th rowspan="2" class="driver-th">月日</th>
+            <th rowspan="2" class="driver-th">曜日</th>
+            <th rowspan="2" class="driver-th">出勤時刻</th>
+            <th rowspan="2" class="driver-th">退出時刻</th>
+            <th colspan="2" class="driver-th bg-emerald-100/40">1回目運転時刻</th>
+            <th colspan="2" class="driver-th bg-teal-100/40">2回目運転時刻</th>
+            <th rowspan="2" class="driver-th">休憩 (分)</th>
+            <th rowspan="2" class="driver-th">送迎時間</th>
+            <th rowspan="2" class="driver-th text-amber-700">IGKその他</th>
+            <th rowspan="2" class="driver-th min-w-[200px]">校舎 ${bulkSelectorHtml} / 交通費</th>
+            <th rowspan="2" class="driver-th">備考欄</th>
+          </tr>
+          <tr>
+            <th class="driver-th font-normal bg-emerald-50/50">運転開始</th><th class="driver-th font-normal bg-emerald-50/50">運転終了</th>
+            <th class="driver-th font-normal bg-teal-50/50">運転開始</th><th class="driver-th font-normal bg-teal-50/50">運転終了</th>
+          </tr>
+        `;
+        const rows = processedData.drivers.filter(r => r.name === selectedEmployeeName);
+        tbody.innerHTML = rows.map(r => {
+          const gIdx = processedData.drivers.indexOf(r);
+          return `
+            <tr class="text-xs hover:bg-slate-50">
+              <td class="driver-td">${r.date}</td><td class="driver-td">${r.day}</td>
+              <td class="driver-td text-slate-500">${r.checkIn}</td><td class="driver-td text-slate-500">${r.checkOut}</td>
+              
+              <td class="driver-td bg-emerald-50/20"><input type="time" value="${r.drive1Start}" onchange="updateDriverData(${gIdx}, 'drive1Start', this.value)" class="driver-input"></td>
+              <td class="driver-td bg-emerald-50/20"><input type="time" value="${r.drive1End}" onchange="updateDriverData(${gIdx}, 'drive1End', this.value)" class="driver-input"></td>
+              
+              <td class="driver-td bg-teal-50/20"><input type="time" value="${r.drive2Start}" onchange="updateDriverData(${gIdx}, 'drive2Start', this.value)" class="driver-input"></td>
+              <td class="driver-td bg-teal-50/20"><input type="time" value="${r.drive2End}" onchange="updateDriverData(${gIdx}, 'drive2End', this.value)" class="driver-input"></td>
+              
+              <td class="driver-td"><input type="number" value="${r.restMin}" oninput="updateDriverData(${gIdx}, 'restMin', this.value)" class="border w-10 text-center rounded outline-none py-0.5"></td>
+              
+              <td class="driver-td font-bold text-slate-700 bg-slate-50" id="dr-drivetotal-${gIdx}">${r.driveTotal}</td>
+              <td class="driver-td font-bold text-amber-700 bg-amber-50/40" id="dr-igkother-${gIdx}">${r.igkOther}</td>
+              
+              <td class="px-2 py-1 flex items-center gap-1 min-w-[200px] border-b border-slate-100">
+                <select onchange="updateCampus(${gIdx}, 'driver', this.value)" class="border px-1 py-0.5 rounded text-[11px] bg-white w-16">
+                  <option value="未設定" ${r.campus === '未設定' ? 'selected' : ''}>-</option>
+                  <option value="名谷校" ${r.campus === '名谷校' ? 'selected' : ''}>名谷校</option>
+                  <option value="六甲校" ${r.campus === '六甲校' ? 'selected' : ''}>六甲校</option>
+                </select>
+                <input type="text" value="${r.locationAndFare || ''}" placeholder="/ 750円" onchange="updateLocationFare(${gIdx}, 'driver', this.value)" class="border px-1 py-0.5 rounded text-[11px] flex-1">
+              </td>
+              
+              <td class="driver-td"><input type="text" value="${r.remarks || ''}" onchange="updateDriverData(${gIdx}, 'remarks', this.value)" class="border rounded text-[11px] px-1 py-0.5 w-24 outline-none"></td>
+            </tr>`;
+        }).join('');
+
       } else {
-        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定</th><th class="px-4 py-2 bg-amber-50">精算</th><th class="px-4 py-2">休憩</th><th class="px-4 py-2">IGK A</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B</th><th class="px-4 py-2 min-w-[240px]">校舎 ${bulkSelectorHtml} / 交通費</th></tr>`;
+        // 打工仔畫面
+        thead.innerHTML = `<tr><th class="px-4 py-2">日付</th><th class="px-4 py-2">曜日</th><th class="px-4 py-2 text-slate-400">打刻入室</th><th class="px-4 py-2 text-slate-400">打刻退室</th><th class="px-4 py-2 text-blue-700">予定</th><th class="px-4 py-2 bg-amber-50">精算</th><th class="px-4 py-2">休憩(分)</th><th class="px-4 py-2">IGK A</th><th class="px-4 py-2 font-bold text-indigo-900">IGK B</th><th class="px-4 py-2 min-w-[240px]">校舎 ${bulkSelectorHtml} / 交通費</th></tr>`;
         const rows = processedData.parttime.filter(r => r.name === selectedEmployeeName);
         tbody.innerHTML = rows.map(r => {
           const gIdx = processedData.parttime.indexOf(r);
@@ -866,19 +960,53 @@
       }
     }
 
+    // === 司機更新運算邏輯 ===
+    function updateDriverData(idx, field, val) {
+      const item = processedData.drivers[idx];
+      item[field] = val;
+
+      // 重新計算送迎時間
+      let d1 = 0, d2 = 0;
+      if (item.drive1Start && item.drive1End) d1 = Math.max(0, timeToMins(item.drive1End) - timeToMins(item.drive1Start));
+      if (item.drive2Start && item.drive2End) d2 = Math.max(0, timeToMins(item.drive2End) - timeToMins(item.drive2Start));
+      
+      const totalDriveMins = d1 + d2;
+      item.driveTotal = minsToTimeStr(totalDriveMins);
+
+      // 重新計算 IGK その他 (總時長 - 休憩 - 送迎時間)
+      let totalWorkMins = 0;
+      if (item.checkIn !== "未打刻" && item.checkOut !== "未打刻") {
+        totalWorkMins = Math.max(0, timeToMins(item.checkOut) - timeToMins(item.checkIn));
+      }
+      const restMins = parseInt(item.restMin) || 0;
+      
+      const igkMins = Math.max(0, totalWorkMins - restMins - totalDriveMins);
+      item.igkOther = minsToTimeStr(igkMins);
+
+      // 更新畫面
+      const cellDrive = document.getElementById(`dr-drivetotal-${idx}`);
+      const cellIgk = document.getElementById(`dr-igkother-${idx}`);
+      if (cellDrive) cellDrive.innerText = item.driveTotal;
+      if (cellIgk) cellIgk.innerText = item.igkOther;
+
+      localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
+    }
+
     function updateCampus(idx, type, val) {
       if (type === 'fulltime') processedData.fulltime[idx].campus = val;
+      else if (type === 'driver') processedData.drivers[idx].campus = val;
       else processedData.parttime[idx].campus = val;
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
     function updateLocationFare(idx, type, val) {
       if (type === 'fulltime') processedData.fulltime[idx].locationAndFare = val;
+      else if (type === 'driver') processedData.drivers[idx].locationAndFare = val;
       else processedData.parttime[idx].locationAndFare = val;
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeSchedule(idx, type, val) {
+    function updatePartTimeSchedule(idx, type, val) { /* 略 */ 
       const item = processedData.parttime[idx];
       if (type === 'start') item.schedStart = val;
       if (type === 'end') item.schedEnd = val;
@@ -902,19 +1030,19 @@
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeRest(idx, val) {
+    function updatePartTimeRest(idx, val) { /* 略 */ 
       processedData.parttime[idx].restMin = parseInt(val) || 0;
       recalculatePartTimeB(idx);
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeGroupA(idx, val) {
+    function updatePartTimeGroupA(idx, val) { /* 略 */ 
       processedData.parttime[idx].groupA = val;
       recalculatePartTimeB(idx);
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function recalculatePartTimeB(idx) {
+    function recalculatePartTimeB(idx) { /* 略 */ 
       const item = processedData.parttime[idx];
       const totalMins = timeToMins(item.totalWork);
       const netMins = Math.max(0, totalMins - (parseInt(item.restMin) || 0) - timeToMins(item.groupA));
@@ -929,6 +1057,7 @@
       showCustomConfirm(`従業員「${name}」のデータを削除しますか？`, '', () => {
         processedData.fulltime = processedData.fulltime.filter(r => r.name !== name);
         processedData.parttime = processedData.parttime.filter(r => r.name !== name);
+        processedData.drivers = processedData.drivers.filter(r => r.name !== name);
         processedData.rawBackup = processedData.rawBackup.filter(r => r[1] !== name);
         localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
         selectedEmployeeName = "";
@@ -940,7 +1069,7 @@
 
     function clearAccumulatedData() {
       showCustomConfirm("すべての蓄積データを完全に初期化しますか？", '', () => {
-        processedData = { fulltime: [], parttime: [], rawBackup: [] };
+        processedData = { fulltime: [], parttime: [], drivers: [], rawBackup: [] };
         selectedEmployeeName = "";
         localStorage.removeItem("igk_active_processed_data");
         buildEmployeeSheetTabs();
@@ -957,19 +1086,18 @@
     }
 
     function loadDemoData() {
-      document.getElementById('rawInput').value = `00000888\nCostard Fergus\n\n入室\n2026/07/09 14:03\n00000888\nCostard Fergus\n退室\n2026/07/09 18:00\n00000646\n林 昊嬛\n入室\n2026/07/09 09:29\n00000646\n林 昊嬛\n退室\n2026/07/09 18:31`;
+      document.getElementById('rawInput').value = `00000888\nCostard Fergus\n\n入室\n2026/07/09 14:03\n00000888\nCostard Fergus\n退室\n2026/07/09 18:00\n00000646\n林 昊嬛\n入室\n2026/07/09 09:29\n00000646\n林 昊嬛\n退室\n2026/07/09 18:31\n00000999\n實熊\n入室\n2026/07/09 14:12\n00000999\n實熊\n退室\n2026/07/09 16:00`;
       processAttendance();
     }
     
     function clearTextarea() { document.getElementById('rawInput').value = ''; }
 
-    // ====== 老闆娘專用 EXCEL 一人兩頁且強制產生「前月16號至當月15號」的輸出邏輯 ======
+    // ====== 老闆娘專用 EXCEL 邏輯 ======
     function downloadExcel() {
       const names = getProcessedNames();
       if (names.length === 0) return;
       const wb = XLSX.utils.book_new();
 
-      // 自動偵測匯入資料的週期
       let maxTime = 0;
       processedData.rawBackup.forEach(r => {
         const dateStr = r[3].split(' ')[0].replace(/-/g, '/');
@@ -991,7 +1119,6 @@
       const startDate = new Date(startYear, startMonth, 16);
       const endDate = new Date(endYear, endMonth, 15);
       
-      // 生成週期內完整的日期陣列
       const periodDates = [];
       let curr = new Date(startDate);
       while (curr <= endDate) {
@@ -1024,7 +1151,7 @@
       };
 
       names.forEach(name => {
-        // 第一張工作表：打刻流水帳資料
+        // --- 1. 打刻流水帳資料 ---
         const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
         const logRows = [
           ["従業員ID", "従業員名", "タイプ", "打刻日時"].map(h => ({v: h, s: {border: borderThin, fill: {fgColor: {rgb: "E2EFDA"}}, font: {bold: true}}}))
@@ -1041,23 +1168,23 @@
         ws_log['!cols'] = [{wpx: 80}, {wpx: 120}, {wpx: 60}, {wpx: 140}];
         XLSX.utils.book_append_sheet(wb, ws_log, `打刻${name}`.substring(0, 31));
 
-        // 第二張工作表：考勤與薪水計算
+        // --- 2. 考勤與薪水計算 ---
         const isFT = processedData.fulltime.some(r => r.name === name);
+        const isDr = processedData.drivers.some(r => r.name === name);
         
         if (isFT) {
+          // 正職 Excel
           const entries = processedData.fulltime.filter(r => r.name === name);
           const entryMap = {};
           entries.forEach(r => { entryMap[r.date] = r; });
 
           const ftRows = [];
           ftRows.push([
-            "", "",
-            {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
+            "", "", {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
             {v: "①通常時給出勤", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
             {v: "②残業", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
             {v: "③休出（日曜日）", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
-            {v: "計", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
-            "",
+            {v: "計", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "", "",
             {v: "勤務校舎名", s: {alignment: {horizontal: "center"}, font: {bold: true}}}
           ]);
           
@@ -1071,11 +1198,8 @@
             
             if (r) {
               ftRows.push([
-                  {v: toBossDate(r.date), s: dateStyle},
-                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: tStr(r.checkIn), s: timeStyle},
-                  {v: tStr(r.checkOut), s: timeStyle},
-                  {v: "1:00", s: timeStyle},
+                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle}, {v: "1:00", s: timeStyle},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
@@ -1087,8 +1211,7 @@
               ]);
             } else {
               ftRows.push([
-                  {v: toBossDate(pd.dateStr), s: dateStyle},
-                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
                   {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
@@ -1110,7 +1233,75 @@
           ws_ft['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 80}, {wpx: 80}];
           XLSX.utils.book_append_sheet(wb, ws_ft, `出退${name}`.substring(0, 31));
 
+        } else if (isDr) {
+          // 司機 Excel
+          const entries = processedData.drivers.filter(r => r.name === name);
+          const entryMap = {};
+          entries.forEach(r => { entryMap[r.date] = r; });
+
+          const drRows = [];
+          const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center", vertical: "center"}};
+
+          // 第一行 Header
+          drRows.push([
+              {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
+              {v: "1回目運転時刻", s: hdStyle}, "", {v: "2回目運転時刻", s: hdStyle}, "",
+              {v: "休憩時間", s: hdStyle}, {v: "送迎時間", s: hdStyle}, {v: "IGKその他", s: hdStyle},
+              {v: "交通費", s: hdStyle}, {v: "勤務場所", s: hdStyle}, {v: "備考欄", s: hdStyle}
+          ]);
+          
+          // 第二行 Header (展開運転開始/終了)
+          drRows.push([
+              "", "", "", "",
+              {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle}, {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle},
+              "", "", "", "", "", ""
+          ]);
+
+          periodDates.forEach(pd => {
+            const r = entryMap[pd.dateStr];
+            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
+            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+
+            if (r) {
+              drRows.push([
+                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
+                  {v: r.drive1Start || "", s: timeStyle}, {v: r.drive1End || "", s: timeStyle},
+                  {v: r.drive2Start || "", s: timeStyle}, {v: r.drive2End || "", s: timeStyle},
+                  {v: toBossRest(r.restMin), s: timeStyle},
+                  {v: r.driveTotal === "0:00" ? "0:00" : r.driveTotal, s: timeStyle},
+                  {v: r.igkOther === "0:00" ? "0:00" : r.igkOther, s: timeStyle},
+                  {v: r.locationAndFare || "", s: timeStyle},
+                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
+                  {v: r.remarks || "", s: timeStyle}
+              ]);
+            } else {
+              drRows.push([
+                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "0:00", s: timeStyle}, {v: "0:00", s: timeStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle}
+              ]);
+            }
+          });
+          
+          const ws_dr = XLSX.utils.aoa_to_sheet(drRows);
+          ws_dr['!merges'] = [
+              { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+              { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+              { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } }, // 1回目
+              { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } }, // 2回目
+              { s: { r: 0, c: 8 }, e: { r: 1, c: 8 } }, { s: { r: 0, c: 9 }, e: { r: 1, c: 9 } },
+              { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } },
+              { s: { r: 0, c: 12 }, e: { r: 1, c: 12 } }, { s: { r: 0, c: 13 }, e: { r: 1, c: 13 } }
+          ];
+          ws_dr['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 70}, {wpx: 60}, {wpx: 80}, {wpx: 120}];
+          XLSX.utils.book_append_sheet(wb, ws_dr, `出退${name}`.substring(0, 31));
+
         } else {
+          // 打工仔 Excel
           const entries = processedData.parttime.filter(r => r.name === name);
           const entryMap = {};
           entries.forEach(r => { entryMap[r.date] = r; });
@@ -1127,16 +1318,9 @@
           const hdRedStyle = {font: {color: {rgb: "FF0000"}}, fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
           
           ptRows.push([
-              {v: "月日", s: hdStyle},
-              {v: "曜日", s: hdStyle},
-              {v: "出勤時刻", s: hdStyle},
-              {v: "退出時刻", s: hdStyle},
-              {v: "休憩時間", s: hdStyle},
-              {v: "GK集団A", s: hdStyle},
-              {v: "GK集団B", s: hdRedStyle},
-              {v: "勤務場所", s: hdStyle},
-              {v: "交通費", s: hdStyle},
-              {v: "備考欄", s: hdStyle}
+              {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
+              {v: "休憩時間", s: hdStyle}, {v: "GK集団A", s: hdStyle}, {v: "GK集団B", s: hdRedStyle},
+              {v: "勤務場所", s: hdStyle}, {v: "交通費", s: hdStyle}, {v: "備考欄", s: hdStyle}
           ]);
 
           periodDates.forEach(pd => {
@@ -1147,29 +1331,17 @@
 
             if (r) {
               ptRows.push([
-                  {v: toBossDate(r.date), s: dateStyle},
-                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: tStr(r.checkIn), s: timeStyle},
-                  {v: tStr(r.checkOut), s: timeStyle},
-                  {v: toBossRest(r.restMin), s: outStyle},
-                  {v: r.groupA, s: outStyle},
-                  {v: r.groupB === "00:00" ? "" : r.groupB, s: outStyle},
-                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
-                  {v: r.locationAndFare || "", s: timeStyle},
-                  {v: "", s: timeStyle} 
+                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
+                  {v: toBossRest(r.restMin), s: outStyle}, {v: r.groupA, s: outStyle}, {v: r.groupB === "00:00" ? "" : r.groupB, s: outStyle},
+                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}, {v: r.locationAndFare || "", s: timeStyle}, {v: "", s: timeStyle} 
               ]);
             } else {
               ptRows.push([
-                  {v: toBossDate(pd.dateStr), s: dateStyle},
-                  {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: "", s: timeStyle},
-                  {v: "", s: timeStyle},
-                  {v: "", s: outStyle},
-                  {v: "", s: outStyle},
-                  {v: "", s: outStyle},
-                  {v: "", s: timeStyle},
-                  {v: "", s: timeStyle},
-                  {v: "", s: timeStyle} 
+                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                  {v: "", s: outStyle}, {v: "", s: outStyle}, {v: "", s: outStyle},
+                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle} 
               ]);
             }
           });
@@ -1184,16 +1356,17 @@
       showToast('👑 老闆娘専用Excel出力完了！', '🌸');
     }
 
-    function toggleHistoryModal() {
+    // === 歷史模組與其他功能 (不變) ===
+    function toggleHistoryModal() { /* 略 */ 
       const m = document.getElementById('history-modal');
       if(!m) return;
       m.className = m.classList.contains('hidden') ? "fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : "hidden";
       if(!m.classList.contains('hidden')) renderHistoryList();
     }
 
-    function saveToHistory() {
+    function saveToHistory() { /* 略 */ 
       const name = document.getElementById('history-save-name').value.trim();
-      if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0)) {
+      if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0 || processedData.drivers.length > 0)) {
         monthlyHistory[name] = JSON.parse(JSON.stringify(processedData));
         localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
         document.getElementById('history-save-name').value = "";
@@ -1202,9 +1375,10 @@
       }
     }
 
-    function loadFromHistory(name) {
+    function loadFromHistory(name) { /* 略 */ 
       if (!monthlyHistory[name]) return;
       processedData = JSON.parse(JSON.stringify(monthlyHistory[name]));
+      if(!processedData.drivers) processedData.drivers = []; // 向後兼容
       buildEmployeeSheetTabs();
       if (getProcessedNames().length > 0) selectSheetTab(getProcessedNames()[0]);
       document.getElementById('activeHistoryBadge').classList.remove('hidden');
@@ -1213,7 +1387,7 @@
       toggleHistoryModal();
     }
 
-    function deleteFromHistory(name) {
+    function deleteFromHistory(name) { /* 略 */ 
       showCustomConfirm(`アーカイブ「${name}」を完全に削除しますか？`, '', () => {
         delete monthlyHistory[name];
         localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
@@ -1221,7 +1395,7 @@
       });
     }
 
-    function renderHistoryList() {
+    function renderHistoryList() { /* 略 */ 
       const container = document.getElementById('history-items-list');
       if(!container) return;
       container.innerHTML = "";
@@ -1258,7 +1432,7 @@
       document.getElementById('confirm-dialog').classList.remove('flex');
     };
 
-    function changeSeason(season) {
+    function changeSeason(season) { /* 略 */ 
       currentSeason = season;
       const b = document.getElementById('theme-body');
       const v = document.getElementById('vines-svg');
@@ -1289,7 +1463,7 @@
     }
 
     let particleTimer = null;
-    function startFallingEffect(emoji) {
+    function startFallingEffect(emoji) { /* 略 */ 
       if (particleTimer) clearInterval(particleTimer);
       const container = document.getElementById('particle-container');
       if(!container) return;
