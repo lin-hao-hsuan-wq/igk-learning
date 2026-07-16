@@ -416,7 +416,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function buildWeeklyRulesDOM() { /* 略 (維持不變) */ 
+    function buildWeeklyRulesDOM() { 
       const container = document.getElementById("weekly-rules-container");
       if(!container) return;
       container.innerHTML = "";
@@ -441,7 +441,7 @@
       });
     }
 
-    function saveWeeklyRules() { /* 略 */ 
+    function saveWeeklyRules() { 
       const rules = {};
       daysArr.forEach(day => {
         rules[day] = {
@@ -454,7 +454,7 @@
       localStorage.setItem("igk_weekly_rules", JSON.stringify(rules));
     }
 
-    function loadWeeklyRules() { /* 略 */ 
+    function loadWeeklyRules() { 
       const saved = localStorage.getItem("igk_weekly_rules");
       if (!saved) return;
       try {
@@ -470,7 +470,7 @@
       } catch (e) { console.error(e); }
     }
 
-    function renderEmployeeTags() { /* 略 */ 
+    function renderEmployeeTags() { 
       const container = document.getElementById('member-tags-container');
       if(!container) return;
       container.innerHTML = "";
@@ -484,7 +484,7 @@
       lucide.createIcons();
     }
 
-    function addFullTimeMember() { /* 略 */ 
+    function addFullTimeMember() { 
       const nameInput = document.getElementById('new-member-name');
       const name = nameInput.value.trim();
       if (!name) return;
@@ -497,7 +497,7 @@
       }
     }
 
-    function removeFullTimeMember(name) { /* 略 */ 
+    function removeFullTimeMember(name) { 
       showCustomConfirm(`正社員リストから「${name}」を削除しますか？`, '', () => {
         fullTimeMembers = fullTimeMembers.filter(m => m !== name);
         localStorage.setItem("igk_fulltime_members", JSON.stringify(fullTimeMembers));
@@ -505,7 +505,7 @@
       });
     }
 
-    function renderSpecialPeriods() { /* 略 */ 
+    function renderSpecialPeriods() { 
       const container = document.getElementById('special-rules-list');
       if(!container) return;
       container.innerHTML = "";
@@ -521,7 +521,7 @@
       lucide.createIcons();
     }
 
-    function addSpecialPeriod() { /* 略 */ 
+    function addSpecialPeriod() { 
       const startDay = document.getElementById('special-start-date').value;
       const endDay = document.getElementById('special-end-date').value;
       const startTime = document.getElementById('special-start-time').value;
@@ -534,13 +534,13 @@
       }
     }
 
-    function removeSpecialPeriod(idx) { /* 略 */ 
+    function removeSpecialPeriod(idx) { 
       specialPeriods.splice(idx, 1);
       localStorage.setItem("igk_special_periods", JSON.stringify(specialPeriods));
       renderSpecialPeriods();
     }
 
-    function getMatchedPeriod(dateStr) { /* 略 */ 
+    function getMatchedPeriod(dateStr) { 
       const formattedDate = dateStr.replace(/\//g, '-');
       for (let period of specialPeriods) {
         if (formattedDate >= period.startDay && formattedDate <= period.endDay) return period;
@@ -1006,7 +1006,7 @@
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeSchedule(idx, type, val) { /* 略 */ 
+    function updatePartTimeSchedule(idx, type, val) { 
       const item = processedData.parttime[idx];
       if (type === 'start') item.schedStart = val;
       if (type === 'end') item.schedEnd = val;
@@ -1030,19 +1030,19 @@
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeRest(idx, val) { /* 略 */ 
+    function updatePartTimeRest(idx, val) { 
       processedData.parttime[idx].restMin = parseInt(val) || 0;
       recalculatePartTimeB(idx);
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function updatePartTimeGroupA(idx, val) { /* 略 */ 
+    function updatePartTimeGroupA(idx, val) { 
       processedData.parttime[idx].groupA = val;
       recalculatePartTimeB(idx);
       localStorage.setItem("igk_active_processed_data", JSON.stringify(processedData));
     }
 
-    function recalculatePartTimeB(idx) { /* 略 */ 
+    function recalculatePartTimeB(idx) { 
       const item = processedData.parttime[idx];
       const totalMins = timeToMins(item.totalWork);
       const netMins = Math.max(0, totalMins - (parseInt(item.restMin) || 0) - timeToMins(item.groupA));
@@ -1082,7 +1082,9 @@
       const dlBtn = document.getElementById('excel-download-btn');
       if (!dlBtn) return;
       dlBtn.disabled = !enable;
-      dlBtn.className = enable ? "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer" : "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm";
+      dlBtn.className = enable 
+        ? "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-center gap-1.5 shadow-sm" 
+        : "bg-slate-300 text-slate-500 cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
     }
 
     function loadDemoData() {
@@ -1092,279 +1094,286 @@
     
     function clearTextarea() { document.getElementById('rawInput').value = ''; }
 
-    // ====== 老闆娘專用 EXCEL 邏輯 ======
+    // ====== 老闆娘專用 EXCEL 邏輯 (強化版) ======
     function downloadExcel() {
-      const names = getProcessedNames();
-      if (names.length === 0) return;
-      const wb = XLSX.utils.book_new();
-
-      let maxTime = 0;
-      processedData.rawBackup.forEach(r => {
-        const dateStr = r[3].split(' ')[0].replace(/-/g, '/');
-        const d = new Date(dateStr);
-        if(!isNaN(d.getTime()) && d.getTime() > maxTime) maxTime = d.getTime();
-      });
-      
-      const refDate = maxTime > 0 ? new Date(maxTime) : new Date();
-      let startYear = refDate.getFullYear();
-      let startMonth = refDate.getMonth();
-      if (refDate.getDate() <= 15) {
-        startMonth -= 1;
-        if (startMonth < 0) { startMonth = 11; startYear -= 1; }
-      }
-      let endYear = startYear;
-      let endMonth = startMonth + 1;
-      if (endMonth > 11) { endMonth = 0; endYear += 1; }
-      
-      const startDate = new Date(startYear, startMonth, 16);
-      const endDate = new Date(endYear, endMonth, 15);
-      
-      const periodDates = [];
-      let curr = new Date(startDate);
-      while (curr <= endDate) {
-        periodDates.push({
-          dateStr: `${curr.getFullYear()}/${(curr.getMonth()+1).toString().padStart(2,'0')}/${curr.getDate().toString().padStart(2,'0')}`,
-          dayStr: japaneseDays[curr.getDay()],
-          isWeekend: curr.getDay() === 0 || curr.getDay() === 6
-        });
-        curr.setDate(curr.getDate() + 1);
-      }
-
-      function toBossDate(dateStr) {
-        if(!dateStr) return "";
-        const parts = dateStr.split('/');
-        if(parts.length === 3) return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
-        return dateStr;
-      }
-      function toBossRest(mins) {
-        const m = parseInt(mins) || 0;
-        if (m === 0) return "";
-        return `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}`;
-      }
-      function tStr(val) { return val === "未打刻" ? "" : (val || ""); }
-
-      const borderThin = {
-        top: {style: "thin", color: {rgb: "000000"}},
-        bottom: {style: "thin", color: {rgb: "000000"}},
-        left: {style: "thin", color: {rgb: "000000"}},
-        right: {style: "thin", color: {rgb: "000000"}}
-      };
-
-      names.forEach(name => {
-        // --- 1. 打刻流水帳資料 ---
-        const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
-        const logRows = [
-          ["従業員ID", "従業員名", "タイプ", "打刻日時"].map(h => ({v: h, s: {border: borderThin, fill: {fgColor: {rgb: "E2EFDA"}}, font: {bold: true}}}))
-        ];
-        personalRawLogs.forEach(r => {
-          logRows.push([
-            {v: r[0], s: {border: borderThin}},
-            {v: r[1], s: {border: borderThin}},
-            {v: r[2], s: {border: borderThin, alignment: {horizontal: "center"}}},
-            {v: r[3], s: {border: borderThin}}
-          ]);
-        });
-        const ws_log = XLSX.utils.aoa_to_sheet(logRows);
-        ws_log['!cols'] = [{wpx: 80}, {wpx: 120}, {wpx: 60}, {wpx: 140}];
-        XLSX.utils.book_append_sheet(wb, ws_log, `打刻${name}`.substring(0, 31));
-
-        // --- 2. 考勤與薪水計算 ---
-        const isFT = processedData.fulltime.some(r => r.name === name);
-        const isDr = processedData.drivers.some(r => r.name === name);
-        
-        if (isFT) {
-          // 正職 Excel
-          const entries = processedData.fulltime.filter(r => r.name === name);
-          const entryMap = {};
-          entries.forEach(r => { entryMap[r.date] = r; });
-
-          const ftRows = [];
-          ftRows.push([
-            "", "", {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
-            {v: "①通常時給出勤", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
-            {v: "②残業", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
-            {v: "③休出（日曜日）", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
-            {v: "計", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "", "",
-            {v: "勤務校舎名", s: {alignment: {horizontal: "center"}, font: {bold: true}}}
-          ]);
-          
-          const header2 = ["", "", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "早残業", "後残業", "合計", "交通費", "校舎名"];
-          ftRows.push(header2.map(h => h ? {v: h, s: {border: borderThin, alignment: {horizontal: "center"}}} : ""));
-
-          periodDates.forEach(pd => {
-            const r = entryMap[pd.dateStr];
-            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
-            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
-            
-            if (r) {
-              ftRows.push([
-                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle}, {v: "1:00", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: r.earlyOvertime === "00:00" ? "" : r.earlyOvertime, s: timeStyle},
-                  {v: r.lateOvertime === "00:00" ? "" : r.lateOvertime, s: timeStyle},
-                  {v: r.regular === "00:00" ? "" : r.regular, s: timeStyle},
-                  {v: r.locationAndFare || "", s: timeStyle},
-                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}
-              ]);
-            } else {
-              ftRows.push([
-                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}
-              ]);
-            }
-          });
-          
-          const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
-          ws_ft['!merges'] = [
-              { s: { r: 0, c: 2 }, e: { r: 0, c: 4 } },
-              { s: { r: 0, c: 5 }, e: { r: 0, c: 7 } },
-              { s: { r: 0, c: 8 }, e: { r: 0, c: 10 } },
-              { s: { r: 0, c: 11 }, e: { r: 0, c: 13 } },
-              { s: { r: 0, c: 14 }, e: { r: 0, c: 16 } }
-          ];
-          ws_ft['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 80}, {wpx: 80}];
-          XLSX.utils.book_append_sheet(wb, ws_ft, `出退${name}`.substring(0, 31));
-
-        } else if (isDr) {
-          // 司機 Excel
-          const entries = processedData.drivers.filter(r => r.name === name);
-          const entryMap = {};
-          entries.forEach(r => { entryMap[r.date] = r; });
-
-          const drRows = [];
-          const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center", vertical: "center"}};
-
-          // 第一行 Header
-          drRows.push([
-              {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
-              {v: "1回目運転時刻", s: hdStyle}, "", {v: "2回目運転時刻", s: hdStyle}, "",
-              {v: "休憩時間", s: hdStyle}, {v: "送迎時間", s: hdStyle}, {v: "IGKその他", s: hdStyle},
-              {v: "交通費", s: hdStyle}, {v: "勤務場所", s: hdStyle}, {v: "備考欄", s: hdStyle}
-          ]);
-          
-          // 第二行 Header (展開運転開始/終了)
-          drRows.push([
-              "", "", "", "",
-              {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle}, {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle},
-              "", "", "", "", "", ""
-          ]);
-
-          periodDates.forEach(pd => {
-            const r = entryMap[pd.dateStr];
-            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
-            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
-
-            if (r) {
-              drRows.push([
-                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
-                  {v: r.drive1Start || "", s: timeStyle}, {v: r.drive1End || "", s: timeStyle},
-                  {v: r.drive2Start || "", s: timeStyle}, {v: r.drive2End || "", s: timeStyle},
-                  {v: toBossRest(r.restMin), s: timeStyle},
-                  {v: r.driveTotal === "0:00" ? "0:00" : r.driveTotal, s: timeStyle},
-                  {v: r.igkOther === "0:00" ? "0:00" : r.igkOther, s: timeStyle},
-                  {v: r.locationAndFare || "", s: timeStyle},
-                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
-                  {v: r.remarks || "", s: timeStyle}
-              ]);
-            } else {
-              drRows.push([
-                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "0:00", s: timeStyle}, {v: "0:00", s: timeStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle}
-              ]);
-            }
-          });
-          
-          const ws_dr = XLSX.utils.aoa_to_sheet(drRows);
-          ws_dr['!merges'] = [
-              { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
-              { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
-              { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } }, // 1回目
-              { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } }, // 2回目
-              { s: { r: 0, c: 8 }, e: { r: 1, c: 8 } }, { s: { r: 0, c: 9 }, e: { r: 1, c: 9 } },
-              { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } },
-              { s: { r: 0, c: 12 }, e: { r: 1, c: 12 } }, { s: { r: 0, c: 13 }, e: { r: 1, c: 13 } }
-          ];
-          ws_dr['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 70}, {wpx: 60}, {wpx: 80}, {wpx: 120}];
-          XLSX.utils.book_append_sheet(wb, ws_dr, `出退${name}`.substring(0, 31));
-
-        } else {
-          // 打工仔 Excel
-          const entries = processedData.parttime.filter(r => r.name === name);
-          const entryMap = {};
-          entries.forEach(r => { entryMap[r.date] = r; });
-
-          const ptRows = [];
-          
-          ptRows.push([
-              {v: entries[0]?.campus === "未設定" ? "名谷校" : (entries[0]?.campus || "名谷校"), s: {font: {sz: 12, bold: true}}}, "", "", "", "", "", "", "",
-              {v: "氏名", s: {alignment: {horizontal: "right"}}},
-              {v: name, s: {font: {sz: 11, bold: true}}}
-          ]);
-          
-          const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
-          const hdRedStyle = {font: {color: {rgb: "FF0000"}}, fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
-          
-          ptRows.push([
-              {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
-              {v: "休憩時間", s: hdStyle}, {v: "GK集団A", s: hdStyle}, {v: "GK集団B", s: hdRedStyle},
-              {v: "勤務場所", s: hdStyle}, {v: "交通費", s: hdStyle}, {v: "備考欄", s: hdStyle}
-          ]);
-
-          periodDates.forEach(pd => {
-            const r = entryMap[pd.dateStr];
-            const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
-            const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
-            const outStyle = { font: {color: {rgb: "FF0000"}}, border: borderThin, alignment: {horizontal: "center"} };
-
-            if (r) {
-              ptRows.push([
-                  {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
-                  {v: toBossRest(r.restMin), s: outStyle}, {v: r.groupA, s: outStyle}, {v: r.groupB === "00:00" ? "" : r.groupB, s: outStyle},
-                  {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}, {v: r.locationAndFare || "", s: timeStyle}, {v: "", s: timeStyle} 
-              ]);
-            } else {
-              ptRows.push([
-                  {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle},
-                  {v: "", s: outStyle}, {v: "", s: outStyle}, {v: "", s: outStyle},
-                  {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle} 
-              ]);
-            }
-          });
-          
-          const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
-          ws_pt['!cols'] = [{wpx: 70}, {wpx: 40}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 80}, {wpx: 60}, {wpx: 120}];
-          XLSX.utils.book_append_sheet(wb, ws_pt, `出退${name}`.substring(0, 31));
+      try {
+        const names = getProcessedNames();
+        if (names.length === 0) {
+          showToast('⚠️ 出力するデータがありません。', '🍄');
+          return;
         }
-      });
-      
-      XLSX.writeFile(wb, `IGK_給与計算_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
-      showToast('👑 老闆娘専用Excel出力完了！', '🌸');
+        const wb = XLSX.utils.book_new();
+
+        let maxTime = 0;
+        processedData.rawBackup.forEach(r => {
+          if (!r[3]) return; 
+          const dateStr = r[3].split(' ')[0].replace(/-/g, '/');
+          const d = new Date(dateStr);
+          if(!isNaN(d.getTime()) && d.getTime() > maxTime) maxTime = d.getTime();
+        });
+        
+        const refDate = maxTime > 0 ? new Date(maxTime) : new Date();
+        let startYear = refDate.getFullYear();
+        let startMonth = refDate.getMonth();
+        if (refDate.getDate() <= 15) {
+          startMonth -= 1;
+          if (startMonth < 0) { startMonth = 11; startYear -= 1; }
+        }
+        let endYear = startYear;
+        let endMonth = startMonth + 1;
+        if (endMonth > 11) { endMonth = 0; endYear += 1; }
+        
+        const startDate = new Date(startYear, startMonth, 16);
+        const endDate = new Date(endYear, endMonth, 15);
+        
+        const periodDates = [];
+        let curr = new Date(startDate);
+        while (curr <= endDate) {
+          periodDates.push({
+            dateStr: `${curr.getFullYear()}/${(curr.getMonth()+1).toString().padStart(2,'0')}/${curr.getDate().toString().padStart(2,'0')}`,
+            dayStr: japaneseDays[curr.getDay()],
+            isWeekend: curr.getDay() === 0 || curr.getDay() === 6
+          });
+          curr.setDate(curr.getDate() + 1);
+        }
+
+        function toBossDate(dateStr) {
+          if(!dateStr) return "";
+          const parts = dateStr.split('/');
+          if(parts.length === 3) return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+          return dateStr;
+        }
+        function toBossRest(mins) {
+          const m = parseInt(mins) || 0;
+          if (m === 0) return "";
+          return `${Math.floor(m/60)}:${(m%60).toString().padStart(2,'0')}`;
+        }
+        function tStr(val) { return val === "未打刻" ? "" : (val || ""); }
+
+        const borderThin = {
+          top: {style: "thin", color: {rgb: "000000"}},
+          bottom: {style: "thin", color: {rgb: "000000"}},
+          left: {style: "thin", color: {rgb: "000000"}},
+          right: {style: "thin", color: {rgb: "000000"}}
+        };
+
+        names.forEach(name => {
+          const safeName = name.replace(/[\\/?*[\]:]/g, '_');
+          const sheetNameLog = `打刻${safeName}`.substring(0, 31);
+          const sheetNameMain = `出退${safeName}`.substring(0, 31);
+
+          // --- 1. 打刻流水帳資料 ---
+          const personalRawLogs = processedData.rawBackup.filter(r => r[1] === name);
+          const logRows = [
+            ["従業員ID", "従業員名", "タイプ", "打刻日時"].map(h => ({v: h, s: {border: borderThin, fill: {fgColor: {rgb: "E2EFDA"}}, font: {bold: true}}}))
+          ];
+          personalRawLogs.forEach(r => {
+            logRows.push([
+              {v: r[0], s: {border: borderThin}},
+              {v: r[1], s: {border: borderThin}},
+              {v: r[2], s: {border: borderThin, alignment: {horizontal: "center"}}},
+              {v: r[3], s: {border: borderThin}}
+            ]);
+          });
+          const ws_log = XLSX.utils.aoa_to_sheet(logRows);
+          ws_log['!cols'] = [{wpx: 80}, {wpx: 120}, {wpx: 60}, {wpx: 140}];
+          XLSX.utils.book_append_sheet(wb, ws_log, sheetNameLog);
+
+          // --- 2. 考勤與薪水計算 ---
+          const isFT = processedData.fulltime.some(r => r.name === name);
+          const isDr = processedData.drivers.some(r => r.name === name);
+          
+          if (isFT) {
+            // 正職 Excel
+            const entries = processedData.fulltime.filter(r => r.name === name);
+            const entryMap = {};
+            entries.forEach(r => { entryMap[r.date] = r; });
+
+            const ftRows = [];
+            ftRows.push([
+              "", "", {v: "平日出勤", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "",
+              {v: "①通常時給出勤", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+              {v: "②残業", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+              {v: "③休出（日曜日）", s: {font: {color: {rgb: "FF0000"}, bold: true}, alignment: {horizontal: "center"}}}, "", "",
+              {v: "計", s: {alignment: {horizontal: "center"}, font: {bold: true}}}, "", "", "",
+              {v: "勤務校舎名", s: {alignment: {horizontal: "center"}, font: {bold: true}}}
+            ]);
+            
+            const header2 = ["", "", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "出", "退", "休憩", "早残業", "後残業", "合計", "交通費", "校舎名"];
+            ftRows.push(header2.map(h => h ? {v: h, s: {border: borderThin, alignment: {horizontal: "center"}}} : ""));
+
+            periodDates.forEach(pd => {
+              const r = entryMap[pd.dateStr];
+              const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
+              const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+              
+              if (r) {
+                ftRows.push([
+                    {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle}, {v: "1:00", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: r.earlyOvertime === "00:00" ? "" : r.earlyOvertime, s: timeStyle},
+                    {v: r.lateOvertime === "00:00" ? "" : r.lateOvertime, s: timeStyle},
+                    {v: r.regular === "00:00" ? "" : r.regular, s: timeStyle},
+                    {v: r.locationAndFare || "", s: timeStyle},
+                    {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}
+                ]);
+              } else {
+                ftRows.push([
+                    {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}
+                ]);
+              }
+            });
+            
+            const ws_ft = XLSX.utils.aoa_to_sheet(ftRows);
+            ws_ft['!merges'] = [
+                { s: { r: 0, c: 2 }, e: { r: 0, c: 4 } }, { s: { r: 0, c: 5 }, e: { r: 0, c: 7 } },
+                { s: { r: 0, c: 8 }, e: { r: 0, c: 10 } }, { s: { r: 0, c: 11 }, e: { r: 0, c: 13 } },
+                { s: { r: 0, c: 14 }, e: { r: 0, c: 16 } }
+            ];
+            ws_ft['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 50}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 80}, {wpx: 80}];
+            XLSX.utils.book_append_sheet(wb, ws_ft, sheetNameMain);
+
+          } else if (isDr) {
+            // 司機 Excel
+            const entries = processedData.drivers.filter(r => r.name === name);
+            const entryMap = {};
+            entries.forEach(r => { entryMap[r.date] = r; });
+
+            const drRows = [];
+            const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center", vertical: "center"}};
+
+            drRows.push([
+                {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
+                {v: "1回目運転時刻", s: hdStyle}, "", {v: "2回目運転時刻", s: hdStyle}, "",
+                {v: "休憩時間", s: hdStyle}, {v: "送迎時間", s: hdStyle}, {v: "IGKその他", s: hdStyle},
+                {v: "交通費", s: hdStyle}, {v: "勤務場所", s: hdStyle}, {v: "備考欄", s: hdStyle}
+            ]);
+            
+            drRows.push([
+                "", "", "", "",
+                {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle}, {v: "運転開始", s: hdStyle}, {v: "運転終了", s: hdStyle},
+                "", "", "", "", "", ""
+            ]);
+
+            periodDates.forEach(pd => {
+              const r = entryMap[pd.dateStr];
+              const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
+              const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+
+              if (r) {
+                drRows.push([
+                    {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
+                    {v: r.drive1Start || "", s: timeStyle}, {v: r.drive1End || "", s: timeStyle},
+                    {v: r.drive2Start || "", s: timeStyle}, {v: r.drive2End || "", s: timeStyle},
+                    {v: toBossRest(r.restMin), s: timeStyle},
+                    {v: r.driveTotal === "0:00" ? "0:00" : r.driveTotal, s: timeStyle},
+                    {v: r.igkOther === "0:00" ? "0:00" : r.igkOther, s: timeStyle},
+                    {v: r.locationAndFare || "", s: timeStyle},
+                    {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle},
+                    {v: r.remarks || "", s: timeStyle}
+                ]);
+              } else {
+                drRows.push([
+                    {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "0:00", s: timeStyle}, {v: "0:00", s: timeStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle}
+                ]);
+              }
+            });
+            
+            const ws_dr = XLSX.utils.aoa_to_sheet(drRows);
+            ws_dr['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+                { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+                { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } }, { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } },
+                { s: { r: 0, c: 8 }, e: { r: 1, c: 8 } }, { s: { r: 0, c: 9 }, e: { r: 1, c: 9 } },
+                { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } },
+                { s: { r: 0, c: 12 }, e: { r: 1, c: 12 } }, { s: { r: 0, c: 13 }, e: { r: 1, c: 13 } }
+            ];
+            ws_dr['!cols'] = [{wpx: 60}, {wpx: 30}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 60}, {wpx: 70}, {wpx: 60}, {wpx: 80}, {wpx: 120}];
+            XLSX.utils.book_append_sheet(wb, ws_dr, sheetNameMain);
+
+          } else {
+            // 打工仔 Excel
+            const entries = processedData.parttime.filter(r => r.name === name);
+            const entryMap = {};
+            entries.forEach(r => { entryMap[r.date] = r; });
+
+            const ptRows = [];
+            ptRows.push([
+                {v: entries[0]?.campus === "未設定" ? "名谷校" : (entries[0]?.campus || "名谷校"), s: {font: {sz: 12, bold: true}}}, "", "", "", "", "", "", "",
+                {v: "氏名", s: {alignment: {horizontal: "right"}}},
+                {v: name, s: {font: {sz: 11, bold: true}}}
+            ]);
+            
+            const hdStyle = {fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
+            const hdRedStyle = {font: {color: {rgb: "FF0000"}}, fill: {fgColor: {rgb: "FFF2CC"}}, border: borderThin, alignment: {horizontal: "center"}};
+            
+            ptRows.push([
+                {v: "月日", s: hdStyle}, {v: "曜日", s: hdStyle}, {v: "出勤時刻", s: hdStyle}, {v: "退出時刻", s: hdStyle},
+                {v: "休憩時間", s: hdStyle}, {v: "GK集団A", s: hdStyle}, {v: "GK集団B", s: hdRedStyle},
+                {v: "勤務場所", s: hdStyle}, {v: "交通費", s: hdStyle}, {v: "備考欄", s: hdStyle}
+            ]);
+
+            periodDates.forEach(pd => {
+              const r = entryMap[pd.dateStr];
+              const dateStyle = { border: borderThin, alignment: {horizontal: "right"}, font: { color: { rgb: pd.isWeekend ? "FF0000" : "000000" } } };
+              const timeStyle = { border: borderThin, alignment: {horizontal: "center"} };
+              const outStyle = { font: {color: {rgb: "FF0000"}}, border: borderThin, alignment: {horizontal: "center"} };
+
+              if (r) {
+                ptRows.push([
+                    {v: toBossDate(r.date), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: tStr(r.checkIn), s: timeStyle}, {v: tStr(r.checkOut), s: timeStyle},
+                    {v: toBossRest(r.restMin), s: outStyle}, {v: r.groupA, s: outStyle}, {v: r.groupB === "00:00" ? "" : r.groupB, s: outStyle},
+                    {v: r.campus === "未設定" ? "" : r.campus, s: timeStyle}, {v: r.locationAndFare || "", s: timeStyle}, {v: "", s: timeStyle} 
+                ]);
+              } else {
+                ptRows.push([
+                    {v: toBossDate(pd.dateStr), s: dateStyle}, {v: pd.dayStr, s: { ...dateStyle, alignment: {horizontal: "center"} }},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle},
+                    {v: "", s: outStyle}, {v: "", s: outStyle}, {v: "", s: outStyle},
+                    {v: "", s: timeStyle}, {v: "", s: timeStyle}, {v: "", s: timeStyle} 
+                ]);
+              }
+            });
+            
+            const ws_pt = XLSX.utils.aoa_to_sheet(ptRows);
+            ws_pt['!cols'] = [{wpx: 70}, {wpx: 40}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 70}, {wpx: 80}, {wpx: 60}, {wpx: 120}];
+            XLSX.utils.book_append_sheet(wb, ws_pt, sheetNameMain);
+          }
+        });
+        
+        XLSX.writeFile(wb, `IGK_給与計算_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`);
+        showToast('👑 老闆娘専用Excel出力完了！', '🌸');
+        
+      } catch (err) {
+        console.error("Excel Output Error: ", err);
+        showToast(`⚠️ エラーが発生しました: ${err.message}`, '🍄');
+      }
     }
 
     // === 歷史模組與其他功能 (不變) ===
-    function toggleHistoryModal() { /* 略 */ 
+    function toggleHistoryModal() { 
       const m = document.getElementById('history-modal');
       if(!m) return;
       m.className = m.classList.contains('hidden') ? "fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : "hidden";
       if(!m.classList.contains('hidden')) renderHistoryList();
     }
 
-    function saveToHistory() { /* 略 */ 
+    function saveToHistory() { 
       const name = document.getElementById('history-save-name').value.trim();
       if (name && (processedData.fulltime.length > 0 || processedData.parttime.length > 0 || processedData.drivers.length > 0)) {
         monthlyHistory[name] = JSON.parse(JSON.stringify(processedData));
@@ -1375,7 +1384,7 @@
       }
     }
 
-    function loadFromHistory(name) { /* 略 */ 
+    function loadFromHistory(name) { 
       if (!monthlyHistory[name]) return;
       processedData = JSON.parse(JSON.stringify(monthlyHistory[name]));
       if(!processedData.drivers) processedData.drivers = []; // 向後兼容
@@ -1387,7 +1396,7 @@
       toggleHistoryModal();
     }
 
-    function deleteFromHistory(name) { /* 略 */ 
+    function deleteFromHistory(name) { 
       showCustomConfirm(`アーカイブ「${name}」を完全に削除しますか？`, '', () => {
         delete monthlyHistory[name];
         localStorage.setItem("igk_monthly_history", JSON.stringify(monthlyHistory));
@@ -1395,7 +1404,7 @@
       });
     }
 
-    function renderHistoryList() { /* 略 */ 
+    function renderHistoryList() { 
       const container = document.getElementById('history-items-list');
       if(!container) return;
       container.innerHTML = "";
@@ -1432,7 +1441,7 @@
       document.getElementById('confirm-dialog').classList.remove('flex');
     };
 
-    function changeSeason(season) { /* 略 */ 
+    function changeSeason(season) { 
       currentSeason = season;
       const b = document.getElementById('theme-body');
       const v = document.getElementById('vines-svg');
@@ -1463,7 +1472,7 @@
     }
 
     let particleTimer = null;
-    function startFallingEffect(emoji) { /* 略 */ 
+    function startFallingEffect(emoji) { 
       if (particleTimer) clearInterval(particleTimer);
       const container = document.getElementById('particle-container');
       if(!container) return;
