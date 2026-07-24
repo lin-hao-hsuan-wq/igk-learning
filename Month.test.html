@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 5-Day Record System (Print Optimized)</title>
+    <title>IGK Record System (Print Optimized)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -292,7 +292,7 @@
         @media print {
             @page { 
                 size: A4 portrait; 
-                margin: 0.8cm 1.0cm; /* 上下縮減邊距確保不換頁 */
+                margin: 0.8cm 1.0cm; 
             }
             body { 
                 background: white !important; 
@@ -309,8 +309,8 @@
             }
             
             .print-page {
-                page-break-inside: avoid !important; /* 絕對嚴禁內部拆頁 */
-                page-break-after: always !important; /* 每人強迫換新頁 */
+                page-break-inside: avoid !important; 
+                page-break-after: always !important; 
                 box-sizing: border-box;
                 width: 100% !important;
                 padding: 0;
@@ -349,14 +349,14 @@
             .chart-title span { display: inline-block !important; font-size: 9px !important; margin-left: 3px; }
             
             .chart-container {
-                height: 180px !important; /* 🔥 降低高度確保塞進A4 */
+                height: 180px !important; 
                 width: 100% !important;
             }
 
             .chart-print-img {
                 display: block !important; 
                 max-width: 100% !important;
-                height: 180px !important; /* 強制圖片吻合高度 */
+                height: 180px !important; 
                 object-fit: contain;
             }
             
@@ -397,8 +397,9 @@
             <select id="userSelect"></select>
         </div>
         <div>
-            <label>Record Date <span>記録日 (最終週)</span></label>
-            <select id="dateSelect"></select>
+            <!-- 修改這裡：將 select 改為 input type="date" -->
+            <label>Record Date <span>記録日</span></label>
+            <input type="date" id="dateSelect">
         </div>
         <div>
             <label>Correct Answers (0-20) <span>正解数 (0-20題)</span></label>
@@ -409,7 +410,7 @@
         </div>
     </div>
 
-    <h2>📋 Weekly Overview <span>今週のデータ概要</span></h2>
+    <h2>📋 Monthly Overview <span>今月のデータ概要</span></h2>
     <table id="dailySummaryTable">
         <thead>
             <tr>
@@ -482,6 +483,7 @@
     });
 
     const monthSelect = document.getElementById('monthSelect');
+    
     function initMonthSelector() {
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -497,63 +499,65 @@
             if(i === 0) option.selected = true;
             monthSelect.add(option);
         }
+
+        // 初始化日期選擇器預設為今天
+        const todayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        document.getElementById('dateSelect').value = todayStr;
     }
     initMonthSelector();
 
-    let lastWeekDates = [];
-    function updateLastWeekDays() {
-        const [yearStr, monthStr] = monthSelect.value.split('-');
-        const year = parseInt(yearStr);
-        const month = parseInt(monthStr) - 1; 
-        
-        const lastDayOfMonth = new Date(year, month + 1, 0);
-        const lastDate = lastDayOfMonth.getDate();
-        const lastDayOfWeek = lastDayOfMonth.getDay(); 
-        
-        let lastFriday;
-        if (lastDayOfWeek >= 5) {
-            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek - 5));
-        } else {
-            lastFriday = new Date(year, month, lastDate - (lastDayOfWeek + 2));
+    // 動態抓取選定月份中有紀錄的所有日期
+    function getActiveDates(monthKey) {
+        const monthData = recordData[monthKey] || {};
+        const dates = new Set();
+        for (let user in monthData) {
+            for (let date in monthData[user]) {
+                dates.add(date);
+            }
         }
-        
-        lastWeekDates = [];
-        for (let i = 4; i >= 0; i--) {
-            let d = new Date(lastFriday);
-            d.setDate(lastFriday.getDate() - i);
-            lastWeekDates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
-        }
-
-        const dateSelect = document.getElementById('dateSelect');
-        dateSelect.innerHTML = '';
-        lastWeekDates.forEach(date => dateSelect.add(new Option(date, date)));
+        return Array.from(dates).sort(); // 依照日期先後排序
     }
 
     function handleMonthChange() {
-        updateLastWeekDays();
         renderSummaryTable();
         updateCharts();
     }
 
     function saveData() {
         const user = userSelect.value;
-        const date = dateSelect.value;
+        const dateInput = document.getElementById('dateSelect').value;
         const score = parseInt(document.getElementById('scoreInput').value);
-        const selectedMonth = monthSelect.value;
+
+        if (!dateInput) {
+            alert("⚠️ Please select a date.\n日付を選択してください。");
+            return;
+        }
 
         if (score < 0 || score > 20 || isNaN(score)) {
             alert("⚠️ Please enter a score between 0 and 20.\n0から20の間の数値を入力してください。");
             return;
         }
 
-        if (!recordData[selectedMonth]) recordData[selectedMonth] = {};
-        if (!recordData[selectedMonth][user]) recordData[selectedMonth][user] = {};
+        // 從選擇的日期自動判斷所屬月份 YYYY-MM
+        const saveMonth = dateInput.substring(0, 7);
+
+        // 如果選擇的日期不在此月份選單內，自動新增選項
+        let optionExists = Array.from(monthSelect.options).some(opt => opt.value === saveMonth);
+        if (!optionExists) {
+            const [y, m] = saveMonth.split('-');
+            monthSelect.add(new Option(`${y}年 ${m}月`, saveMonth));
+        }
+
+        // 將檢視月份切換到儲存的月份
+        monthSelect.value = saveMonth;
+
+        if (!recordData[saveMonth]) recordData[saveMonth] = {};
+        if (!recordData[saveMonth][user]) recordData[saveMonth][user] = {};
         
-        recordData[selectedMonth][user][date] = score;
+        recordData[saveMonth][user][dateInput] = score;
         localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
         
-        renderSummaryTable();
-        updateCharts();
+        handleMonthChange(); // 重新渲染表格和圖表
         alert(`✅ Record saved successfully for ${user}!\n${user}のデータが正常に保存されました！`);
     }
 
@@ -562,8 +566,14 @@
         tbody.innerHTML = '';
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
+        const activeDates = getActiveDates(selectedMonth);
 
-        lastWeekDates.forEach(date => {
+        if (activeDates.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="color: var(--text-muted);">No records found for this month.<br>今月のデータはありません。</td></tr>`;
+            return;
+        }
+
+        activeDates.forEach(date => {
             let count = 0, max = 0, hasData = false;
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
@@ -632,8 +642,9 @@
     function getChartData() {
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
+        const activeDates = getActiveDates(selectedMonth);
 
-        const avgScores = lastWeekDates.map(date => {
+        const avgScores = activeDates.map(date => {
             let total = 0, count = 0;
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
@@ -645,25 +656,28 @@
         });
 
         const currentUser = chartUserSelect.value;
-        const userScores = lastWeekDates.map(date => 
+        const userScores = activeDates.map(date => 
             (monthData[currentUser] && monthData[currentUser][date] !== undefined) ? monthData[currentUser][date] : null
         );
 
-        return { avgScores, userScores, currentUser };
+        return { avgScores, userScores, currentUser, activeDates };
     }
 
     function updateCharts() {
-        const { avgScores, userScores } = getChartData();
+        const { avgScores, userScores, activeDates } = getChartData();
         const ctxOverall = document.getElementById('overallChart').getContext('2d');
         const ctxPersonal = document.getElementById('personalChart').getContext('2d');
 
         if (overallChart) overallChart.destroy();
         if (personalChart) personalChart.destroy();
 
+        // 隱藏年份，只顯示 MM-DD
+        const labels = activeDates.map(d => d.slice(5));
+
         overallChart = new Chart(ctxOverall, {
             type: 'bar',
             data: {
-                labels: lastWeekDates.map(d => d.slice(5)), 
+                labels: labels, 
                 datasets: [{
                     label: 'Team Avg',
                     data: avgScores,
@@ -678,7 +692,7 @@
         personalChart = new Chart(ctxPersonal, {
             type: 'line',
             data: {
-                labels: lastWeekDates.map(d => d.slice(5)),
+                labels: labels,
                 datasets: [{
                     label: `Score`,
                     data: userScores,
@@ -707,10 +721,8 @@
 
     // ================= 🖨️ ADVANCED PRINT GENERATOR =================
     
-    // 🔥 終極核心修復：使用純記憶體中的非掛載 Canvas 繪製，並等待 Image 觸發 onload 完成才放行 Promise
     function createHiddenChartAndCapture(imgId, config) {
         return new Promise((resolve) => {
-            // 建立一個完全與外層 CSS 無關的獨立 Canvas
             const hiddenCanvas = document.createElement('canvas');
             hiddenCanvas.width = 500;
             hiddenCanvas.height = 240;
@@ -723,13 +735,8 @@
                 onComplete: function() {
                     const img = document.getElementById(imgId);
                     if (img) {
-                        // 🔥 監聽圖片真正的 onload 解碼事件，完全載入後才 resolve
-                        img.onload = () => {
-                            resolve();
-                        };
-                        img.onerror = () => {
-                            resolve(); // 避免崩潰
-                        };
+                        img.onload = () => resolve();
+                        img.onerror = () => resolve();
                         img.src = this.toBase64Image();
                     } else {
                         resolve();
@@ -742,9 +749,13 @@
         });
     }
 
-    function generateSummaryHtml(monthData) {
+    function generateSummaryHtml(monthData, activeDates) {
+        if (activeDates.length === 0) {
+            return `<tr><td colspan="3" style="color: var(--text-muted);">No records found / データなし</td></tr>`;
+        }
+
         let tableRowsHtml = '';
-        lastWeekDates.forEach(date => {
+        activeDates.forEach(date => {
             let count = 0, max = 0, hasData = false;
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
@@ -782,7 +793,7 @@
                     <div class="print-quote">"Consistency is the key to mastery. / 継続こそが、卓越した技術への唯一の道です。"</div>
                 </div>
 
-                <h2>📋 Weekly Overview <span>今週のデータ概要</span></h2>
+                <h2>📋 Monthly Overview <span>今月のデータ概要</span></h2>
                 <table>
                     <thead>
                         <tr>
@@ -820,15 +831,15 @@
         const container = document.getElementById('printAllContainer');
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
-        const { avgScores, userScores } = getChartData();
+        const { avgScores, userScores, activeDates } = getChartData();
+        const labels = activeDates.map(d => d.slice(5));
 
-        container.innerHTML = renderPrintPageSkeleton(singleUser, 0, generateSummaryHtml(monthData));
+        container.innerHTML = renderPrintPageSkeleton(singleUser, 0, generateSummaryHtml(monthData, activeDates));
 
-        // 嚴格非同步等待圖片完全 decode 完畢
         await createHiddenChartAndCapture('print-overall-img-0', {
             type: 'bar',
             data: {
-                labels: lastWeekDates.map(d => d.slice(5)),
+                labels: labels,
                 datasets: [{
                     data: avgScores,
                     backgroundColor: 'rgba(52, 152, 219, 0.4)',
@@ -842,7 +853,7 @@
         await createHiddenChartAndCapture('print-personal-img-0', {
             type: 'line',
             data: {
-                labels: lastWeekDates.map(d => d.slice(5)),
+                labels: labels,
                 datasets: [{
                     data: userScores,
                     borderColor: '#2c3e50',
@@ -855,7 +866,6 @@
             options: chartOptions(20, 'Score', false)
         });
 
-        // 圖片完全就緒，喚醒列印
         window.print();
     }
 
@@ -867,9 +877,11 @@
         
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
-        const summaryRowsHtml = generateSummaryHtml(monthData);
+        const activeDates = getActiveDates(selectedMonth);
+        const labels = activeDates.map(d => d.slice(5));
+        const summaryRowsHtml = generateSummaryHtml(monthData, activeDates);
 
-        const avgScores = lastWeekDates.map(date => {
+        const avgScores = activeDates.map(date => {
             let total = 0, count = 0;
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
@@ -886,17 +898,16 @@
         });
         container.innerHTML = massiveHtml;
 
-        // 依序同步等待每張圖表的圖片 decode
         for (let index = 0; index < users.length; index++) {
             const user = users[index];
-            const userScores = lastWeekDates.map(date => 
+            const userScores = activeDates.map(date => 
                 (monthData[user] && monthData[user][date] !== undefined) ? monthData[user][date] : null
             );
 
             await createHiddenChartAndCapture(`print-overall-img-${index}`, {
                 type: 'bar',
                 data: {
-                    labels: lastWeekDates.map(d => d.slice(5)),
+                    labels: labels,
                     datasets: [{
                         data: avgScores,
                         backgroundColor: 'rgba(52, 152, 219, 0.4)',
@@ -910,7 +921,7 @@
             await createHiddenChartAndCapture(`print-personal-img-${index}`, {
                 type: 'line',
                 data: {
-                    labels: lastWeekDates.map(d => d.slice(5)),
+                    labels: labels,
                     datasets: [{
                         data: userScores,
                         borderColor: '#2c3e50',
@@ -924,7 +935,6 @@
             });
         }
 
-        // 所有人都處理完了，直接安全呼叫
         window.print();
     }
 
@@ -947,8 +957,7 @@
                 if (typeof parsed === 'object') {
                     recordData = parsed;
                     localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-                    renderSummaryTable();
-                    updateCharts();
+                    handleMonthChange();
                     alert("✨ Data imported successfully!\nデータのインポートが成功しました！");
                 } else {
                     alert("⚠️ Invalid data format.\n無効なデータ形式です。");
@@ -967,9 +976,7 @@
     }
 
     // Initialize Page
-    updateLastWeekDays();
-    renderSummaryTable();
-    updateCharts();
+    handleMonthChange();
 </script>
 
 </body>
