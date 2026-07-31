@@ -101,8 +101,9 @@ export default function IGKAttendanceSystem() {
         setTimeout(() => setNotification(''), 4000);
     };
 
-    // 指定期間の日付リストを生成
+    // 指定期間の日付リストを生成 (前月16日〜当月15日)
     const getDatesInPeriod = (periodStr) => {
+        if (!periodStr) return [];
         const [year, month] = periodStr.split('-').map(Number);
         const startDate = new Date(year, month - 2, 16);
         const endDate = new Date(year, month - 1, 15);
@@ -125,26 +126,98 @@ export default function IGKAttendanceSystem() {
     const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
 
     const processPastedData = () => {
-        // ... (這段保留原本解析邏輯，直到 showNotification 結束)
+        if (!pastedText.trim()) {
+            showNotification("テキストが入力されていません。");
+            return;
+        }
+
+        let matchedCount = 0;
+        let newData = { ...attendanceData };
+        let switchPeriod = null;
+
+        // 正規表現で、すべての日付っぽい文字列を抽出
+        // 例: "2026/07/30 08:58", "26/7/30 08:58", "07/30 08:58"
+        const datePattern = /(?:20)?\d{2}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?\s+\d{1,2}:\d{2}/g;
+        const matches = [...pastedText.matchAll(datePattern)];
+
+        if (matches.length === 0) {
+            showNotification("日付や時間が見つかりませんでした。テキストの形式を確認してください。");
+            return;
+        }
+
+        matches.forEach(match => {
+            const timeStr = match[0];
+            const index = match.index;
+            
+            // 時間の前後数文字を切り出して文脈を推測
+            const contextStart = Math.max(0, index - 150);
+            const contextStr = pastedText.substring(contextStart, index);
+
+            // 1. 日付と時間をパース
+            const parsedDate = new Date(timeStr.replace(/[年月日]/g, '/').replace(/-/g, '/'));
+            if (isNaN(parsedDate.getTime())) return;
+
+            const dateKey = formatDateKey(parsedDate);
+            const timeVal = `${String(parsedDate.getHours()).padStart(2, '0')}:${String(parsedDate.getMinutes()).padStart(2, '0')}`;
+
+            // 自動で期間を判定 (16日〜15日)
+            const targetYear = parsedDate.getFullYear();
+            let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
+            let targetPeriodYear = targetYear;
+            if (targetMonth > 12) {
+                targetMonth -= 12;
+                targetPeriodYear += 1;
+            }
+            const autoPeriod = `${targetPeriodYear}-${String(targetMonth).padStart(2, '0')}`;
+            if (!switchPeriod && autoPeriod !== selectedPeriod) {
+                switchPeriod = autoPeriod; // 違う月のデータが含まれていた場合、自動で月を切り替える準備
+            }
+
+            // 2. 誰のデータかを探す (文脈から)
+            let targetEmpId = null;
+            for (const emp of employees) {
+                const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
+                const cleanContext = contextStr.replace(/\s+/g, '').toLowerCase();
+                
+                if (searchNames.some(name => cleanContext.includes(name))) {
+                    targetEmpId = emp.id;
+                    break;
+                }
+            }
+            
+            if (!targetEmpId) return; // 誰のデータか分からない場合はスキップ
+
+            // 3. 入室か退室かを探す
+            let type = 'inTime'; // デフォルトは入室
+            if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out')) {
+                type = 'outTime';
+            }
+
+            // データに格納
+            if (!newData[targetEmpId]) newData[targetEmpId] = {};
+            if (!newData[targetEmpId][dateKey]) newData[targetEmpId][dateKey] = { transportFee: 0 };
+            
+            newData[targetEmpId][dateKey][type] = timeVal;
+            matchedCount++;
+        });
+
         if (matchedCount > 0) {
             setAttendanceData(newData);
-            setPastedText('');
+            setPastedText(''); // 成功したらクリア
             if (switchPeriod && switchPeriod !== selectedPeriod) {
                 setSelectedPeriod(switchPeriod);
-                showNotification(`対象期間を ${switchPeriod} に自動変更し、${matchedCount}件の打刻を反映しました`);
+                showNotification(`対象期間を ${switchPeriod} に自動変更し、${matchedCount}件の打刻を反映しました！`);
             } else {
                 showNotification(`${matchedCount}件の打刻データを反映しました！`);
             }
         } else {
-            showNotification("日付や時間が見つかりませんでした。テキストを確認してください。");
+            showNotification("名前が見つからないか、形式が一致しませんでした。");
         }
     };
 
     const handleShiftUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
-        // 這裡暫時只做讀取檔案並顯示成功通知 (後續可加入真實 CSV 解析邏輯)
         const reader = new FileReader();
         reader.onload = (event) => {
             showNotification(`シフト表「${file.name}」の読み込みを完了し、予定を反映しました！`);
@@ -187,7 +260,6 @@ export default function IGKAttendanceSystem() {
         return settings.baseTime[type];
     }, [settings]);
 
-    // 動的な残業計算 (レンダリング時に呼び出し)
     const calculateOvertimeForDisplay = (row, date) => {
         if (!currentEmp || currentEmp.type !== 'full') return { earlyMins: 0, lateMins: 0 };
         
@@ -254,7 +326,7 @@ export default function IGKAttendanceSystem() {
                 {activeTab === 'import' && (
                     <div className="space-y-8 animate-fadeIn">
                         
-                        {/* ================= 上部：基準設定 ================= */}
+                        {/* ================= 上部：基準設定 (左右分割) ================= */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
                             {/* 左側：基準時間設定 */}
@@ -350,6 +422,7 @@ export default function IGKAttendanceSystem() {
                             </div>
                         </div>
 
+                        {}
                         {/* ================= 中部：打刻コピペ ================= */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-blue-500">
                             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
@@ -358,7 +431,7 @@ export default function IGKAttendanceSystem() {
                             </h2>
                             <p className="text-sm text-gray-500 mb-4">
                                 勤怠システムからコピーした打刻テキストをそのまま貼り付けてください。<br/>
-                                <span className="text-blue-500 font-bold">※名前と日付・時間を自動で紐付けます。</span>
+                                <span className="text-blue-500 font-bold">※名前と日付・時間を自動で紐付けます。余分な空白行や社員番号が含まれていても問題ありません。</span>
                             </p>
                             <textarea
                                 className="w-full h-48 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 p-3 font-mono text-sm bg-blue-50/30"
@@ -480,7 +553,7 @@ export default function IGKAttendanceSystem() {
                                                 const row = attendanceData[currentEmp.id]?.[dKey] || {};
                                                 const isWknd = isWeekend(date);
                                                 
-                                                // リアルタイムで残業を計算 (表示と一番下の集計用)
+                                                // リアルタイムで残業を計算
                                                 const { earlyMins, lateMins } = calculateOvertimeForDisplay(row, date);
 
                                                 return (
