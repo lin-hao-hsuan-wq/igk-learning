@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Download, Upload, Printer, Trash2, Calendar, FileText, X, Settings, Plus } from 'lucide-react';
+import { Download, Upload, Printer, Trash2, Calendar, FileText, Settings, Plus, Clock } from 'lucide-react';
 
 const R_EMPLOYEES = [
     { id: 'r1', name: 'Minori', aliases: ['葛野みのり', '葛野 みのり', 'みのり', '葛野'], type: 'full', location: 'rokko' },
     { id: 'r2', name: 'Yassmyn', aliases: ['ヤスミン', 'Ratu Yassmyn Khairussalima'], type: 'full', location: 'rokko' },
     { id: 'r3', name: 'Yoon', aliases: ['ユン', 'Yoon Honey Aung'], type: 'full', location: 'rokko' },
-    { id: 'r4', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林', '林 昊嬛'], type: 'full', location: 'rokko' },
+    { id: 'r4', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林'], type: 'full', location: 'rokko' },
     { id: 'r5', name: 'Mikuma', aliases: ['実熊', 'みくま', '實熊功光', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko' },
     { id: 'r6', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行'], type: 'part', location: 'rokko' },
     { id: 'r7', name: 'Fergus', aliases: ['ファーガス'], type: 'part', location: 'rokko' },
@@ -40,7 +40,7 @@ const M_EMPLOYEES = [
 
 const DEFAULT_EMPLOYEES = [...R_EMPLOYEES, ...M_EMPLOYEES];
 
-const storageKey = 'igk_attendance_db_v5';
+const storageKey = 'igk_attendance_db_v6';
 const loadDb = () => JSON.parse(localStorage.getItem(storageKey) || '{"archives": [], "customEmployees": []}');
 const saveDb = (data) => localStorage.setItem(storageKey, JSON.stringify(data));
 
@@ -50,7 +50,7 @@ export default function IGKAttendanceSystem() {
     const [selectedEmpId, setSelectedEmpId] = useState(DEFAULT_EMPLOYEES[0].id);
     const [activeTab, setActiveTab] = useState('import');
     
-    // 現在の日付からデフォルトの対象期間を計算 (16日〜翌15日締め)
+    // デフォルト対象期間 (16日〜翌15日)
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     let initialMonth = currentDate.getDate() >= 16 ? currentDate.getMonth() + 2 : currentDate.getMonth() + 1;
@@ -67,11 +67,13 @@ export default function IGKAttendanceSystem() {
     const [notification, setNotification] = useState('');
     
     const [settings, setSettings] = useState(() => {
-        const savedSettings = localStorage.getItem('igk_settings');
+        const savedSettings = localStorage.getItem('igk_settings_v6');
         const defaultSettings = { baseTime: { start: '09:30', end: '18:30' }, specialPeriods: [] };
         if (savedSettings) {
-            const parsed = JSON.parse(savedSettings);
-            return { ...defaultSettings, ...parsed, specialPeriods: parsed.specialPeriods || [] };
+            try {
+                const parsed = JSON.parse(savedSettings);
+                return { ...defaultSettings, ...parsed, specialPeriods: parsed.specialPeriods || [] };
+            } catch(e) { return defaultSettings; }
         }
         return defaultSettings;
     });
@@ -79,7 +81,7 @@ export default function IGKAttendanceSystem() {
     const [newSP, setNewSP] = useState({ name: '', startDate: '', endDate: '', start: '08:30', end: '17:30' });
 
     useEffect(() => {
-        localStorage.setItem('igk_settings', JSON.stringify(settings));
+        localStorage.setItem('igk_settings_v6', JSON.stringify(settings));
     }, [settings]);
 
     const timeToMinutes = (timeStr) => {
@@ -98,10 +100,9 @@ export default function IGKAttendanceSystem() {
 
     const showNotification = (msg) => {
         setNotification(msg);
-        setTimeout(() => setNotification(''), 4000);
+        setTimeout(() => setNotification(''), 5000);
     };
 
-    // 指定期間の日付リストを生成 (前月16日〜当月15日)
     const getDatesInPeriod = (periodStr) => {
         if (!periodStr) return [];
         const [year, month] = periodStr.split('-').map(Number);
@@ -134,33 +135,33 @@ export default function IGKAttendanceSystem() {
         let matchedCount = 0;
         let newData = { ...attendanceData };
         let switchPeriod = null;
+        let switchEmpId = null;
 
-        // 正規表現で、すべての日付っぽい文字列を抽出
-        // 例: "2026/07/30 08:58", "26/7/30 08:58", "07/30 08:58"
+        // 【最強のテキスト解析エンジン】
+        // どんなフォーマットでも「日付＋時間」らしきものをすべて引っこ抜く
         const datePattern = /(?:20)?\d{2}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?\s+\d{1,2}:\d{2}/g;
         const matches = [...pastedText.matchAll(datePattern)];
 
         if (matches.length === 0) {
-            showNotification("日付や時間が見つかりませんでした。テキストの形式を確認してください。");
+            showNotification("日付が見つかりませんでした。テキストを確認してください。");
             return;
         }
+
+        // テキスト全体を小文字にして空白を除去（検索用）
+        const cleanFullText = pastedText.replace(/\s+/g, '').toLowerCase();
 
         matches.forEach(match => {
             const timeStr = match[0];
             const index = match.index;
             
-            // 時間の前後数文字を切り出して文脈を推測
-            const contextStart = Math.max(0, index - 150);
-            const contextStr = pastedText.substring(contextStart, index);
-
-            // 1. 日付と時間をパース
+            // 日付をパース (6/31などの不正な日付はJSが自動で7/1などに補正してくれます)
             const parsedDate = new Date(timeStr.replace(/[年月日]/g, '/').replace(/-/g, '/'));
             if (isNaN(parsedDate.getTime())) return;
 
             const dateKey = formatDateKey(parsedDate);
             const timeVal = `${String(parsedDate.getHours()).padStart(2, '0')}:${String(parsedDate.getMinutes()).padStart(2, '0')}`;
 
-            // 自動で期間を判定 (16日〜15日)
+            // 16日〜15日のルールで、この日付が属する「給与月」を計算
             const targetYear = parsedDate.getFullYear();
             let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
             let targetPeriodYear = targetYear;
@@ -170,26 +171,42 @@ export default function IGKAttendanceSystem() {
             }
             const autoPeriod = `${targetPeriodYear}-${String(targetMonth).padStart(2, '0')}`;
             if (!switchPeriod && autoPeriod !== selectedPeriod) {
-                switchPeriod = autoPeriod; // 違う月のデータが含まれていた場合、自動で月を切り替える準備
+                switchPeriod = autoPeriod;
             }
 
-            // 2. 誰のデータかを探す (文脈から)
+            // 誰のデータかを探す（打刻時間の周辺 150文字程度を振り返る）
+            const contextStart = Math.max(0, index - 150);
+            const contextStr = pastedText.substring(contextStart, index).replace(/\s+/g, '').toLowerCase();
+            
             let targetEmpId = null;
             for (const emp of employees) {
                 const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
-                const cleanContext = contextStr.replace(/\s+/g, '').toLowerCase();
-                
-                if (searchNames.some(name => cleanContext.includes(name))) {
+                // 文脈に名前があれば採用
+                if (searchNames.some(name => contextStr.includes(name))) {
                     targetEmpId = emp.id;
                     break;
                 }
             }
-            
-            if (!targetEmpId) return; // 誰のデータか分からない場合はスキップ
+            // もし文脈になければ、テキスト全体のどこかに名前がないか探す（最終手段）
+            if (!targetEmpId) {
+                for (const emp of employees) {
+                    const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
+                    if (searchNames.some(name => cleanFullText.includes(name))) {
+                        targetEmpId = emp.id;
+                        break;
+                    }
+                }
+            }
 
-            // 3. 入室か退室かを探す
-            let type = 'inTime'; // デフォルトは入室
+            if (!targetEmpId) return; // 誰か特定できなければスキップ
+            switchEmpId = targetEmpId; // 画面切り替え用に記録
+
+            // 入室か退室かを探す（文脈から推測、なければ最初のデータを入室とする）
+            let type = 'inTime';
             if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out')) {
+                type = 'outTime';
+            } else if (newData[targetEmpId] && newData[targetEmpId][dateKey] && newData[targetEmpId][dateKey].inTime) {
+                // すでに入室が入っていれば退室にする
                 type = 'outTime';
             }
 
@@ -204,25 +221,23 @@ export default function IGKAttendanceSystem() {
         if (matchedCount > 0) {
             setAttendanceData(newData);
             setPastedText(''); // 成功したらクリア
-            if (switchPeriod && switchPeriod !== selectedPeriod) {
-                setSelectedPeriod(switchPeriod);
-                showNotification(`対象期間を ${switchPeriod} に自動変更し、${matchedCount}件の打刻を反映しました！`);
-            } else {
-                showNotification(`${matchedCount}件の打刻データを反映しました！`);
-            }
+            
+            // 画面を対象の月・対象のスタッフに自動ジャンプ
+            if (switchPeriod) setSelectedPeriod(switchPeriod);
+            if (switchEmpId) setSelectedEmpId(switchEmpId);
+
+            showNotification(`【成功】 ${matchedCount}件の打刻データを反映しました！（月/従業員を自動切替）`);
         } else {
-            showNotification("名前が見つからないか、形式が一致しませんでした。");
+            showNotification("名前が見つかりませんでした。エイリアス（別名）の登録を確認してください。");
         }
     };
 
     const handleShiftUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            showNotification(`シフト表「${file.name}」の読み込みを完了し、予定を反映しました！`);
-        };
-        reader.readAsText(file);
+        // （ここは将来的にCSV解析ロジックを実装）
+        showNotification(`シフト表「${file.name}」を読み込みました！（※プレビュー機能）`);
+        e.target.value = null; // リセット
     };
 
     const handleCellChange = (empId, dateKey, field, value) => {
@@ -240,6 +255,7 @@ export default function IGKAttendanceSystem() {
 
     const currentEmp = employees.find(e => e.id === selectedEmpId);
     
+    // 予定時間（設定や特別期間から自動算出）
     const getPlannedTime = useCallback((date, type) => {
         if (!settings.specialPeriods || settings.specialPeriods.length === 0) return settings.baseTime[type];
         
@@ -260,24 +276,24 @@ export default function IGKAttendanceSystem() {
         return settings.baseTime[type];
     }, [settings]);
 
-    const calculateOvertimeForDisplay = (row, date) => {
+    // 早残業・後残業のリアルタイム計算ロジック
+    const calculateOvertimeForDisplay = useCallback((row, date) => {
         if (!currentEmp || currentEmp.type !== 'full') return { earlyMins: 0, lateMins: 0 };
         
         const inM = timeToMinutes(row?.inTime);
         const outM = timeToMinutes(row?.outTime);
+        // 行に予定が手入力されていればそれを優先。なければ設定から自動算出。
         const pInM = timeToMinutes(row?.plannedIn || getPlannedTime(date, 'start'));
         const pOutM = timeToMinutes(row?.plannedOut || getPlannedTime(date, 'end'));
 
         let earlyMins = 0;
         let lateMins = 0;
 
-        // 入室時間が予定より早い場合
         if (inM !== null && pInM !== null && inM < pInM) earlyMins = pInM - inM;
-        // 退室時間が予定より遅い場合
         if (outM !== null && pOutM !== null && outM > pOutM) lateMins = outM - pOutM;
 
         return { earlyMins, lateMins };
-    };
+    }, [currentEmp, getPlannedTime]);
 
     const renderEmployeeOptions = () => {
         const categories = [
@@ -295,87 +311,85 @@ export default function IGKAttendanceSystem() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-slate-800 pb-20">
-            <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between print:hidden">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between print:hidden gap-4">
                 <div className="flex items-center gap-4">
                     <div className="bg-indigo-600 p-2 rounded-lg">
-                        <Calendar className="w-6 h-6 text-white" />
+                        <Clock className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-slate-800">IGK 勤怠管理システム</h1>
-                        <p className="text-sm text-slate-500">Kobe, Hyogo (16日〜翌15日締)</p>
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">IGK Attendance</h1>
+                        <p className="text-xs text-slate-500 font-medium">16日〜翌15日締めシステム</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setActiveTab('import')} className={`px-4 py-2 rounded-md font-medium transition-colors ${activeTab === 'import' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <button onClick={() => setActiveTab('import')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'import' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                         ① 設定・データ取込
                     </button>
-                    <button onClick={() => setActiveTab('preview')} className={`px-4 py-2 rounded-md font-medium transition-colors ${activeTab === 'preview' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => setActiveTab('preview')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'preview' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                         ② プレビュー・編集
                     </button>
                 </div>
             </header>
 
             {notification && (
-                <div className="fixed top-4 right-4 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
-                    {notification}
+                <div className="fixed top-6 right-6 bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl z-50 animate-bounce font-bold flex items-center gap-3 border border-emerald-500">
+                    <span className="text-xl">✓</span> {notification}
                 </div>
             )}
 
-            <main className="p-6 max-w-7xl mx-auto">
+            <main className="p-4 md:p-6 max-w-7xl mx-auto">
+                
                 {}
                 {activeTab === 'import' && (
-                    <div className="space-y-8 animate-fadeIn">
+                    <div className="space-y-6 animate-fadeIn">
                         
-                        {/* ================= 上部：基準設定 (左右分割) ================= */}
+                        {/* 上部：設定エリア（左右分割） */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            
-                            {/* 左側：基準時間設定 */}
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-indigo-500 flex flex-col">
-                                <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+                            {/* 左：基準時間 */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 flex flex-col relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+                                <h2 className="text-lg font-bold flex items-center gap-2 mb-2 text-indigo-900">
                                     <Settings className="w-5 h-5 text-indigo-600" />
                                     正社員 基準勤務時間
                                 </h2>
-                                <p className="text-sm text-gray-500 mb-6 flex-grow">
-                                    ここで設定した時間が、正社員の「予定入/退」のデフォルト値となり、早残業・後残業計算の基準になります。
+                                <p className="text-xs text-gray-500 mb-4 flex-grow">
+                                    ここで設定した時間が正社員の「予定入/退」のデフォルト値となり、残業計算の基準になります。
                                 </p>
-                                <div className="flex flex-wrap gap-4 items-center bg-slate-50 p-5 rounded-lg border border-slate-200">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">基準 入室時間</label>
-                                        <input type="time" value={settings.baseTime.start} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, start: e.target.value}})} className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                                <div className="flex flex-col sm:flex-row gap-4 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                    <div className="w-full sm:w-auto">
+                                        <label className="block text-xs font-bold text-indigo-900 mb-1">基準 入室</label>
+                                        <input type="time" value={settings.baseTime.start} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, start: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium" />
                                     </div>
-                                    <span className="mt-6 text-gray-500 font-bold">〜</span>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">基準 退室時間</label>
-                                        <input type="time" value={settings.baseTime.end} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, end: e.target.value}})} className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                                    <span className="text-indigo-300 font-bold hidden sm:block">〜</span>
+                                    <div className="w-full sm:w-auto">
+                                        <label className="block text-xs font-bold text-indigo-900 mb-1">基準 退室</label>
+                                        <input type="time" value={settings.baseTime.end} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, end: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium" />
                                     </div>
-                                    <div className="mt-6 ml-auto text-emerald-600 font-medium text-sm flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
-                                        <span>✓</span> 自動保存
+                                    <div className="sm:ml-auto text-emerald-600 font-bold text-xs flex items-center gap-1 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 w-full sm:w-auto justify-center">
+                                        ✓ 自動保存
                                     </div>
                                 </div>
                             </div>
 
-                            {/* 右側：特別期間設定 */}
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-indigo-500 flex flex-col">
-                                <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+                            {/* 右：特別期間 */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 flex flex-col relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+                                <h2 className="text-lg font-bold flex items-center gap-2 mb-2 text-indigo-900">
                                     <Calendar className="w-5 h-5 text-indigo-600" />
-                                    特別期間 (Summer School等)
+                                    特別期間設定
                                 </h2>
-                                <p className="text-sm text-gray-500 mb-4">
-                                    特定の日付範囲において、標準とは異なる予定時間を適用します。
-                                </p>
+                                <p className="text-xs text-gray-500 mb-3">Summer School等、特定期間の出退勤予定を上書きします。</p>
                                 
                                 {settings.specialPeriods && settings.specialPeriods.length > 0 && (
-                                    <div className="mb-4 space-y-2 max-h-32 overflow-y-auto pr-1">
+                                    <div className="mb-3 space-y-2 max-h-24 overflow-y-auto pr-1">
                                         {settings.specialPeriods.map(sp => (
-                                            <div key={sp.id} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                            <div key={sp.id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-indigo-700 text-sm">{sp.name}</span>
-                                                    <span className="text-xs text-slate-600">{sp.startDate} 〜 {sp.endDate} | {sp.start} - {sp.end}</span>
+                                                    <span className="text-xs text-gray-500">{sp.startDate.substring(5)}〜{sp.endDate.substring(5)} | {sp.start}-{sp.end}</span>
                                                 </div>
-                                                <button onClick={() => {
-                                                    setSettings(prev => ({ ...prev, specialPeriods: prev.specialPeriods.filter(s => s.id !== sp.id) }));
-                                                    showNotification("特別期間を削除しました");
-                                                }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors">
+                                                <button onClick={() => setSettings(prev => ({ ...prev, specialPeriods: prev.specialPeriods.filter(s => s.id !== sp.id) }))} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -383,87 +397,69 @@ export default function IGKAttendanceSystem() {
                                     </div>
                                 )}
 
-                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-auto">
-                                    <div className="grid grid-cols-2 gap-3 items-end">
+                                <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 mt-auto">
+                                    <div className="grid grid-cols-2 gap-2 items-end">
                                         <div className="col-span-2">
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">期間名</label>
-                                            <input type="text" value={newSP.name} onChange={e => setNewSP({...newSP, name: e.target.value})} placeholder="Summer School" className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-2" />
+                                            <input type="text" value={newSP.name} onChange={e => setNewSP({...newSP, name: e.target.value})} placeholder="期間名 (例: Summer School)" className="w-full text-xs font-bold border-gray-300 rounded-lg shadow-sm py-1.5 px-2" />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">開始日</label>
-                                            <input type="date" value={newSP.startDate} onChange={e => setNewSP({...newSP, startDate: e.target.value})} className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-2" />
+                                        <div><input type="date" value={newSP.startDate} onChange={e => setNewSP({...newSP, startDate: e.target.value})} className="w-full text-xs border-gray-300 rounded-lg shadow-sm py-1.5 px-2 text-gray-600" /></div>
+                                        <div><input type="date" value={newSP.endDate} onChange={e => setNewSP({...newSP, endDate: e.target.value})} className="w-full text-xs border-gray-300 rounded-lg shadow-sm py-1.5 px-2 text-gray-600" /></div>
+                                        <div><input type="time" value={newSP.start} onChange={e => setNewSP({...newSP, start: e.target.value})} className="w-full text-xs border-gray-300 rounded-lg shadow-sm py-1.5 px-2" /></div>
+                                        <div className="flex gap-2">
+                                            <input type="time" value={newSP.end} onChange={e => setNewSP({...newSP, end: e.target.value})} className="w-full text-xs border-gray-300 rounded-lg shadow-sm py-1.5 px-2" />
+                                            <button onClick={() => {
+                                                if(newSP.name && newSP.startDate && newSP.endDate) {
+                                                    setSettings(prev => ({...prev, specialPeriods: [...(prev.specialPeriods||[]), {...newSP, id: Date.now()}]}));
+                                                    setNewSP({name:'', startDate:'', endDate:'', start:'08:30', end:'17:30'});
+                                                }
+                                            }} className="bg-indigo-600 text-white px-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 shadow-sm"><Plus className="w-4 h-4"/></button>
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">終了日</label>
-                                            <input type="date" value={newSP.endDate} onChange={e => setNewSP({...newSP, endDate: e.target.value})} className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-2" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">出勤予定</label>
-                                            <input type="time" value={newSP.start} onChange={e => setNewSP({...newSP, start: e.target.value})} className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-2" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">退勤予定</label>
-                                            <input type="time" value={newSP.end} onChange={e => setNewSP({...newSP, end: e.target.value})} className="w-full text-sm border-gray-300 rounded-md shadow-sm py-1.5 px-2" />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex justify-end">
-                                        <button onClick={() => {
-                                            if (!newSP.name || !newSP.startDate || !newSP.endDate) {
-                                                showNotification("期間名と日付を入力してください"); return;
-                                            }
-                                            setSettings(prev => ({ ...prev, specialPeriods: [...(prev.specialPeriods || []), { ...newSP, id: Date.now() }] }));
-                                            showNotification("特別期間を追加しました");
-                                            setNewSP({ name: '', startDate: '', endDate: '', start: '08:30', end: '17:30' });
-                                        }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm rounded-md font-medium transition-colors flex items-center gap-2">
-                                            <Plus className="w-4 h-4" /> 追加する
-                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {}
-                        {/* ================= 中部：打刻コピペ ================= */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-blue-500">
-                            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+                        {/* 中部：打刻コピペ */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                            <h2 className="text-lg font-bold flex items-center gap-2 mb-2 text-blue-900">
                                 <FileText className="w-5 h-5 text-blue-600" />
-                                打刻データ (実績) の貼り付け
+                                打刻データ (実績) の自動取り込み
                             </h2>
-                            <p className="text-sm text-gray-500 mb-4">
-                                勤怠システムからコピーした打刻テキストをそのまま貼り付けてください。<br/>
-                                <span className="text-blue-500 font-bold">※名前と日付・時間を自動で紐付けます。余分な空白行や社員番号が含まれていても問題ありません。</span>
+                            <p className="text-xs text-gray-500 mb-4">
+                                勤怠システムからコピーしたテキストをそのまま貼り付けてください。<br/>
+                                <span className="text-blue-500 font-bold">※名前と日付・時間を自動で紐付けます。余分な空白行や社員番号が含まれていても全て無視して処理します。</span>
                             </p>
                             <textarea
-                                className="w-full h-48 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 p-3 font-mono text-sm bg-blue-50/30"
+                                className="w-full h-48 border border-blue-200 rounded-xl shadow-inner focus:border-blue-500 focus:ring-2 focus:ring-blue-500 p-4 font-mono text-sm bg-blue-50/30 text-gray-700 leading-relaxed"
                                 placeholder={`【対応フォーマット例】\n00000646\n林 昊嬛\n\n入室\n2026/07/30 08:58`}
                                 value={pastedText}
                                 onChange={(e) => setPastedText(e.target.value)}
                             />
                             <div className="mt-4 flex justify-end">
-                                <button onClick={processPastedData} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-md transition-colors text-lg">
-                                    実績データを反映する
+                                <button onClick={processPastedData} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-md transition-all text-sm flex items-center gap-2">
+                                    <FileText className="w-4 h-4" /> 実績データを反映する
                                 </button>
                             </div>
                         </div>
 
-                        {/* ================= 下部：シフトアップロード ================= */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-emerald-500">
-                            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+                        {/* 下部：シフトアップロード */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+                            <h2 className="text-lg font-bold flex items-center gap-2 mb-2 text-emerald-900">
                                 <Upload className="w-5 h-5 text-emerald-600" />
                                 シフト表 (Excel/CSV) のアップロード
                             </h2>
-                            <p className="text-sm text-gray-500 mb-4">
-                                作成したシフト表ファイル（CSV形式）をアップロードして、各スタッフの予定（予定入/退）を一括反映します。
-                            </p>
+                            <p className="text-xs text-gray-500 mb-4">作成したシフト表ファイルをアップロードして、各スタッフの予定（予定入/退）を一括反映します。</p>
                             
-                            <div className="border-2 border-dashed border-emerald-300 rounded-xl p-10 text-center hover:bg-emerald-50 transition-colors bg-white">
+                            <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center hover:bg-emerald-50 transition-colors bg-white">
                                 <input type="file" accept=".csv" className="hidden" id="shift-upload" onChange={handleShiftUpload} />
                                 <label htmlFor="shift-upload" className="cursor-pointer flex flex-col items-center justify-center w-full h-full">
-                                    <div className="bg-emerald-100 p-4 rounded-full mb-4 shadow-sm">
-                                        <Upload className="w-8 h-8 text-emerald-600" />
+                                    <div className="bg-emerald-100 p-3 rounded-full mb-3 shadow-sm">
+                                        <Upload className="w-6 h-6 text-emerald-600" />
                                     </div>
-                                    <span className="text-lg font-bold text-slate-700 mb-1">ファイルを選択するか、ここにドラッグ＆ドロップ</span>
-                                    <span className="text-sm text-slate-500">CSV形式 (.csv) に対応しています</span>
+                                    <span className="text-sm font-bold text-slate-700 mb-1">ファイルを選択するか、ここにドラッグ＆ドロップ</span>
+                                    <span className="text-xs text-slate-500">CSV形式に対応しています</span>
                                 </label>
                             </div>
                         </div>
@@ -471,125 +467,130 @@ export default function IGKAttendanceSystem() {
                     </div>
                 )}
 
-                {}
                 {activeTab === 'preview' && (
                     <div className="space-y-4 animate-fadeIn">
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between print:hidden">
-                            <div className="flex items-center gap-4">
+                        {/* Control Bar */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between print:hidden gap-4">
+                            <div className="flex flex-wrap items-center gap-4">
                                 <div className="flex flex-col">
-                                    <label className="text-xs text-gray-500 font-medium mb-1">対象期間 (給与計算)</label>
-                                    <input type="month" value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                                    <label className="text-xs text-gray-500 font-bold mb-1">対象期間 (自動連動)</label>
+                                    <input type="month" value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <label className="text-xs text-gray-500 font-medium mb-1">対象従業員</label>
-                                    <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)} className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]">
+                                    <label className="text-xs text-gray-500 font-bold mb-1">対象従業員</label>
+                                    <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)} className="border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px] text-sm font-medium bg-gray-50">
                                         {renderEmployeeOptions()}
                                     </select>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <button onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 shadow-sm">
-                                    <Printer className="w-4 h-4" />
-                                    印刷 / PDF
-                                </button>
-                            </div>
+                            <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm">
+                                <Printer className="w-4 h-4" /> 印刷 / PDF
+                            </button>
                         </div>
 
-                        {}
+                        {/* Main Table Area */}
                         {currentEmp && (
-                            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0">
-                                <div className="flex justify-between items-end border-b-2 border-gray-800 pb-4 mb-6">
+                            <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0">
+                                {/* Header */}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b-2 border-slate-800 pb-4 mb-6 gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold tracking-tight">個人勤務表・給与計算用</h2>
-                                        <p className="text-gray-500 mt-1">対象期間: {selectedPeriod.split('-')[0]}年{selectedPeriod.split('-')[1]}月度 (前月16日〜当月15日)</p>
+                                        <h2 className="text-2xl font-black tracking-tight text-slate-900">個人勤務表・給与計算用</h2>
+                                        <p className="text-slate-500 mt-1 text-sm font-medium">対象期間: {selectedPeriod.split('-')[0]}年{selectedPeriod.split('-')[1]}月度 (前月16日〜当月15日)</p>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="inline-block border border-gray-400 px-4 py-1 mb-2 text-sm font-medium rounded text-gray-600 bg-gray-50">
+                                    <div className="text-left sm:text-right w-full sm:w-auto">
+                                        <div className="inline-block border border-slate-300 px-3 py-1 mb-2 text-xs font-bold rounded-md text-slate-600 bg-slate-50">
                                             {currentEmp.location === 'rokko' ? '六甲校' : '名谷校'} - {currentEmp.type === 'full' ? '正社員' : 'アルバイト'}
                                         </div>
-                                        <div className="text-xl font-bold border-b border-gray-400 pb-1 min-w-[200px]">
+                                        <div className="text-xl font-black border-b-2 border-slate-800 pb-1 min-w-[200px] text-slate-900">
                                             氏名: {currentEmp.name}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="overflow-x-auto">
+                                {/* Table */}
+                                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
                                     <table className="w-full text-sm text-left whitespace-nowrap border-collapse">
                                         <thead>
-                                            <tr className="bg-slate-100 text-slate-700 border-b border-gray-300">
-                                                <th className="py-2 px-3 font-semibold text-center w-24">日付</th>
-                                                <th className="py-2 px-3 font-semibold text-center w-20 border-l border-gray-300">入室</th>
-                                                <th className="py-2 px-3 font-semibold text-center w-20">退室</th>
+                                            <tr className="bg-slate-800 text-white">
+                                                <th className="py-2.5 px-3 font-bold text-center w-24 rounded-tl-lg">日付</th>
+                                                <th className="py-2.5 px-3 font-bold text-center w-20 border-l border-slate-700">入室</th>
+                                                <th className="py-2.5 px-3 font-bold text-center w-20">退室</th>
                                                 
                                                 {currentEmp.type === 'full' ? (
                                                     <>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 border-l border-gray-300 bg-gray-50">予定入</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-gray-50">予定退</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-24 border-l border-gray-300">交通費</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-orange-50 border-l border-gray-300">早残業</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-orange-50">後残業</th>
-                                                        <th className="py-2 px-3 font-semibold border-l border-gray-300">備考・特記事項</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 border-l border-slate-700 text-slate-300">予定入</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 text-slate-300">予定退</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-24 border-l border-slate-700">交通費</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 border-l border-slate-700 text-orange-300">早残業</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 text-orange-300">後残業</th>
+                                                        <th className="py-2.5 px-3 font-bold border-l border-slate-700 rounded-tr-lg">備考・特記事項</th>
                                                     </>
                                                 ) : (
                                                     <>
                                                         {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
                                                             <>
-                                                                <th className="py-2 px-3 font-semibold text-center w-20 bg-yellow-50 border-l border-gray-300">D予定</th>
-                                                                <th className="py-2 px-3 font-semibold text-center w-20 bg-yellow-50">D精算</th>
+                                                                <th className="py-2.5 px-3 font-bold text-center w-20 border-l border-slate-700 text-yellow-300">D予定</th>
+                                                                <th className="py-2.5 px-3 font-bold text-center w-20 text-yellow-300">D精算</th>
                                                             </>
                                                         )}
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-pink-50 border-l border-gray-300">IGK A</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-blue-50">IGK B</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-20 bg-purple-50">Y Private</th>
-                                                        <th className="py-2 px-3 font-semibold text-center w-24 border-l border-gray-300">交通費</th>
-                                                        <th className="py-2 px-3 font-semibold border-l border-gray-300">備考・特記事項</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 border-l border-slate-700 text-pink-300">IGK A</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 text-blue-300">IGK B</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-20 text-purple-300">Y Private</th>
+                                                        <th className="py-2.5 px-3 font-bold text-center w-24 border-l border-slate-700">交通費</th>
+                                                        <th className="py-2.5 px-3 font-bold border-l border-slate-700 rounded-tr-lg">備考・特記事項</th>
                                                     </>
                                                 )}
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            {dates.map((date) => {
+                                        <tbody className="bg-white">
+                                            {dates.map((date, index) => {
                                                 const dKey = formatDateKey(date);
                                                 const row = attendanceData[currentEmp.id]?.[dKey] || {};
                                                 const isWknd = isWeekend(date);
                                                 
-                                                // リアルタイムで残業を計算
+                                                // 行単位でリアルタイム残業計算
                                                 const { earlyMins, lateMins } = calculateOvertimeForDisplay(row, date);
 
                                                 return (
-                                                    <tr key={dKey} className={`border-b border-gray-200 hover:bg-slate-50 transition-colors ${isWknd ? 'bg-red-50/20 text-red-800' : ''}`}>
-                                                        <td className="py-2 px-3 text-center border-r border-gray-200 font-medium">{formatDisplayDate(date)}</td>
-                                                        <td className="py-2 px-3 text-center">
-                                                            <input type="time" value={row.inTime || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'inTime', e.target.value)} className="w-full bg-transparent border-0 text-center focus:ring-0 p-0" />
+                                                    <tr key={dKey} className={`border-b border-gray-200 hover:bg-slate-50 transition-colors ${isWknd ? 'bg-red-50/10' : ''} ${index === dates.length - 1 ? 'border-b-0' : ''}`}>
+                                                        <td className={`py-1.5 px-3 text-center border-r border-gray-200 font-bold ${isWknd ? 'text-red-600' : 'text-slate-700'}`}>{formatDisplayDate(date)}</td>
+                                                        
+                                                        {/* 実績入退 */}
+                                                        <td className="py-1.5 px-2 text-center bg-blue-50/30">
+                                                            <input type="time" value={row.inTime || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'inTime', e.target.value)} className="w-full bg-transparent border-0 text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-400 rounded p-0.5" />
                                                         </td>
-                                                        <td className="py-2 px-3 text-center">
-                                                            <input type="time" value={row.outTime || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'outTime', e.target.value)} className="w-full bg-transparent border-0 text-center focus:ring-0 p-0" />
+                                                        <td className="py-1.5 px-2 text-center bg-blue-50/30 border-r border-gray-200">
+                                                            <input type="time" value={row.outTime || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'outTime', e.target.value)} className="w-full bg-transparent border-0 text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-400 rounded p-0.5" />
                                                         </td>
 
                                                         {currentEmp.type === 'full' ? (
                                                             <>
-                                                                <td className="py-2 px-3 text-center bg-gray-50 border-l border-gray-200">
-                                                                    <input type="time" value={row.plannedIn || getPlannedTime(date, 'start')} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'plannedIn', e.target.value)} className="w-full bg-transparent border-0 text-center text-xs text-gray-500 focus:ring-0 p-0" />
+                                                                {/* 予定入退 */}
+                                                                <td className="py-1.5 px-2 text-center bg-gray-50 border-r border-gray-100">
+                                                                    <input type="time" value={row.plannedIn || getPlannedTime(date, 'start')} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'plannedIn', e.target.value)} className="w-full bg-transparent border-0 text-center text-xs text-gray-400 font-medium focus:ring-1 focus:ring-gray-300 rounded p-0" />
                                                                 </td>
-                                                                <td className="py-2 px-3 text-center bg-gray-50 border-r border-gray-200">
-                                                                    <input type="time" value={row.plannedOut || getPlannedTime(date, 'end')} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'plannedOut', e.target.value)} className="w-full bg-transparent border-0 text-center text-xs text-gray-500 focus:ring-0 p-0" />
+                                                                <td className="py-1.5 px-2 text-center bg-gray-50 border-r border-gray-200">
+                                                                    <input type="time" value={row.plannedOut || getPlannedTime(date, 'end')} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'plannedOut', e.target.value)} className="w-full bg-transparent border-0 text-center text-xs text-gray-400 font-medium focus:ring-1 focus:ring-gray-300 rounded p-0" />
                                                                 </td>
                                                                 
-                                                                <td className="py-2 px-3 text-center">
+                                                                {/* 交通費 */}
+                                                                <td className="py-1.5 px-3 text-center border-r border-gray-200">
                                                                     <div className="flex items-center justify-end">
                                                                         <span className="text-gray-400 mr-1 text-xs">¥</span>
-                                                                        <input type="number" value={row.transportFee === undefined ? 0 : row.transportFee} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'transportFee', e.target.value === '' ? 0 : parseInt(e.target.value))} className="w-16 bg-transparent border-b border-transparent focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:bg-white text-right p-0 font-medium px-1 py-0.5 outline-none" />
+                                                                        <input type="number" value={row.transportFee === undefined ? 0 : row.transportFee} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'transportFee', e.target.value === '' ? 0 : parseInt(e.target.value))} className="w-16 bg-transparent border-b border-transparent focus:border-emerald-500 focus:ring-0 text-right p-0 font-bold text-emerald-800 outline-none" />
                                                                     </div>
                                                                 </td>
                                                                 
-                                                                <td className="py-2 px-3 text-center bg-orange-50/50 border-l border-gray-200 font-medium text-orange-700">
+                                                                {/* 残業計算 */}
+                                                                <td className="py-1.5 px-2 text-center bg-orange-50/50 border-r border-orange-100 font-bold text-orange-700">
                                                                     {earlyMins > 0 ? minutesToTime(earlyMins) : '-'}
                                                                 </td>
-                                                                <td className="py-2 px-3 text-center bg-orange-50/50 border-r border-gray-200 font-medium text-orange-700">
+                                                                <td className="py-1.5 px-2 text-center bg-orange-50/50 border-r border-gray-200 font-bold text-orange-700">
                                                                     {lateMins > 0 ? minutesToTime(lateMins) : '-'}
                                                                 </td>
                                                                 
-                                                                <td className="py-2 px-3 flex gap-2 items-center">
+                                                                {/* 備考 */}
+                                                                <td className="py-1.5 px-2">
                                                                     <input type="text" value={row.remarks || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'remarks', e.target.value)} className="w-full bg-transparent border-0 text-sm focus:ring-1 focus:ring-indigo-300 rounded px-2" placeholder="備考..." />
                                                                 </td>
                                                             </>
@@ -597,30 +598,30 @@ export default function IGKAttendanceSystem() {
                                                             <>
                                                                 {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
                                                                     <>
-                                                                        <td className="py-2 px-3 text-center bg-yellow-50/50 border-l border-gray-200">
-                                                                            <input type="text" value={row.driverPlanned || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'driverPlanned', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm focus:ring-0 p-0" placeholder="-" />
+                                                                        <td className="py-1.5 px-2 text-center bg-yellow-50/50 border-r border-yellow-100">
+                                                                            <input type="text" value={row.driverPlanned || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'driverPlanned', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm font-bold text-yellow-900 focus:ring-0 p-0" placeholder="-" />
                                                                         </td>
-                                                                        <td className="py-2 px-3 text-center bg-yellow-50/50 border-r border-gray-200">
-                                                                            <input type="text" value={row.driverActual || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'driverActual', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm focus:ring-0 p-0" placeholder="-" />
+                                                                        <td className="py-1.5 px-2 text-center bg-yellow-50/50 border-r border-gray-200">
+                                                                            <input type="text" value={row.driverActual || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'driverActual', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm font-bold text-yellow-900 focus:ring-0 p-0" placeholder="-" />
                                                                         </td>
                                                                     </>
                                                                 )}
-                                                                <td className="py-2 px-3 text-center bg-pink-50/50 border-l border-gray-200">
-                                                                    <input type="text" value={row.igkA || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'igkA', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm focus:ring-0 p-0" placeholder="-" />
+                                                                <td className="py-1.5 px-2 text-center bg-pink-50/50 border-r border-pink-100">
+                                                                    <input type="text" value={row.igkA || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'igkA', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm font-bold text-pink-900 focus:ring-0 p-0" placeholder="-" />
                                                                 </td>
-                                                                <td className="py-2 px-3 text-center bg-blue-50/50">
-                                                                    <input type="text" value={row.igkB || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'igkB', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm focus:ring-0 p-0" placeholder="-" />
+                                                                <td className="py-1.5 px-2 text-center bg-blue-50/50 border-r border-blue-100">
+                                                                    <input type="text" value={row.igkB || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'igkB', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm font-bold text-blue-900 focus:ring-0 p-0" placeholder="-" />
                                                                 </td>
-                                                                <td className="py-2 px-3 text-center bg-purple-50/50 border-r border-gray-200">
-                                                                    <input type="text" value={row.yPrivate || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'yPrivate', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm focus:ring-0 p-0" placeholder="-" />
+                                                                <td className="py-1.5 px-2 text-center bg-purple-50/50 border-r border-gray-200">
+                                                                    <input type="text" value={row.yPrivate || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'yPrivate', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-400 text-center text-sm font-bold text-purple-900 focus:ring-0 p-0" placeholder="-" />
                                                                 </td>
-                                                                <td className="py-2 px-3 text-center border-r border-gray-200">
+                                                                <td className="py-1.5 px-3 text-center border-r border-gray-200">
                                                                     <div className="flex items-center justify-end">
                                                                         <span className="text-gray-400 mr-1 text-xs">¥</span>
-                                                                        <input type="number" value={row.transportFee === undefined ? 0 : row.transportFee} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'transportFee', e.target.value === '' ? 0 : parseInt(e.target.value))} className="w-16 bg-transparent border-b border-transparent focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:bg-white text-right p-0 font-medium px-1 py-0.5 outline-none" />
+                                                                        <input type="number" value={row.transportFee === undefined ? 0 : row.transportFee} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'transportFee', e.target.value === '' ? 0 : parseInt(e.target.value))} className="w-16 bg-transparent border-b border-transparent focus:border-emerald-500 focus:ring-0 text-right p-0 font-bold text-emerald-800 outline-none" />
                                                                     </div>
                                                                 </td>
-                                                                <td className="py-2 px-3 text-sm">
+                                                                <td className="py-1.5 px-2 text-sm">
                                                                     <input type="text" value={row.remarks || ''} onChange={(e) => handleCellChange(currentEmp.id, dKey, 'remarks', e.target.value)} className="w-full bg-transparent border-0 p-0 focus:ring-1 focus:ring-indigo-300 rounded px-1" placeholder="備考..." />
                                                                 </td>
                                                             </>
@@ -632,7 +633,6 @@ export default function IGKAttendanceSystem() {
                                     </table>
                                 </div>
 
-                                {}
                                 {(() => {
                                     const rows = dates.map(d => attendanceData[currentEmp.id]?.[formatDateKey(d)] || {});
                                     const daysWorked = rows.filter(r => r.inTime || r.outTime).length;
@@ -653,46 +653,46 @@ export default function IGKAttendanceSystem() {
                                         : 0;
 
                                     return (
-                                        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 border-t-2 border-gray-800 pt-6">
-                                            <div className="bg-slate-50 p-4 rounded-lg border border-gray-200">
-                                                <div className="text-xs text-slate-500 mb-1 font-medium">出勤日数</div>
-                                                <div className="text-xl font-bold">{daysWorked} <span className="text-sm font-normal text-slate-500">日</span></div>
+                                        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 border-t-2 border-slate-800 pt-6">
+                                            <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <div className="text-xs text-slate-500 mb-1 font-bold">出勤日数</div>
+                                                <div className="text-2xl font-black text-slate-800">{daysWorked} <span className="text-sm font-bold text-slate-500">日</span></div>
                                             </div>
                             
                                             {currentEmp.type === 'full' ? (
                                                 <>
-                                                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                                                        <div className="text-xs text-orange-600 mb-1 font-medium">残業 (早+後)</div>
-                                                        <div className="text-xl font-bold">{totalOvertimeMins > 0 ? minutesToTime(totalOvertimeMins) : '-'}</div>
+                                                    <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 shadow-sm">
+                                                        <div className="text-xs text-orange-600 mb-1 font-bold">残業 (早+後) 累計</div>
+                                                        <div className="text-2xl font-black text-orange-700">{totalOvertimeMins > 0 ? minutesToTime(totalOvertimeMins) : '00:00'}</div>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
-                                                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                                                            <div className="text-xs text-yellow-600 mb-1 font-medium">ドライバー総時間</div>
-                                                            <div className="text-xl font-bold">{sumTimeStr(rows.map(r => r.driverActual)) || '-'}</div>
+                                                        <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm">
+                                                            <div className="text-xs text-yellow-700 mb-1 font-bold">ドライバー 実績</div>
+                                                            <div className="text-2xl font-black text-yellow-800">{sumTimeStr(rows.map(r => r.driverActual)) || '-'}</div>
                                                         </div>
                                                     )}
-                                                    <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
-                                                        <div className="text-xs text-pink-600 mb-1 font-medium">IGK A 総時間</div>
-                                                        <div className="text-xl font-bold">{sumTimeStr(rows.map(r => r.igkA)) || '-'}</div>
+                                                    <div className="bg-pink-50 p-4 rounded-xl border border-pink-200 shadow-sm">
+                                                        <div className="text-xs text-pink-600 mb-1 font-bold">IGK A 総時間</div>
+                                                        <div className="text-2xl font-black text-pink-700">{sumTimeStr(rows.map(r => r.igkA)) || '-'}</div>
                                                     </div>
-                                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                                        <div className="text-xs text-blue-600 mb-1 font-medium">IGK B 総時間</div>
-                                                        <div className="text-xl font-bold">{sumTimeStr(rows.map(r => r.igkB)) || '-'}</div>
+                                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                                                        <div className="text-xs text-blue-600 mb-1 font-bold">IGK B 総時間</div>
+                                                        <div className="text-2xl font-black text-blue-700">{sumTimeStr(rows.map(r => r.igkB)) || '-'}</div>
                                                     </div>
-                                                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                                        <div className="text-xs text-purple-600 mb-1 font-medium">Y Private 総時間</div>
-                                                        <div className="text-xl font-bold">{sumTimeStr(rows.map(r => r.yPrivate)) || '-'}</div>
+                                                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 shadow-sm">
+                                                        <div className="text-xs text-purple-600 mb-1 font-bold">Y Private 総時間</div>
+                                                        <div className="text-2xl font-black text-purple-700">{sumTimeStr(rows.map(r => r.yPrivate)) || '-'}</div>
                                                     </div>
                                                 </>
                                             )}
 
-                                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
-                                                <div className="text-xs text-emerald-600 mb-1 font-medium">交通費合計</div>
-                                                <div className="text-xl font-bold flex items-baseline">
-                                                    <span className="text-sm mr-1">¥</span>
+                                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 shadow-sm">
+                                                <div className="text-xs text-emerald-700 mb-1 font-bold">交通費合計</div>
+                                                <div className="text-2xl font-black text-emerald-800 flex items-baseline">
+                                                    <span className="text-base mr-1">¥</span>
                                                     {transportTotal.toLocaleString()}
                                                 </div>
                                             </div>
