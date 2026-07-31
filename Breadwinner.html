@@ -2,20 +2,20 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Download, Upload, Printer, Trash2, Calendar, FileText, Settings, Plus, Clock } from 'lucide-react';
 
 const R_EMPLOYEES = [
-    { id: 'r1', name: 'Minori', aliases: ['葛野みのり', '葛野 みのり', 'みのり', '葛野'], type: 'full', location: 'rokko' },
-    { id: 'r2', name: 'Yassmyn', aliases: ['ヤスミン', 'Ratu Yassmyn Khairussalima'], type: 'full', location: 'rokko' },
-    { id: 'r3', name: 'Yoon', aliases: ['ユン', 'Yoon Honey Aung'], type: 'full', location: 'rokko' },
-    { id: 'r4', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林'], type: 'full', location: 'rokko' },
-    { id: 'r5', name: 'Mikuma', aliases: ['実熊', 'みくま', '實熊功光', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko' },
-    { id: 'r6', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行'], type: 'part', location: 'rokko' },
-    { id: 'r7', name: 'Fergus', aliases: ['ファーガス'], type: 'part', location: 'rokko' },
-    { id: 'r8', name: 'Sammy', aliases: ['サミー', 'Sammy Abukmeil'], type: 'part', location: 'rokko' },
-    { id: 'r9', name: 'Kim', aliases: ['キム'], type: 'part', location: 'rokko' },
-    { id: 'r10', name: 'Nathan', aliases: ['ネイサン', 'Nathan Morrison'], type: 'part', location: 'rokko' },
-    { id: 'r11', name: 'Mariko', aliases: ['マリコ', 'まりこ', '沼田真里子', '沼田 真里子', '沼田'], type: 'part', location: 'rokko' },
-    { id: 'r12', name: 'Ando', aliases: ['安藤', 'あんどう', '安藤佑也', '安藤 佑也'], type: 'part', location: 'rokko' },
-    { id: 'r13', name: 'Misato', aliases: ['ミサト', 'みさと'], type: 'part', location: 'rokko' },
-    { id: 'r14', name: 'Nao', aliases: ['ナオ', 'なお'], type: 'part', location: 'rokko' },
+    { id: 'r1', name: 'Minori', aliases: ['葛野みのり', '葛野 みのり', 'みのり', '葛野', 'Minori'], type: 'full', location: 'rokko' },
+    { id: 'r2', name: 'Yassmyn', aliases: ['ヤスミン', 'Ratu Yassmyn Khairussalima', 'Yassmyn'], type: 'full', location: 'rokko' },
+    { id: 'r3', name: 'Yoon', aliases: ['ユン', 'Yoon Honey Aung', 'Yoon'], type: 'full', location: 'rokko' },
+    { id: 'r4', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林', 'Koukei'], type: 'full', location: 'rokko' },
+    { id: 'r5', name: 'Mikuma', aliases: ['実熊', 'みくま', '實熊功光', '實熊 功光', '実熊功光', 'Mikuma'], type: 'part', location: 'rokko' },
+    { id: 'r6', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行', 'Taka'], type: 'part', location: 'rokko' },
+    { id: 'r7', name: 'Fergus', aliases: ['ファーガス', 'Fergus'], type: 'part', location: 'rokko' },
+    { id: 'r8', name: 'Sammy', aliases: ['サミー', 'Sammy Abukmeil', 'Sammy'], type: 'part', location: 'rokko' },
+    { id: 'r9', name: 'Kim', aliases: ['キム', 'Kim'], type: 'part', location: 'rokko' },
+    { id: 'r10', name: 'Nathan', aliases: ['ネイサン', 'Nathan Morrison', 'Nathan'], type: 'part', location: 'rokko' },
+    { id: 'r11', name: 'Mariko', aliases: ['マリコ', 'まりこ', '沼田真里子', '沼田 真里子', '沼田', 'Mariko'], type: 'part', location: 'rokko' },
+    { id: 'r12', name: 'Ando', aliases: ['安藤', 'あんどう', '安藤佑也', '安藤 佑也', 'Ando'], type: 'part', location: 'rokko' },
+    { id: 'r13', name: 'Misato', aliases: ['ミサト', 'みさと', 'Misato'], type: 'part', location: 'rokko' },
+    { id: 'r14', name: 'Nao', aliases: ['ナオ', 'なお', 'Nao'], type: 'part', location: 'rokko' },
     { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko' },
     { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko' }
 ];
@@ -39,8 +39,8 @@ const M_EMPLOYEES = [
 ];
 
 const DEFAULT_EMPLOYEES = [...R_EMPLOYEES, ...M_EMPLOYEES];
+const storageKey = 'igk_attendance_db_v7';
 
-const storageKey = 'igk_attendance_db_v6';
 const loadDb = () => JSON.parse(localStorage.getItem(storageKey) || '{"archives": [], "customEmployees": []}');
 const saveDb = (data) => localStorage.setItem(storageKey, JSON.stringify(data));
 
@@ -50,7 +50,7 @@ export default function IGKAttendanceSystem() {
     const [selectedEmpId, setSelectedEmpId] = useState(DEFAULT_EMPLOYEES[0].id);
     const [activeTab, setActiveTab] = useState('import');
     
-    // デフォルト対象期間 (16日〜翌15日)
+    // Default period calculation
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     let initialMonth = currentDate.getDate() >= 16 ? currentDate.getMonth() + 2 : currentDate.getMonth() + 1;
@@ -67,7 +67,7 @@ export default function IGKAttendanceSystem() {
     const [notification, setNotification] = useState('');
     
     const [settings, setSettings] = useState(() => {
-        const savedSettings = localStorage.getItem('igk_settings_v6');
+        const savedSettings = localStorage.getItem('igk_settings_v7');
         const defaultSettings = { baseTime: { start: '09:30', end: '18:30' }, specialPeriods: [] };
         if (savedSettings) {
             try {
@@ -81,7 +81,7 @@ export default function IGKAttendanceSystem() {
     const [newSP, setNewSP] = useState({ name: '', startDate: '', endDate: '', start: '08:30', end: '17:30' });
 
     useEffect(() => {
-        localStorage.setItem('igk_settings_v6', JSON.stringify(settings));
+        localStorage.setItem('igk_settings_v7', JSON.stringify(settings));
     }, [settings]);
 
     const timeToMinutes = (timeStr) => {
@@ -132,36 +132,51 @@ export default function IGKAttendanceSystem() {
             return;
         }
 
-        let matchedCount = 0;
-        let newData = { ...attendanceData };
-        let switchPeriod = null;
-        let switchEmpId = null;
-
-        // 【最強のテキスト解析エンジン】
-        // どんなフォーマットでも「日付＋時間」らしきものをすべて引っこ抜く
-        const datePattern = /(?:20)?\d{2}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?\s+\d{1,2}:\d{2}/g;
+        // 極限まで寛容な正規表現: 年がなくても、曜日(木)があっても、改行があってもマッチする！
+        const datePattern = /(?:(?:20)?\d{2}[\/\-年])?\d{1,2}[\/\-月]\d{1,2}日?(?:[\s\r\n]*\([日月火水木金土]\))?[\s\r\n]*\d{1,2}:\d{2}/g;
         const matches = [...pastedText.matchAll(datePattern)];
 
         if (matches.length === 0) {
-            showNotification("日付が見つかりませんでした。テキストを確認してください。");
+            showNotification("日付と時間（例: 7/30 08:58）が見つかりません。");
             return;
         }
 
-        // テキスト全体を小文字にして空白を除去（検索用）
+        let newData = JSON.parse(JSON.stringify(attendanceData)); // 完全なコピーを作成
+        let matchedCount = 0;
+        let switchPeriod = null;
+        let switchEmpId = null;
         const cleanFullText = pastedText.replace(/\s+/g, '').toLowerCase();
 
         matches.forEach(match => {
             const timeStr = match[0];
             const index = match.index;
             
-            // 日付をパース (6/31などの不正な日付はJSが自動で7/1などに補正してくれます)
-            const parsedDate = new Date(timeStr.replace(/[年月日]/g, '/').replace(/-/g, '/'));
-            if (isNaN(parsedDate.getTime())) return;
+            // 安全な日付抽出（JSのnew Dateのエラーを回避）
+            const nums = timeStr.match(/\d+/g);
+            if (!nums || nums.length < 4) return;
 
+            let y, m, d, h, min;
+            if (nums.length >= 5) {
+                y = parseInt(nums[0]);
+                if (y < 100) y += 2000;
+                m = parseInt(nums[1]);
+                d = parseInt(nums[2]);
+                h = parseInt(nums[3]);
+                min = parseInt(nums[4]);
+            } else {
+                // 年がない場合（7/30 08:58など）は今年の年号を使う
+                y = new Date().getFullYear();
+                m = parseInt(nums[0]);
+                d = parseInt(nums[1]);
+                h = parseInt(nums[2]);
+                min = parseInt(nums[3]);
+            }
+
+            const parsedDate = new Date(y, m - 1, d, h, min);
             const dateKey = formatDateKey(parsedDate);
-            const timeVal = `${String(parsedDate.getHours()).padStart(2, '0')}:${String(parsedDate.getMinutes()).padStart(2, '0')}`;
+            const timeVal = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 
-            // 16日〜15日のルールで、この日付が属する「給与月」を計算
+            // 月の自動切り替え判定
             const targetYear = parsedDate.getFullYear();
             let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
             let targetPeriodYear = targetYear;
@@ -174,20 +189,18 @@ export default function IGKAttendanceSystem() {
                 switchPeriod = autoPeriod;
             }
 
-            // 誰のデータかを探す（打刻時間の周辺 150文字程度を振り返る）
-            const contextStart = Math.max(0, index - 150);
+            // 誰の打刻かを探す（200文字前まで振り返る）
+            const contextStart = Math.max(0, index - 200);
             const contextStr = pastedText.substring(contextStart, index).replace(/\s+/g, '').toLowerCase();
             
             let targetEmpId = null;
             for (const emp of employees) {
                 const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
-                // 文脈に名前があれば採用
                 if (searchNames.some(name => contextStr.includes(name))) {
                     targetEmpId = emp.id;
                     break;
                 }
             }
-            // もし文脈になければ、テキスト全体のどこかに名前がないか探す（最終手段）
             if (!targetEmpId) {
                 for (const emp of employees) {
                     const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
@@ -198,19 +211,17 @@ export default function IGKAttendanceSystem() {
                 }
             }
 
-            if (!targetEmpId) return; // 誰か特定できなければスキップ
-            switchEmpId = targetEmpId; // 画面切り替え用に記録
+            if (!targetEmpId) return; 
+            switchEmpId = targetEmpId; 
 
-            // 入室か退室かを探す（文脈から推測、なければ最初のデータを入室とする）
+            // 入室か退室か
             let type = 'inTime';
-            if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out')) {
+            if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out') || contextStr.includes('退')) {
                 type = 'outTime';
             } else if (newData[targetEmpId] && newData[targetEmpId][dateKey] && newData[targetEmpId][dateKey].inTime) {
-                // すでに入室が入っていれば退室にする
-                type = 'outTime';
+                type = 'outTime'; // すでに入室があれば退室
             }
 
-            // データに格納
             if (!newData[targetEmpId]) newData[targetEmpId] = {};
             if (!newData[targetEmpId][dateKey]) newData[targetEmpId][dateKey] = { transportFee: 0 };
             
@@ -220,24 +231,21 @@ export default function IGKAttendanceSystem() {
 
         if (matchedCount > 0) {
             setAttendanceData(newData);
-            setPastedText(''); // 成功したらクリア
-            
-            // 画面を対象の月・対象のスタッフに自動ジャンプ
+            setPastedText('');
             if (switchPeriod) setSelectedPeriod(switchPeriod);
             if (switchEmpId) setSelectedEmpId(switchEmpId);
-
-            showNotification(`【成功】 ${matchedCount}件の打刻データを反映しました！（月/従業員を自動切替）`);
+            showNotification(`【成功】 ${matchedCount}件の打刻データを反映しました！`);
+            setActiveTab('preview'); // 自動的にプレビュー画面へ遷移
         } else {
-            showNotification("名前が見つかりませんでした。エイリアス（別名）の登録を確認してください。");
+            showNotification("日時は見つかりましたが、名前が一致しませんでした。エイリアスを確認してください。");
         }
     };
 
     const handleShiftUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        // （ここは将来的にCSV解析ロジックを実装）
-        showNotification(`シフト表「${file.name}」を読み込みました！（※プレビュー機能）`);
-        e.target.value = null; // リセット
+        showNotification(`シフト表「${file.name}」を読み込みました！（※開発中）`);
+        e.target.value = null;
     };
 
     const handleCellChange = (empId, dateKey, field, value) => {
@@ -246,7 +254,7 @@ export default function IGKAttendanceSystem() {
             [empId]: {
                 ...prev[empId],
                 [dateKey]: {
-                    ...(prev[empId] && prev[empId][dateKey] ? prev[empId][dateKey] : { transportFee: 0 }),
+                    ...(prev[empId]?.[dateKey] || { transportFee: 0 }),
                     [field]: value
                 }
             }
@@ -255,7 +263,6 @@ export default function IGKAttendanceSystem() {
 
     const currentEmp = employees.find(e => e.id === selectedEmpId);
     
-    // 予定時間（設定や特別期間から自動算出）
     const getPlannedTime = useCallback((date, type) => {
         if (!settings.specialPeriods || settings.specialPeriods.length === 0) return settings.baseTime[type];
         
@@ -276,13 +283,11 @@ export default function IGKAttendanceSystem() {
         return settings.baseTime[type];
     }, [settings]);
 
-    // 早残業・後残業のリアルタイム計算ロジック
     const calculateOvertimeForDisplay = useCallback((row, date) => {
         if (!currentEmp || currentEmp.type !== 'full') return { earlyMins: 0, lateMins: 0 };
         
         const inM = timeToMinutes(row?.inTime);
         const outM = timeToMinutes(row?.outTime);
-        // 行に予定が手入力されていればそれを優先。なければ設定から自動算出。
         const pInM = timeToMinutes(row?.plannedIn || getPlannedTime(date, 'start'));
         const pOutM = timeToMinutes(row?.plannedOut || getPlannedTime(date, 'end'));
 
@@ -339,12 +344,11 @@ export default function IGKAttendanceSystem() {
             )}
 
             <main className="p-4 md:p-6 max-w-7xl mx-auto">
-                
-                {}
+                {/* 統合された ①タブ */}
                 {activeTab === 'import' && (
                     <div className="space-y-6 animate-fadeIn">
                         
-                        {/* 上部：設定エリア（左右分割） */}
+                        {/* 上部：基準時間と特別期間の左右分割 */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* 左：基準時間 */}
                             <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 flex flex-col relative overflow-hidden">
@@ -356,18 +360,15 @@ export default function IGKAttendanceSystem() {
                                 <p className="text-xs text-gray-500 mb-4 flex-grow">
                                     ここで設定した時間が正社員の「予定入/退」のデフォルト値となり、残業計算の基準になります。
                                 </p>
-                                <div className="flex flex-col sm:flex-row gap-4 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                                    <div className="w-full sm:w-auto">
+                                <div className="flex flex-col sm:flex-row gap-3 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                    <div className="w-full sm:w-1/2">
                                         <label className="block text-xs font-bold text-indigo-900 mb-1">基準 入室</label>
-                                        <input type="time" value={settings.baseTime.start} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, start: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium" />
+                                        <input type="time" value={settings.baseTime.start} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, start: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium text-sm" />
                                     </div>
                                     <span className="text-indigo-300 font-bold hidden sm:block">〜</span>
-                                    <div className="w-full sm:w-auto">
+                                    <div className="w-full sm:w-1/2">
                                         <label className="block text-xs font-bold text-indigo-900 mb-1">基準 退室</label>
-                                        <input type="time" value={settings.baseTime.end} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, end: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium" />
-                                    </div>
-                                    <div className="sm:ml-auto text-emerald-600 font-bold text-xs flex items-center gap-1 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 w-full sm:w-auto justify-center">
-                                        ✓ 自動保存
+                                        <input type="time" value={settings.baseTime.end} onChange={(e) => setSettings({...settings, baseTime: {...settings.baseTime, end: e.target.value}})} className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-medium text-sm" />
                                     </div>
                                 </div>
                             </div>
@@ -428,11 +429,11 @@ export default function IGKAttendanceSystem() {
                             </h2>
                             <p className="text-xs text-gray-500 mb-4">
                                 勤怠システムからコピーしたテキストをそのまま貼り付けてください。<br/>
-                                <span className="text-blue-500 font-bold">※名前と日付・時間を自動で紐付けます。余分な空白行や社員番号が含まれていても全て無視して処理します。</span>
+                                <span className="text-blue-500 font-bold">※年や曜日が抜けていてもOK！自動認識して一番下のプレビューに切り替わります。</span>
                             </p>
                             <textarea
                                 className="w-full h-48 border border-blue-200 rounded-xl shadow-inner focus:border-blue-500 focus:ring-2 focus:ring-blue-500 p-4 font-mono text-sm bg-blue-50/30 text-gray-700 leading-relaxed"
-                                placeholder={`【対応フォーマット例】\n00000646\n林 昊嬛\n\n入室\n2026/07/30 08:58`}
+                                placeholder={`【対応フォーマット例】\n00000646\n林 昊嬛\n入室\n2026/07/30 08:58\n\n※ 7/30(木) 08:58 のように年が無くても認識します！`}
                                 value={pastedText}
                                 onChange={(e) => setPastedText(e.target.value)}
                             />
@@ -467,6 +468,7 @@ export default function IGKAttendanceSystem() {
                     </div>
                 )}
 
+                {/* ② タブ (テーブルプレビュー) */}
                 {activeTab === 'preview' && (
                     <div className="space-y-4 animate-fadeIn">
                         {/* Control Bar */}
@@ -548,7 +550,7 @@ export default function IGKAttendanceSystem() {
                                                 const row = attendanceData[currentEmp.id]?.[dKey] || {};
                                                 const isWknd = isWeekend(date);
                                                 
-                                                // 行単位でリアルタイム残業計算
+                                                // リアルタイム残業計算
                                                 const { earlyMins, lateMins } = calculateOvertimeForDisplay(row, date);
 
                                                 return (
@@ -643,7 +645,6 @@ export default function IGKAttendanceSystem() {
                                         return minutesToTime(totalMins);
                                     };
 
-                                    // 正社員の月間残業トータルを計算
                                     const totalOvertimeMins = currentEmp.type === 'full' 
                                         ? dates.reduce((sum, d) => {
                                             const r = attendanceData[currentEmp.id]?.[formatDateKey(d)] || {};
