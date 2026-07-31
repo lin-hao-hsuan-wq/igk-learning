@@ -92,7 +92,7 @@
             const [notification, setNotification] = useState('');
             
             const [settings, setSettings] = useState(() => {
-                const savedSettings = localStorage.getItem('igk_settings_v18');
+                const savedSettings = localStorage.getItem('igk_settings_v20');
                 const defaultSettings = { baseTime: { start: '09:30', end: '18:30' }, specialPeriods: [] };
                 if (savedSettings) {
                     try {
@@ -106,7 +106,7 @@
             const [newSP, setNewSP] = useState({ name: '', startDate: '', endDate: '', start: '08:30', end: '17:30' });
 
             useEffect(() => {
-                localStorage.setItem('igk_settings_v18', JSON.stringify(settings));
+                localStorage.setItem('igk_settings_v20', JSON.stringify(settings));
             }, [settings]);
 
             const timeToMinutes = (timeStr) => {
@@ -156,7 +156,6 @@
                     return;
                 }
 
-                // ★ 絕對疊加更新
                 setAttendanceData(prevData => {
                     let newData = JSON.parse(JSON.stringify(prevData));
                     let matchedCount = 0;
@@ -254,7 +253,7 @@
                             setPastedText('');
                             if (switchPeriod) setSelectedPeriod(switchPeriod);
                             if (switchEmpId) setSelectedEmpId(switchEmpId);
-                            showNotification(`✅ ${matchedCount}件の打刻データを追加・統合しました！`);
+                            showNotification(`✅ ${matchedCount}件の打刻データを統合しました！(班表は保持されます)`);
                             setActiveTab('preview');
                         }, 10);
                         return newData; 
@@ -270,7 +269,7 @@
                 if (!file) return;
 
                 if (file.name.endsWith('.xlsx')) {
-                    showNotification("🔍 視覺系班表解析中... (支援合併儲存格與顏色，請稍候)");
+                    showNotification("🔍 究極のAI視覚スキャンを開始... (色付き・結合セル・文字指定時間を解析中)");
                     
                     const reader = new FileReader();
                     reader.onload = async (event) => {
@@ -286,9 +285,11 @@
                                 let totalCount = 0;
                                 let switchTargetPeriod = null;
 
+                                // 幫助函數：安全取得文字
                                 const getSafeText = (cell) => {
                                     if (!cell) return '';
                                     let v = cell.value;
+                                    if (v && v.result !== undefined) v = v.result;
                                     if (v === null || v === undefined) return '';
                                     if (typeof v === 'string') return v.trim();
                                     if (v instanceof Date) return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;
@@ -296,50 +297,76 @@
                                     return (cell.text || '').toString().trim();
                                 };
 
-                                for (const ws of workbook.worksheets) {
-                                    let dateKey = null;
+                                // 幫助函數：更強大的時間提取
+                                const extractTimeFromCell = (cell) => {
+                                    if (!cell) return null;
+                                    let val = cell.value;
+                                    if (val && val.result !== undefined) val = val.result;
+                                    
+                                    // 1. 直接讀取格式化文字 (最安全)
+                                    if (cell.text) {
+                                        const match = cell.text.match(/(\d{1,2})[:：](\d{2})/);
+                                        if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+                                    }
+                                    // 2. 處理小數點時間 (0.3333 = 8:00)
+                                    if (typeof val === 'number' && val > 0 && val < 1) {
+                                        let totalMins = Math.round(val * 24 * 60);
+                                        return `${Math.floor(totalMins / 60).toString().padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
+                                    }
+                                    // 3. 處理字串隱含
+                                    if (typeof val === 'string') {
+                                        const match = val.match(/(\d{1,2})[:：](\d{2})/);
+                                        if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+                                    }
+                                    return null;
+                                };
 
-                                    // 1. 擴大搜索日期 (前10x10)
-                                    for (let r = 1; r <= 10; r++) {
+                                // 幫助函數：嚴格排除白色與無色
+                                const checkColor = (color) => {
+                                    if (!color) return false;
+                                    if (color.theme === 0 || color.theme === 1) return false; // 排除預設黑白主題
+                                    if (color.argb) {
+                                        const hex = color.argb.toUpperCase();
+                                        // 排除白色、純黑、透明
+                                        if (hex === 'FFFFFFFF' || hex === '00000000' || hex === 'FF000000' || hex === '00FFFFFF') return false;
+                                    }
+                                    return true;
+                                };
+
+                                let allExtractedData = {}; // 暫存區: { empId: { dateKey: { minTime, maxTime, exactTimes: [] } } }
+
+                                // 開始地毯式掃描所有分頁
+                                for (const ws of workbook.worksheets) {
+                                    let currentDateKey = null;
+                                    let currentColMap = {};
+                                    let isReadingTimes = false;
+
+                                    for (let r = 1; r <= ws.rowCount; r++) {
+                                        // 階段 1：找日期 (支持堆疊式多天排班)
+                                        let foundDateInRow = false;
                                         for (let c = 1; c <= 10; c++) {
                                             let cell = ws.getCell(r, c);
-                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
-                                            
-                                            let val = getSafeText(cell);
-                                            const match = val.match(/(?:(?:20)?\d{2}[\/\-年])?\s*(\d{1,2})\s*[\/\-月]\s*(\d{1,2})/);
+                                            let text = getSafeText(cell).replace(/\s+/g, '');
+                                            // 容忍度極高的日期正則： 7月14日(火), 2026/7/14, 7-14 等
+                                            const match = text.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
                                             if (match) {
                                                 let y = new Date().getFullYear();
-                                                const yMatch = val.match(/(20\d{2})/);
+                                                const yMatch = text.match(/(20\d{2})/);
                                                 if (yMatch) y = parseInt(yMatch[1]);
-                                                dateKey = formatDateKey(new Date(y, parseInt(match[1]) - 1, parseInt(match[2])));
+                                                currentDateKey = formatDateKey(new Date(y, parseInt(match[1]) - 1, parseInt(match[2])));
+                                                foundDateInRow = true;
+                                                isReadingTimes = false; // 找到新日期，準備重新抓人名
                                                 break;
                                             }
                                         }
-                                        if (dateKey) break;
-                                    }
 
-                                    if (!dateKey) continue; 
-
-                                    if (!switchTargetPeriod) {
-                                        const parsedDate = new Date(dateKey);
-                                        let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
-                                        let targetYear = parsedDate.getFullYear();
-                                        if (targetMonth > 12) { targetMonth -= 12; targetYear += 1; }
-                                        switchTargetPeriod = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
-                                    }
-
-                                    // 2. 擴大搜索人名列 (前15行)
-                                    let colToEmpId = {};
-                                    let nameRow = -1;
-                                    for (let r = 1; r <= 15; r++) {
+                                        // 階段 2：找人名 (在有日期的前提下)
                                         let matches = 0;
                                         let tempMap = {};
                                         for (let c = 1; c <= 40; c++) {
                                             let cell = ws.getCell(r, c);
-                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
-                                            
                                             let val = getSafeText(cell).toLowerCase().replace(/\s+/g, '');
-                                            if (val) {
+                                            if (val && val.length > 1) {
                                                 for (const emp of employees) {
                                                     let searchNames = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                     if (searchNames.includes(val)) {
@@ -350,94 +377,107 @@
                                                 }
                                             }
                                         }
-                                        if (matches >= 2) { 
-                                            nameRow = r;
-                                            colToEmpId = tempMap;
-                                            break;
+                                        
+                                        // 如果這行找到兩個以上的人名，代表這是表頭列！
+                                        if (matches >= 2) {
+                                            currentColMap = tempMap;
+                                            isReadingTimes = true; 
+                                            continue; // 跳到下一行開始讀時間
+                                        }
+
+                                        // 階段 3：讀取時間區塊 (如果有日期 + 有人名)
+                                        if (currentDateKey && isReadingTimes && Object.keys(currentColMap).length > 0) {
+                                            let rowTimeStr = extractTimeFromCell(ws.getCell(r, 1)) || extractTimeFromCell(ws.getCell(r, 2)) || extractTimeFromCell(ws.getCell(r, 3));
+                                            
+                                            if (rowTimeStr) {
+                                                const rowMins = timeToMinutes(rowTimeStr);
+
+                                                Object.keys(currentColMap).forEach(c => {
+                                                    const empId = currentColMap[c];
+                                                    let cell = ws.getCell(r, parseInt(c));
+                                                    
+                                                    // ★ 破甲 1：處理合併儲存格
+                                                    let actualCell = cell.isMerged ? ws.getCell(cell.master.address) : cell;
+
+                                                    let cellText = getSafeText(actualCell);
+                                                    let hasContent = cellText.trim().length > 0;
+                                                    let isColored = false;
+
+                                                    // ★ 破甲 2 & 3：嚴格判斷真正填色的儲存格
+                                                    if (actualCell.fill && actualCell.fill.type === 'pattern' && actualCell.fill.pattern !== 'none') {
+                                                        if (checkColor(actualCell.fill.fgColor) || checkColor(actualCell.fill.bgColor)) isColored = true;
+                                                    }
+
+                                                    // 只要有字或是真正有塗色，就認定這 30 分鐘在上班！
+                                                    if (hasContent || isColored) {
+                                                        if (!allExtractedData[empId]) allExtractedData[empId] = {};
+                                                        if (!allExtractedData[empId][currentDateKey]) {
+                                                            allExtractedData[empId][currentDateKey] = { minTime: 9999, maxTime: -1, exactTimes: [] };
+                                                        }
+                                                        
+                                                        let ed = allExtractedData[empId][currentDateKey];
+                                                        // 紀錄這個員工今天的最早上班行、最晚下班行
+                                                        if (rowMins < ed.minTime) ed.minTime = rowMins;
+                                                        if (rowMins > ed.maxTime) ed.maxTime = rowMins;
+
+                                                        // ★ 終極破甲 4：如果有精確手寫時間 (例如 13:21車出)，強制抓出來！
+                                                        const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
+                                                        exactMatches.forEach(m => {
+                                                            ed.exactTimes.push(timeToMinutes(`${m[1].padStart(2, '0')}:${m[2]}`));
+                                                        });
+                                                    }
+                                                });
+                                            }
                                         }
                                     }
-
-                                    if (nameRow === -1) continue;
-
-                                    // 3. 掃描時間與顏色區塊 (動態尋找時間欄位)
-                                    let empTimes = {};
-                                    for (let r = nameRow + 1; r <= ws.rowCount; r++) {
-                                        
-                                        let timeStr = '';
-                                        // 掃描該行的前3欄找時間，避免空白Spacer欄位
-                                        for(let tc = 1; tc <= 3; tc++) {
-                                            let tCell = ws.getCell(r, tc);
-                                            if (tCell.isMerged) tCell = ws.getCell(tCell.master.address);
-                                            
-                                            let tempStr = '';
-                                            if (typeof tCell.value === 'number' && tCell.value > 0 && tCell.value < 1) {
-                                                let totalMins = Math.round(tCell.value * 24 * 60);
-                                                tempStr = `${Math.floor(totalMins / 60)}:${String(totalMins % 60).padStart(2, '0')}`;
-                                            } else if (tCell.value instanceof Date) {
-                                                tempStr = `${tCell.value.getUTCHours()}:${String(tCell.value.getUTCMinutes()).padStart(2, '0')}`;
-                                            } else {
-                                                tempStr = getSafeText(tCell);
-                                            }
-                                            
-                                            const timeMatch = tempStr.match(/(\d{1,2})[:：](\d{2})/);
-                                            if (timeMatch) {
-                                                timeStr = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-                                                break;
-                                            }
-                                        }
-                                        
-                                        if (!timeStr) continue; 
-                                        
-                                        Object.keys(colToEmpId).forEach(c => {
-                                            let cell = ws.getCell(r, parseInt(c));
-                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
-                                            
-                                            let hasContent = false;
-                                            let text = getSafeText(cell);
-                                            if (text && text.trim().length > 0) hasContent = true;
-                                            
-                                            if (!hasContent && cell.fill && cell.fill.type === 'pattern' && cell.fill.pattern !== 'none') {
-                                                const checkColor = (color) => {
-                                                    if (!color) return false;
-                                                    if (color.argb && color.argb.toUpperCase() !== 'FFFFFFFF' && color.argb !== '00000000' && color.argb.toUpperCase() !== 'FF000000') return true;
-                                                    if (color.theme !== undefined && color.theme !== 0) return true;
-                                                    return false;
-                                                };
-                                                if (checkColor(cell.fill.fgColor) || checkColor(cell.fill.bgColor)) hasContent = true;
-                                            }
-
-                                            if (hasContent) {
-                                                const empId = colToEmpId[c];
-                                                if (!empTimes[empId]) empTimes[empId] = { start: timeStr, end: timeStr };
-                                                empTimes[empId].end = timeStr;
-                                            }
-                                        });
-                                    }
-
-                                    // 4. 無縫疊加到 newData 中
-                                    Object.keys(empTimes).forEach(empId => {
-                                        const t = empTimes[empId];
-                                        const endMins = timeToMinutes(t.end) + 30; // 自動延後30分作為下班時間
-                                        const finalEnd = minutesToTime(endMins);
-                                        
-                                        if (!newData[empId]) newData[empId] = {};
-                                        if (!newData[empId][dateKey]) newData[empId][dateKey] = { transportFee: 0 };
-                                        
-                                        newData[empId][dateKey].plannedIn = t.start;
-                                        newData[empId][dateKey].plannedOut = finalEnd;
-                                        totalCount++;
-                                    });
                                 }
+
+                                // 階段 4：結算並疊加回主畫面
+                                Object.keys(allExtractedData).forEach(empId => {
+                                    Object.keys(allExtractedData[empId]).forEach(dateKey => {
+                                        const data = allExtractedData[empId][dateKey];
+                                        
+                                        let startMins = data.minTime;
+                                        let endMins = data.maxTime + 30; // 預設：最後一個顏色塊加上 30 分鐘
+
+                                        // ★ 如果有抓到精確時間 (13:21, 18:27)，並且時間合理，直接覆寫網格時間！
+                                        if (data.exactTimes.length > 0) {
+                                            const minExact = Math.min(...data.exactTimes);
+                                            const maxExact = Math.max(...data.exactTimes);
+                                            // 只有在邊界附近的精確時間才算數 (防誤判)
+                                            if (Math.abs(minExact - startMins) <= 90) startMins = minExact;
+                                            if (Math.abs(maxExact - endMins) <= 90) endMins = maxExact;
+                                        }
+
+                                        if (startMins < 9999 && endMins > -1) {
+                                            // 確保無縫疊加！絕對不覆蓋原本已有的打卡 (inTime/outTime)
+                                            if (!newData[empId]) newData[empId] = {};
+                                            if (!newData[empId][dateKey]) newData[empId][dateKey] = { transportFee: 0 };
+                                            
+                                            newData[empId][dateKey].plannedIn = minutesToTime(startMins);
+                                            newData[empId][dateKey].plannedOut = minutesToTime(endMins);
+                                            totalCount++;
+                                            
+                                            if (!switchTargetPeriod) {
+                                                const parsedDate = new Date(dateKey);
+                                                let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
+                                                let targetYear = parsedDate.getFullYear();
+                                                if (targetMonth > 12) { targetMonth -= 12; targetYear += 1; }
+                                                switchTargetPeriod = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+                                            }
+                                        }
+                                    });
+                                });
 
                                 if (totalCount > 0) {
                                     setTimeout(() => {
                                         if (switchTargetPeriod) setSelectedPeriod(switchTargetPeriod);
-                                        showNotification(`✨ 成功讀取排班！已寫入 ${totalCount} 筆預定時間！(請注意跨月日期的查看)`);
+                                        showNotification(`✨ 神級讀取成功！已無縫排入 ${totalCount} 筆班表時間！(與打卡完美疊加)`);
                                         setActiveTab('preview');
                                     }, 10);
                                     return newData; 
                                 } else {
-                                    setTimeout(() => showNotification("⚠️ 檔案讀取成功，但找不到任何顏色區塊或排班文字。請確認名字與日期是否對齊。"), 0);
+                                    setTimeout(() => showNotification("⚠️ 檔案讀取成功，但找不到任何顏色區塊或排班文字。"), 0);
                                     return prevData;
                                 }
                             });
@@ -676,7 +716,7 @@
                                                 <Upload className="w-8 h-8" />
                                             </div>
                                             <span className="text-base font-black text-emerald-900 mb-1">Google スプレッドシートからダウンロードした<br/>Excel (.xlsx) を直接選擇</span>
-                                            <span className="text-xs text-emerald-700 mt-2 font-bold bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">XLSX (色彩/合併儲存格) 完全應對</span>
+                                            <span className="text-xs text-emerald-700 mt-2 font-bold bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">XLSX (色彩/合併儲存格/指定時間) 完全掃描</span>
                                         </label>
                                     </div>
                                 </div>
