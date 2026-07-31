@@ -70,13 +70,8 @@
         ];
 
         const DEFAULT_EMPLOYEES = [...R_EMPLOYEES, ...M_EMPLOYEES];
-        const storageKey = 'igk_attendance_db_v17';
-
-        const loadDb = () => JSON.parse(localStorage.getItem(storageKey) || '{"archives": [], "customEmployees": []}');
-        const saveDb = (data) => localStorage.setItem(storageKey, JSON.stringify(data));
 
         function IGKAttendanceSystem() {
-            const [db, setDb] = useState(loadDb());
             const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
             const [selectedEmpId, setSelectedEmpId] = useState(DEFAULT_EMPLOYEES[0].id);
             const [activeTab, setActiveTab] = useState('import');
@@ -97,7 +92,7 @@
             const [notification, setNotification] = useState('');
             
             const [settings, setSettings] = useState(() => {
-                const savedSettings = localStorage.getItem('igk_settings_v17');
+                const savedSettings = localStorage.getItem('igk_settings_v18');
                 const defaultSettings = { baseTime: { start: '09:30', end: '18:30' }, specialPeriods: [] };
                 if (savedSettings) {
                     try {
@@ -111,7 +106,7 @@
             const [newSP, setNewSP] = useState({ name: '', startDate: '', endDate: '', start: '08:30', end: '17:30' });
 
             useEffect(() => {
-                localStorage.setItem('igk_settings_v17', JSON.stringify(settings));
+                localStorage.setItem('igk_settings_v18', JSON.stringify(settings));
             }, [settings]);
 
             const timeToMinutes = (timeStr) => {
@@ -161,108 +156,114 @@
                     return;
                 }
 
-                // 極限まで寛容な正規表現
-                const datePattern = /(?:(?:20)?\d{2}[\/\-年])?\d{1,2}[\/\-月]\d{1,2}日?(?:[\s\r\n]*\([日月火水木金土]\))?[\s\r\n]*\d{1,2}:\d{2}/g;
-                const matches = [...pastedText.matchAll(datePattern)];
-
-                if (matches.length === 0) {
-                    showNotification("日付と時間（例: 7/30 08:58）が見つかりません。");
-                    return;
-                }
-
-                let newData = JSON.parse(JSON.stringify(attendanceData));
-                let matchedCount = 0;
-                let switchPeriod = null;
-                let switchEmpId = null;
-                const cleanFullText = pastedText.replace(/\s+/g, '').toLowerCase();
-
-                matches.forEach(match => {
-                    const timeStr = match[0];
-                    const index = match.index;
+                // ★ 絕對狀態更新 (Functional Update)：確保打卡紀錄和排班表「疊加」而不覆蓋
+                setAttendanceData(prevData => {
+                    let newData = JSON.parse(JSON.stringify(prevData)); // 複製最即時的資料狀態
+                    let matchedCount = 0;
+                    let switchPeriod = null;
+                    let switchEmpId = null;
                     
-                    const nums = timeStr.match(/\d+/g);
-                    if (!nums || nums.length < 4) return;
+                    const cleanFullText = pastedText.replace(/\s+/g, '').toLowerCase();
+                    const datePattern = /(?:(?:20)?\d{2}[\/\-年])?\d{1,2}[\/\-月]\d{1,2}日?(?:[\s\r\n]*\([日月火水木金土]\))?[\s\r\n]*\d{1,2}:\d{2}/g;
+                    const matches = [...pastedText.matchAll(datePattern)];
 
-                    let y, m, d, h, min;
-                    if (nums.length >= 5) {
-                        y = parseInt(nums[0]);
-                        if (y < 100) y += 2000;
-                        m = parseInt(nums[1]);
-                        d = parseInt(nums[2]);
-                        h = parseInt(nums[3]);
-                        min = parseInt(nums[4]);
-                    } else {
-                        y = new Date().getFullYear();
-                        m = parseInt(nums[0]);
-                        d = parseInt(nums[1]);
-                        h = parseInt(nums[2]);
-                        min = parseInt(nums[3]);
+                    if (matches.length === 0) {
+                        setTimeout(() => showNotification("日付と時間（例: 7/30 08:58）が見つかりません。"), 0);
+                        return prevData;
                     }
 
-                    const parsedDate = new Date(y, m - 1, d, h, min);
-                    const dateKey = formatDateKey(parsedDate);
-                    const timeVal = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    matches.forEach(match => {
+                        const timeStr = match[0];
+                        const index = match.index;
+                        
+                        const nums = timeStr.match(/\d+/g);
+                        if (!nums || nums.length < 4) return;
 
-                    const targetYear = parsedDate.getFullYear();
-                    let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
-                    let targetPeriodYear = targetYear;
-                    if (targetMonth > 12) {
-                        targetMonth -= 12;
-                        targetPeriodYear += 1;
-                    }
-                    const autoPeriod = `${targetPeriodYear}-${String(targetMonth).padStart(2, '0')}`;
-                    if (!switchPeriod && autoPeriod !== selectedPeriod) {
-                        switchPeriod = autoPeriod;
-                    }
-
-                    const contextStart = Math.max(0, index - 200);
-                    const contextStr = pastedText.substring(contextStart, index).replace(/\s+/g, '').toLowerCase();
-                    
-                    let targetEmpId = null;
-                    for (const emp of employees) {
-                        const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
-                        if (searchNames.some(name => contextStr.includes(name))) {
-                            targetEmpId = emp.id;
-                            break;
+                        let y, m, d, h, min;
+                        if (nums.length >= 5) {
+                            y = parseInt(nums[0]);
+                            if (y < 100) y += 2000;
+                            m = parseInt(nums[1]);
+                            d = parseInt(nums[2]);
+                            h = parseInt(nums[3]);
+                            min = parseInt(nums[4]);
+                        } else {
+                            y = new Date().getFullYear();
+                            m = parseInt(nums[0]);
+                            d = parseInt(nums[1]);
+                            h = parseInt(nums[2]);
+                            min = parseInt(nums[3]);
                         }
-                    }
-                    if (!targetEmpId) {
+
+                        const parsedDate = new Date(y, m - 1, d, h, min);
+                        const dateKey = formatDateKey(parsedDate);
+                        const timeVal = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+
+                        const targetYear = parsedDate.getFullYear();
+                        let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
+                        let targetPeriodYear = targetYear;
+                        if (targetMonth > 12) {
+                            targetMonth -= 12;
+                            targetPeriodYear += 1;
+                        }
+                        const autoPeriod = `${targetPeriodYear}-${String(targetMonth).padStart(2, '0')}`;
+                        if (!switchPeriod && autoPeriod !== selectedPeriod) {
+                            switchPeriod = autoPeriod;
+                        }
+
+                        const contextStart = Math.max(0, index - 200);
+                        const contextStr = pastedText.substring(contextStart, index).replace(/\s+/g, '').toLowerCase();
+                        
+                        let targetEmpId = null;
                         for (const emp of employees) {
                             const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
-                            if (searchNames.some(name => cleanFullText.includes(name))) {
+                            if (searchNames.some(name => contextStr.includes(name))) {
                                 targetEmpId = emp.id;
                                 break;
                             }
                         }
+                        if (!targetEmpId) {
+                            for (const emp of employees) {
+                                const searchNames = [emp.name, ...emp.aliases].map(n => n.replace(/\s+/g, '').toLowerCase());
+                                if (searchNames.some(name => cleanFullText.includes(name))) {
+                                    targetEmpId = emp.id;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!targetEmpId) return; 
+                        switchEmpId = targetEmpId; 
+
+                        let type = 'inTime';
+                        if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out') || contextStr.includes('退')) {
+                            type = 'outTime';
+                        } else if (newData[targetEmpId] && newData[targetEmpId][dateKey] && newData[targetEmpId][dateKey].inTime) {
+                            type = 'outTime';
+                        }
+
+                        // ★ 重點：只填寫/修改對應的欄位，絕不動到其他的 (例如 Excel 讀進來的 plannedIn)
+                        if (!newData[targetEmpId]) newData[targetEmpId] = {};
+                        if (!newData[targetEmpId][dateKey]) newData[targetEmpId][dateKey] = { transportFee: 0 };
+                        
+                        newData[targetEmpId][dateKey][type] = timeVal;
+                        matchedCount++;
+                    });
+
+                    if (matchedCount > 0) {
+                        setTimeout(() => {
+                            setPastedText('');
+                            if (switchPeriod) setSelectedPeriod(switchPeriod);
+                            if (switchEmpId) setSelectedEmpId(switchEmpId);
+                            showNotification(`【成功】 ${matchedCount}件の打刻データを反映しました！`);
+                            setActiveTab('preview');
+                        }, 10);
+                        return newData; // 更新為融合後的新資料
+                    } else {
+                        setTimeout(() => showNotification("日時は見つかりましたが、名前が一致しませんでした。エイリアスを確認してください。"), 0);
+                        return prevData;
                     }
-
-                    if (!targetEmpId) return; 
-                    switchEmpId = targetEmpId; 
-
-                    let type = 'inTime';
-                    if (contextStr.includes('退室') || contextStr.includes('退勤') || contextStr.includes('out') || contextStr.includes('退')) {
-                        type = 'outTime';
-                    } else if (newData[targetEmpId] && newData[targetEmpId][dateKey] && newData[targetEmpId][dateKey].inTime) {
-                        type = 'outTime';
-                    }
-
-                    if (!newData[targetEmpId]) newData[targetEmpId] = {};
-                    if (!newData[targetEmpId][dateKey]) newData[targetEmpId][dateKey] = { transportFee: 0 };
-                    
-                    newData[targetEmpId][dateKey][type] = timeVal;
-                    matchedCount++;
                 });
-
-                if (matchedCount > 0) {
-                    setAttendanceData(newData);
-                    setPastedText('');
-                    if (switchPeriod) setSelectedPeriod(switchPeriod);
-                    if (switchEmpId) setSelectedEmpId(switchEmpId);
-                    showNotification(`【成功】 ${matchedCount}件の打刻データを反映しました！`);
-                    setActiveTab('preview');
-                } else {
-                    showNotification("日時は見つかりましたが、名前が一致しませんでした。エイリアスを確認してください。");
-                }
             };
 
             const handleShiftUpload = async (e) => {
@@ -281,177 +282,169 @@
                             const workbook = new ExcelJS.Workbook();
                             await workbook.xlsx.load(buffer);
                             
-                            let totalCount = 0;
-                            let switchTargetPeriod = null;
-                            let newData = JSON.parse(JSON.stringify(attendanceData));
+                            // ★ 絕對狀態更新：保證班表讀入時，只覆蓋預定時間，不覆蓋已存在的打卡實績
+                            setAttendanceData(prevData => {
+                                let newData = JSON.parse(JSON.stringify(prevData));
+                                let totalCount = 0;
+                                let switchTargetPeriod = null;
 
-                            // 輔助函數：安全提取儲存格文字
-                            const getSafeText = (cell) => {
-                                if (!cell) return '';
-                                let v = cell.value;
-                                if (v === null || v === undefined) return '';
-                                if (typeof v === 'string') return v.trim();
-                                if (v instanceof Date) return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;
-                                if (v.richText) return v.richText.map(rt => rt.text).join('').trim();
-                                return (cell.text || '').toString().trim();
-                            };
+                                const getSafeText = (cell) => {
+                                    if (!cell) return '';
+                                    let v = cell.value;
+                                    if (v === null || v === undefined) return '';
+                                    if (typeof v === 'string') return v.trim();
+                                    if (v instanceof Date) return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;
+                                    if (v.richText) return v.richText.map(rt => rt.text).join('').trim();
+                                    return (cell.text || '').toString().trim();
+                                };
 
-                            for (const ws of workbook.worksheets) {
-                                let dateKey = null;
+                                for (const ws of workbook.worksheets) {
+                                    let dateKey = null;
 
-                                // 1. 找日期 (左上角 5x5 範圍)
-                                for (let r = 1; r <= 5; r++) {
-                                    for (let c = 1; c <= 5; c++) {
-                                        let cell = ws.getCell(r, c);
-                                        if (cell.isMerged) cell = ws.getCell(cell.master.address); // 追溯合併儲存格源頭
-                                        
-                                        let val = getSafeText(cell);
-                                        const match = val.match(/(?:(?:20)?\d{2}[\/\-年])?\s*(\d{1,2})\s*[\/\-月]\s*(\d{1,2})/);
-                                        if (match) {
-                                            let y = new Date().getFullYear();
-                                            const yMatch = val.match(/(20\d{2})/);
-                                            if (yMatch) y = parseInt(yMatch[1]);
-                                            dateKey = formatDateKey(new Date(y, parseInt(match[1]) - 1, parseInt(match[2])));
-                                            break;
+                                    // 1. 找日期
+                                    for (let r = 1; r <= 5; r++) {
+                                        for (let c = 1; c <= 5; c++) {
+                                            let cell = ws.getCell(r, c);
+                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
+                                            
+                                            let val = getSafeText(cell);
+                                            const match = val.match(/(?:(?:20)?\d{2}[\/\-年])?\s*(\d{1,2})\s*[\/\-月]\s*(\d{1,2})/);
+                                            if (match) {
+                                                let y = new Date().getFullYear();
+                                                const yMatch = val.match(/(20\d{2})/);
+                                                if (yMatch) y = parseInt(yMatch[1]);
+                                                dateKey = formatDateKey(new Date(y, parseInt(match[1]) - 1, parseInt(match[2])));
+                                                break;
+                                            }
                                         }
+                                        if (dateKey) break;
                                     }
-                                    if (dateKey) break;
-                                }
 
-                                if (!dateKey) continue; 
+                                    if (!dateKey) continue; 
 
-                                if (!switchTargetPeriod) {
-                                    const parsedDate = new Date(dateKey);
-                                    let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
-                                    let targetYear = parsedDate.getFullYear();
-                                    if (targetMonth > 12) { targetMonth -= 12; targetYear += 1; }
-                                    switchTargetPeriod = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
-                                }
+                                    if (!switchTargetPeriod) {
+                                        const parsedDate = new Date(dateKey);
+                                        let targetMonth = parsedDate.getDate() >= 16 ? parsedDate.getMonth() + 2 : parsedDate.getMonth() + 1;
+                                        let targetYear = parsedDate.getFullYear();
+                                        if (targetMonth > 12) { targetMonth -= 12; targetYear += 1; }
+                                        switchTargetPeriod = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+                                    }
 
-                                // 2. 找人名列 (前 8 列)
-                                let colToEmpId = {};
-                                let nameRow = -1;
-                                for (let r = 1; r <= 8; r++) {
-                                    let matches = 0;
-                                    let tempMap = {};
-                                    for (let c = 1; c <= 40; c++) {
-                                        let cell = ws.getCell(r, c);
-                                        if (cell.isMerged) cell = ws.getCell(cell.master.address);
-                                        
-                                        let val = getSafeText(cell).toLowerCase().replace(/\s+/g, '');
-                                        if (val) {
-                                            for (const emp of employees) {
-                                                let searchNames = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
-                                                if (searchNames.includes(val)) {
-                                                    tempMap[c] = emp.id;
-                                                    matches++;
-                                                    break;
+                                    // 2. 找人名列
+                                    let colToEmpId = {};
+                                    let nameRow = -1;
+                                    for (let r = 1; r <= 8; r++) {
+                                        let matches = 0;
+                                        let tempMap = {};
+                                        for (let c = 1; c <= 40; c++) {
+                                            let cell = ws.getCell(r, c);
+                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
+                                            
+                                            let val = getSafeText(cell).toLowerCase().replace(/\s+/g, '');
+                                            if (val) {
+                                                for (const emp of employees) {
+                                                    let searchNames = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                                    if (searchNames.includes(val)) {
+                                                        tempMap[c] = emp.id;
+                                                        matches++;
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
+                                        if (matches >= 2) { 
+                                            nameRow = r;
+                                            colToEmpId = tempMap;
+                                            break;
+                                        }
                                     }
-                                    if (matches >= 2) { 
-                                        nameRow = r;
-                                        colToEmpId = tempMap;
-                                        break;
-                                    }
-                                }
 
-                                if (nameRow === -1) continue;
+                                    if (nameRow === -1) continue;
 
-                                // 3. 掃描時間與顏色區塊
-                                let empTimes = {};
-                                
-                                for (let r = nameRow + 1; r <= ws.rowCount; r++) {
-                                    // 抓取第一欄的時間 (破甲二：處理 Excel 時間比例小數)
-                                    let timeCell = ws.getCell(r, 1);
-                                    if (timeCell.isMerged) timeCell = ws.getCell(timeCell.master.address);
+                                    // 3. 掃描時間與顏色區塊
+                                    let empTimes = {};
                                     
-                                    let timeStr = '';
-                                    if (typeof timeCell.value === 'number' && timeCell.value > 0 && timeCell.value < 1) {
-                                        let totalMins = Math.round(timeCell.value * 24 * 60);
-                                        timeStr = `${Math.floor(totalMins / 60)}:${String(totalMins % 60).padStart(2, '0')}`;
-                                    } else if (timeCell.value instanceof Date) {
-                                        timeStr = `${timeCell.value.getUTCHours()}:${String(timeCell.value.getUTCMinutes()).padStart(2, '0')}`;
-                                    } else {
-                                        timeStr = getSafeText(timeCell);
-                                    }
-                                    
-                                    const timeMatch = timeStr.match(/(\d{1,2})[:：](\d{2})/);
-                                    if (!timeMatch) continue; 
-                                    
-                                    const cleanTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-                                    
-                                    // 檢查每一位員工在這格時間的狀況
-                                    Object.keys(colToEmpId).forEach(c => {
-                                        let cell = ws.getCell(r, parseInt(c));
+                                    for (let r = nameRow + 1; r <= ws.rowCount; r++) {
+                                        let timeCell = ws.getCell(r, 1);
+                                        if (timeCell.isMerged) timeCell = ws.getCell(timeCell.master.address);
                                         
-                                        // ★ 破甲一：遇到合併儲存格，自動往上找源頭
-                                        if (cell.isMerged) {
-                                            cell = ws.getCell(cell.master.address);
+                                        let timeStr = '';
+                                        if (typeof timeCell.value === 'number' && timeCell.value > 0 && timeCell.value < 1) {
+                                            let totalMins = Math.round(timeCell.value * 24 * 60);
+                                            timeStr = `${Math.floor(totalMins / 60)}:${String(totalMins % 60).padStart(2, '0')}`;
+                                        } else if (timeCell.value instanceof Date) {
+                                            timeStr = `${timeCell.value.getUTCHours()}:${String(timeCell.value.getUTCMinutes()).padStart(2, '0')}`;
+                                        } else {
+                                            timeStr = getSafeText(timeCell);
                                         }
                                         
-                                        let hasContent = false;
-
-                                        // 條件A：格子裡有文字 (如 MTG, Kids)
-                                        if (getSafeText(cell)) hasContent = true;
+                                        const timeMatch = timeStr.match(/(\d{1,2})[:：](\d{2})/);
+                                        if (!timeMatch) continue; 
                                         
-                                        // 條件B：破甲三：格子有背景顏色 (排除純白)
-                                        if (!hasContent && cell.fill && cell.fill.type === 'pattern' && cell.fill.pattern !== 'none') {
-                                            const fg = cell.fill.fgColor;
-                                            const bg = cell.fill.bgColor;
-                                            const checkColor = (color) => {
-                                                if (!color) return false;
-                                                if (color.argb && color.argb.toUpperCase() !== 'FFFFFFFF' && color.argb !== '00000000') return true;
-                                                if (color.theme !== undefined && color.theme !== 0) return true;
-                                                return false;
-                                            };
-                                            if (checkColor(fg) || checkColor(bg)) hasContent = true;
-                                        }
+                                        const cleanTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+                                        
+                                        Object.keys(colToEmpId).forEach(c => {
+                                            let cell = ws.getCell(r, parseInt(c));
+                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
+                                            
+                                            let hasContent = false;
+                                            if (getSafeText(cell)) hasContent = true;
+                                            if (!hasContent && cell.fill && cell.fill.type === 'pattern' && cell.fill.pattern !== 'none') {
+                                                const fg = cell.fill.fgColor;
+                                                const bg = cell.fill.bgColor;
+                                                const checkColor = (color) => {
+                                                    if (!color) return false;
+                                                    if (color.argb && color.argb.toUpperCase() !== 'FFFFFFFF' && color.argb !== '00000000') return true;
+                                                    if (color.theme !== undefined && color.theme !== 0) return true;
+                                                    return false;
+                                                };
+                                                if (checkColor(fg) || checkColor(bg)) hasContent = true;
+                                            }
 
-                                        if (hasContent) {
-                                            const empId = colToEmpId[c];
-                                            if (!empTimes[empId]) empTimes[empId] = { start: cleanTime, end: cleanTime };
-                                            empTimes[empId].end = cleanTime; // 持續更新最晚時間
+                                            if (hasContent) {
+                                                const empId = colToEmpId[c];
+                                                if (!empTimes[empId]) empTimes[empId] = { start: cleanTime, end: cleanTime };
+                                                empTimes[empId].end = cleanTime;
+                                            }
+                                        });
+                                    }
+
+                                    // 4. 將預定時間融合進 newData (絕對不洗掉打卡實績)
+                                    Object.keys(empTimes).forEach(empId => {
+                                        const t = empTimes[empId];
+                                        const endMins = timeToMinutes(t.end) + 30; // 延後30分作為下班時間
+                                        const finalEnd = minutesToTime(endMins);
+                                        
+                                        if (!newData[empId]) newData[empId] = {};
+                                        if (!newData[empId][dateKey]) newData[empId][dateKey] = { transportFee: 0 }; // 即使這是全新的一天，也會安全建立，不會出錯
+                                        
+                                        newData[empId][dateKey].plannedIn = t.start;
+                                        newData[empId][dateKey].plannedOut = finalEnd;
+                                        
+                                        const empObj = employees.find(e => e.id === empId);
+                                        if (empObj && empObj.type === 'part') {
+                                            const remarks = newData[empId][dateKey].remarks || '';
+                                            const pText = `[予定 ${t.start}-${finalEnd}]`;
+                                            if (!remarks.includes(pText)) {
+                                                newData[empId][dateKey].remarks = remarks ? `${remarks} ${pText}` : pText;
+                                            }
                                         }
+                                        totalCount++;
                                     });
                                 }
 
-                                // 4. 將這天每個人的「最早時間與最晚時間」寫入資料庫
-                                Object.keys(empTimes).forEach(empId => {
-                                    const t = empTimes[empId];
-                                    // 預設下班時間 = 最後一個色塊的時間往後推 30 分鐘 (如 18:00 代表上到 18:30)
-                                    const endMins = timeToMinutes(t.end) + 30;
-                                    const finalEnd = minutesToTime(endMins);
-                                    
-                                    if (!newData[empId]) newData[empId] = {};
-                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = { transportFee: 0 };
-                                    
-                                    newData[empId][dateKey].plannedIn = t.start;
-                                    newData[empId][dateKey].plannedOut = finalEnd;
-                                    
-                                    // 給打工者的貼心提醒：直接在備註欄寫入預定時間
-                                    const empObj = employees.find(e => e.id === empId);
-                                    if (empObj && empObj.type === 'part') {
-                                        const remarks = newData[empId][dateKey].remarks || '';
-                                        const pText = `[予定 ${t.start}-${finalEnd}]`;
-                                        if (!remarks.includes(pText)) {
-                                            newData[empId][dateKey].remarks = remarks ? `${remarks} ${pText}` : pText;
-                                        }
-                                    }
-                                    totalCount++;
-                                });
-                            }
-
-                            if (totalCount > 0) {
-                                setAttendanceData(newData);
-                                if (switchTargetPeriod) setSelectedPeriod(switchTargetPeriod);
-                                showNotification(`✨ 成功破解色彩排班表！共匯入 ${totalCount} 筆班表時間！`);
-                                setActiveTab('preview');
-                            } else {
-                                showNotification("⚠️ 檔案讀取成功，但找不到任何顏色區塊或排班文字。請確認名字與日期是否正確。");
-                            }
-
+                                if (totalCount > 0) {
+                                    setTimeout(() => {
+                                        if (switchTargetPeriod) setSelectedPeriod(switchTargetPeriod);
+                                        showNotification(`✨ 成功破解色彩排班表！共匯入 ${totalCount} 筆班表時間！`);
+                                        setActiveTab('preview');
+                                    }, 10);
+                                    return newData; // 將合併後的資料正式存入系統
+                                } else {
+                                    setTimeout(() => showNotification("⚠️ 檔案讀取成功，但找不到任何顏色區塊或排班文字。請確認名字與日期是否正確。"), 0);
+                                    return prevData;
+                                }
+                            });
                         } catch (error) {
                             console.error(error);
                             showNotification("❌ Excel 解析失敗，請確認檔案沒有損毀。");
@@ -461,7 +454,7 @@
                 } else {
                     showNotification("請直接上傳 .xlsx 檔案 (不支援 CSV)。");
                 }
-                e.target.value = null;
+                e.target.value = null; // 重置上傳器，允許重複上傳同一個檔案
             };
 
             const handleCellChange = (empId, dateKey, field, value) => {
@@ -655,7 +648,8 @@
                                     </h2>
                                     <p className="text-xs text-gray-500 font-medium mb-4">
                                         勤怠システムからコピーしたテキストをそのまま貼り付けてください。<br/>
-                                        <span className="text-blue-600 font-bold">※年や曜日が抜けていてもOK！自動認識して一番下のプレビューに切り替わります。</span>
+                                        <span className="text-blue-600 font-bold">※ 年や曜日が抜けていてもOK！自動認識して一番下のプレビューに切り替わります。</span><br/>
+                                        <span className="text-emerald-600 font-bold">★ 最新版：班表と打刻データを「重ね合わせ」て表示します。どちらを先に入れてもデータは消えません！</span>
                                     </p>
                                     <textarea
                                         className="w-full h-48 border border-blue-200 rounded-xl shadow-inner focus:border-blue-500 focus:ring-2 focus:ring-blue-500 p-4 font-mono text-sm bg-blue-50/30 text-gray-700 leading-relaxed outline-none"
