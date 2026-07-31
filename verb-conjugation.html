@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日文快打旋風：辰辰的試煉</title>
+    <!-- 引入 Tailwind CSS 確保響應式設計 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -11,7 +12,9 @@
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #1a1a1a;
             color: #fff;
+            /* 讓整體頁面在手機上可以滑動 */
             overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .game-font {
@@ -26,7 +29,7 @@
         }
 
         .btn-game {
-            background-color: #e53e3e; /* 快打旋風的紅色 */
+            background-color: #e53e3e;
             color: white;
             text-transform: uppercase;
             transition: all 0.1s;
@@ -42,28 +45,28 @@
             box-shadow: inset 4px 4px 0px 0px rgba(0,0,0,0.5);
         }
 
-        /* 簡單的角色佔位圖樣式 */
         .character-sprite {
-            width: 150px;
-            height: 150px;
+            /* 在小螢幕上使用 clamp 讓角色圖示動態縮放 */
+            width: clamp(80px, 20vw, 150px);
+            height: clamp(80px, 20vw, 150px);
             background-color: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 4rem;
+            font-size: clamp(2rem, 10vw, 4rem);
             border: 2px dashed #666;
             margin: 0 auto;
         }
 
-        .zangief-color { color: #f56565; } /* 紅色旋風 */
-        .ryu-color { color: #fff; }     /* 白道服 */
-        .chunli-color { color: #4299e1; } /* 藍色旗袍 */
-        .ken-color { color: #ecc94b; }    /* 金髮紅衣 */
-        .guile-color { color: #48bb78; }  /* 綠色軍服 */
+        .zangief-color { color: #f56565; }
+        .ryu-color { color: #fff; }
+        .chunli-color { color: #4299e1; }
+        .ken-color { color: #ecc94b; }
+        .guile-color { color: #48bb78; }
 
         .health-bar-container {
             width: 100%;
-            height: 30px;
+            height: clamp(15px, 4vw, 30px);
             background-color: #333;
             border: 2px solid #fff;
             position: relative;
@@ -71,18 +74,21 @@
 
         .health-bar {
             height: 100%;
-            background-color: #48bb78; /* 綠色血條 */
+            background-color: #48bb78;
             width: 100%;
             transition: width 0.3s ease-out;
         }
 
         .health-bar.danger {
-            background-color: #e53e3e; /* 紅色血條 (低血量) */
+            background-color: #e53e3e;
         }
 
         #game-screen {
-            background: linear-gradient(to bottom, #2b6cb0 0%, #2a4365 100%); /* 簡易對戰背景 */
+            background: linear-gradient(to bottom, #2b6cb0 0%, #2a4365 100%);
+            /* 讓對戰畫面適應螢幕，並允許內部滑動 */
+            height: 75vh;
             min-height: 400px;
+            overflow-y: auto;
         }
         
         .hit-animation {
@@ -102,199 +108,246 @@
             90% { transform: translate(1px, 2px) rotate(0deg); }
             100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
+
+        /* 劇烈震動 (高 Combo 時觸發) */
+        .violent-shake {
+            animation: violentShake 0.4s;
+            filter: brightness(1.5) drop-shadow(0 0 10px red);
+        }
+
+        @keyframes violentShake {
+            0% { transform: translate(3px, 3px) rotate(0deg); }
+            10% { transform: translate(-3px, -4px) rotate(-2deg); }
+            20% { transform: translate(-5px, 0px) rotate(2deg); }
+            30% { transform: translate(5px, 4px) rotate(0deg); }
+            40% { transform: translate(3px, -3px) rotate(2deg); }
+            50% { transform: translate(-3px, 4px) rotate(-2deg); }
+            60% { transform: translate(-5px, 3px) rotate(0deg); }
+            70% { transform: translate(5px, 3px) rotate(-2deg); }
+            80% { transform: translate(-3px, -3px) rotate(2deg); }
+            90% { transform: translate(3px, 4px) rotate(0deg); }
+            100% { transform: translate(3px, -4px) rotate(-2deg); }
+        }
+
+        /* Combo 浮動文字特效 */
+        .combo-floating-text {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1rem, 5vw, 2rem);
+            color: #fbbf24; /* 亮黃色 */
+            text-shadow: 2px 2px 0 #dc2626, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            pointer-events: none; /* 避免擋住點擊 */
+            z-index: 50;
+            animation: floatUpAndFade 0.8s ease-out forwards;
+        }
+
+        @keyframes floatUpAndFade {
+            0% { 
+                opacity: 0; 
+                transform: translateX(-50%) translateY(20px) scale(0.5); 
+            }
+            20% { 
+                opacity: 1; 
+                transform: translateX(-50%) translateY(-10px) scale(1.2); 
+            }
+            50% { 
+                opacity: 1; 
+                transform: translateX(-50%) translateY(-30px) scale(1); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: translateX(-50%) translateY(-60px) scale(0.8); 
+            }
+        }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen bg-gray-900 text-white p-4">
+<body class="flex flex-col items-center min-h-screen bg-gray-900 text-white p-2 md:p-4">
 
-    <header class="text-center mb-8">
-        <h1 class="game-font text-3xl md:text-5xl text-yellow-400 mb-2 drop-shadow-lg" style="text-shadow: 2px 2px 4px #000;">日文語法特訓</h1>
-        <h2 class="text-xl md:text-2xl text-red-500 font-bold tracking-widest">~ 桑吉爾夫的試煉 ~</h2>
+    <header class="text-center mb-4 md:mb-8 mt-2">
+        <h1 class="game-font text-2xl md:text-5xl text-yellow-400 mb-2 drop-shadow-lg" style="text-shadow: 2px 2px 4px #000;">日文語法特訓</h1>
+        <h2 class="text-lg md:text-2xl text-red-500 font-bold tracking-widest">~ 桑吉爾夫的試煉 ~</h2>
     </header>
 
-    <div id="app-container" class="w-full max-w-4xl bg-gray-800 pixel-border p-4 md:p-8 rounded-lg shadow-2xl relative">
+    <div id="app-container" class="w-full max-w-4xl bg-gray-800 pixel-border p-2 md:p-8 rounded-lg shadow-2xl relative flex-grow flex flex-col">
         
-        <!-- 選單畫面 -->
-        <div id="menu-screen" class="flex flex-col items-center justify-center space-y-6 py-4 w-full">
-            <h3 class="text-2xl font-bold text-center mb-2 text-yellow-400 drop-shadow-md">【第一關】基礎與進階動詞變化 (全 11 種)</h3>
+        <div id="menu-screen" class="flex flex-col items-center justify-center space-y-6 py-4 w-full h-full">
+            <h3 class="text-lg md:text-2xl font-bold text-center mb-2 text-yellow-400 drop-shadow-md">【第一關】基礎與進階動詞變化 (全 11 種)</h3>
             
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-                <!-- 原有基礎變化 -->
-                <button onclick="startBasic('dict')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-gray-600 hover:bg-gray-500">
-                    ます ➔ 辞書形<br><span class="text-xs font-normal">(vs. 隆 Ryu)</span>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 w-full px-2">
+                <button onclick="startBasic('dict')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-gray-600 hover:bg-gray-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 辞書形</span><span class="text-[10px] font-normal opacity-80">(vs. 隆)</span>
                 </button>
-                <button onclick="startBasic('nai')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-blue-600 hover:bg-blue-500">
-                    ます ➔ ない形<br><span class="text-xs font-normal">(vs. 春麗 Chun-Li)</span>
+                <button onclick="startBasic('nai')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-blue-600 hover:bg-blue-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ ない形</span><span class="text-[10px] font-normal opacity-80">(vs. 春麗)</span>
                 </button>
-                <button onclick="startBasic('ta')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-yellow-600 hover:bg-yellow-500 text-black">
-                    ます ➔ た形<br><span class="text-xs font-normal text-white">(vs. 肯 Ken)</span>
+                <button onclick="startBasic('ta')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-yellow-600 hover:bg-yellow-500 text-black flex flex-col items-center justify-center">
+                    <span>ます ➔ た形</span><span class="text-[10px] font-normal text-white opacity-80">(vs. 肯)</span>
                 </button>
-                <!-- 新增進階變化 -->
-                <button onclick="startBasic('te')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-cyan-600 hover:bg-cyan-500">
-                    ます ➔ て形<br><span class="text-xs font-normal">(vs. 本田 E.Honda)</span>
+                <button onclick="startBasic('te')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-cyan-600 hover:bg-cyan-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ て形</span><span class="text-[10px] font-normal opacity-80">(vs. 本田)</span>
                 </button>
-                <button onclick="startBasic('imper')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-red-700 hover:bg-red-600">
-                    ます ➔ 命令形<br><span class="text-xs font-normal">(vs. 豪鬼 Akuma)</span>
+                <button onclick="startBasic('imper')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-red-700 hover:bg-red-600 flex flex-col items-center justify-center">
+                    <span>ます ➔ 命令形</span><span class="text-[10px] font-normal opacity-80">(vs. 豪鬼)</span>
                 </button>
-                <button onclick="startBasic('vol')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-green-600 hover:bg-green-500">
-                    ます ➔ 意向形<br><span class="text-xs font-normal">(vs. 嘉米 Cammy)</span>
+                <button onclick="startBasic('vol')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-green-600 hover:bg-green-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 意向形</span><span class="text-[10px] font-normal opacity-80">(vs. 嘉米)</span>
                 </button>
-                <button onclick="startBasic('ba')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-purple-600 hover:bg-purple-500">
-                    ます ➔ 条件(ば)形<br><span class="text-xs font-normal">(vs. 羅絲 Rose)</span>
+                <button onclick="startBasic('ba')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-purple-600 hover:bg-purple-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 条件(ば)</span><span class="text-[10px] font-normal opacity-80">(vs. 羅絲)</span>
                 </button>
-                <button onclick="startBasic('pot')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-pink-600 hover:bg-pink-500">
-                    ます ➔ 可能形<br><span class="text-xs font-normal">(vs. 櫻 Sakura)</span>
+                <button onclick="startBasic('pot')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-pink-600 hover:bg-pink-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 可能形</span><span class="text-[10px] font-normal opacity-80">(vs. 櫻)</span>
                 </button>
-                <button onclick="startBasic('pass')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-orange-600 hover:bg-orange-500">
-                    ます ➔ 受身形<br><span class="text-xs font-normal">(vs. 丹 Dan)</span>
+                <button onclick="startBasic('pass')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-orange-600 hover:bg-orange-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 受身形</span><span class="text-[10px] font-normal opacity-80">(vs. 丹)</span>
                 </button>
-                <button onclick="startBasic('caus')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-indigo-600 hover:bg-indigo-500">
-                    ます ➔ 使役形<br><span class="text-xs font-normal">(vs. 巴洛克 Vega)</span>
+                <button onclick="startBasic('caus')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-indigo-600 hover:bg-indigo-500 flex flex-col items-center justify-center">
+                    <span>ます ➔ 使役形</span><span class="text-[10px] font-normal opacity-80">(vs. 巴洛克)</span>
                 </button>
-                <button onclick="startBasic('caus_pass')" class="btn-game pixel-border py-2 px-2 font-bold text-sm bg-slate-700 hover:bg-slate-600 col-span-2 md:col-span-1 lg:col-span-2">
-                    ます ➔ 使役受身形<br><span class="text-xs font-normal">(vs. 拳王 Balrog)</span>
+                <button onclick="startBasic('caus_pass')" class="btn-game pixel-border py-2 px-1 font-bold text-xs md:text-sm bg-slate-700 hover:bg-slate-600 col-span-2 md:col-span-1 lg:col-span-2 flex flex-col items-center justify-center">
+                    <span>ます ➔ 使役受身</span><span class="text-[10px] font-normal opacity-80">(vs. 拳王)</span>
                 </button>
             </div>
 
-            <!-- 新增：綜合動詞特訓 -->
-            <div class="w-full mt-6 p-4 border-2 border-dashed border-gray-500 rounded-lg bg-gray-800">
-                <h4 class="text-xl font-bold text-center text-blue-300 mb-2">🛠️ 綜合動詞特訓</h4>
-                <p class="text-sm text-gray-400 text-center mb-3">來場特製大亂鬥！(無盡波數)</p>
+            <!-- 自訂綜合動詞特訓 -->
+            <div class="w-full mt-4 p-3 border-2 border-dashed border-gray-500 rounded-lg bg-gray-800 text-sm md:text-base">
+                <h4 class="font-bold text-center text-blue-300 mb-1">🛠️ 綜合動詞特訓</h4>
+                <p class="text-xs text-gray-400 text-center mb-2">大亂鬥(無盡波數)</p>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-4 text-gray-200" id="custom-checkboxes">
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="dict" checked class="w-4 h-4"> <span>辞書形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="nai" checked class="w-4 h-4"> <span>ない形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="ta" checked class="w-4 h-4"> <span>た形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="te" checked class="w-4 h-4"> <span>て形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="imper" class="w-4 h-4"> <span>命令形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="vol" class="w-4 h-4"> <span>意向形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="ba" class="w-4 h-4"> <span>条件(ば)形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="pot" class="w-4 h-4"> <span>可能形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="pass" class="w-4 h-4"> <span>受身形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="caus" class="w-4 h-4"> <span>使役形</span></label>
-                    <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="caus_pass" class="w-4 h-4"> <span>使役受身形</span></label>
+                <div class="grid grid-cols-3 md:grid-cols-4 gap-1 text-xs text-gray-200 mb-3" id="custom-checkboxes">
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="dict" checked class="w-3 h-3 md:w-4 md:h-4"> <span>辞書形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="nai" checked class="w-3 h-3 md:w-4 md:h-4"> <span>ない形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="ta" checked class="w-3 h-3 md:w-4 md:h-4"> <span>た形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="te" checked class="w-3 h-3 md:w-4 md:h-4"> <span>て形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="imper" class="w-3 h-3 md:w-4 md:h-4"> <span>命令形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="vol" class="w-3 h-3 md:w-4 md:h-4"> <span>意向形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="ba" class="w-3 h-3 md:w-4 md:h-4"> <span>条件(ば)</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="pot" class="w-3 h-3 md:w-4 md:h-4"> <span>可能形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="pass" class="w-3 h-3 md:w-4 md:h-4"> <span>受身形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer"><input type="checkbox" value="caus" class="w-3 h-3 md:w-4 md:h-4"> <span>使役形</span></label>
+                    <label class="flex items-center space-x-1 cursor-pointer col-span-2"><input type="checkbox" value="caus_pass" class="w-3 h-3 md:w-4 md:h-4"> <span>使役受身形</span></label>
                 </div>
                 
-                <div class="flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
                     <div class="flex space-x-2">
-                        <button onclick="toggleAllCustom(true)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm transition">全選</button>
-                        <button onclick="toggleAllCustom(false)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm transition">全不選</button>
+                        <button onclick="toggleAllCustom(true)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-xs transition">全選</button>
+                        <button onclick="toggleAllCustom(false)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-xs transition">全不選</button>
                     </div>
-                    <button onclick="startCustomBasic()" class="btn-game pixel-border py-2 px-6 font-bold bg-blue-800 hover:bg-blue-700">
-                        開始自訂特訓 <span class="text-xs font-normal text-gray-300">(vs. 剛拳 Gouken)</span>
+                    <button onclick="startCustomBasic()" class="btn-game pixel-border py-1 px-4 font-bold bg-blue-800 hover:bg-blue-700 text-sm flex items-center space-x-1">
+                        <span>開始特訓</span> <span class="text-[10px] font-normal text-gray-300">(vs. 剛拳)</span>
                     </button>
                 </div>
-                <p id="custom-error" class="text-red-400 text-sm text-center mt-2 hidden">⚠️ 請至少勾選一種動詞變化！</p>
+                <p id="custom-error" class="text-red-400 text-xs text-center mt-1 hidden">⚠️ 請至少勾選一種！</p>
             </div>
 
-            <h3 class="text-2xl font-bold text-center mt-6 mb-2 text-green-400 drop-shadow-md">【第二關】普通形 ↔ 丁寧形 互換特訓</h3>
+            <h3 class="text-lg md:text-2xl font-bold text-center mt-4 mb-2 text-green-400 drop-shadow-md">【第二關】普通形 ↔ 丁寧形 互換</h3>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-                <button onclick="startSwap('verb', 'polite_to_plain')" class="btn-game pixel-border py-3 px-4 font-bold text-md bg-green-700 hover:bg-green-600">
-                    動詞：丁寧 ➔ 普通<br><span class="text-xs font-normal">(vs. 古烈 Guile)</span>
+            <div class="grid grid-cols-2 gap-2 w-full px-2">
+                <button onclick="startSwap('verb', 'polite_to_plain')" class="btn-game pixel-border py-2 px-2 font-bold text-xs md:text-md bg-green-700 hover:bg-green-600 flex flex-col items-center justify-center">
+                    <span>動詞:丁寧➔普通</span><span class="text-[10px] font-normal opacity-80">(vs. 古烈)</span>
                 </button>
-                <button onclick="startSwap('verb', 'plain_to_polite')" class="btn-game pixel-border py-3 px-4 font-bold text-md bg-purple-700 hover:bg-purple-600">
-                    動詞：普通 ➔ 丁寧<br><span class="text-xs font-normal">(vs. 薩加特 Sagat)</span>
+                <button onclick="startSwap('verb', 'plain_to_polite')" class="btn-game pixel-border py-2 px-2 font-bold text-xs md:text-md bg-purple-700 hover:bg-purple-600 flex flex-col items-center justify-center">
+                    <span>動詞:普通➔丁寧</span><span class="text-[10px] font-normal opacity-80">(vs. 薩加特)</span>
                 </button>
-                <button onclick="startSwap('adj_noun', 'polite_to_plain')" class="btn-game pixel-border py-3 px-4 font-bold text-md bg-teal-700 hover:bg-teal-600">
-                    形/名詞：丁寧 ➔ 普通<br><span class="text-xs font-normal">(vs. 達爾西姆 Dhalsim)</span>
+                <button onclick="startSwap('adj_noun', 'polite_to_plain')" class="btn-game pixel-border py-2 px-2 font-bold text-xs md:text-md bg-teal-700 hover:bg-teal-600 flex flex-col items-center justify-center">
+                    <span>形/名:丁寧➔普通</span><span class="text-[10px] font-normal opacity-80">(vs. 達爾西姆)</span>
                 </button>
-                <button onclick="startSwap('adj_noun', 'plain_to_polite')" class="btn-game pixel-border py-3 px-4 font-bold text-md bg-orange-700 hover:bg-orange-600">
-                    形/名詞：普通 ➔ 丁寧<br><span class="text-xs font-normal">(vs. 布蘭卡 Blanka)</span>
+                <button onclick="startSwap('adj_noun', 'plain_to_polite')" class="btn-game pixel-border py-2 px-2 font-bold text-xs md:text-md bg-orange-700 hover:bg-orange-600 flex flex-col items-center justify-center">
+                    <span>形/名:普通➔丁寧</span><span class="text-[10px] font-normal opacity-80">(vs. 布蘭卡)</span>
                 </button>
             </div>
 
-            <button onclick="startSurvival()" class="btn-game pixel-border py-4 px-6 mt-4 w-full md:w-2/3 font-bold text-xl bg-red-800 hover:bg-red-700 mx-auto">
-                🔥 終極大亂鬥：自選綜合複習 🔥<br><span class="text-sm font-normal text-gray-200">(vs. 拜森 M.Bison - 包含所有詞性與方向)</span>
+            <button onclick="startSurvival()" class="btn-game pixel-border py-3 px-4 mt-2 w-11/12 md:w-2/3 font-bold text-sm md:text-xl bg-red-800 hover:bg-red-700 mx-auto flex flex-col items-center justify-center">
+                <span>🔥 終極大亂鬥：自選綜合複習 🔥</span><span class="text-[10px] md:text-xs font-normal text-gray-200 mt-1">(vs. 拜森 - 包含所有詞性與方向)</span>
             </button>
         </div>
 
-        <!-- 遊戲畫面 -->
-        <div id="game-screen" class="hidden flex-col justify-between p-4 rounded relative overflow-hidden pixel-border">
+        <div id="game-screen" class="hidden flex-col justify-between p-2 md:p-4 rounded relative pixel-border flex-grow">
             
             <!-- 頂部資訊：血條與名字 -->
-            <div class="flex justify-between items-start mb-4">
+            <div class="flex justify-between items-start mb-2 md:mb-4">
                 <!-- 辰辰 (桑吉爾夫) -->
-                <div class="w-2/5">
+                <div class="w-[45%] md:w-2/5">
                     <div class="flex justify-between mb-1">
-                        <span class="game-font text-yellow-300 text-sm md:text-base drop-shadow-md">ZANGIEF (ます/です)</span>
+                        <span class="game-font text-yellow-300 text-[10px] md:text-base drop-shadow-md truncate">ZANGIEF</span>
                     </div>
                     <div class="health-bar-container">
                         <div id="player-health" class="health-bar" style="width: 100%;"></div>
                     </div>
-                    <div class="text-xs mt-1">Score: <span id="score-display">0</span> | <span class="text-yellow-400 font-bold">Combo: <span id="combo-display">0</span></span></div>
+                    <div class="text-[10px] md:text-xs mt-1">Score: <span id="score-display">0</span> | <span class="text-yellow-400 font-bold">Combo: <span id="combo-display">0</span></span></div>
                 </div>
 
-                <!-- 回合/時間 (新增返回按鈕) -->
-                <div class="w-1/5 text-center flex flex-col justify-start items-center pt-1 z-10">
-                    <button onclick="returnToMenu()" title="回到訓練中心" class="mb-1 md:mb-2 text-xs bg-red-900 hover:bg-red-700 text-white py-1 px-1 md:px-2 rounded pixel-border transition-colors whitespace-nowrap shadow-lg">
-                        🔙 返回
+                <!-- 回合/時間 (返回按鈕) -->
+                <div class="w-[10%] md:w-1/5 text-center flex flex-col justify-start items-center pt-1 z-10 px-1">
+                    <button onclick="returnToMenu()" title="回到訓練中心" class="mb-1 text-[10px] md:text-xs bg-red-900 hover:bg-red-700 text-white py-1 px-1 rounded pixel-border transition-colors whitespace-nowrap shadow-lg">
+                        返回
                     </button>
-                    <span class="game-font text-xl md:text-2xl text-yellow-400 drop-shadow-md mt-1" id="timer-display">VS</span>
+                    <span class="game-font text-sm md:text-2xl text-yellow-400 drop-shadow-md mt-1 hidden md:inline-block" id="timer-display">VS</span>
                 </div>
 
                 <!-- 對手 -->
-                <div class="w-2/5 flex flex-col items-end">
+                <div class="w-[45%] md:w-2/5 flex flex-col items-end">
                     <div class="flex justify-between w-full mb-1 flex-row-reverse">
-                        <span id="enemy-name" class="game-font text-white text-sm md:text-base drop-shadow-md text-right">ENEMY (普通形)</span>
+                        <span id="enemy-name" class="game-font text-white text-[10px] md:text-base drop-shadow-md text-right truncate">ENEMY</span>
                     </div>
                     <div class="health-bar-container">
                         <div id="enemy-health" class="health-bar" style="width: 100%; transform-origin: right;"></div>
                     </div>
-                     <div class="text-xs mt-1 text-right">Wave: <span id="wave-display">1</span></div>
+                     <div class="text-[10px] md:text-xs mt-1 text-right">Wave: <span id="wave-display">1</span></div>
                 </div>
             </div>
 
             <!-- 中間對戰區域 (角色與對話框) -->
-            <div class="flex justify-between items-end flex-grow pb-4 px-4">
+            <div class="flex justify-between items-end flex-grow pb-2 px-1 md:px-4 min-h-[150px]">
                 
                 <!-- 玩家角色 -->
-                <div class="flex flex-col items-center">
-                    <!-- 玩家提示框 -->
-                    <div id="player-dialog" class="bg-white text-black p-3 rounded-xl mb-4 font-bold text-lg min-h-[60px] flex items-center justify-center relative shadow-lg">
+                <div class="flex flex-col items-center w-1/2">
+                    <div id="player-dialog" class="bg-white text-black p-2 md:p-3 rounded-xl mb-2 font-bold text-sm md:text-lg min-h-[50px] flex items-center justify-center relative shadow-lg text-center break-words w-11/12">
                         <span id="question-text">準備...</span>
-                        <!-- 對話框小尾巴 -->
-                        <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-t-[10px] border-t-white border-r-[10px] border-r-transparent"></div>
+                        <div class="absolute bottom-[-8px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-t-[8px] border-t-white border-r-[8px] border-r-transparent"></div>
                     </div>
                     <div id="player-sprite" class="character-sprite zangief-color">
-                        <!-- 換成肌肉 Emoji 代表桑吉爾夫 -->
                         💪
                     </div>
                 </div>
 
                 <!-- 對手角色 -->
-                <div class="flex flex-col items-center">
-                    <!-- 對手提示框 -->
-                    <div id="enemy-dialog" class="bg-gray-200 text-black p-3 rounded-xl mb-4 font-bold text-lg min-h-[60px] flex items-center justify-center relative shadow-lg opacity-0 transition-opacity">
+                <div class="flex flex-col items-center w-1/2 relative">
+                    <div id="enemy-dialog" class="bg-gray-200 text-black p-2 md:p-3 rounded-xl mb-2 font-bold text-sm md:text-lg min-h-[50px] flex items-center justify-center relative shadow-lg opacity-0 transition-opacity text-center w-11/12">
                         <span id="enemy-reaction"></span>
-                        <div class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-t-[10px] border-t-gray-200 border-r-[10px] border-r-transparent"></div>
+                        <div class="absolute bottom-[-8px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-t-[8px] border-t-gray-200 border-r-[8px] border-r-transparent"></div>
                     </div>
-                    <div id="enemy-sprite" class="character-sprite">
+                    <!-- 加入 relative 定位，讓浮動文字以敵人為基準 -->
+                    <div id="enemy-sprite" class="character-sprite relative">
                         🥋
                     </div>
                 </div>
             </div>
 
             <!-- 底部答題區域 -->
-            <div class="bg-gray-800 bg-opacity-80 p-4 rounded-t-lg mt-auto border-t-4 border-gray-600">
-                <p class="text-center text-yellow-300 font-bold mb-3 text-lg drop-shadow" id="instruction-text">請將上方詞彙轉換為：<span id="target-form-text" class="text-white"></span></p>
-                <div id="options-container" class="grid grid-cols-2 gap-3 max-w-lg mx-auto">
+            <div class="bg-gray-800 bg-opacity-90 p-3 md:p-4 rounded-t-lg mt-auto border-t-4 border-gray-600">
+                <p class="text-center text-yellow-300 font-bold mb-2 text-sm md:text-lg drop-shadow" id="instruction-text">請轉換為：<span id="target-form-text" class="text-white block sm:inline mt-1 sm:mt-0"></span></p>
+                <!-- 小螢幕單排，大螢幕雙排 -->
+                <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg mx-auto">
                     <!-- 選項按鈕會由 JS 動態生成 -->
                 </div>
             </div>
             
-            <!-- 覆蓋層 (結果/暫停) -->
-            <div id="overlay" class="absolute inset-0 bg-black bg-opacity-70 hidden flex-col items-center justify-center z-10">
-                <h2 id="overlay-title" class="game-font text-4xl md:text-6xl text-yellow-400 mb-6 text-center shadow-black drop-shadow-2xl">YOU WIN!</h2>
-                <p id="overlay-msg" class="text-xl mb-8 text-white"></p>
-                <button onclick="returnToMenu()" class="btn-game pixel-border py-3 px-8 font-bold text-xl">
-                    返回主選單
-                </button>
-            </div>
-
         </div>
     </div>
 
-    <footer class="mt-8 text-gray-500 text-sm">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-80 hidden flex-col items-center justify-center z-50 p-4">
+        <h2 id="overlay-title" class="game-font text-3xl md:text-6xl text-yellow-400 mb-6 text-center shadow-black drop-shadow-2xl">YOU WIN!</h2>
+        <p id="overlay-msg" class="text-lg md:text-xl mb-8 text-white text-center"></p>
+        <button onclick="returnToMenu()" class="btn-game pixel-border py-3 px-8 font-bold text-lg md:text-xl">
+            返回主選單
+        </button>
+    </div>
+
+    <footer class="mt-4 md:mt-8 text-gray-500 text-xs md:text-sm text-center mb-4">
         &copy; 2026 日文快打旋風特訓 - 辰辰的試煉
     </footer>
 
@@ -335,31 +388,32 @@
         ];
 
         const enemies = {
-            'dict': { name: 'RYU (辞書形)', sprite: '🥋', color: 'text-white', formName: '辞書形 (原形)' },
-            'nai': { name: 'CHUN-LI (ない形)', sprite: '🦵', color: 'text-blue-400', formName: 'ない形 (否定)' },
-            'ta': { name: 'KEN (た形)', sprite: '🔥', color: 'text-yellow-400', formName: 'た形 (過去)' },
-            'te': { name: 'E.HONDA (て形)', sprite: '🖐️', color: 'text-cyan-400', formName: 'て形 (連接/輕微命令)' },
-            'imper': { name: 'AKUMA (命令形)', sprite: '👹', color: 'text-red-600', formName: '命令形' },
-            'vol': { name: 'CAMMY (意向形)', sprite: '🐝', color: 'text-green-400', formName: '意向形 (提議/意志)' },
-            'ba': { name: 'ROSE (条件形)', sprite: '🔮', color: 'text-purple-400', formName: '条件形 (ば形)' },
-            'pot': { name: 'SAKURA (可能形)', sprite: '🌸', color: 'text-pink-400', formName: '可能形 (能力)' },
-            'pass': { name: 'DAN (受身形)', sprite: '😭', color: 'text-orange-400', formName: '受身形 (被動)' },
-            'caus': { name: 'VEGA (使役形)', sprite: '💅', color: 'text-indigo-400', formName: '使役形 (讓/叫某人做)' },
-            'caus_pass': { name: 'BALROG (使役受身)', sprite: '🥊', color: 'text-gray-400', formName: '使役受身形 (被迫做)' },
-            'verb_polite_to_plain': { name: 'GUILE (動詞: 普通形)', sprite: '🪖', color: 'text-green-400', formName: '普通形' },
-            'verb_plain_to_polite': { name: 'SAGAT (動詞: 丁寧形)', sprite: '👁️‍🗨️', color: 'text-red-400', formName: '丁寧形 (ます形)' },
-            'adj_noun_polite_to_plain': { name: 'DHALSIM (形/名: 普通形)', sprite: '🧘', color: 'text-orange-400', formName: '普通形' },
-            'adj_noun_plain_to_polite': { name: 'BLANKA (形/名: 丁寧形)', sprite: '⚡', color: 'text-green-500', formName: '丁寧形 (です形)' },
-            'survival': { name: 'M.BISON (大亂鬥)', sprite: '😈', color: 'text-red-600', formName: '指定形態 (隨機)' },
-            'custom_basic': { name: 'GOUKEN (自訂特訓)', sprite: '🥋', color: 'text-blue-400', formName: '指定形態 (隨機)' }
+            'dict': { name: 'RYU', sprite: '🥋', color: 'text-white', formName: '辞書形' },
+            'nai': { name: 'CHUN-LI', sprite: '🦵', color: 'text-blue-400', formName: 'ない形' },
+            'ta': { name: 'KEN', sprite: '🔥', color: 'text-yellow-400', formName: 'た形' },
+            'te': { name: 'E.HONDA', sprite: '🖐️', color: 'text-cyan-400', formName: 'て形' },
+            'imper': { name: 'AKUMA', sprite: '👹', color: 'text-red-600', formName: '命令形' },
+            'vol': { name: 'CAMMY', sprite: '🐝', color: 'text-green-400', formName: '意向形' },
+            'ba': { name: 'ROSE', sprite: '🔮', color: 'text-purple-400', formName: '条件形' },
+            'pot': { name: 'SAKURA', sprite: '🌸', color: 'text-pink-400', formName: '可能形' },
+            'pass': { name: 'DAN', sprite: '😭', color: 'text-orange-400', formName: '受身形' },
+            'caus': { name: 'VEGA', sprite: '💅', color: 'text-indigo-400', formName: '使役形' },
+            'caus_pass': { name: 'BALROG', sprite: '🥊', color: 'text-gray-400', formName: '使役受身' },
+            'verb_polite_to_plain': { name: 'GUILE', sprite: '🪖', color: 'text-green-400', formName: '普通形' },
+            'verb_plain_to_polite': { name: 'SAGAT', sprite: '👁️‍🗨️', color: 'text-red-400', formName: '丁寧形' },
+            'adj_noun_polite_to_plain': { name: 'DHALSIM', sprite: '🧘', color: 'text-orange-400', formName: '普通形' },
+            'adj_noun_plain_to_polite': { name: 'BLANKA', sprite: '⚡', color: 'text-green-500', formName: '丁寧形' },
+            'survival': { name: 'M.BISON', sprite: '😈', color: 'text-red-600', formName: '指定(隨機)' },
+            'custom_basic': { name: 'GOUKEN', sprite: '🥋', color: 'text-blue-400', formName: '指定(隨機)' }
         };
 
-        let currentGameMode = ''; // 'basic', 'swap', 'survival', 'custom_basic'
-        let currentBasicTarget = ''; // dict, nai, ta
-        let currentSwapType = ''; // verb, adj_noun
-        let currentSwapDirection = ''; // polite_to_plain, plain_to_polite
+        let currentGameMode = '';
+        let currentBasicTarget = ''; 
+        let currentSwapType = ''; 
+        let currentSwapDirection = ''; 
         let score = 0, wave = 1, playerHealth = 100, enemyHealth = 100, combo = 0;
-        let selectedCustomTargets = []; // 儲存玩家自選的變化項目
+        let selectedCustomTargets = []; 
+        let currentCorrectAnswer = "";
 
         const menuScreen = document.getElementById('menu-screen');
         const gameScreen = document.getElementById('game-screen');
@@ -379,8 +433,6 @@
         const enemyReactionText = document.getElementById('enemy-reaction');
         const overlayTitle = document.getElementById('overlay-title');
         const overlayMsg = document.getElementById('overlay-msg');
-
-        // --- 新增：遊戲啟動與邏輯控制函數 ---
 
         function toggleAllCustom(checked) {
             const checkboxes = document.querySelectorAll('#custom-checkboxes input[type="checkbox"]');
@@ -423,9 +475,9 @@
             gameScreen.classList.add('flex');
             
             enemyNameText.textContent = enemy.name;
+            // 保留原本的 relative，這樣 combo 數字才能定位
+            enemySprite.className = `character-sprite relative ${enemy.color}`;
             enemySprite.textContent = enemy.sprite;
-            // 清除之前的顏色並加上新的顏色
-            enemySprite.className = `character-sprite ${enemy.color}`;
             
             if (currentGameMode !== 'survival' && currentGameMode !== 'custom_basic') {
                 targetFormText.textContent = enemy.formName;
@@ -434,13 +486,12 @@
             initGameUI();
         }
 
-        let currentCorrectAnswer = "";
-
         function nextTurn() {
             enemyDialog.style.opacity = '0';
             optionsContainer.innerHTML = '';
             playerSprite.classList.remove('hit-animation');
             enemySprite.classList.remove('hit-animation');
+            enemySprite.classList.remove('violent-shake');
             waveDisplay.textContent = wave;
 
             let questionTextStr = "";
@@ -489,7 +540,7 @@
             questionText.textContent = questionTextStr;
             targetFormText.textContent = targetTextStr;
         }
-        
+
         function getBasicWrongAnswers(qObj, targetKey) {
             let forms = ['dict', 'nai', 'ta', 'te', 'imper', 'vol', 'ba', 'pot', 'pass', 'caus', 'caus_pass', 'polite'];
             let wrong = forms.filter(k => k !== targetKey).map(k => qObj[k]);
@@ -504,33 +555,73 @@
 
         function generateOptions(correct, wrongs) {
             let options = [correct, ...wrongs];
-            options.sort(() => 0.5 - Math.random()); // 洗牌
+            options.sort(() => 0.5 - Math.random()); 
             
             optionsContainer.innerHTML = '';
             options.forEach(opt => {
                 let btn = document.createElement('button');
-                btn.className = 'btn-game pixel-border py-2 px-4 font-bold text-lg bg-gray-700 hover:bg-gray-600 transition';
+                // 調整按鈕字體，確保手機上不會過大被截斷
+                btn.className = 'btn-game pixel-border py-2 px-2 md:px-4 font-bold text-sm md:text-lg bg-gray-700 hover:bg-gray-600 transition break-all md:break-normal';
                 btn.textContent = opt;
                 btn.onclick = () => checkAnswer(opt === correct);
                 optionsContainer.appendChild(btn);
             });
         }
 
+        function showFloatingCombo(comboCount) {
+            const container = document.getElementById('enemy-sprite');
+            const floatText = document.createElement('div');
+            floatText.className = 'combo-floating-text';
+            floatText.textContent = comboCount + ' HITS!';
+            
+            // 隨機左右偏移
+            const randomX = Math.floor(Math.random() * 60) - 30; 
+            floatText.style.left = `calc(50% + ${randomX}px)`;
+
+            container.appendChild(floatText);
+
+            setTimeout(() => {
+                if (container.contains(floatText)) {
+                    container.removeChild(floatText);
+                }
+            }, 800);
+        }
+
+        function playHitAnimation(element) {
+            element.classList.add('hit-animation');
+            setTimeout(() => element.classList.remove('hit-animation'), 500);
+        }
+
+        function showEnemyReaction(text, colorClass) {
+            enemyReactionText.textContent = text;
+            enemyReactionText.className = `text-sm md:text-base ${colorClass}`;
+            enemyDialog.style.opacity = '1';
+        }
+
         function checkAnswer(isCorrect) {
-            // 答題後鎖定按鈕避免連按
             const btns = optionsContainer.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
 
             if (isCorrect) {
                 combo++;
                 score += 10;
-                enemyHealth = 100 - (combo * 10); // 連續10題才能扣光 100 血
-                playHitAnimation(enemySprite);
+                enemyHealth = 100 - (combo * 10); 
+                
+                if (combo >= 3) {
+                    enemySprite.classList.add('violent-shake');
+                    setTimeout(() => enemySprite.classList.remove('violent-shake'), 400);
+                } else {
+                    playHitAnimation(enemySprite);
+                }
+                
+                if (combo >= 2) {
+                    showFloatingCombo(combo);
+                }
+
                 showEnemyReaction("ぐあっ！", "text-red-600 font-bold");
                 
                 if (enemyHealth <= 0) {
                     if (currentGameMode === 'survival' || currentGameMode === 'custom_basic') {
-                        // 無盡模式過關回血
                         combo = 0;
                         enemyHealth = 100;
                         wave++;
@@ -542,11 +633,11 @@
                     }
                 }
             } else {
-                combo = 0; // 連擊中斷
-                enemyHealth = 100; // 對手血量瞬間恢復 (必須"連續"答對)
-                playerHealth -= 25; // 答錯扣自己 25 血
+                combo = 0; 
+                enemyHealth = 100; 
+                playerHealth -= 25; 
                 playHitAnimation(playerSprite);
-                showEnemyReaction("甘いな！(連擊中斷)", "text-blue-600 font-bold");
+                showEnemyReaction("甘いな！", "text-blue-600 font-bold");
                 
                 if (playerHealth <= 0) {
                     updateUI();
@@ -557,29 +648,14 @@
             
             updateUI();
             if (window.turnTimer) clearTimeout(window.turnTimer);
-            window.turnTimer = setTimeout(nextTurn, 1000); // 1秒後出下一題
+            window.turnTimer = setTimeout(nextTurn, 1000); 
         }
 
-        // --- 結束：遊戲啟動與邏輯控制函數 ---
-
-        function initGameUI(enemyKey) {
+        function initGameUI() {
             score = 0; wave = 1; playerHealth = 100; enemyHealth = 100; combo = 0;
             updateUI();
-            
-            // 確保不會重複觸發回合計時器
             if (window.turnTimer) clearTimeout(window.turnTimer);
-            window.turnTimer = setTimeout(nextTurn, 1200);
-        }
-
-        function showEnemyReaction(text, colorClass) {
-            enemyReactionText.textContent = text;
-            enemyReactionText.className = colorClass;
-            enemyDialog.style.opacity = '1';
-        }
-
-        function playHitAnimation(element) {
-            element.classList.add('hit-animation');
-            setTimeout(() => element.classList.remove('hit-animation'), 500);
+            window.turnTimer = setTimeout(nextTurn, 1000);
         }
 
         function updateUI() {
@@ -613,7 +689,6 @@
         }
 
         function returnToMenu() {
-            // 清除回合進行中的計時器，防止後台繼續執行
             if (window.turnTimer) clearTimeout(window.turnTimer);
             
             gameScreen.classList.add('hidden');
