@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - Pro</title>
+    <title>IGK Attendance System - Pro Max</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -41,7 +41,6 @@
             { id: 'r6', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行', 'Taka'], type: 'part', location: 'rokko' },
             { id: 'r7', name: 'Fergus', aliases: ['ファーガス', 'Fergus'], type: 'part', location: 'rokko' },
             { id: 'r8', name: 'Sammy', aliases: ['サミー', 'Sammy Abukmeil', 'Sammy'], type: 'part', location: 'rokko' },
-            // ★ 新增 Kim Nakyung 別名，確保能被抓到
             { id: 'r9', name: 'Kim', aliases: ['キム', 'Kim', 'Kim Nakyung', 'Nakyung'], type: 'part', location: 'rokko' },
             { id: 'r10', name: 'Nathan', aliases: ['ネイサン', 'Nathan Morrison', 'Nathan'], type: 'part', location: 'rokko' },
             { id: 'r11', name: 'Mariko', aliases: ['マリコ', 'まりこ', '沼田真里子', '沼田 真里子', '沼田', 'Mariko'], type: 'part', location: 'rokko' },
@@ -92,7 +91,7 @@
             const [pastedText, setPastedText] = useState('');
             const [notification, setNotification] = useState('');
             
-            // ★ 新增：預設時薪給老闆娘計算用
+            // ★ 基本時薪
             const [hourlyWage, setHourlyWage] = useState(1200);
             
             const [settings, setSettings] = useState(() => {
@@ -167,7 +166,7 @@
                     let switchEmpId = null;
                     
                     const cleanFullText = pastedText.replace(/\s+/g, '').toLowerCase();
-                    const datePattern = /(?:(?:20)?\d{2}[\/\-年])?\d{1,2}[\/\-月]\d{1,2}日?(?:[\s\r\n]*\([日月火水木金土]\))?[\s\r\n]*\d{1,2}:\d{2}/g;
+                    const datePattern = /(?:(?:20)?\d{2}[\/\-年])?\d{1,2}[\/\-月]\d{1,2}日?(?:[\s\r\n]*\([日月火水木金土]\))?[\s\r\n]*\d{1,2}[:：]\d{2}/g;
                     const matches = [...pastedText.matchAll(datePattern)];
 
                     if (matches.length === 0) {
@@ -214,7 +213,6 @@
                             switchPeriod = autoPeriod;
                         }
 
-                        // ★ 修改：為因應多行空白，尋找範圍擴大至 300 字元
                         const contextStart = Math.max(0, index - 300);
                         const contextStr = pastedText.substring(contextStart, index).replace(/\s+/g, '').toLowerCase();
                         
@@ -258,7 +256,7 @@
                             setPastedText('');
                             if (switchPeriod) setSelectedPeriod(switchPeriod);
                             if (switchEmpId) setSelectedEmpId(switchEmpId);
-                            showNotification(`✅ ${matchedCount}件の打刻データを統合しました！(班表は保持されます)`);
+                            showNotification(`✅ ${matchedCount}件の打刻データを統合しました！`);
                             setActiveTab('preview');
                         }, 10);
                         return newData; 
@@ -274,7 +272,7 @@
                 if (!file) return;
 
                 if (file.name.endsWith('.xlsx')) {
-                    showNotification("🔍 AI色覚スキャン開始！IGK A / IGK B / 車 を分析中...");
+                    showNotification("🔍 究極色覚AIスキャン開始！IGK A / IGK B / 車 を分析中...");
                     
                     const reader = new FileReader();
                     reader.onload = async (event) => {
@@ -301,34 +299,39 @@
                                     return (cell.text || '').toString().trim();
                                 };
 
+                                // ★ 終極時間提取器 (防堵一切格式異常)
                                 const extractTimeFromCell = (cell) => {
                                     if (!cell) return null;
-                                    let val = cell.value;
-                                    if (val && val.result !== undefined) val = val.result;
                                     
+                                    // 1. 最優先：如果是文字格式 (例如 "08:30" 或 "08:30:00")
                                     if (cell.text) {
                                         const match = cell.text.match(/(\d{1,2})[:：](\d{2})/);
                                         if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
                                     }
-                                    if (typeof val === 'number' && val > 0 && val < 1) {
+                                    
+                                    let val = cell.value;
+                                    if (val && val.result !== undefined) val = val.result;
+                                    
+                                    // 2. 如果是 JS Date 物件 (ExcelJS 常見轉換結果)
+                                    if (val instanceof Date) {
+                                        let h = val.getUTCHours();
+                                        let m = val.getUTCMinutes();
+                                        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                                    }
+
+                                    // 3. 如果是數字 (Excel 的天數比例，例如 0.5 = 12:00)
+                                    if (typeof val === 'number' && val >= 0 && val < 1) {
                                         let totalMins = Math.round(val * 24 * 60);
                                         return `${Math.floor(totalMins / 60).toString().padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
                                     }
+
+                                    // 4. 如果字串隱含時間
                                     if (typeof val === 'string') {
                                         const match = val.match(/(\d{1,2})[:：](\d{2})/);
                                         if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
                                     }
+                                    
                                     return null;
-                                };
-
-                                // ★ 判斷顏色是否為非白色系/透明
-                                const checkColor = (color) => {
-                                    if (!color) return false;
-                                    if (color.argb) {
-                                        const hex = color.argb.toUpperCase();
-                                        return !(hex === 'FFFFFFFF' || hex === '00000000' || hex === 'FF000000' || hex === '00FFFFFF');
-                                    }
-                                    return color.theme !== 0 && color.theme !== 1;
                                 };
 
                                 let allExtractedData = {}; 
@@ -340,6 +343,7 @@
 
                                     for (let r = 1; r <= ws.rowCount; r++) {
                                         let foundDateInRow = false;
+                                        // 掃描日期 (前10欄)
                                         for (let c = 1; c <= 10; c++) {
                                             let cell = ws.getCell(r, c);
                                             let text = getSafeText(cell).replace(/\s+/g, '');
@@ -355,15 +359,17 @@
                                             }
                                         }
 
+                                        // 掃描人名 (該行如果有兩個以上的人名，就認定是表頭)
                                         let matches = 0;
                                         let tempMap = {};
                                         for (let c = 1; c <= 40; c++) {
                                             let cell = ws.getCell(r, c);
                                             let val = getSafeText(cell).toLowerCase().replace(/\s+/g, '');
-                                            if (val && val.length > 1) {
+                                            if (val && val.length >= 1) {
                                                 for (const emp of employees) {
-                                                    let searchNames = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
-                                                    if (searchNames.includes(val)) {
+                                                    let searchNames = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                                    // 寬鬆比對
+                                                    if (searchNames.includes(val) || searchNames.some(name => val.includes(name) && name.length >= 2)) {
                                                         tempMap[c] = emp.id;
                                                         matches++;
                                                         break;
@@ -378,6 +384,7 @@
                                             continue; 
                                         }
 
+                                        // 掃描時間與色塊
                                         if (currentDateKey && isReadingTimes && Object.keys(currentColMap).length > 0) {
                                             let rowTimeStr = extractTimeFromCell(ws.getCell(r, 1)) || extractTimeFromCell(ws.getCell(r, 2)) || extractTimeFromCell(ws.getCell(r, 3));
                                             
@@ -387,18 +394,23 @@
                                                 Object.keys(currentColMap).forEach(c => {
                                                     const empId = currentColMap[c];
                                                     let cell = ws.getCell(r, parseInt(c));
-                                                    
                                                     let actualCell = cell.isMerged ? ws.getCell(cell.master.address) : cell;
                                                     let cellText = getSafeText(actualCell);
                                                     let hasContent = cellText.trim().length > 0;
                                                     
-                                                    // ★ 解析顏色分類
+                                                    // ★ 高容錯顏色判斷
                                                     let actualFill = actualCell.fill || {};
-                                                    let hex = (actualFill.fgColor?.argb || '').toUpperCase();
-                                                    let isColored = (actualFill.type === 'pattern' && actualFill.pattern !== 'none') && (checkColor(actualFill.fgColor) || checkColor(actualFill.bgColor));
+                                                    let hex = '';
+                                                    let isColored = false;
+                                                    if (actualFill.type === 'pattern' && actualFill.pattern !== 'none') {
+                                                        hex = (actualFill.fgColor?.argb || actualFill.bgColor?.argb || '').toUpperCase();
+                                                        if (hex && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) {
+                                                            isColored = true;
+                                                        }
+                                                    }
                                                     
-                                                    let isYellow = hex === 'FFFFD965';
-                                                    let isDefaultBlue = hex === 'FFD9E2F3' || hex === 'FFCFE2F3';
+                                                    let isYellow = hex.includes('FFD965') || hex.includes('FFFF00'); // 黃色系
+                                                    let isDefaultBlue = hex.includes('D9E2F3') || hex.includes('CFE2F3'); // 淺藍色系
                                                     let blockType = null;
                                                     
                                                     if (isYellow) {
@@ -423,11 +435,9 @@
                                                         
                                                         let ed = allExtractedData[empId][currentDateKey];
                                                         
-                                                        // 紀錄上下班邊界時間
                                                         if (rowMins < ed.minTime) ed.minTime = rowMins;
                                                         if (rowMins > ed.maxTime) ed.maxTime = rowMins;
 
-                                                        // ★ 紀錄課堂/司機的分鐘數 (每格 30分)
                                                         if (blockType === 'driver') ed.driverMins += 30;
                                                         else if (blockType === 'igkA') ed.igkAMins += 30;
                                                         else if (blockType === 'igkB') ed.igkBMins += 30;
@@ -444,7 +454,7 @@
                                     }
                                 }
 
-                                // 將結算結果疊加回主畫面
+                                // 將結果結算
                                 Object.keys(allExtractedData).forEach(empId => {
                                     Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                         const data = allExtractedData[empId][dateKey];
@@ -463,16 +473,14 @@
                                             if (!newData[empId]) newData[empId] = {};
                                             if (!newData[empId][dateKey]) newData[empId][dateKey] = { transportFee: 0 };
                                             
-                                            // 1. 班表總時間
                                             newData[empId][dateKey].plannedIn = minutesToTime(startMins);
                                             newData[empId][dateKey].plannedOut = minutesToTime(endMins);
                                             
-                                            // 2. ★ 寫入課堂與司機總和
                                             if (data.igkAMins > 0) newData[empId][dateKey].igkA = minutesToTime(data.igkAMins);
                                             if (data.igkBMins > 0) newData[empId][dateKey].igkB = minutesToTime(data.igkBMins);
                                             if (data.driverMins > 0) {
                                                 newData[empId][dateKey].driverPlanned = minutesToTime(data.driverMins);
-                                                newData[empId][dateKey].driverActual = minutesToTime(data.driverMins); // 自動帶入實際欄位
+                                                newData[empId][dateKey].driverActual = minutesToTime(data.driverMins);
                                             }
                                             if (data.yPrivMins > 0) newData[empId][dateKey].yPrivate = minutesToTime(data.yPrivMins);
 
@@ -497,7 +505,7 @@
                                     }, 10);
                                     return newData; 
                                 } else {
-                                    setTimeout(() => showNotification("⚠️ 檔案讀取成功，但找不到顏色區塊或文字。"), 0);
+                                    setTimeout(() => showNotification("⚠️ 檔案有讀取，但格式與預期不同，找不到任何時間對應。"), 0);
                                     return prevData;
                                 }
                             });
@@ -965,7 +973,7 @@
                                                                 <div className="text-2xl font-black text-purple-800">{formatTimeWithDec(totalYPrivMins)}</div>
                                                             </div>
 
-                                                            {/* ★ 給与シミュレーション (老闆娘專區) */}
+                                                            {/* ★ 給与シミュレーション */}
                                                             <div className="bg-white p-4 rounded-xl border-2 border-indigo-200 shadow-sm col-span-2 md:col-span-4 lg:col-span-6 mt-2 print:border-slate-300">
                                                                 <h3 className="text-indigo-900 font-black mb-3">💰 給与シミュレーション (老闆娘專用計算區)</h3>
                                                                 <div className="flex flex-wrap items-center gap-4 font-bold text-sm text-slate-700">
