@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 雙校區切換版 (含交通費)</title>
+    <title>IGK Attendance System - Cute & Clean Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
-<body className="bg-gray-100">
+<body className="bg-[#f8f9fa] text-slate-700 font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -56,10 +56,14 @@
             { id: 'm15', name: 'Mozelle', aliases: ['Mozelle Bargamin', 'モゼル'], type: 'part', location: 'myodani' }
         ];
 
+        // 可愛書籤顏色 (Pastel Colors)
         const TAB_COLORS = [
-            'bg-pink-100 text-pink-700 border-pink-200', 'bg-blue-100 text-blue-700 border-blue-200',
-            'bg-emerald-100 text-emerald-700 border-emerald-200', 'bg-purple-100 text-purple-700 border-purple-200',
-            'bg-orange-100 text-orange-700 border-orange-200', 'bg-teal-100 text-teal-700 border-teal-200',
+            'bg-pink-50 border-t-4 border-pink-400 text-pink-700 shadow-sm',
+            'bg-blue-50 border-t-4 border-blue-400 text-blue-700 shadow-sm',
+            'bg-emerald-50 border-t-4 border-emerald-400 text-emerald-700 shadow-sm',
+            'bg-purple-50 border-t-4 border-purple-400 text-purple-700 shadow-sm',
+            'bg-orange-50 border-t-4 border-orange-400 text-orange-700 shadow-sm',
+            'bg-teal-50 border-t-4 border-teal-400 text-teal-700 shadow-sm',
         ];
 
         const timeToMins = (t) => {
@@ -70,6 +74,13 @@
         const minsToTime = (m) => {
             if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
             return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+        };
+        
+        const formatTimeWithDec = (mins) => {
+            if (!mins || mins === 0) return '-';
+            const hm = minsToTime(mins);
+            const dec = (mins / 60).toFixed(2).replace(/\.00$/, '');
+            return <>{hm} <span className="text-sm font-bold opacity-60">({dec} H)</span></>;
         };
 
         function App() {
@@ -87,9 +98,8 @@
 
             const [pastedData, setPastedData] = useState('');
             const [attendance, setAttendance] = useState({}); 
-            
-            // ★ 新增：儲存每個員工每個月的手動交通費
             const [monthlyData, setMonthlyData] = useState({}); 
+            const [hourlyWage, setHourlyWage] = useState(1200); 
 
             const [activeEmp, setActiveEmp] = useState('r1'); 
 
@@ -114,7 +124,7 @@
             const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
             const handlePaste = () => {
-                if (!pastedData.trim()) return alert("打刻資料");
+                if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
@@ -165,9 +175,9 @@
                     if (autoPeriod) setPeriod(autoPeriod);
                     if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
                     setActivePage('preview');
-                    alert(` ${count} 打刻データアップデートできた`);
+                    alert(`${count} 件の打刻データを正常に取り込みました！該当月・校舎へ切り替えます。`);
                 } else {
-                    alert("お疲れ様です。もう一度確認お願いします。");
+                    alert("一致する名前や時間のフォーマットが見つかりませんでした。");
                 }
             };
 
@@ -283,12 +293,12 @@
                             setAttendance(newData);
                             if (autoPeriod) setPeriod(autoPeriod);
                             setActivePage('preview');
-                            alert(`読み込みました ${count} 個時段區塊！已切換至對應月份。`);
+                            alert(`シフト表から ${count} 件のシフトを正常に取り込みました！`);
                         } else {
-                            alert("読み込みましたが、みつけません。");
+                            alert("読み込みに成功しましたが、色ブロックや時間が検出されませんでした。");
                         }
                     } catch (err) {
-                        alert(`❌ Excel エラー: ${err.message}`);
+                        alert(`❌ Excel 解析エラー: ${err.message}`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -316,6 +326,8 @@
                 let shiftOut = row.shiftOut || '';
                 let leave = row.leave || '';
                 let igka = row.igka || '';
+                let driverActual = row.driverActual || '';
+                let yPrivate = row.yPrivate || '';
 
                 if (emp.type === 'full') {
                     shiftIn = shiftIn || settings.baseStart;
@@ -357,8 +369,11 @@
 
                 const igkaMins = timeToMins(igka);
                 const igkbMins = Math.max(0, totalWorkMins - igkaMins);
+                
+                const driverMins = timeToMins(driverActual);
+                const yPrivMins = timeToMins(yPrivate);
 
-                return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkaMins, igkbMins };
+                return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkaMins, igkbMins, driverMins, yPrivMins };
             };
 
             const switchLocation = (loc) => {
@@ -372,45 +387,55 @@
 
             return (
                 <div className="min-h-screen flex flex-col font-sans">
-                    <div className="bg-slate-800 text-white p-4 flex gap-4 print:hidden shadow-md items-center">
-                        <h1 className="text-xl font-bold mr-4 tracking-wider">IGK 勤怠</h1>
-                        <button onClick={() => setActivePage('import')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'import' ? 'bg-indigo-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>① 資料指揮中心</button>
-                        <button onClick={() => setActivePage('preview')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>② 個人勤務表</button>
+                    {/* Header */}
+                    <div className="bg-white text-slate-800 p-4 flex gap-4 print:hidden shadow-sm items-center border-b border-gray-200">
+                        <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <h1 className="text-xl font-black tracking-widest mr-4 text-indigo-900">IGK 勤怠管理</h1>
+                        <button onClick={() => setActivePage('import')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'import' ? 'bg-indigo-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>① データ入力・設定</button>
+                        <button onClick={() => setActivePage('preview')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>② 個人勤務表・給与</button>
                     </div>
 
                     {activePage === 'import' && (
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
-                            <div className="bg-white p-6 rounded-xl shadow border-t-4 border-indigo-500">
-                                <h2 className="text-lg font-bold text-indigo-900 mb-4">正社員勤務＆特別期間設定</h2>
-                                <div className="flex gap-4 mb-4">
-                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">預設入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
-                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">預設退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                    <span className="text-indigo-500">◆</span> 正社員の基本勤務・特別期間設定
+                                </h2>
+                                <div className="flex gap-4 mb-4 bg-gray-50 p-4 rounded-xl">
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
                                 </div>
-                                <div className="bg-indigo-50 p-4 rounded-xl flex flex-wrap gap-3 items-end border border-indigo-100">
-                                    <input type="text" placeholder="原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none"/>
-                                    <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
-                                    <span className="text-indigo-300 font-bold mb-2">~</span>
-                                    <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
-                                    <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none"/>
-                                    <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none"/>
-                                    <button onClick={() => { if(newSp.name){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'}); } }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700 shadow-md">新增</button>
+                                <div className="p-4 rounded-xl flex flex-wrap gap-3 items-end border border-indigo-100 bg-indigo-50/30">
+                                    <input type="text" placeholder="特別期間名 (例: Summer School)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none text-sm"/>
+                                    <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
+                                    <span className="text-slate-400 font-bold mb-2">~</span>
+                                    <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
+                                    <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
+                                    <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
+                                    <button onClick={() => { if(newSp.name){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'}); } }} className="bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-600 shadow-sm text-sm">追加</button>
                                 </div>
                             </div>
 
-                            <div className="bg-white p-6 rounded-xl shadow border-t-4 border-emerald-500">
-                                <h2 className="text-lg font-bold text-emerald-900 mb-2">打刻データコピペ</h2>
-                                <p className="text-xs text-gray-500 mb-3">コピペで自動判別。</p>
-                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-300 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner" placeholder="貼上打卡紀錄..."></textarea>
-                                <button onClick={handlePaste} className="mt-3 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-emerald-700 transition-colors shadow-md">解析並匯入打卡資料</button>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
+                                    <span className="text-emerald-500">◆</span> 打刻データ (実績) の自動取り込み
+                                </h2>
+                                <p className="text-xs text-gray-500 mb-3">勤怠システムからコピーしたテキストをそのまま貼り付けてください。自動で判別し各シートへ振り分けます。</p>
+                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-200 focus:bg-white transition-all" placeholder="ここに打刻テキストを貼り付け..."></textarea>
+                                <button onClick={handlePaste} className="mt-3 bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-emerald-600 shadow-sm text-sm">解析してデータを反映する</button>
                             </div>
 
-                            <div className="bg-white p-6 rounded-xl shadow border-t-4 border-blue-500">
-                                <h2 className="text-lg font-bold text-blue-900 mb-2">シフトをアップデート</h2>
-                                <p className="text-xs text-gray-500 mb-3"> Excel (.xlsx) シフト，AI 自動表示される。</p>
-                                <label className="block w-full cursor-pointer border-2 border-dashed border-blue-300 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-100 transition-colors text-center">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
+                                    <span className="text-blue-500">◆</span> シフト表 (Excel) の自動取り込み
+                                </h2>
+                                <p className="text-xs text-gray-500 mb-3">Excel (.xlsx) のシフト表をアップロードすると、色分けされたシフトを自動解析して反映します。</p>
+                                <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
-                                    <div className="text-blue-700 font-bold text-lg mb-1">put.xlsx to here</div>
-                                    <div className="text-blue-500 text-sm">自動計算色塊，累積不覆蓋</div>
+                                    <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
+                                    <div className="text-blue-400 text-xs">色ブロックを自動計算（データは上書きされず追加・統合されます）</div>
                                 </label>
                             </div>
                         </div>
@@ -419,25 +444,27 @@
                     {activePage === 'preview' && (
                         <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col animate-fadeIn">
                             
-                            <div className="flex flex-wrap gap-4 mb-4 items-center justify-between print:hidden">
-                                <div className="flex items-center gap-4">
-                                    <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-300 rounded-xl p-2 font-bold text-lg outline-none focus:border-indigo-500 shadow-sm"/>
+                            {/* Controls */}
+                            <div className="flex flex-wrap gap-4 mb-6 items-center justify-between print:hidden">
+                                <div className="flex items-center gap-6">
+                                    <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-200 rounded-xl p-2 font-black text-slate-700 outline-none focus:border-indigo-400 shadow-sm bg-white"/>
                                     
-                                    <div className="flex bg-gray-200 p-1 rounded-xl shadow-inner">
-                                        <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-lg font-bold transition-all ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
-                                        <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-lg font-bold transition-all ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
+                                    <div className="flex bg-gray-200 p-1 rounded-full shadow-inner">
+                                        <button onClick={() => switchLocation('rokko')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
+                                        <button onClick={() => switchLocation('myodani')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
                                     </div>
                                 </div>
-                                <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-xl font-bold shadow-md transition-colors flex items-center gap-2">列印 / PDF</button>
+                                <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
                             </div>
 
-                            <div className="flex overflow-x-auto gap-1 pb-0 border-b-4 border-slate-300 print:hidden scrollbar-hide pt-2 px-2">
+                            {/* CUTE BOOKMARK TABS */}
+                            <div className="flex overflow-x-auto gap-2 pb-0 border-b-[3px] border-slate-300 print:hidden scrollbar-hide pt-4 px-4">
                                 {currentEmployees.map((emp, i) => {
                                     const colorClass = TAB_COLORS[i % TAB_COLORS.length];
                                     const isActive = activeEmp === emp.id;
                                     return (
                                         <button key={emp.id} onClick={() => setActiveEmp(emp.id)} 
-                                            className={`whitespace-nowrap px-6 py-2.5 font-bold text-sm rounded-t-2xl border-t-2 border-x-2 transition-all ${isActive ? `${colorClass} shadow-inner -mb-1 pb-3 text-base` : 'bg-gray-200 text-gray-500 border-transparent hover:bg-gray-300 mt-1'}`}>
+                                            className={`whitespace-nowrap px-6 rounded-t-2xl transition-all duration-200 ${isActive ? `${colorClass} pb-4 pt-3 transform -translate-y-1 z-10 font-black relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] border-x border-x-black/5` : 'bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-600 pb-2 pt-2 border border-gray-200 mt-2 font-bold'}`}>
                                             {emp.name}
                                         </button>
                                     );
@@ -446,25 +473,44 @@
 
                             {currentEmp && (() => {
                                 let sumDays = 0, sumIgka = 0, sumIgkb = 0, sumTotal = 0, sumEarly = 0, sumLate = 0;
+                                let sumDriver = 0, sumYPriv = 0;
 
                                 return (
-                                    <div className="bg-white p-6 sm:p-8 border-x-2 border-b-2 border-slate-300 rounded-b-2xl shadow-xl print:border-none print:shadow-none print:p-0">
-                                        <div className="flex items-end justify-between mb-6 border-b-2 border-slate-200 pb-4">
-                                            <h2 className="text-3xl font-black text-slate-800">{currentEmp.name} <span className="text-base font-bold text-gray-400 ml-3 bg-gray-100 px-3 py-1 rounded-full">{currentEmp.type === 'full' ? '正社員' : 'アルバイト'}</span></h2>
+                                    <div className="bg-white p-6 sm:p-8 rounded-b-3xl shadow-md print:border-none print:shadow-none print:p-0 border border-t-0 border-slate-200">
+                                        <div className="flex items-end justify-between mb-6 border-b border-slate-100 pb-4">
+                                            <h2 className="text-3xl font-black text-slate-800">{currentEmp.name} <span className="text-xs font-bold text-indigo-500 ml-3 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">{currentEmp.type === 'full' ? '正社員' : 'アルバイト'}</span></h2>
                                         </div>
                                         
-                                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                        <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
                                             <table className="w-full text-sm border-collapse">
                                                 <thead>
-                                                    <tr className="bg-slate-100 text-slate-700">
-                                                        <th className="border-b border-r border-slate-200 p-3 min-w-[100px]">日付</th>
-                                                        <th className="border-b border-r border-slate-200 p-3 w-24">入室</th>
-                                                        <th className="border-b border-r border-slate-200 p-3 w-24">退室</th>
-                                                        <th className="border-b border-r border-slate-200 p-3 w-32">シフト</th>
-                                                        <th className="border-b border-r border-slate-200 p-3 w-24 text-pink-700">IGKA</th>
-                                                        <th className="border-b border-r border-slate-200 p-3 w-24 text-blue-700">IGKB</th>
-                                                        <th className="border-b border-slate-200 p-3 min-w-[150px]">備考欄</th>
-                                                        {currentEmp.type === 'full' && <><th className="border-b border-l border-slate-200 p-3 w-20 text-orange-600">早残業</th><th className="border-b border-slate-200 p-3 w-20 text-orange-600">後残業</th></>}
+                                                    <tr className="bg-[#f8f9fa] text-slate-600">
+                                                        <th className="border-b border-r border-slate-200 p-3 min-w-[100px] font-black">日付</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24 font-black">入室</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24 font-black">退室</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-32 font-black">シフト</th>
+                                                        {currentEmp.type === 'full' ? (
+                                                            <>
+                                                                <th className="border-b border-r border-slate-200 p-3 w-24 text-pink-600 font-black">IGKA</th>
+                                                                <th className="border-b border-r border-slate-200 p-3 w-24 text-blue-600 font-black">IGKB</th>
+                                                                <th className="border-b border-slate-200 p-3 min-w-[150px] font-black">備考・特記事項</th>
+                                                                <th className="border-b border-l border-slate-200 p-3 w-20 text-orange-500 font-black">早残業</th>
+                                                                <th className="border-b border-slate-200 p-3 w-20 text-orange-500 font-black">後残業</th>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
+                                                                    <>
+                                                                        <th className="border-b border-r border-slate-200 p-3 w-20 text-yellow-600 font-black">D予定</th>
+                                                                        <th className="border-b border-r border-slate-200 p-3 w-20 text-yellow-600 font-black">D精算</th>
+                                                                    </>
+                                                                )}
+                                                                <th className="border-b border-r border-slate-200 p-3 w-20 text-pink-600 font-black">IGK A</th>
+                                                                <th className="border-b border-r border-slate-200 p-3 w-20 text-blue-600 font-black">IGK B</th>
+                                                                <th className="border-b border-r border-slate-200 p-3 w-24 text-purple-600 font-black">Y Private</th>
+                                                                <th className="border-b border-slate-200 p-3 min-w-[150px] font-black">備考・特記事項</th>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -477,47 +523,70 @@
                                                         sumIgka += calc.igkaMins; sumIgkb += calc.igkbMins;
                                                         sumTotal += calc.totalWorkMins;
                                                         sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
+                                                        sumDriver += calc.driverMins; sumYPriv += calc.yPrivMins;
 
-                                                        let rowBg = calc.isWknd ? 'bg-pink-50/50' : 'hover:bg-slate-50 transition-colors';
-                                                        let textClass = calc.isWknd ? 'text-red-600 font-bold' : 'text-slate-700';
-                                                        if (row.leave) { rowBg = 'bg-blue-50'; textClass = 'text-blue-600 font-bold'; }
+                                                        let rowBg = calc.isWknd ? 'bg-pink-50/40' : 'hover:bg-slate-50 transition-colors bg-white';
+                                                        let textClass = calc.isWknd ? 'text-red-500 font-bold' : 'text-slate-700';
+                                                        if (row.leave) { rowBg = 'bg-blue-50/50'; textClass = 'text-blue-600 font-bold'; }
 
                                                         return (
                                                             <tr key={key} className={`${rowBg} ${textClass}`}>
-                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-bold tracking-wider">{formatDisplayDate(d)}</td>
+                                                                <td className="border-b border-r border-slate-100 p-2 text-center font-bold tracking-wider">{formatDisplayDate(d)}</td>
                                                                 
-                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
+                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
                                                                     {!row.inTime && !row.outTime && currentEmp.type === 'full' ? (
-                                                                        <select value={row.leave || ''} onChange={e => updateCell(currentEmp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-sm font-bold outline-none cursor-pointer text-slate-500">
+                                                                        <select value={row.leave || ''} onChange={e => updateCell(currentEmp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-xs font-bold outline-none cursor-pointer text-slate-400">
                                                                             <option value="">-</option><option value="有休">有休</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
                                                                         </select>
                                                                     ) : (
-                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(currentEmp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-800"/>
+                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(currentEmp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700"/>
                                                                     )}
                                                                 </td>
                                                                 
-                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
-                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-800"/>}
+                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
+                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700"/>}
                                                                 </td>
                                                                 
-                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-mono text-sm font-bold text-slate-500">
+                                                                <td className="border-b border-r border-slate-100 p-2 text-center font-mono text-xs font-bold text-slate-400">
                                                                     {calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
                                                                 </td>
                                                                 
-                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
-                                                                    <input type="time" value={row.igka || ''} onChange={e => updateCell(currentEmp.id, key, 'igka', e.target.value)} className="w-full bg-transparent text-center outline-none text-pink-700 font-bold font-mono"/>
-                                                                </td>
-                                                                
-                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-bold text-blue-700 font-mono text-sm">{minsToTime(calc.igkbMins) || '-'}</td>
-                                                                
-                                                                <td className="border-b border-slate-200 p-1.5">
-                                                                    <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-3 py-1 rounded text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" placeholder="備考..."/>
-                                                                </td>
-
-                                                                {currentEmp.type === 'full' && (
+                                                                {currentEmp.type === 'full' ? (
                                                                     <>
-                                                                        <td className="border-b border-l border-slate-200 p-2.5 text-center font-bold text-orange-600 bg-orange-50/30">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
-                                                                        <td className="border-b border-slate-200 p-2.5 text-center font-bold text-orange-600 bg-orange-50/30">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center">
+                                                                            <input type="time" value={row.igka || ''} onChange={e => updateCell(currentEmp.id, key, 'igka', e.target.value)} className="w-full bg-transparent text-center outline-none text-pink-600 font-bold font-mono"/>
+                                                                        </td>
+                                                                        <td className="border-b border-r border-slate-100 p-2 text-center font-bold text-blue-600 font-mono text-xs">{minsToTime(calc.igkbMins) || '-'}</td>
+                                                                        <td className="border-b border-slate-100 p-1">
+                                                                            <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-1 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all" placeholder="備考..."/>
+                                                                        </td>
+                                                                        <td className="border-b border-l border-slate-100 p-2 text-center font-bold text-orange-500 bg-orange-50/20 text-xs">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
+                                                                        <td className="border-b border-slate-100 p-2 text-center font-bold text-orange-500 bg-orange-50/20 text-xs">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
+                                                                            <>
+                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20">
+                                                                                    <input type="text" value={row.driverPlanned || ''} onChange={e => updateCell(currentEmp.id, key, 'driverPlanned', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none" placeholder="-"/>
+                                                                                </td>
+                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20">
+                                                                                    <input type="text" value={row.driverActual || ''} onChange={e => updateCell(currentEmp.id, key, 'driverActual', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none" placeholder="-"/>
+                                                                                </td>
+                                                                            </>
+                                                                        )}
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-pink-50/20">
+                                                                            <input type="text" value={row.igkA || ''} onChange={e => updateCell(currentEmp.id, key, 'igkA', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-pink-600 focus:ring-0 p-0 outline-none" placeholder="-"/>
+                                                                        </td>
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-blue-50/20">
+                                                                            <input type="text" value={row.igkB || ''} onChange={e => updateCell(currentEmp.id, key, 'igkB', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-blue-600 focus:ring-0 p-0 outline-none" placeholder="-"/>
+                                                                        </td>
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-purple-50/20">
+                                                                            <input type="text" value={row.yPrivate || ''} onChange={e => updateCell(currentEmp.id, key, 'yPrivate', e.target.value)} className="w-12 bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-purple-600 focus:ring-0 p-0 outline-none" placeholder="-"/>
+                                                                        </td>
+                                                                        <td className="border-b border-slate-100 p-1">
+                                                                            <input type="text" value={row.remark || ''} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-1 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all" placeholder="備考..."/>
+                                                                        </td>
                                                                     </>
                                                                 )}
                                                             </tr>
@@ -527,80 +596,117 @@
                                             </table>
                                         </div>
 
-                                        <div className={`mt-8 pt-6 grid grid-cols-2 gap-6 ${currentEmp.type === 'full' ? 'lg:grid-cols-6' : 'md:grid-cols-6'}`}>
-                                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-slate-500 mb-2">出勤總日數</div>
-                                                <div className="text-4xl font-black text-slate-800">{sumDays} <span className="text-xl font-bold">日</span></div>
+                                        <div className={`mt-6 pt-6 grid grid-cols-2 gap-4 ${currentEmp.type === 'full' ? 'lg:grid-cols-6' : 'md:grid-cols-6'}`}>
+                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center shadow-sm">
+                                                <div className="text-xs font-bold text-slate-400 mb-1">出勤日数</div>
+                                                <div className="text-3xl font-black text-slate-700">{sumDays} <span className="text-lg font-bold">日</span></div>
                                             </div>
                                             
-                                            <div className="bg-pink-50 p-5 rounded-2xl border border-pink-200 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-pink-700 mb-2">IGKA 總時間</div>
-                                                <div className="text-4xl font-black text-pink-800 font-mono">{minsToTime(sumIgka) || '00:00'}</div>
-                                            </div>
-
-                                            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-blue-700 mb-2">IGKB 總時間</div>
-                                                <div className="text-4xl font-black text-blue-800 font-mono">{minsToTime(sumIgkb) || '00:00'}</div>
-                                            </div>
-
                                             {currentEmp.type === 'full' ? (
                                                 <>
-                                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-2xl border border-purple-200 text-center shadow-md md:col-span-3 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
-                                                        <div className="text-sm font-bold text-purple-700 mb-2">A + B 總時間 (總上班)</div>
-                                                        <div className="text-5xl font-black text-purple-900 font-mono">{minsToTime(sumIgka + sumIgkb) || '00:00'}</div>
+                                                    <div className="bg-pink-50 p-4 rounded-2xl border border-pink-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-pink-500 mb-1">IGK A 合計時間</div>
+                                                        <div className="text-2xl font-black text-pink-600 font-mono">{formatTimeWithDec(sumIgka)}</div>
+                                                    </div>
+                                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-blue-500 mb-1">IGK B 合計時間</div>
+                                                        <div className="text-2xl font-black text-blue-600 font-mono">{formatTimeWithDec(sumIgkb)}</div>
+                                                    </div>
+                                                    <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
+                                                        <div className="text-xs font-bold text-purple-600 mb-1">A + B 合計時間 (総労働)</div>
+                                                        <div className="text-3xl font-black text-purple-700 font-mono">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
                                                     </div>
 
-                                                    <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 text-center shadow-sm">
-                                                        <div className="text-sm font-bold text-orange-700 mb-2">早残業</div>
-                                                        <div className="text-4xl font-black text-orange-800">{sumEarly} <span className="text-xl font-bold">分</span></div>
+                                                    <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1">早残業</div>
+                                                        <div className="text-3xl font-black text-orange-600">{sumEarly} <span className="text-lg font-bold">分</span></div>
                                                     </div>
                                                     
-                                                    <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 text-center shadow-sm">
-                                                        <div className="text-sm font-bold text-orange-700 mb-2">後残業</div>
-                                                        <div className="text-4xl font-black text-orange-800">{sumLate} <span className="text-xl font-bold">分</span></div>
+                                                    <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1">後残業</div>
+                                                        <div className="text-3xl font-black text-orange-600">{sumLate} <span className="text-lg font-bold">分</span></div>
                                                     </div>
                                                     
-                                                    <div className="bg-gradient-to-br from-red-50 to-orange-50 p-5 rounded-2xl border border-red-200 text-center shadow-md md:col-span-2 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
-                                                        <div className="text-sm font-bold text-red-700 mb-2">残業總計 (早+後)</div>
-                                                        <div className="text-5xl font-black text-red-900">{sumEarly + sumLate} <span className="text-2xl font-bold text-red-700 mx-2">分</span> <span className="text-2xl font-bold text-red-500 font-mono">({minsToTime(sumEarly+sumLate)})</span></div>
+                                                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
+                                                        <div className="text-xs font-bold text-red-500 mb-1">残業合計 (早+後)</div>
+                                                        <div className="text-3xl font-black text-red-600">{sumEarly + sumLate} <span className="text-lg font-bold mx-1">分</span> <span className="text-lg font-bold text-red-400 font-mono">({minsToTime(sumEarly+sumLate)})</span></div>
                                                     </div>
 
-                                                    {/* ★ 交通費 (正社員: 残業總計的右邊) */}
-                                                    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
-                                                        <div className="text-sm font-bold text-emerald-700 mb-2">交通費 (月額・手動輸入)</div>
+                                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1">交通費 (月額・手動入力)</div>
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-2xl font-bold text-emerald-800">¥</span>
-                                                            <input
-                                                                type="number"
-                                                                value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''}
-                                                                onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
-                                                                className="w-32 bg-transparent border-b-2 border-emerald-300 text-4xl font-black text-emerald-900 text-center focus:outline-none focus:border-emerald-500 transition-colors placeholder-emerald-300/50"
-                                                                placeholder="0"
-                                                            />
+                                                            <span className="text-xl font-bold text-emerald-700">¥</span>
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-3xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400" placeholder="0" />
                                                         </div>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-2xl border border-purple-200 text-center shadow-md md:col-span-2 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
-                                                        <div className="text-sm font-bold text-purple-700 mb-2">A + B 總時間 (總上班)</div>
-                                                        <div className="text-5xl font-black text-purple-900 font-mono">{minsToTime(sumIgka + sumIgkb) || '00:00'}</div>
+                                                    {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
+                                                        <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100 text-center shadow-sm">
+                                                            <div className="text-xs font-bold text-yellow-600 mb-1">ドライバー 実績</div>
+                                                            <div className="text-2xl font-black text-yellow-700 font-mono">{formatTimeWithDec(sumDriver)}</div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="bg-pink-50 p-4 rounded-2xl border border-pink-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-pink-500 mb-1">IGK A 合計時間</div>
+                                                        <div className="text-2xl font-black text-pink-600 font-mono">{formatTimeWithDec(sumIgka)}</div>
                                                     </div>
 
-                                                    {/* ★ 交通費 (打工者: A+B的右邊) */}
-                                                    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 text-center shadow-sm flex flex-col justify-center">
-                                                        <div className="text-sm font-bold text-emerald-700 mb-2">交通費 (手動輸入)</div>
+                                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-blue-500 mb-1">IGK B 合計時間</div>
+                                                        <div className="text-2xl font-black text-blue-600 font-mono">{formatTimeWithDec(sumIgkb)}</div>
+                                                    </div>
+
+                                                    <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-center shadow-sm">
+                                                        <div className="text-xs font-bold text-purple-500 mb-1">Y Private 合計時間</div>
+                                                        <div className="text-2xl font-black text-purple-600 font-mono">{formatTimeWithDec(sumYPriv)}</div>
+                                                    </div>
+
+                                                    <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
+                                                        <div className="text-xs font-bold text-indigo-600 mb-1">A + B 合計時間 (総労働)</div>
+                                                        <div className="text-4xl font-black text-indigo-700 font-mono">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
+                                                    </div>
+
+                                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1">交通費 (月額・手動入力)</div>
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-xl font-bold text-emerald-800">¥</span>
-                                                            <input
-                                                                type="number"
-                                                                value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''}
-                                                                onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
-                                                                className="w-24 bg-transparent border-b-2 border-emerald-300 text-3xl font-black text-emerald-900 text-center focus:outline-none focus:border-emerald-500 transition-colors placeholder-emerald-300/50"
-                                                                placeholder="0"
-                                                            />
+                                                            <span className="text-xl font-bold text-emerald-700">¥</span>
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-3xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400" placeholder="0" />
                                                         </div>
                                                     </div>
+
+                                                    {(() => {
+                                                        const totalPartTimeMins = sumIgka + sumIgkb + sumDriver + sumYPriv;
+                                                        const totalPartTimeDec = (totalPartTimeMins / 60).toFixed(2);
+                                                        const transportTotal = Number(monthlyData[`${currentEmp.id}_${period}`]?.transportFee || 0);
+                                                        return (
+                                                            <div className="bg-white p-5 rounded-2xl border-2 border-indigo-100 shadow-sm col-span-2 md:col-span-6 mt-2 print:border-slate-300">
+                                                                <h3 className="text-indigo-800 font-black mb-4 flex items-center gap-2">💰 給与シミュレーション <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">管理者専用</span></h3>
+                                                                <div className="flex flex-wrap items-center gap-4 font-bold text-sm text-slate-600">
+                                                                    <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                                                        <label>基本時給(円):</label>
+                                                                        <input type="number" value={hourlyWage} onChange={e => setHourlyWage(Number(e.target.value))} className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-right outline-none focus:border-indigo-400 font-black text-indigo-600 text-base bg-white" />
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">×</div>
+                                                                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                                                        総労働時間: <span className="text-indigo-600 text-xl ml-2">{totalPartTimeDec} <span className="text-sm">H</span></span>
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">＋</div>
+                                                                    <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100 text-emerald-700">
+                                                                        交通費: <span className="text-xl ml-2">¥{transportTotal.toLocaleString()}</span>
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">＝</div>
+                                                                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-200 shadow-inner flex items-baseline">
+                                                                        <span className="text-indigo-800 mr-2 font-bold text-xs">推定給与:</span>
+                                                                        <span className="text-2xl font-black text-indigo-600">¥{(Math.floor(totalPartTimeDec * hourlyWage) + transportTotal).toLocaleString()}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] text-slate-400 mt-3 font-bold">※ 計算式: (IGKA + IGKB + Driver + Y Private の合計時間H) × 時給 ＋ 交通費</p>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </>
                                             )}
                                         </div>
