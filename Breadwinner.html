@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 最終穩定版</title>
+    <title>IGK Attendance System - 雙校區切換版 (含交通費)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -18,37 +18,48 @@
 
         // --- 核心資料：人員名單與別名 ---
         const EMPLOYEES = [
-            { id: 'e1', name: 'Toshi', aliases: ['トシ'], type: 'full' },
-            { id: 'e2', name: 'Minori', aliases: ['葛野みのり', '葛野 みのり', 'みのり', 'Minori'], type: 'full' },
-            { id: 'e3', name: 'Yassmyn', aliases: ['ヤスミン', 'Ratu Yassmyn Khairussalima', 'Yassmyn'], type: 'full' },
-            { id: 'e4', name: 'Yoon', aliases: ['ユン', 'Yoon Honey Aung', 'Yoon'], type: 'full' },
-            { id: 'e5', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林'], type: 'full' },
-            { id: 'e6', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full' },
-            { id: 'e7', name: 'Linh', aliases: ['リン'], type: 'full' },
-            { id: 'p1', name: 'Mikuma', aliases: ['実熊', 'みくま', '實熊功光', '實熊 功光', '実熊功光'], type: 'part' },
-            { id: 'p2', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行'], type: 'part' },
-            { id: 'p3', name: 'Fergus', aliases: ['ファーガス'], type: 'part' },
-            { id: 'p4', name: 'Sammy', aliases: ['サミー', 'Sammy Abukmeil'], type: 'part' },
-            { id: 'p5', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part' },
-            { id: 'p6', name: 'Nathan', aliases: ['ネイサン', 'Nathan Morrison'], type: 'part' },
-            { id: 'p7', name: 'Mariko', aliases: ['マリコ', 'まりこ', '沼田真里子', '沼田 真里子'], type: 'part' },
-            { id: 'p8', name: 'Ando', aliases: ['安藤', 'あんどう', '安藤佑也', '安藤 佑也'], type: 'part' },
-            { id: 'p9', name: 'Misato', aliases: ['ミサト', 'みさと'], type: 'part' },
-            { id: 'p10', name: 'Nao', aliases: ['ナオ', 'なお'], type: 'part' },
-            { id: 'p11', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part' },
-            { id: 'p12', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part' },
-            { id: 'p13', name: '大津真里', aliases: ['大津', 'おおつ'], type: 'part' },
-            { id: 'p14', name: '馬場亜希', aliases: ['馬場', 'ばば'], type: 'part' },
-            { id: 'p15', name: 'Mozelle', aliases: ['Mozelle Bargamin', 'モゼル'], type: 'part' }
+            // 六甲校 - 正社員
+            { id: 'r1', name: 'Minori', aliases: ['葛野みのり', '葛野 みのり', 'みのり', 'Minori'], type: 'full', location: 'rokko' },
+            { id: 'r2', name: 'Yassmyn', aliases: ['ヤスミン', 'Ratu Yassmyn Khairussalima', 'Yassmyn'], type: 'full', location: 'rokko' },
+            { id: 'r3', name: 'Yoon', aliases: ['ユン', 'Yoon Honey Aung', 'Yoon'], type: 'full', location: 'rokko' },
+            { id: 'r4', name: 'Koukei', aliases: ['林昊嬛', '林 昊嬛', '林'], type: 'full', location: 'rokko' },
+            // 六甲校 - アルバイト
+            { id: 'r5', name: 'Mikuma', aliases: ['実熊', 'みくま', '實熊功光', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko' },
+            { id: 'r6', name: 'Taka', aliases: ['上山', 'たか', '上山貴行', '上山 貴行'], type: 'part', location: 'rokko' },
+            { id: 'r7', name: 'Fergus', aliases: ['ファーガス'], type: 'part', location: 'rokko' },
+            { id: 'r8', name: 'Sammy', aliases: ['サミー', 'Sammy Abukmeil'], type: 'part', location: 'rokko' },
+            { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part', location: 'rokko' },
+            { id: 'r10', name: 'Nathan', aliases: ['ネイサン', 'Nathan Morrison'], type: 'part', location: 'rokko' },
+            { id: 'r11', name: 'Mariko', aliases: ['マリコ', 'まりこ', '沼田真里子', '沼田 真里子'], type: 'part', location: 'rokko' },
+            { id: 'r12', name: 'Ando', aliases: ['安藤', 'あんどう', '安藤佑也', '安藤 佑也'], type: 'part', location: 'rokko' },
+            { id: 'r13', name: 'Misato', aliases: ['ミサト', 'みさと'], type: 'part', location: 'rokko' },
+            { id: 'r14', name: 'Nao', aliases: ['ナオ', 'なお'], type: 'part', location: 'rokko' },
+            { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko' },
+            { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko' },
+            
+            // 名谷校 - 正社員
+            { id: 'm1', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full', location: 'myodani' },
+            { id: 'm2', name: 'Linh', aliases: ['リン'], type: 'full', location: 'myodani' },
+            // 名谷校 - アルバイト
+            { id: 'm3', name: '大津真里', aliases: ['大津', 'おおつ'], type: 'part', location: 'myodani' },
+            { id: 'm4', name: '馬場亜希', aliases: ['馬場', 'ばば'], type: 'part', location: 'myodani' },
+            { id: 'm5', name: '篠崎', aliases: ['しのざき'], type: 'part', location: 'myodani' },
+            { id: 'm6', name: '吉野', aliases: ['よしの'], type: 'part', location: 'myodani' },
+            { id: 'm7', name: '森', aliases: ['もり'], type: 'part', location: 'myodani' },
+            { id: 'm8', name: 'Ugiloy', aliases: ['ウギロイ'], type: 'part', location: 'myodani' },
+            { id: 'm9', name: 'Hamna', aliases: ['ハムナ'], type: 'part', location: 'myodani' },
+            { id: 'm10', name: 'タプリヒン', aliases: [], type: 'part', location: 'myodani' },
+            { id: 'm11', name: 'Sadia', aliases: ['サディア'], type: 'part', location: 'myodani' },
+            { id: 'm12', name: 'Monika', aliases: ['モニカ'], type: 'part', location: 'myodani' },
+            { id: 'm13', name: '中嶋莉真', aliases: ['中嶋', 'なかじま'], type: 'part', location: 'myodani' },
+            { id: 'm14', name: '顕谷ユタカ', aliases: ['顕谷', 'あきたに'], type: 'part', location: 'myodani' },
+            { id: 'm15', name: 'Mozelle', aliases: ['Mozelle Bargamin', 'モゼル'], type: 'part', location: 'myodani' }
         ];
 
         const TAB_COLORS = [
-            'bg-pink-100 text-pink-700 border-pink-200',
-            'bg-blue-100 text-blue-700 border-blue-200',
-            'bg-emerald-100 text-emerald-700 border-emerald-200',
-            'bg-purple-100 text-purple-700 border-purple-200',
-            'bg-orange-100 text-orange-700 border-orange-200',
-            'bg-teal-100 text-teal-700 border-teal-200',
+            'bg-pink-100 text-pink-700 border-pink-200', 'bg-blue-100 text-blue-700 border-blue-200',
+            'bg-emerald-100 text-emerald-700 border-emerald-200', 'bg-purple-100 text-purple-700 border-purple-200',
+            'bg-orange-100 text-orange-700 border-orange-200', 'bg-teal-100 text-teal-700 border-teal-200',
         ];
 
         const timeToMins = (t) => {
@@ -56,7 +67,6 @@
             const [h, m] = t.split(':').map(Number);
             return (h * 60) + (isNaN(m) ? 0 : m);
         };
-        
         const minsToTime = (m) => {
             if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
             return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -64,6 +74,7 @@
 
         function App() {
             const [activePage, setActivePage] = useState('import'); 
+            const [activeLocation, setActiveLocation] = useState('rokko'); 
             
             const today = new Date();
             let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -76,7 +87,11 @@
 
             const [pastedData, setPastedData] = useState('');
             const [attendance, setAttendance] = useState({}); 
-            const [activeEmp, setActiveEmp] = useState(EMPLOYEES[0].id);
+            
+            // ★ 新增：儲存每個員工每個月的手動交通費
+            const [monthlyData, setMonthlyData] = useState({}); 
+
+            const [activeEmp, setActiveEmp] = useState('r1'); 
 
             const dates = useMemo(() => {
                 if (!period || !period.includes('-')) return [];
@@ -98,32 +113,29 @@
             };
             const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
-            // --- 解決白畫面的：強固型打卡解析引擎 ---
             const handlePaste = () => {
                 if (!pastedData.trim()) return alert("請貼上打卡資料");
-                
-                // 深度拷貝，防止 React 狀態異常
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
-                
-                // 更安全、不卡死的正則表達式
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
                 let match;
                 let count = 0;
                 let autoPeriod = null;
+                let lastEmpLoc = null;
 
                 while ((match = timeRegex.exec(text)) !== null) {
                     const month = match[1], day = match[2], hr = match[3], min = match[4];
                     const timeStr = `${hr.padStart(2,'0')}:${min.padStart(2,'0')}`;
                     const idx = match.index;
-                    
                     const context = text.substring(Math.max(0, idx - 150), idx + 50);
                     
                     let foundEmpId = null;
                     for (let emp of EMPLOYEES) {
                         const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))];
                         if (names.some(n => context.replace(/\s/g,'').includes(n))) {
-                            foundEmpId = emp.id; break;
+                            foundEmpId = emp.id;
+                            lastEmpLoc = emp.location; 
+                            break;
                         }
                     }
 
@@ -142,7 +154,6 @@
                         let type = (context.includes('退') || context.includes('out')) ? 'outTime' : 'inTime';
                         if (!newData[foundEmpId]) newData[foundEmpId] = {};
                         if (!newData[foundEmpId][key]) newData[foundEmpId][key] = {};
-                        
                         newData[foundEmpId][key][type] = timeStr;
                         count++;
                     }
@@ -151,9 +162,10 @@
                 if (count > 0) {
                     setAttendance(newData);
                     setPastedData('');
-                    if (autoPeriod) setPeriod(autoPeriod); // 自動跳轉月份
+                    if (autoPeriod) setPeriod(autoPeriod);
+                    if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
                     setActivePage('preview');
-                    alert(`成功匯入 ${count} 筆打卡資料！已自動切換至對應月份。`);
+                    alert(`成功匯入 ${count} 筆打卡資料！已自動切換至對應月份與校區。`);
                 } else {
                     alert("找不到符合的姓名或時間格式。請確認複製內容是否完整！");
                 }
@@ -259,7 +271,6 @@
                                                 
                                                 if (rowMins < curIn) newData[empId][dateInfo.key].shiftIn = minsToTime(rowMins);
                                                 if (rowMins + 30 > curOut) newData[empId][dateInfo.key].shiftOut = minsToTime(rowMins + 30);
-                                                
                                                 count++;
                                             }
                                         });
@@ -277,8 +288,7 @@
                             alert("讀取成功，但沒有找到色塊或時間對應，請確認表格結構。");
                         }
                     } catch (err) {
-                        console.error(err);
-                        alert("讀取 Excel 失敗，請確認檔案格式是否正確。");
+                        alert(`❌ Excel 解析失敗: ${err.message}`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -288,6 +298,13 @@
             const updateCell = (id, d, field, val) => {
                 setAttendance(prev => ({
                     ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: val } }
+                }));
+            };
+
+            const updateMonthlyData = (id, p, field, val) => {
+                const key = `${id}_${p}`;
+                setMonthlyData(prev => ({
+                    ...prev, [key]: { ...prev[key], [field]: val }
                 }));
             };
 
@@ -310,7 +327,6 @@
                     });
                 }
 
-                // 遲到 5 分鐘進位
                 let actualShiftIn = shiftIn;
                 if (inTime && shiftIn) {
                     const inM = timeToMins(inTime);
@@ -345,142 +361,163 @@
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkaMins, igkbMins };
             };
 
+            const switchLocation = (loc) => {
+                setActiveLocation(loc);
+                const firstEmp = EMPLOYEES.find(e => e.location === loc);
+                if (firstEmp) setActiveEmp(firstEmp.id);
+            };
+
+            const currentEmployees = EMPLOYEES.filter(e => e.location === activeLocation);
+            const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
+
             return (
                 <div className="min-h-screen flex flex-col font-sans">
-                    <div className="bg-slate-800 text-white p-4 flex gap-4 print:hidden shadow-md">
-                        <h1 className="text-xl font-bold mr-8 tracking-wider">IGK 勤怠總部</h1>
-                        <button onClick={() => setActivePage('import')} className={`px-4 py-1 rounded font-bold transition-colors ${activePage === 'import' ? 'bg-white text-slate-800 shadow' : 'text-gray-300 hover:bg-slate-700'}`}>① 資料指揮中心</button>
-                        <button onClick={() => setActivePage('preview')} className={`px-4 py-1 rounded font-bold transition-colors ${activePage === 'preview' ? 'bg-white text-slate-800 shadow' : 'text-gray-300 hover:bg-slate-700'}`}>② 個人勤務表</button>
+                    <div className="bg-slate-800 text-white p-4 flex gap-4 print:hidden shadow-md items-center">
+                        <h1 className="text-xl font-bold mr-4 tracking-wider">IGK 勤怠總部</h1>
+                        <button onClick={() => setActivePage('import')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'import' ? 'bg-indigo-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>① 資料指揮中心</button>
+                        <button onClick={() => setActivePage('preview')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>② 個人勤務表</button>
                     </div>
 
                     {activePage === 'import' && (
-                        <div className="p-6 max-w-5xl mx-auto space-y-6 w-full">
+                        <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-indigo-500">
                                 <h2 className="text-lg font-bold text-indigo-900 mb-4">【上區】正社員勤務與特別期間設定</h2>
                                 <div className="flex gap-4 mb-4">
-                                    <div><label className="block text-xs font-bold text-gray-500">預設入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border rounded p-1"/></div>
-                                    <div><label className="block text-xs font-bold text-gray-500">預設退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border rounded p-1"/></div>
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">預設入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">預設退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
                                 </div>
-                                <div className="bg-indigo-50 p-3 rounded flex flex-wrap gap-2 items-end">
-                                    <input type="text" placeholder="特別原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border rounded p-1 flex-1 min-w-[150px]"/>
-                                    <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border rounded p-1"/>
-                                    <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border rounded p-1"/>
-                                    <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border rounded p-1 w-24"/>
-                                    <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border rounded p-1 w-24"/>
-                                    <button onClick={() => { if(newSp.name){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'}); } }} className="bg-indigo-600 text-white px-3 py-1 rounded font-bold hover:bg-indigo-700">新增</button>
+                                <div className="bg-indigo-50 p-4 rounded-xl flex flex-wrap gap-3 items-end border border-indigo-100">
+                                    <input type="text" placeholder="特別原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none"/>
+                                    <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
+                                    <span className="text-indigo-300 font-bold mb-2">~</span>
+                                    <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
+                                    <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none"/>
+                                    <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none"/>
+                                    <button onClick={() => { if(newSp.name){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'}); } }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700 shadow-md">新增</button>
                                 </div>
                             </div>
 
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-emerald-500">
                                 <h2 className="text-lg font-bold text-emerald-900 mb-2">【中區】打卡紀錄無縫貼上區</h2>
-                                <p className="text-xs text-gray-500 mb-3">直接貼上包含 Kim Nakyung 等名字、入室退室及時間的文字，系統自動判別並派發。</p>
-                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-32 border rounded-lg p-3 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="貼上打卡紀錄..."></textarea>
-                                <button onClick={handlePaste} className="mt-2 bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold w-full hover:bg-emerald-700 transition-colors">解析並匯入打卡資料</button>
+                                <p className="text-xs text-gray-500 mb-3">直接貼上包含員工姓名、入室退室及時間的文字，系統自動判別並派發。</p>
+                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-300 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner" placeholder="貼上打卡紀錄..."></textarea>
+                                <button onClick={handlePaste} className="mt-3 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-emerald-700 transition-colors shadow-md">解析並匯入打卡資料</button>
                             </div>
 
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-blue-500">
                                 <h2 className="text-lg font-bold text-blue-900 mb-2">【下區】班表檔案上傳自動派發</h2>
-                                <p className="text-xs text-gray-500 mb-3">上傳 Excel (.xlsx) 班表，Koukei的格子自動放入林昊嬛的表單中！自動累積。</p>
-                                <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/30" />
+                                <p className="text-xs text-gray-500 mb-3">上傳 Excel (.xlsx) 班表，AI 自動掃描色塊並寫入各夥伴的シフト(Shift)欄位。</p>
+                                <label className="block w-full cursor-pointer border-2 border-dashed border-blue-300 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-100 transition-colors text-center">
+                                    <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
+                                    <div className="text-blue-700 font-bold text-lg mb-1">點擊選擇或拖曳 .xlsx 檔案至此</div>
+                                    <div className="text-blue-500 text-sm">自動計算色塊，累積不覆蓋</div>
+                                </label>
                             </div>
                         </div>
                     )}
 
                     {activePage === 'preview' && (
-                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col">
-                            <div className="flex gap-4 mb-4 items-center print:hidden">
-                                <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-300 rounded-lg p-2 font-bold text-lg outline-none focus:border-indigo-500 shadow-sm"/>
-                                <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold shadow transition-colors">列印 / PDF</button>
+                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col animate-fadeIn">
+                            
+                            <div className="flex flex-wrap gap-4 mb-4 items-center justify-between print:hidden">
+                                <div className="flex items-center gap-4">
+                                    <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-300 rounded-xl p-2 font-bold text-lg outline-none focus:border-indigo-500 shadow-sm"/>
+                                    
+                                    <div className="flex bg-gray-200 p-1 rounded-xl shadow-inner">
+                                        <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-lg font-bold transition-all ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
+                                        <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-lg font-bold transition-all ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
+                                    </div>
+                                </div>
+                                <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-xl font-bold shadow-md transition-colors flex items-center gap-2">列印 / PDF</button>
                             </div>
 
                             <div className="flex overflow-x-auto gap-1 pb-0 border-b-4 border-slate-300 print:hidden scrollbar-hide pt-2 px-2">
-                                {EMPLOYEES.map((emp, i) => {
+                                {currentEmployees.map((emp, i) => {
                                     const colorClass = TAB_COLORS[i % TAB_COLORS.length];
                                     const isActive = activeEmp === emp.id;
                                     return (
                                         <button key={emp.id} onClick={() => setActiveEmp(emp.id)} 
-                                            className={`whitespace-nowrap px-5 py-2 font-bold text-sm rounded-t-xl border-t-2 border-x-2 transition-all ${isActive ? `${colorClass} shadow-inner -mb-1 pb-3 text-base` : 'bg-gray-200 text-gray-500 border-transparent hover:bg-gray-300 mt-1'}`}>
+                                            className={`whitespace-nowrap px-6 py-2.5 font-bold text-sm rounded-t-2xl border-t-2 border-x-2 transition-all ${isActive ? `${colorClass} shadow-inner -mb-1 pb-3 text-base` : 'bg-gray-200 text-gray-500 border-transparent hover:bg-gray-300 mt-1'}`}>
                                             {emp.name}
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            {(() => {
-                                const emp = EMPLOYEES.find(e => e.id === activeEmp);
-                                if (!emp) return null;
-
+                            {currentEmp && (() => {
                                 let sumDays = 0, sumIgka = 0, sumIgkb = 0, sumTotal = 0, sumEarly = 0, sumLate = 0;
 
                                 return (
-                                    <div className="bg-white p-6 border-x-2 border-b-2 border-slate-300 rounded-b-xl shadow-lg print:border-none print:shadow-none print:p-0">
-                                        <h2 className="text-2xl font-black mb-4">{emp.name} <span className="text-sm font-normal text-gray-500 ml-2">({emp.type === 'full' ? '正社員' : 'アルバイト'})</span></h2>
+                                    <div className="bg-white p-6 sm:p-8 border-x-2 border-b-2 border-slate-300 rounded-b-2xl shadow-xl print:border-none print:shadow-none print:p-0">
+                                        <div className="flex items-end justify-between mb-6 border-b-2 border-slate-200 pb-4">
+                                            <h2 className="text-3xl font-black text-slate-800">{currentEmp.name} <span className="text-base font-bold text-gray-400 ml-3 bg-gray-100 px-3 py-1 rounded-full">{currentEmp.type === 'full' ? '正社員' : 'アルバイト'}</span></h2>
+                                        </div>
                                         
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm border-collapse border border-slate-300">
+                                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                            <table className="w-full text-sm border-collapse">
                                                 <thead>
                                                     <tr className="bg-slate-100 text-slate-700">
-                                                        <th className="border p-2 min-w-[100px]">日付</th>
-                                                        <th className="border p-2 w-24">入室</th>
-                                                        <th className="border p-2 w-24">退室</th>
-                                                        <th className="border p-2 w-32">シフト</th>
-                                                        <th className="border p-2 w-24 text-pink-700">IGKA</th>
-                                                        <th className="border p-2 w-24 text-blue-700">IGKB</th>
-                                                        <th className="border p-2 min-w-[150px]">備考欄</th>
-                                                        {emp.type === 'full' && <><th className="border p-2 w-20 text-orange-600">早残業</th><th className="border p-2 w-20 text-orange-600">後残業</th></>}
+                                                        <th className="border-b border-r border-slate-200 p-3 min-w-[100px]">日付</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24">入室</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24">退室</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-32">シフト</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24 text-pink-700">IGKA</th>
+                                                        <th className="border-b border-r border-slate-200 p-3 w-24 text-blue-700">IGKB</th>
+                                                        <th className="border-b border-slate-200 p-3 min-w-[150px]">備考欄</th>
+                                                        {currentEmp.type === 'full' && <><th className="border-b border-l border-slate-200 p-3 w-20 text-orange-600">早残業</th><th className="border-b border-slate-200 p-3 w-20 text-orange-600">後残業</th></>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {dates.map(d => {
                                                         const key = dKey(d);
-                                                        const row = attendance[emp.id]?.[key] || {};
-                                                        const calc = calculateRow(d, row, emp);
+                                                        const row = attendance[currentEmp.id]?.[key] || {};
+                                                        const calc = calculateRow(d, row, currentEmp);
                                                         
                                                         if (row.inTime || row.outTime || row.leave) sumDays++;
                                                         sumIgka += calc.igkaMins; sumIgkb += calc.igkbMins;
                                                         sumTotal += calc.totalWorkMins;
                                                         sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
 
-                                                        let rowBg = calc.isWknd ? 'bg-pink-50' : 'hover:bg-slate-50';
-                                                        let textClass = calc.isWknd ? 'text-red-600 font-bold' : '';
+                                                        let rowBg = calc.isWknd ? 'bg-pink-50/50' : 'hover:bg-slate-50 transition-colors';
+                                                        let textClass = calc.isWknd ? 'text-red-600 font-bold' : 'text-slate-700';
                                                         if (row.leave) { rowBg = 'bg-blue-50'; textClass = 'text-blue-600 font-bold'; }
 
                                                         return (
                                                             <tr key={key} className={`${rowBg} ${textClass}`}>
-                                                                <td className="border p-2 text-center">{formatDisplayDate(d)}</td>
+                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-bold tracking-wider">{formatDisplayDate(d)}</td>
                                                                 
-                                                                <td className="border p-1 text-center">
-                                                                    {!row.inTime && !row.outTime && emp.type === 'full' ? (
-                                                                        <select value={row.leave || ''} onChange={e => updateCell(emp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-xs font-bold outline-none cursor-pointer">
+                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
+                                                                    {!row.inTime && !row.outTime && currentEmp.type === 'full' ? (
+                                                                        <select value={row.leave || ''} onChange={e => updateCell(currentEmp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-sm font-bold outline-none cursor-pointer text-slate-500">
                                                                             <option value="">-</option><option value="有休">有休</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
                                                                         </select>
                                                                     ) : (
-                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(emp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono"/>
+                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(currentEmp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-800"/>
                                                                     )}
                                                                 </td>
                                                                 
-                                                                <td className="border p-1 text-center">
-                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(emp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono"/>}
+                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
+                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-800"/>}
                                                                 </td>
                                                                 
-                                                                <td className="border p-2 text-center font-mono text-xs font-bold text-slate-600">
+                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-mono text-sm font-bold text-slate-500">
                                                                     {calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
                                                                 </td>
                                                                 
-                                                                <td className="border p-1 text-center">
-                                                                    <input type="time" value={row.igka || ''} onChange={e => updateCell(emp.id, key, 'igka', e.target.value)} className="w-full bg-transparent text-center outline-none text-pink-700 font-bold"/>
+                                                                <td className="border-b border-r border-slate-200 p-1.5 text-center">
+                                                                    <input type="time" value={row.igka || ''} onChange={e => updateCell(currentEmp.id, key, 'igka', e.target.value)} className="w-full bg-transparent text-center outline-none text-pink-700 font-bold font-mono"/>
                                                                 </td>
                                                                 
-                                                                <td className="border p-2 text-center font-bold text-blue-700">{minsToTime(calc.igkbMins) || '-'}</td>
+                                                                <td className="border-b border-r border-slate-200 p-2.5 text-center font-bold text-blue-700 font-mono text-sm">{minsToTime(calc.igkbMins) || '-'}</td>
                                                                 
-                                                                <td className="border p-1">
-                                                                    <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(emp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 text-sm" placeholder="備考..."/>
+                                                                <td className="border-b border-slate-200 p-1.5">
+                                                                    <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-3 py-1 rounded text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" placeholder="備考..."/>
                                                                 </td>
 
-                                                                {emp.type === 'full' && (
+                                                                {currentEmp.type === 'full' && (
                                                                     <>
-                                                                        <td className="border p-2 text-center font-bold text-orange-600">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
-                                                                        <td className="border p-2 text-center font-bold text-orange-600">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
+                                                                        <td className="border-b border-l border-slate-200 p-2.5 text-center font-bold text-orange-600 bg-orange-50/30">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
+                                                                        <td className="border-b border-slate-200 p-2.5 text-center font-bold text-orange-600 bg-orange-50/30">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
                                                                     </>
                                                                 )}
                                                             </tr>
@@ -490,41 +527,79 @@
                                             </table>
                                         </div>
 
-                                        <div className="mt-6 border-t-4 border-slate-800 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-                                            <div className="bg-slate-100 p-4 rounded-xl border border-slate-300 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-slate-500 mb-1">出勤總日數</div>
-                                                <div className="text-3xl font-black text-slate-800">{sumDays} <span className="text-lg">日</span></div>
+                                        <div className={`mt-8 pt-6 grid grid-cols-2 gap-6 ${currentEmp.type === 'full' ? 'lg:grid-cols-6' : 'md:grid-cols-6'}`}>
+                                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                                                <div className="text-sm font-bold text-slate-500 mb-2">出勤總日數</div>
+                                                <div className="text-4xl font-black text-slate-800">{sumDays} <span className="text-xl font-bold">日</span></div>
                                             </div>
                                             
-                                            <div className="bg-pink-50 p-4 rounded-xl border border-pink-200 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-pink-700 mb-1">IGKA 總時間</div>
-                                                <div className="text-3xl font-black text-pink-800">{minsToTime(sumIgka) || '00:00'}</div>
+                                            <div className="bg-pink-50 p-5 rounded-2xl border border-pink-200 text-center shadow-sm">
+                                                <div className="text-sm font-bold text-pink-700 mb-2">IGKA 總時間</div>
+                                                <div className="text-4xl font-black text-pink-800 font-mono">{minsToTime(sumIgka) || '00:00'}</div>
                                             </div>
 
-                                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-center shadow-sm">
-                                                <div className="text-sm font-bold text-blue-700 mb-1">IGKB 總時間</div>
-                                                <div className="text-3xl font-black text-blue-800">{minsToTime(sumIgkb) || '00:00'}</div>
+                                            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 text-center shadow-sm">
+                                                <div className="text-sm font-bold text-blue-700 mb-2">IGKB 總時間</div>
+                                                <div className="text-4xl font-black text-blue-800 font-mono">{minsToTime(sumIgkb) || '00:00'}</div>
                                             </div>
 
-                                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-300 text-center shadow-sm md:col-span-2 relative overflow-hidden flex flex-col justify-center">
-                                                <div className="absolute top-0 left-0 w-2 h-full bg-purple-500"></div>
-                                                <div className="text-sm font-bold text-purple-700 mb-1">A + B 總時間 (總上班)</div>
-                                                <div className="text-4xl font-black text-purple-900">{minsToTime(sumIgka + sumIgkb) || '00:00'}</div>
-                                            </div>
-
-                                            {emp.type === 'full' && (
+                                            {currentEmp.type === 'full' ? (
                                                 <>
-                                                    <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-center shadow-sm">
-                                                        <div className="text-sm font-bold text-orange-700 mb-1">早残業</div>
-                                                        <div className="text-2xl font-black text-orange-800">{sumEarly} <span className="text-sm">分</span></div>
+                                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-2xl border border-purple-200 text-center shadow-md md:col-span-3 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
+                                                        <div className="text-sm font-bold text-purple-700 mb-2">A + B 總時間 (總上班)</div>
+                                                        <div className="text-5xl font-black text-purple-900 font-mono">{minsToTime(sumIgka + sumIgkb) || '00:00'}</div>
                                                     </div>
-                                                    <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-center shadow-sm">
-                                                        <div className="text-sm font-bold text-orange-700 mb-1">後残業</div>
-                                                        <div className="text-2xl font-black text-orange-800">{sumLate} <span className="text-sm">分</span></div>
+
+                                                    <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 text-center shadow-sm">
+                                                        <div className="text-sm font-bold text-orange-700 mb-2">早残業</div>
+                                                        <div className="text-4xl font-black text-orange-800">{sumEarly} <span className="text-xl font-bold">分</span></div>
                                                     </div>
-                                                    <div className="bg-red-50 p-4 rounded-xl border border-red-300 text-center shadow-sm md:col-span-3 flex flex-col justify-center items-center">
-                                                        <div className="text-sm font-bold text-red-700 mb-1">残業總計 (早+後)</div>
-                                                        <div className="text-3xl font-black text-red-900">{sumEarly + sumLate} <span className="text-lg">分</span> <span className="text-sm font-bold text-red-600">({minsToTime(sumEarly+sumLate) || '00:00'})</span></div>
+                                                    
+                                                    <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 text-center shadow-sm">
+                                                        <div className="text-sm font-bold text-orange-700 mb-2">後残業</div>
+                                                        <div className="text-4xl font-black text-orange-800">{sumLate} <span className="text-xl font-bold">分</span></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-gradient-to-br from-red-50 to-orange-50 p-5 rounded-2xl border border-red-200 text-center shadow-md md:col-span-2 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
+                                                        <div className="text-sm font-bold text-red-700 mb-2">残業總計 (早+後)</div>
+                                                        <div className="text-5xl font-black text-red-900">{sumEarly + sumLate} <span className="text-2xl font-bold text-red-700 mx-2">分</span> <span className="text-2xl font-bold text-red-500 font-mono">({minsToTime(sumEarly+sumLate)})</span></div>
+                                                    </div>
+
+                                                    {/* ★ 交通費 (正社員: 残業總計的右邊) */}
+                                                    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
+                                                        <div className="text-sm font-bold text-emerald-700 mb-2">交通費 (月額・手動輸入)</div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span className="text-2xl font-bold text-emerald-800">¥</span>
+                                                            <input
+                                                                type="number"
+                                                                value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''}
+                                                                onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
+                                                                className="w-32 bg-transparent border-b-2 border-emerald-300 text-4xl font-black text-emerald-900 text-center focus:outline-none focus:border-emerald-500 transition-colors placeholder-emerald-300/50"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-2xl border border-purple-200 text-center shadow-md md:col-span-2 flex flex-col justify-center transform hover:scale-105 transition-transform duration-300">
+                                                        <div className="text-sm font-bold text-purple-700 mb-2">A + B 總時間 (總上班)</div>
+                                                        <div className="text-5xl font-black text-purple-900 font-mono">{minsToTime(sumIgka + sumIgkb) || '00:00'}</div>
+                                                    </div>
+
+                                                    {/* ★ 交通費 (打工者: A+B的右邊) */}
+                                                    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 text-center shadow-sm flex flex-col justify-center">
+                                                        <div className="text-sm font-bold text-emerald-700 mb-2">交通費 (手動輸入)</div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span className="text-xl font-bold text-emerald-800">¥</span>
+                                                            <input
+                                                                type="number"
+                                                                value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''}
+                                                                onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
+                                                                className="w-24 bg-transparent border-b-2 border-emerald-300 text-3xl font-black text-emerald-900 text-center focus:outline-none focus:border-emerald-500 transition-colors placeholder-emerald-300/50"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -544,6 +619,8 @@
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </body>
 </html>
