@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 含休息時間終極版</title>
+    <title>IGK Attendance System - 完美打卡解析版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -116,30 +116,55 @@
             };
             const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
+            // ★ 全新升級：絕對屏障打卡解析引擎 ★
             const handlePaste = () => {
                 if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
-                let match;
+                
+                const matches = [...text.matchAll(timeRegex)];
+                if (matches.length === 0) return alert("一致する名前や時間のフォーマットが見つかりませんでした。");
+
                 let count = 0;
                 let autoPeriod = null;
                 let lastEmpLoc = null;
+                let lastFoundEmpId = null;
 
-                while ((match = timeRegex.exec(text)) !== null) {
+                // 尋找最近字元的輔助函數
+                const getClosestDist = (str, char, pivot) => {
+                    let left = str.lastIndexOf(char, pivot);
+                    let right = str.indexOf(char, pivot);
+                    let d1 = left !== -1 ? pivot - left : 9999;
+                    let d2 = right !== -1 ? right - pivot : 9999;
+                    return Math.min(d1, d2);
+                };
+
+                for (let i = 0; i < matches.length; i++) {
+                    const match = matches[i];
                     const month = match[1], day = match[2], hr = match[3], min = match[4];
                     const timeStr = `${hr.padStart(2,'0')}:${min.padStart(2,'0')}`;
-                    const idx = match.index;
-                    const context = text.substring(Math.max(0, idx - 150), idx + 50);
+                    
+                    // 建立獨立切塊 (只抓取這個時間點前後到下一個時間點的範圍，不干擾)
+                    const startIdx = i === 0 ? Math.max(0, match.index - 150) : matches[i-1].index + matches[i-1][0].length;
+                    const endIdx = i === matches.length - 1 ? Math.min(text.length, match.index + 150) : matches[i+1].index;
+                    const block = text.substring(startIdx, endIdx);
                     
                     let foundEmpId = null;
                     for (let emp of EMPLOYEES) {
                         const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))];
-                        if (names.some(n => context.replace(/\s/g,'').includes(n))) {
+                        if (names.some(n => block.replace(/\s/g,'').includes(n))) {
                             foundEmpId = emp.id;
                             lastEmpLoc = emp.location; 
                             break;
                         }
+                    }
+
+                    // 如果這一塊沒名字，沿用上一個名字 (解決垂直換行格式)
+                    if (foundEmpId) {
+                        lastFoundEmpId = foundEmpId;
+                    } else {
+                        foundEmpId = lastFoundEmpId; 
                     }
 
                     if (foundEmpId) {
@@ -154,7 +179,21 @@
                             autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
                         }
 
-                        let type = (context.includes('退') || context.includes('out')) ? 'outTime' : 'inTime';
+                        // 判斷是入室還是退室
+                        let timeLocalIdx = match.index - startIdx;
+                        let outDist = Math.min(getClosestDist(block, '退', timeLocalIdx), getClosestDist(block, 'out', timeLocalIdx));
+                        let inDist = Math.min(getClosestDist(block, '入', timeLocalIdx), getClosestDist(block, 'in', timeLocalIdx));
+                        
+                        let type = 'inTime';
+                        if (outDist < inDist) {
+                            type = 'outTime';
+                        } else if (outDist === 9999 && inDist === 9999) {
+                            // 防呆：如果完全沒寫入室或退室，自動判斷：已有入室則視為退室
+                            if (newData[foundEmpId] && newData[foundEmpId][key] && newData[foundEmpId][key].inTime) {
+                                type = 'outTime';
+                            }
+                        }
+
                         if (!newData[foundEmpId]) newData[foundEmpId] = {};
                         if (!newData[foundEmpId][key]) newData[foundEmpId][key] = {};
                         newData[foundEmpId][key][type] = timeStr;
@@ -168,7 +207,7 @@
                     if (autoPeriod) setPeriod(autoPeriod);
                     if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
                     setActivePage('preview');
-                    alert(`${count} 件の打刻データを正常に取り込みました！該当月・校舎へ切り替えます。`);
+                    alert(`${count} 件の打刻データを正常に取り込みました！`);
                 } else {
                     alert("一致する名前や時間のフォーマットが見つかりませんでした。");
                 }
@@ -350,7 +389,6 @@
                                                     if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                                     if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                                     
-                                                    // ★ 修正：確保寫入正確的 igkA 與 igkB (對應 React Input 綁定)
                                                     if (data.igkAMins > 0) newData[empId][dateKey].igkA = minsToTime(data.igkAMins);
                                                     if (data.igkBMins > 0) newData[empId][dateKey].igkB = minsToTime(data.igkBMins);
                                                     
@@ -406,14 +444,11 @@
                 let shiftOut = row.shiftOut || '';
                 let leave = row.leave || '';
                 
-                // ★ 統一抓取 igkA 與 igkB
                 let igkA = row.igkA || '';
                 let igkB = row.igkB || '';
-                
                 let driverActual = row.driverActual || '';
                 let yPrivate = row.yPrivate || '';
 
-                // ★ 休息時間預設與處理
                 let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
                 let breakMins = timeToMins(breakTime);
 
@@ -447,7 +482,6 @@
                     }
                 }
 
-                // ★ 計算總上班時間 (扣除休息時間)
                 let totalWorkMins = 0;
                 if (inTime && outTime) {
                     totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
@@ -458,7 +492,6 @@
                 const igkAMins = timeToMins(igkA);
                 let igkBMins = timeToMins(igkB);
                 
-                // 如果是正社員，或者有打卡紀錄但沒填寫IGKB的打工者，自動將剩餘時間算給 IGKB
                 if (emp.type === 'full') {
                     igkBMins = Math.max(0, totalWorkMins - igkAMins);
                 } else {
@@ -577,7 +610,7 @@
                                         </div>
                                         
                                         <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none">
-                                            <table className="w-full text-sm border-collapse print:text-xs">
+                                            <table className="w-full text-sm border-collapse print:text-[10px]">
                                                 <thead>
                                                     <tr className="bg-[#f8f9fa] text-slate-600 print:bg-gray-100">
                                                         <th className="border-b border-r border-slate-200 p-2 min-w-[80px] font-black print:p-1">日付</th>
@@ -627,7 +660,7 @@
 
                                                         return (
                                                             <tr key={key} className={`${rowBg} ${textClass} print:break-inside-avoid`}>
-                                                                <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold tracking-wider print:p-1">{formatDisplayDate(d)}</td>
+                                                                <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold tracking-wider print:p-0.5">{formatDisplayDate(d)}</td>
                                                                 
                                                                 <td className="border-b border-r border-slate-100 p-1 text-center">
                                                                     {!row.inTime && !row.outTime && currentEmp.type === 'full' ? (
@@ -646,8 +679,7 @@
                                                                 <td className="border-b border-r border-slate-100 p-1.5 text-center font-mono text-xs font-bold text-slate-400 print:text-black">
                                                                     {calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
                                                                 </td>
-
-                                                                {/* ★ 新增：休息時間 (休憩) */}
+                                                                
                                                                 <td className="border-b border-r border-slate-100 p-1 text-center">
                                                                     {row.leave ? '-' : <input type="time" value={calc.breakTime} onChange={e => updateCell(currentEmp.id, key, 'breakTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-400 focus:text-indigo-600 print:text-[10px]"/>}
                                                                 </td>
@@ -699,82 +731,82 @@
 
                                         <div className={`mt-6 pt-4 grid grid-cols-2 gap-3 print:break-inside-avoid print:gap-2 ${currentEmp.type === 'full' ? 'lg:grid-cols-6' : 'md:grid-cols-6'}`}>
                                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center shadow-sm">
-                                                <div className="text-xs font-bold text-slate-400 mb-1">出勤日数</div>
-                                                <div className="text-2xl font-black text-slate-700">{sumDays} <span className="text-sm font-bold">日</span></div>
+                                                <div className="text-xs font-bold text-slate-400 mb-1 print:text-[10px]">出勤日数</div>
+                                                <div className="text-2xl font-black text-slate-700 print:text-lg">{sumDays} <span className="text-sm font-bold print:text-[10px]">日</span></div>
                                             </div>
                                             
                                             {currentEmp.type === 'full' ? (
                                                 <>
-                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-pink-500 mb-1">IGK A 合計</div>
-                                                        <div className="text-xl font-black text-pink-600 font-mono">{formatTimeWithDec(sumIgka)}</div>
+                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-pink-500 mb-1 print:text-[10px]">IGK A 合計</div>
+                                                        <div className="text-xl font-black text-pink-600 font-mono print:text-base">{formatTimeWithDec(sumIgka)}</div>
                                                     </div>
-                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-blue-500 mb-1">IGK B 合計</div>
-                                                        <div className="text-xl font-black text-blue-600 font-mono">{formatTimeWithDec(sumIgkb)}</div>
+                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-blue-500 mb-1 print:text-[10px]">IGK B 合計</div>
+                                                        <div className="text-xl font-black text-blue-600 font-mono print:text-base">{formatTimeWithDec(sumIgkb)}</div>
                                                     </div>
-                                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
-                                                        <div className="text-xs font-bold text-purple-600 mb-1">A + B 合計時間 (総労働)</div>
-                                                        <div className="text-2xl font-black text-purple-700 font-mono">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
-                                                    </div>
-
-                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-orange-500 mb-1">早残業</div>
-                                                        <div className="text-xl font-black text-orange-600">{sumEarly} <span className="text-sm font-bold">分</span></div>
-                                                    </div>
-                                                    
-                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-orange-500 mb-1">後残業</div>
-                                                        <div className="text-xl font-black text-orange-600">{sumLate} <span className="text-sm font-bold">分</span></div>
-                                                    </div>
-                                                    
-                                                    <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
-                                                        <div className="text-xs font-bold text-red-500 mb-1">残業合計 (早+後)</div>
-                                                        <div className="text-2xl font-black text-red-600">{sumEarly + sumLate} <span className="text-sm font-bold mx-1">分</span> <span className="text-sm font-bold text-red-400 font-mono">({minsToTime(sumEarly+sumLate)})</span></div>
+                                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-purple-600 mb-1 print:text-[10px]">A + B 合計時間 (総労働)</div>
+                                                        <div className="text-2xl font-black text-purple-700 font-mono print:text-xl">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
                                                     </div>
 
-                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center">
-                                                        <div className="text-xs font-bold text-emerald-600 mb-1">交通費 (月額)</div>
+                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">早残業</div>
+                                                        <div className="text-xl font-black text-orange-600 print:text-base">{sumEarly} <span className="text-sm font-bold print:text-[10px]">分</span></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">後残業</div>
+                                                        <div className="text-xl font-black text-orange-600 print:text-base">{sumLate} <span className="text-sm font-bold print:text-[10px]">分</span></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-red-500 mb-1 print:text-[10px]">残業合計 (早+後)</div>
+                                                        <div className="text-2xl font-black text-red-600 print:text-xl">{sumEarly + sumLate} <span className="text-sm font-bold mx-1 print:text-[10px]">分</span> <span className="text-sm font-bold text-red-400 font-mono print:text-[10px]">({minsToTime(sumEarly+sumLate)})</span></div>
+                                                    </div>
+
+                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-2 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
                                                         <div className="flex items-center justify-center gap-1">
                                                             <span className="text-lg font-bold text-emerald-700">¥</span>
-                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-20 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400" placeholder="0" />
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-20 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
                                                         </div>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     {['Mikuma', 'Taka', 'Ando'].includes(currentEmp.name) && (
-                                                        <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-center shadow-sm">
-                                                            <div className="text-xs font-bold text-yellow-600 mb-1">ドライバー 実績</div>
-                                                            <div className="text-xl font-black text-yellow-700 font-mono">{formatTimeWithDec(sumDriver)}</div>
+                                                        <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-center shadow-sm print:border-none print:bg-white">
+                                                            <div className="text-xs font-bold text-yellow-600 mb-1 print:text-[10px]">ドライバー 実績</div>
+                                                            <div className="text-xl font-black text-yellow-700 font-mono print:text-base">{formatTimeWithDec(sumDriver)}</div>
                                                         </div>
                                                     )}
                                                     
-                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-pink-500 mb-1">IGK A 合計</div>
-                                                        <div className="text-xl font-black text-pink-600 font-mono">{formatTimeWithDec(sumIgka)}</div>
+                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-pink-500 mb-1 print:text-[10px]">IGK A 合計</div>
+                                                        <div className="text-xl font-black text-pink-600 font-mono print:text-base">{formatTimeWithDec(sumIgka)}</div>
                                                     </div>
 
-                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-blue-500 mb-1">IGK B 合計</div>
-                                                        <div className="text-xl font-black text-blue-600 font-mono">{formatTimeWithDec(sumIgkb)}</div>
+                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-blue-500 mb-1 print:text-[10px]">IGK B 合計</div>
+                                                        <div className="text-xl font-black text-blue-600 font-mono print:text-base">{formatTimeWithDec(sumIgkb)}</div>
                                                     </div>
 
-                                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-center shadow-sm">
-                                                        <div className="text-xs font-bold text-purple-500 mb-1">Y Private</div>
-                                                        <div className="text-xl font-black text-purple-600 font-mono">{formatTimeWithDec(sumYPriv)}</div>
+                                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-center shadow-sm print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-purple-500 mb-1 print:text-[10px]">Y Private</div>
+                                                        <div className="text-xl font-black text-purple-600 font-mono print:text-base">{formatTimeWithDec(sumYPriv)}</div>
                                                     </div>
 
-                                                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
-                                                        <div className="text-xs font-bold text-indigo-600 mb-1">A + B 合計時間 (総労働)</div>
-                                                        <div className="text-2xl font-black text-indigo-700 font-mono">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
+                                                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-indigo-600 mb-1 print:text-[10px]">A + B 合計時間 (総労働)</div>
+                                                        <div className="text-2xl font-black text-indigo-700 font-mono print:text-xl">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
                                                     </div>
 
-                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center">
-                                                        <div className="text-xs font-bold text-emerald-600 mb-1">交通費 (月額)</div>
+                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-3 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
                                                         <div className="flex items-center justify-center gap-1">
                                                             <span className="text-lg font-bold text-emerald-700">¥</span>
-                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-20 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400" placeholder="0" />
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-20 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
                                                         </div>
                                                     </div>
 
@@ -783,25 +815,25 @@
                                                         const totalPartTimeDec = (totalPartTimeMins / 60).toFixed(2);
                                                         const transportTotal = Number(monthlyData[`${currentEmp.id}_${period}`]?.transportFee || 0);
                                                         return (
-                                                            <div className="bg-white p-3 rounded-xl border-2 border-indigo-100 shadow-sm col-span-2 md:col-span-6 mt-1 print:border-slate-300 print:shadow-none">
-                                                                <h3 className="text-indigo-800 font-black mb-2 flex items-center gap-2 text-sm">💰 給与シミュレーション <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">管理者専用</span></h3>
-                                                                <div className="flex flex-wrap items-center gap-3 font-bold text-sm text-slate-600">
-                                                                    <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                                                            <div className="bg-white p-3 rounded-xl border-2 border-indigo-100 shadow-sm col-span-2 md:col-span-6 mt-1 print:border-slate-200 print:shadow-none">
+                                                                <h3 className="text-indigo-800 font-black mb-2 flex items-center gap-2 text-sm print:text-xs">💰 給与シミュレーション <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 print:border-none">管理者専用</span></h3>
+                                                                <div className="flex flex-wrap items-center gap-3 font-bold text-sm text-slate-600 print:text-[10px]">
+                                                                    <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-lg border border-slate-200 print:border-none print:bg-transparent">
                                                                         <label className="text-xs">時給(円):</label>
-                                                                        <input type="number" value={hourlyWage} onChange={e => setHourlyWage(Number(e.target.value))} className="w-16 px-1 py-0.5 border border-slate-200 rounded text-right outline-none focus:border-indigo-400 font-black text-indigo-600 bg-white" />
+                                                                        <input type="number" value={hourlyWage} onChange={e => setHourlyWage(Number(e.target.value))} className="w-16 px-1 py-0.5 border border-slate-200 rounded text-right outline-none focus:border-indigo-400 font-black text-indigo-600 bg-white print:border-none" />
                                                                     </div>
                                                                     <div className="text-slate-300 font-black">×</div>
-                                                                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-xs flex items-center">
-                                                                        総労働: <span className="text-indigo-600 text-base ml-1">{totalPartTimeDec} <span className="text-[10px]">H</span></span>
+                                                                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-xs flex items-center print:border-none print:bg-transparent">
+                                                                        総労働: <span className="text-indigo-600 text-base ml-1 print:text-sm">{totalPartTimeDec} <span className="text-[10px]">H</span></span>
                                                                     </div>
                                                                     <div className="text-slate-300 font-black">＋</div>
-                                                                    <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-100 text-emerald-700 text-xs flex items-center">
-                                                                        交通費: <span className="text-base ml-1">¥{transportTotal.toLocaleString()}</span>
+                                                                    <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-100 text-emerald-700 text-xs flex items-center print:border-none print:bg-transparent">
+                                                                        交通費: <span className="text-base ml-1 print:text-sm">¥{transportTotal.toLocaleString()}</span>
                                                                     </div>
                                                                     <div className="text-slate-300 font-black">＝</div>
-                                                                    <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-200 shadow-inner flex items-baseline">
+                                                                    <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-200 shadow-inner flex items-baseline print:border-none print:bg-transparent print:shadow-none">
                                                                         <span className="text-indigo-800 mr-1 font-bold text-[10px]">推定給与:</span>
-                                                                        <span className="text-xl font-black text-indigo-600">¥{(Math.floor(totalPartTimeDec * hourlyWage) + transportTotal).toLocaleString()}</span>
+                                                                        <span className="text-xl font-black text-indigo-600 print:text-base">¥{(Math.floor(totalPartTimeDec * hourlyWage) + transportTotal).toLocaleString()}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -828,6 +860,7 @@
         .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* --- 列印專用 CSS --- */
         @media print {
             @page { margin: 1cm; size: A4 portrait; }
             body { background: white !important; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
