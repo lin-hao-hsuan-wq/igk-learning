@@ -114,7 +114,7 @@
             const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
             const handlePaste = () => {
-                if (!pastedData.trim()) return alert("請貼上打卡資料");
+                if (!pastedData.trim()) return alert("打刻資料");
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
@@ -165,9 +165,9 @@
                     if (autoPeriod) setPeriod(autoPeriod);
                     if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
                     setActivePage('preview');
-                    alert(`成功匯入 ${count} 筆打卡資料！已自動切換至對應月份與校區。`);
+                    alert(` ${count} 打刻データアップデートできた`);
                 } else {
-                    alert("找不到符合的姓名或時間格式。請確認複製內容是否完整！");
+                    alert("お疲れ様です。もう一度確認お願いします。");
                 }
             };
 
@@ -283,12 +283,12 @@
                             setAttendance(newData);
                             if (autoPeriod) setPeriod(autoPeriod);
                             setActivePage('preview');
-                            alert(`成功從班表抽取並派發 ${count} 個時段區塊！已切換至對應月份。`);
+                            alert(`読み込みました ${count} 個時段區塊！已切換至對應月份。`);
                         } else {
-                            alert("讀取成功，但沒有找到色塊或時間對應，請確認表格結構。");
+                            alert("読み込みましたが、みつけません。");
                         }
                     } catch (err) {
-                        alert(`❌ Excel 解析失敗: ${err.message}`);
+                        alert(`❌ Excel エラー: ${err.message}`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -373,7 +373,7 @@
             return (
                 <div className="min-h-screen flex flex-col font-sans">
                     <div className="bg-slate-800 text-white p-4 flex gap-4 print:hidden shadow-md items-center">
-                        <h1 className="text-xl font-bold mr-4 tracking-wider">IGK 勤怠總部</h1>
+                        <h1 className="text-xl font-bold mr-4 tracking-wider">IGK 勤怠</h1>
                         <button onClick={() => setActivePage('import')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'import' ? 'bg-indigo-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>① 資料指揮中心</button>
                         <button onClick={() => setActivePage('preview')} className={`px-4 py-1.5 rounded-lg font-bold transition-colors ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow' : 'text-gray-300 hover:bg-slate-700'}`}>② 個人勤務表</button>
                     </div>
@@ -381,13 +381,13 @@
                     {activePage === 'import' && (
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-indigo-500">
-                                <h2 className="text-lg font-bold text-indigo-900 mb-4">【上區】正社員勤務與特別期間設定</h2>
+                                <h2 className="text-lg font-bold text-indigo-900 mb-4">正社員勤務＆特別期間設定</h2>
                                 <div className="flex gap-4 mb-4">
                                     <div><label className="block text-xs font-bold text-gray-500 mb-1">預設入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
                                     <div><label className="block text-xs font-bold text-gray-500 mb-1">預設退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-500"/></div>
                                 </div>
                                 <div className="bg-indigo-50 p-4 rounded-xl flex flex-wrap gap-3 items-end border border-indigo-100">
-                                    <input type="text" placeholder="特別原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none"/>
+                                    <input type="text" placeholder="原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none"/>
                                     <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
                                     <span className="text-indigo-300 font-bold mb-2">~</span>
                                     <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none"/>
@@ -398,18 +398,18 @@
                             </div>
 
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-emerald-500">
-                                <h2 className="text-lg font-bold text-emerald-900 mb-2">【中區】打卡紀錄無縫貼上區</h2>
-                                <p className="text-xs text-gray-500 mb-3">直接貼上包含員工姓名、入室退室及時間的文字，系統自動判別並派發。</p>
+                                <h2 className="text-lg font-bold text-emerald-900 mb-2">打刻データコピペ</h2>
+                                <p className="text-xs text-gray-500 mb-3">コピペで自動判別。</p>
                                 <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-300 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner" placeholder="貼上打卡紀錄..."></textarea>
                                 <button onClick={handlePaste} className="mt-3 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-emerald-700 transition-colors shadow-md">解析並匯入打卡資料</button>
                             </div>
 
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-blue-500">
-                                <h2 className="text-lg font-bold text-blue-900 mb-2">【下區】班表檔案上傳自動派發</h2>
-                                <p className="text-xs text-gray-500 mb-3">上傳 Excel (.xlsx) 班表，AI 自動掃描色塊並寫入各夥伴的シフト(Shift)欄位。</p>
+                                <h2 className="text-lg font-bold text-blue-900 mb-2">シフトをアップデート</h2>
+                                <p className="text-xs text-gray-500 mb-3"> Excel (.xlsx) シフト，AI 自動表示される。</p>
                                 <label className="block w-full cursor-pointer border-2 border-dashed border-blue-300 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-100 transition-colors text-center">
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
-                                    <div className="text-blue-700 font-bold text-lg mb-1">點擊選擇或拖曳 .xlsx 檔案至此</div>
+                                    <div className="text-blue-700 font-bold text-lg mb-1">put.xlsx to here</div>
                                     <div className="text-blue-500 text-sm">自動計算色塊，累積不覆蓋</div>
                                 </label>
                             </div>
