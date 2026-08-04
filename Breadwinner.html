@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - Folder Tabs Edition</title>
+    <title>IGK Attendance System - Pro Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -16,7 +16,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
 
-        // --- 核心資料：人員名單與別名 (完全保留我們之前的記憶) ---
         const EMPLOYEES = [
             // 正社員
             { id: 'e1', name: 'Toshi', aliases: ['トシ'], type: 'full' },
@@ -44,17 +43,12 @@
             { id: 'p15', name: 'Mozelle', aliases: ['Mozelle Bargamin', 'モゼル'], type: 'part' }
         ];
 
-        // 可愛資料夾顏色池
         const TAB_COLORS = [
-            'bg-pink-100 text-pink-700 border-pink-200',
-            'bg-blue-100 text-blue-700 border-blue-200',
-            'bg-emerald-100 text-emerald-700 border-emerald-200',
-            'bg-purple-100 text-purple-700 border-purple-200',
-            'bg-orange-100 text-orange-700 border-orange-200',
-            'bg-teal-100 text-teal-700 border-teal-200',
+            'bg-pink-100 text-pink-700 border-pink-200', 'bg-blue-100 text-blue-700 border-blue-200',
+            'bg-emerald-100 text-emerald-700 border-emerald-200', 'bg-purple-100 text-purple-700 border-purple-200',
+            'bg-orange-100 text-orange-700 border-orange-200', 'bg-teal-100 text-teal-700 border-teal-200',
         ];
 
-        // 輔助函數：時間轉換
         const timeToMins = (t) => {
             if (!t) return 0;
             const [h, m] = t.split(':').map(Number);
@@ -66,22 +60,19 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState('import'); // 'import' or 'preview'
+            const [activePage, setActivePage] = useState('import'); 
             
-            // 日期區間設定 (16日~15日)
             const today = new Date();
             let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
             let initY = today.getFullYear();
             if (initM > 12) { initM -= 12; initY += 1; }
             const [period, setPeriod] = useState(`${initY}-${String(initM).padStart(2, '0')}`);
             
-            const [settings, setSettings] = useState({
-                baseStart: '09:30', baseEnd: '18:30', special: []
-            });
+            const [settings, setSettings] = useState({ baseStart: '09:30', baseEnd: '18:30', special: [] });
             const [newSp, setNewSp] = useState({ name: '', start: '', end: '', timeIn: '09:30', timeOut: '18:30' });
 
             const [pastedData, setPastedData] = useState('');
-            const [attendance, setAttendance] = useState({}); // { empId: { dateKey: { inTime, outTime, shiftIn, shiftOut, leave, igka, remark } } }
+            const [attendance, setAttendance] = useState({}); 
             const [activeEmp, setActiveEmp] = useState(EMPLOYEES[0].id);
 
             const dates = useMemo(() => {
@@ -89,35 +80,35 @@
                 const start = new Date(y, m - 2, 16);
                 const end = new Date(y, m - 1, 15);
                 let arr = [];
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    arr.push(new Date(d));
-                }
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) arr.push(new Date(d));
                 return arr;
             }, [period]);
 
             const dKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
             
-            // --- 處理貼上的打卡資料 ---
+            const getAutoPeriod = (dateObj) => {
+                let y = dateObj.getFullYear();
+                let m = dateObj.getDate() >= 16 ? dateObj.getMonth() + 2 : dateObj.getMonth() + 1;
+                if (m > 12) { m -= 12; y += 1; }
+                return `${y}-${String(m).padStart(2, '0')}`;
+            };
+
             const handlePaste = () => {
                 if (!pastedData.trim()) return alert("請貼上打卡資料");
                 
                 let newData = { ...attendance };
                 const text = pastedData.toLowerCase().replace(/\r/g, '');
-                // 找出所有符合日期與時間的區塊
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-])?(\d{1,2})[\/\-](\d{1,2})日?.*?(?:入室|退室|in|out)?.*?(\d{1,2})[:：](\d{2})/gi;
                 
                 let match;
                 let count = 0;
+                let autoPeriod = null;
+
                 while ((match = timeRegex.exec(text)) !== null) {
-                    const month = match[1];
-                    const day = match[2];
-                    const hr = match[3];
-                    const min = match[4];
+                    const month = match[1], day = match[2], hr = match[3], min = match[4];
                     const timeStr = `${hr.padStart(2,'0')}:${min.padStart(2,'0')}`;
                     const idx = match.index;
-
-                    // 往前找 150 字元看是誰，看是入室還退室
                     const context = text.substring(Math.max(0, idx - 150), idx + 50);
                     
                     let foundEmpId = null;
@@ -129,12 +120,12 @@
                     }
 
                     if (foundEmpId) {
-                        const y = new Date().getFullYear(); // 簡化為今年
+                        const y = new Date().getFullYear();
                         const dateObj = new Date(y, parseInt(month)-1, parseInt(day));
                         const key = dKey(dateObj);
+                        if (!autoPeriod) autoPeriod = getAutoPeriod(dateObj);
 
                         let type = context.includes('退') || context.includes('out') ? 'outTime' : 'inTime';
-                        
                         if (!newData[foundEmpId]) newData[foundEmpId] = {};
                         if (!newData[foundEmpId][key]) newData[foundEmpId][key] = {};
                         
@@ -142,15 +133,21 @@
                         count++;
                     }
                 }
-                setAttendance(newData);
-                setPastedData('');
-                alert(`成功匯入 ${count} 筆打卡資料！`);
+                if (count > 0) {
+                    setAttendance(newData);
+                    setPastedData('');
+                    if (autoPeriod) setPeriod(autoPeriod);
+                    setActivePage('preview');
+                    alert(`成功匯入 ${count} 筆打卡資料！已自動跳轉月份。`);
+                } else {
+                    alert("找不到符合的姓名或時間格式。");
+                }
             };
 
-            // --- 處理 Excel 班表 ---
             const handleExcelUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                     try {
@@ -158,61 +155,110 @@
                         await wb.xlsx.load(evt.target.result);
                         let newData = { ...attendance };
                         let count = 0;
+                        let autoPeriod = null;
 
-                        // 遍歷所有 Sheet
+                        const extractTime = (val) => {
+                            if (!val) return null;
+                            if (val.text) {
+                                const m = val.text.match(/(\d{1,2})[:：](\d{2})/);
+                                if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+                            }
+                            let v = val.value;
+                            if (v && v.result !== undefined) v = v.result;
+                            if (v instanceof Date) return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
+                            if (typeof v === 'number' && v >= 0 && v < 1) {
+                                let tm = Math.round(v * 24 * 60);
+                                return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
+                            }
+                            if (typeof v === 'string') {
+                                const m = v.match(/(\d{1,2})[:：](\d{2})/);
+                                if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+                            }
+                            return null;
+                        };
+
                         wb.worksheets.forEach(ws => {
+                            let currentColMap = {};
+                            let currentDates = {}; // row -> dateKey
+
                             for (let r = 1; r <= ws.rowCount; r++) {
                                 // 找日期
-                                let rowDateStr = ws.getCell(r, 1).text || ws.getCell(r, 2).text;
-                                let dMatch = rowDateStr.match(/(\d{1,2})[\/\-月](\d{1,2})/);
-                                if (!dMatch) continue;
-                                const dateKeyStr = dKey(new Date(new Date().getFullYear(), parseInt(dMatch[1])-1, parseInt(dMatch[2])));
-
-                                // 找人名表頭 (假設這行上方 1~3 行內有人名)
-                                let colMap = {};
-                                for (let c = 2; c <= 30; c++) {
-                                    let headCell = ws.getCell(Math.max(1, r - 2), c).text || ws.getCell(Math.max(1, r - 1), c).text;
-                                    let nameClean = headCell.toLowerCase().replace(/\s/g, '');
-                                    EMPLOYEES.forEach(emp => {
-                                        if ([emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))].includes(nameClean)) {
-                                            colMap[c] = emp.id;
-                                        }
-                                    });
+                                for (let c = 1; c <= 10; c++) {
+                                    let t = (ws.getCell(r, c).text || '').replace(/\s+/g, '');
+                                    const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
+                                    if (m) {
+                                        let y = new Date().getFullYear();
+                                        const yM = t.match(/(20\d{2})/); if (yM) y = parseInt(yM[1]);
+                                        let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
+                                        currentDates[r] = { key: dKey(dObj), obj: dObj };
+                                        break;
+                                    }
                                 }
 
-                                // 找這行的時間區段
-                                let timeCell = ws.getCell(r, 1).text || '';
-                                let tMatch = timeCell.match(/(\d{1,2})[:：](\d{2})/);
-                                if (tMatch && Object.keys(colMap).length > 0) {
-                                    let rowMins = timeToMins(`${tMatch[1]}:${tMatch[2]}`);
-
-                                    Object.keys(colMap).forEach(c => {
-                                        const empId = colMap[c];
-                                        const cell = ws.getCell(r, parseInt(c));
-                                        const actualCell = cell.isMerged ? ws.getCell(cell.master.address) : cell;
-                                        const hasContent = actualCell.text.trim().length > 0;
-                                        const isColored = actualCell.fill && actualCell.fill.type === 'pattern' && actualCell.fill.pattern !== 'none';
-                                        
-                                        // 只要有顏色或有字，就視為有班
-                                        if (hasContent || isColored) {
-                                            if (!newData[empId]) newData[empId] = {};
-                                            if (!newData[empId][dateKeyStr]) newData[empId][dateKeyStr] = {};
-                                            
-                                            let curIn = timeToMins(newData[empId][dateKeyStr].shiftIn || '23:59');
-                                            let curOut = timeToMins(newData[empId][dateKeyStr].shiftOut || '00:00');
-                                            
-                                            if (rowMins < curIn) newData[empId][dateKeyStr].shiftIn = minsToTime(rowMins);
-                                            // 預設每格 30 分鐘，如果塗色到底，加 30 分
-                                            if (rowMins + 30 > curOut) newData[empId][dateKeyStr].shiftOut = minsToTime(rowMins + 30);
-                                            
-                                            count++;
+                                // 找人名
+                                let matches = 0;
+                                let tempMap = {};
+                                for (let c = 1; c <= 40; c++) {
+                                    let v = (ws.getCell(r, c).text || '').toLowerCase().replace(/\s+/g, '');
+                                    if (v.length >= 1) {
+                                        for (const emp of EMPLOYEES) {
+                                            let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                            if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
+                                                tempMap[c] = emp.id; matches++; break;
+                                            }
                                         }
-                                    });
+                                    }
+                                }
+                                if (matches >= 2) currentColMap = tempMap;
+
+                                // 抓時間色塊
+                                let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
+                                if (activeDateRow && Object.keys(currentColMap).length > 0) {
+                                    let dateInfo = currentDates[activeDateRow];
+                                    let rowTimeStr = extractTime(ws.getCell(r, 1)) || extractTime(ws.getCell(r, 2));
+                                    
+                                    if (rowTimeStr) {
+                                        let rowMins = timeToMins(rowTimeStr);
+                                        if (!autoPeriod) autoPeriod = getAutoPeriod(dateInfo.obj);
+
+                                        Object.keys(currentColMap).forEach(c => {
+                                            const empId = currentColMap[c];
+                                            let cell = ws.getCell(r, parseInt(c));
+                                            let actCell = cell.isMerged ? ws.getCell(cell.master.address) : cell;
+                                            
+                                            let hasContent = (actCell.text || '').trim().length > 0;
+                                            let isColored = false;
+                                            if (actCell.fill && actCell.fill.type === 'pattern' && actCell.fill.pattern !== 'none') {
+                                                let hex = (actCell.fill.fgColor?.argb || actCell.fill.bgColor?.argb || '').toUpperCase();
+                                                if (hex && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) isColored = true;
+                                            }
+
+                                            if (hasContent || isColored) {
+                                                if (!newData[empId]) newData[empId] = {};
+                                                if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
+                                                
+                                                let curIn = timeToMins(newData[empId][dateInfo.key].shiftIn || '23:59');
+                                                let curOut = timeToMins(newData[empId][dateInfo.key].shiftOut || '00:00');
+                                                
+                                                if (rowMins < curIn) newData[empId][dateInfo.key].shiftIn = minsToTime(rowMins);
+                                                if (rowMins + 30 > curOut) newData[empId][dateInfo.key].shiftOut = minsToTime(rowMins + 30);
+                                                
+                                                count++;
+                                            }
+                                        });
+                                    }
                                 }
                             }
                         });
-                        setAttendance(newData);
-                        alert(`成功從班表抽取並派發 ${count} 個時段區塊！`);
+
+                        if (count > 0) {
+                            setAttendance(newData);
+                            if (autoPeriod) setPeriod(autoPeriod);
+                            setActivePage('preview');
+                            alert(`成功解析班表！填入 ${count} 個時段區塊，並自動跳轉至對應月份。`);
+                        } else {
+                            alert("檔案讀取成功，但沒有找到對應的色塊或時間。");
+                        }
                     } catch (err) {
                         alert("讀取 Excel 失敗");
                     }
@@ -227,16 +273,13 @@
                 }));
             };
 
-            // --- 核心計算邏輯 (Shift 5分進位、殘業、IGKB) ---
             const calculateRow = (date, row, emp) => {
                 const isWknd = isWeekend(date);
                 let { inTime, outTime, shiftIn, shiftOut, leave, igka } = row;
                 
-                // 正社員預設班表
                 if (emp.type === 'full') {
                     shiftIn = shiftIn || settings.baseStart;
                     shiftOut = shiftOut || settings.baseEnd;
-                    // TODO: 檢查 Special Period 覆蓋
                     settings.special.forEach(sp => {
                         if (new Date(date) >= new Date(sp.start) && new Date(date) <= new Date(sp.end)) {
                             shiftIn = sp.timeIn; shiftOut = sp.timeOut;
@@ -244,22 +287,17 @@
                     });
                 }
 
-                // 【遲到 5 分鐘進位邏輯】
+                // 遲到 5 分鐘進位邏輯
                 let actualShiftIn = shiftIn;
                 if (inTime && shiftIn) {
                     const inM = timeToMins(inTime);
                     const sInM = timeToMins(shiftIn);
-                    if (inM > sInM && inM <= sInM + 4) {
-                        actualShiftIn = minsToTime(sInM + 5); // 14:01-04 變成 14:05
-                    } else if (inM > sInM + 4) {
-                        actualShiftIn = minsToTime(Math.ceil(inM / 5) * 5); // 更晚的話以 5 分為單位進位
-                    }
+                    if (inM > sInM && inM <= sInM + 4) actualShiftIn = minsToTime(sInM + 5);
+                    else if (inM > sInM + 4) actualShiftIn = minsToTime(Math.ceil(inM / 5) * 5);
                 }
 
-                // 【早殘業、後殘業】(僅正社員)
-                let earlyOtMins = 0;
-                let lateOtMins = 0;
-                if (emp.type === 'full') {
+                let earlyOtMins = 0, lateOtMins = 0;
+                if (emp.type === 'full' && !leave) {
                     if (inTime && shiftIn) {
                         let diff = timeToMins(shiftIn) - timeToMins(inTime);
                         if (diff > 0) earlyOtMins = diff;
@@ -270,83 +308,68 @@
                     }
                 }
 
-                // 【總上班時間與 IGKB】
                 let totalWorkMins = 0;
                 if (inTime && outTime) {
-                    totalWorkMins = timeToMins(outTime) - timeToMins(actualShiftIn); // 扣除進位後的上班時間
+                    totalWorkMins = timeToMins(outTime) - timeToMins(actualShiftIn);
                     if (totalWorkMins < 0) totalWorkMins = 0;
                 } else if (shiftIn && shiftOut && emp.type === 'full' && !leave) {
-                    // 正社員正常班
                     totalWorkMins = timeToMins(shiftOut) - timeToMins(shiftIn);
                 }
 
                 const igkaMins = timeToMins(igka || '00:00');
                 const igkbMins = Math.max(0, totalWorkMins - igkaMins);
 
-                return {
-                    isWknd,
-                    actualShiftIn, shiftOut,
-                    earlyOtMins, lateOtMins,
-                    totalWorkMins, igkaMins, igkbMins
-                };
+                return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkaMins, igkbMins };
             };
 
             return (
                 <div className="min-h-screen flex flex-col font-sans">
-                    {/* Header Tabs */}
                     <div className="bg-slate-800 text-white p-4 flex gap-4 print:hidden">
                         <h1 className="text-xl font-bold mr-8">IGK 勤怠總部</h1>
-                        <button onClick={() => setActivePage('import')} className={`px-4 py-1 rounded font-bold ${activePage === 'import' ? 'bg-white text-slate-800' : 'text-gray-300 hover:bg-slate-700'}`}>① 資料指揮中心</button>
-                        <button onClick={() => setActivePage('preview')} className={`px-4 py-1 rounded font-bold ${activePage === 'preview' ? 'bg-white text-slate-800' : 'text-gray-300 hover:bg-slate-700'}`}>② 個人勤務表</button>
+                        <button onClick={() => setActivePage('import')} className={`px-4 py-1 rounded font-bold ${activePage === 'import' ? 'bg-white text-slate-800' : 'text-gray-300 hover:bg-slate-700'}`}>資料指揮中心</button>
+                        <button onClick={() => setActivePage('preview')} className={`px-4 py-1 rounded font-bold ${activePage === 'preview' ? 'bg-white text-slate-800' : 'text-gray-300 hover:bg-slate-700'}`}>個人勤務表</button>
                     </div>
 
-                    {/* --- Page 1: 指揮中心 --- */}
                     {activePage === 'import' && (
-                        <div className="p-6 max-w-5xl mx-auto space-y-6 w-full">
-                            {/* 上區 */}
+                        <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-indigo-500">
-                                <h2 className="text-lg font-bold text-indigo-900 mb-4">【上區】正社員勤務與特別期間設定</h2>
+                                <h2 className="text-lg font-bold text-indigo-900 mb-4">正社員勤務與特別期間設定</h2>
                                 <div className="flex gap-4 mb-4">
                                     <div><label className="block text-xs font-bold text-gray-500">預設入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border rounded p-1"/></div>
                                     <div><label className="block text-xs font-bold text-gray-500">預設退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border rounded p-1"/></div>
                                 </div>
-                                <div className="bg-indigo-50 p-3 rounded flex gap-2 items-end">
-                                    <input type="text" placeholder="特別原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border rounded p-1 flex-1"/>
+                                <div className="bg-indigo-50 p-3 rounded flex flex-wrap gap-2 items-end">
+                                    <input type="text" placeholder="特別原因 (如 Summer school)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border rounded p-1 flex-1 min-w-[150px]"/>
                                     <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border rounded p-1"/>
                                     <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border rounded p-1"/>
                                     <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border rounded p-1 w-24"/>
                                     <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border rounded p-1 w-24"/>
-                                    <button onClick={() => { setSettings(s => ({...s, special: [...s.special, newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'})}} className="bg-indigo-600 text-white px-3 py-1 rounded font-bold">新增</button>
+                                    <button onClick={() => { if(newSp.name) { setSettings(s => ({...s, special: [...s.special, newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30'}); } }} className="bg-indigo-600 text-white px-3 py-1 rounded font-bold">新增</button>
                                 </div>
                             </div>
 
-                            {/* 中區 */}
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-emerald-500">
-                                <h2 className="text-lg font-bold text-emerald-900 mb-2">【中區】打卡紀錄無縫貼上區</h2>
-                                <p className="text-xs text-gray-500 mb-3">直接貼上包含 Kim Nakyung 等名字、入室退室及時間的文字，系統自動派發。</p>
-                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-32 border rounded-lg p-3 text-sm bg-gray-50" placeholder="貼上打卡紀錄..."></textarea>
-                                <button onClick={handlePaste} className="mt-2 bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold w-full hover:bg-emerald-700">解析並匯入打卡資料</button>
+                                <h2 className="text-lg font-bold text-emerald-900 mb-2">打卡紀錄無縫貼上區</h2>
+                                <p className="text-xs text-gray-500 mb-3">直接貼上包含員工姓名、入室/退室及時間的文字，系統自動判別並派發。</p>
+                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-32 border rounded-lg p-3 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="貼上打卡紀錄..."></textarea>
+                                <button onClick={handlePaste} className="mt-2 bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold w-full hover:bg-emerald-700 transition-colors">解析並匯入打卡資料</button>
                             </div>
 
-                            {/* 下區 */}
                             <div className="bg-white p-6 rounded-xl shadow border-t-4 border-blue-500">
-                                <h2 className="text-lg font-bold text-blue-900 mb-2">【下區】班表檔案上傳自動派發</h2>
-                                <p className="text-xs text-gray-500 mb-3">上傳 Excel (.xlsx) 班表，Koukei的格子自動放入林昊嬛的表單中！自動累積不覆蓋。</p>
+                                <h2 className="text-lg font-bold text-blue-900 mb-2">班表檔案上傳自動派發</h2>
+                                <p className="text-xs text-gray-500 mb-3">上傳 Excel (.xlsx) 班表，AI 自動掃描色塊並寫入各夥伴的シフト(Shift)欄位。</p>
                                 <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/30" />
                             </div>
                         </div>
                     )}
 
-                    {/* --- Page 2: 個人勤務表 --- */}
                     {activePage === 'preview' && (
-                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col">
-                            {/* 控制列 */}
+                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col animate-fadeIn">
                             <div className="flex gap-4 mb-4 items-center print:hidden">
-                                <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-300 rounded-lg p-2 font-bold text-lg"/>
-                                <button onClick={() => window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold">列印 / PDF</button>
+                                <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-300 rounded-lg p-2 font-bold text-lg outline-none focus:border-indigo-500"/>
+                                <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold transition-colors">列印 / PDF</button>
                             </div>
 
-                            {/* 可愛資料夾標籤列 */}
                             <div className="flex overflow-x-auto gap-1 pb-0 border-b-4 border-slate-300 print:hidden scrollbar-hide">
                                 {EMPLOYEES.map((emp, i) => {
                                     const colorClass = TAB_COLORS[i % TAB_COLORS.length];
@@ -360,13 +383,12 @@
                                 })}
                             </div>
 
-                            {/* 表格主體 */}
                             {(() => {
                                 const emp = EMPLOYEES.find(e => e.id === activeEmp);
                                 let sumDays = 0, sumIgka = 0, sumIgkb = 0, sumTotal = 0, sumEarly = 0, sumLate = 0;
 
                                 return (
-                                    <div className="bg-white p-6 border-x-2 border-b-2 border-slate-300 rounded-b-xl shadow-lg print:border-none print:shadow-none">
+                                    <div className="bg-white p-6 border-x-2 border-b-2 border-slate-300 rounded-b-xl shadow-lg print:border-none print:shadow-none print:p-0">
                                         <h2 className="text-2xl font-black mb-4">{emp.name} <span className="text-sm font-normal text-gray-500 ml-2">({emp.type === 'full' ? '正社員' : 'アルバイト'})</span></h2>
                                         
                                         <div className="overflow-x-auto">
@@ -389,24 +411,19 @@
                                                         const row = attendance[emp.id]?.[key] || {};
                                                         const calc = calculateRow(d, row, emp);
                                                         
-                                                        // 統計累加
                                                         if (row.inTime || row.outTime || row.leave) sumDays++;
                                                         sumIgka += calc.igkaMins; sumIgkb += calc.igkbMins;
                                                         sumTotal += calc.totalWorkMins;
                                                         sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
 
-                                                        // 行底色邏輯
                                                         let rowBg = calc.isWknd ? 'bg-pink-50' : 'hover:bg-slate-50';
                                                         let textClass = calc.isWknd ? 'text-red-600 font-bold' : '';
-                                                        if (row.leave) {
-                                                            rowBg = 'bg-blue-50'; textClass = 'text-blue-600 font-bold';
-                                                        }
+                                                        if (row.leave) { rowBg = 'bg-blue-50'; textClass = 'text-blue-600 font-bold'; }
 
                                                         return (
                                                             <tr key={key} className={`${rowBg} ${textClass}`}>
                                                                 <td className="border p-2 text-center">{formatDisplayDate(d)}</td>
                                                                 
-                                                                {/* 入室：正社員無打卡顯示假單下拉 */}
                                                                 <td className="border p-1 text-center">
                                                                     {!row.inTime && !row.outTime && emp.type === 'full' ? (
                                                                         <select value={row.leave || ''} onChange={e => updateCell(emp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-xs font-bold outline-none cursor-pointer">
@@ -422,7 +439,7 @@
                                                                 </td>
                                                                 
                                                                 <td className="border p-2 text-center font-mono text-xs font-bold text-slate-600">
-                                                                    {calc.actualShiftIn && calc.shiftOut ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
+                                                                    {calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
                                                                 </td>
                                                                 
                                                                 <td className="border p-1 text-center">
@@ -448,7 +465,6 @@
                                             </table>
                                         </div>
 
-                                        {/* 下方總結區塊 */}
                                         <div className="mt-6 border-t-4 border-slate-800 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
                                             <div className="bg-slate-100 p-4 rounded-xl border border-slate-300 text-center shadow-sm">
                                                 <div className="text-sm font-bold text-slate-500 mb-1">出勤總日數</div>
@@ -501,9 +517,10 @@
         root.render(<App />);
     </script>
     <style>
-        /* 隱藏滾動條但保留功能 */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </body>
 </html>
