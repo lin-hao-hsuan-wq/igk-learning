@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 薪水</title>
+    <title>IGK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -86,8 +86,8 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 更新快取鑰匙 v10，強制載入新的防呆解析邏輯
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v10', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v12，確保字典擴充生效
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v12', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v10', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v12', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -228,8 +228,16 @@
                         let outDist = Math.min(getClosestDist(block, '退', timeLocalIdx), getClosestDist(block, 'out', timeLocalIdx));
                         let inDist = Math.min(getClosestDist(block, '入', timeLocalIdx), getClosestDist(block, 'in', timeLocalIdx));
                         
+                        // ★ 文字貼上防呆：加入「返」的到達判定
+                        let depDist = Math.min(getClosestDist(block, '乗', timeLocalIdx), getClosestDist(block, '出', timeLocalIdx));
+                        let arrDist = Math.min(getClosestDist(block, '降', timeLocalIdx), getClosestDist(block, '下', timeLocalIdx), getClosestDist(block, '到', timeLocalIdx), getClosestDist(block, '返', timeLocalIdx));
+
                         let type = 'inTime';
-                        if (outDist < inDist) {
+                        if (depDist < 8) {
+                            type = 'driverDep';
+                        } else if (arrDist < 8) {
+                            type = 'driverArr';
+                        } else if (outDist < inDist) {
                             type = 'outTime';
                         } else if (outDist === 9999 && inDist === 9999) {
                             if (newData[foundEmpId] && newData[foundEmpId][key] && newData[foundEmpId][key].inTime) type = 'outTime';
@@ -278,8 +286,7 @@
                                 return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
                             }
                             let str = (val.text || (typeof v === 'string' ? v : '')).trim();
-                            // ★ 放寬時間抓取邏輯，確保 14:00~ 等附帶符號的時間也能被正確抓到
-                            const m = str.match(/(\d{1,2})[:：.](\d{2})/);
+                            const m = str.match(/^(\d{1,2})[:：.](\d{2})$/);
                             if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             if (v instanceof Date) {
                                 return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
@@ -290,6 +297,7 @@
                         wb.worksheets.forEach(ws => {
                             let currentDates = {}; 
                             let currentColMap = {};
+                            let prevCellState = {}; 
 
                             for (let r = 1; r <= ws.rowCount; r++) {
                                 for (let c = 1; c <= 10; c++) {
@@ -326,8 +334,6 @@
                                     if(rowTimeStr) break;
                                 }
 
-                                // ★ 防呆修復：只有在確認這是沒有時間的「表頭行」，或者匹配數超級多時，才去更新欄位鎖定！
-                                // 這樣就能防止資料行剛好有名字，卻把原本正確的表頭給洗掉的慘劇。
                                 if (!rowTimeStr || matches >= 4) {
                                     if (matches >= 2) currentColMap = tempMap;
                                 }
@@ -393,21 +399,33 @@
                                                 return; 
                                             }
 
-                                            // ★ IGK A 強制關鍵字判定
+                                            // ★ 完美擴充包含「返却」的關鍵字
+                                            let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
+                                            
                                             let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') ||
                                                                 normalizedText.toLowerCase().includes('toe') ||
                                                                 normalizedText.toLowerCase().includes('activity') ||
                                                                 normalizedText.toLowerCase().includes('private');
 
-                                            let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
-                                            
-                                            if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
-                                                blockType = 'driver_with_time'; 
-                                            } else if (isYellow || isDriverKeyword) {
-                                                blockType = 'igkB'; 
-                                            } else if (isIgkaKeyword || (!isBlue && hasContent)) {
-                                                blockType = 'igkA';
+                                            if (hasContent) {
+                                                if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
+                                                    blockType = 'driver_with_time'; 
+                                                } else if (isYellow || isDriverKeyword) {
+                                                    blockType = 'igkB'; 
+                                                } else if (isIgkaKeyword || (!isBlue && hasContent)) {
+                                                    blockType = 'igkA';
+                                                }
+                                            } else {
+                                                let stateKey = `${empId}_${dateInfo.key}`;
+                                                let prev = prevCellState[stateKey];
+                                                if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && (hex || theme !== -1 || indexed !== -1)) {
+                                                    blockType = prev.blockType;
+                                                } else {
+                                                    blockType = 'igkB';
+                                                }
                                             }
+                                            
+                                            prevCellState[`${empId}_${dateInfo.key}`] = { hex, theme, indexed, blockType };
 
                                             if (!allExtractedData[empId]) allExtractedData[empId] = {};
                                             if (!allExtractedData[empId][dateInfo.key]) {
@@ -432,12 +450,17 @@
                                                 ed.igkBMins += 30;
                                             }
 
+                                            // ★ 上下車精準判斷
                                             exactMatches.forEach(m => {
                                                 let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
                                                 if (blockType === 'driver_with_time') {
-                                                    if (normalizedText.includes('下車') || normalizedText.includes('到着') || normalizedText.includes('返却')) {
+                                                    const matchIndex = m.index;
+                                                    const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
+                                                    
+                                                    // ★ 把返却加入下車/到達陣列
+                                                    if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
                                                         ed.driverArrTimes.push(tMins);
-                                                    } else if (normalizedText.includes('乗車') || normalizedText.includes('出発')) {
+                                                    } else if (context.includes('乗車') || context.includes('出発')) {
                                                         ed.driverDepTimes.push(tMins);
                                                     } else {
                                                         ed.driverOtherTimes.push(tMins);
@@ -587,7 +610,6 @@
                     }
                 }
 
-                // ★ IGK B 計算大修復：如果沒有排班 (actualShiftIn 空值)，就拿實際打卡的 inTime 當起點！
                 let totalWorkMins = 0;
                 if (inTime && outTime && !leave) {
                     let startMins = timeToMins(actualShiftIn || inTime);
