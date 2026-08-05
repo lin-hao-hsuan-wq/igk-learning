@@ -1,669 +1,1022 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Japanese Vocabulary Challenge</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background: #f8fafc; }
-    .hidden { display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGK Attendance System - 完美除蟲版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
-<body class="min-h-screen text-slate-800 font-sans">
-  <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <div class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
-          <span class="text-lg font-bold">日</span>
-        </div>
-        <span class="text-xl font-bold text-slate-950">Vocabulary Challenge</span>
-      </div>
-      <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg">
-        <button id="studentBtn" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Student Quiz</button>
-        <button id="teacherBtn" class="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900">Teacher Dashboard</button>
-      </div>
-    </div>
-  </nav>
+<body className="bg-[#f8f9fa] text-slate-700 font-sans print:bg-white">
+    <div id="root"></div>
 
-  <main class="max-w-5xl mx-auto p-4 md:py-8">
-    <section id="studentView" class="max-w-2xl mx-auto">
-      <div id="studentStart" class="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm">
-        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span class="text-2xl">👋</span>
-        </div>
-        <h2 class="text-2xl font-bold text-slate-900 mb-2">Ready for the challenge?</h2>
-        <p class="text-slate-500 mb-6">Enter your name below to start the 20-item Japanese-to-English quiz!</p>
-        <div class="max-w-xs mx-auto space-y-4">
-          <input id="studentNameInput" type="text" placeholder="Enter your name (e.g. Mika)" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg" />
-          <button id="startQuizBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors shadow-sm">Start Quiz</button>
-        </div>
-      </div>
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
 
-      <div id="quizForm" class="hidden space-y-6"></div>
-      <div id="quizResult" class="hidden bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm"></div>
-    </section>
+        const INITIAL_EMPLOYEES = [
+            { id: 'r1', name: '葛野みのり', aliases: ['Minori', '葛野 みのり', 'みのり'], type: 'full', location: 'rokko', isActive: true },
+            { id: 'r2', name: 'Ratu Yassmyn Khairussalima', aliases: ['Yassmyn', 'ヤスミン'], type: 'full', location: 'rokko', isActive: true },
+            { id: 'r3', name: 'Yoon Honey Aung', aliases: ['Yoon', 'ユン'], type: 'full', location: 'rokko', isActive: true },
+            { id: 'r4', name: '林昊嬛', aliases: ['Koukei', '林 昊嬛', '林'], type: 'full', location: 'rokko', isActive: true },
+            { id: 'r5', name: '實熊功光', aliases: ['Mikuma', '実熊', 'みくま', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r6', name: '上山貴行', aliases: ['Taka', '上山', 'たか', '上山 貴行'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r7', name: 'ファーガス', aliases: ['Fergus'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r8', name: 'Sammy Abukmeil', aliases: ['Sammy', 'サミー'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r10', name: 'Nathan Morrison', aliases: ['Nathan', 'ネイサン'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r11', name: '沼田真里子', aliases: ['Mariko', 'マリコ', 'まりこ', '沼田 真里子'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r12', name: '安藤佑也', aliases: ['Ando', '安藤', 'あんどう', '安藤 佑也'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r13', name: 'ミサト', aliases: ['Misato', 'みさと'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r14', name: 'ナオ', aliases: ['Nao', 'なお'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'm1', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full', location: 'myodani', isActive: true },
+            { id: 'm2', name: 'Linh', aliases: ['リン'], type: 'full', location: 'myodani', isActive: true },
+            { id: 'm3', name: '大津真里', aliases: ['大津', 'おおつ'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm4', name: '馬場亜希', aliases: ['馬場', 'ばば'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm5', name: '篠崎', aliases: ['しのざき'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm6', name: '吉野', aliases: ['よしの'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm7', name: '森', aliases: ['もり'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm8', name: 'Ugiloy', aliases: ['ウギロイ'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm9', name: 'Hamna', aliases: ['ハムナ'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm10', name: 'タプリヒン', aliases: [], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm11', name: 'Sadia', aliases: ['サディア'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm12', name: 'Monika', aliases: ['モニカ'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm13', name: '中嶋莉真', aliases: ['中嶋', 'なかじま'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm14', name: '顕谷ユタカ', aliases: ['顕谷', 'あきたに'], type: 'part', location: 'myodani', isActive: true },
+            { id: 'm15', name: 'Mozelle Bargamin', aliases: ['Mozelle', 'モゼル'], type: 'part', location: 'myodani', isActive: true }
+        ];
 
-    <section id="teacherView" class="hidden space-y-8">
-      <div class="flex items-center space-x-2 border-b border-slate-200 pb-2">
-        <div class="text-indigo-600 w-6 h-6 flex items-center justify-center">
-          <span class="text-xl">📊</span>
-        </div>
-        <h2 class="text-xl font-bold text-slate-900">Teacher Performance Dashboard</h2>
-      </div>
+        const TAB_COLORS = [
+            'bg-pink-50 border-t-4 border-pink-400 text-pink-700 shadow-sm print:border-none',
+            'bg-blue-50 border-t-4 border-blue-400 text-blue-700 shadow-sm print:border-none',
+            'bg-emerald-50 border-t-4 border-emerald-400 text-emerald-700 shadow-sm print:border-none',
+            'bg-purple-50 border-t-4 border-purple-400 text-purple-700 shadow-sm print:border-none',
+            'bg-orange-50 border-t-4 border-orange-400 text-orange-700 shadow-sm print:border-none',
+            'bg-teal-50 border-t-4 border-teal-400 text-teal-700 shadow-sm print:border-none',
+        ];
 
-      <!-- Navigation tabs -->
-      <div class="flex space-x-2 bg-slate-100 p-1 rounded-lg justify-between items-center">
-        <div class="flex space-x-2">
-          <button id="overviewTab" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Overall View</button>
-          <button id="studentAnalyticsTab" class="px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900">Individual Student</button>
-        </div>
-        <button id="clearRecordsBtn" class="px-4 py-1.5 rounded-md text-sm font-medium bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">Clear All Records</button>
-      </div>
+        const timeToMins = (t) => {
+            if (!t || typeof t !== 'string') return 0;
+            const [h, m] = t.split(':').map(Number);
+            return (h * 60) + (isNaN(m) ? 0 : m);
+        };
+        const minsToTime = (m) => {
+            if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
+            return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+        };
+        
+        const formatTimeWithDec = (mins) => {
+            if (!mins || mins === 0) return '-';
+            const hm = minsToTime(mins);
+            const dec = (mins / 60).toFixed(2).replace(/\.00$/, '');
+            return <>{hm} <span className="text-xs font-bold opacity-60 print:text-[10px]">({dec} H)</span></>;
+        };
 
-      <!-- Overall View -->
-      <div id="overallView" class="space-y-8">
-        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div class="flex items-center space-x-2 mb-6">
-            <span class="text-slate-400">📈</span>
-            <h3 class="text-base font-bold text-slate-800">Weekly trend analysis (Mon–Fri)</h3>
-          </div>
-          <canvas id="trendLineChart" class="w-full" height="150"></canvas>
-          <div class="flex justify-center space-x-6 text-xs font-medium mt-4">
-            <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-indigo-500 rounded-sm"></div><span class="text-slate-500">Total submissions</span></div>
-            <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-emerald-500 rounded-sm"></div><span class="text-slate-500">Average correct answers</span></div>
-          </div>
-        </div>
+        const loadSavedState = (key, defaultVal) => {
+            try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : defaultVal; }
+            catch(e) { return defaultVal; }
+        };
 
-        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div class="p-6 border-b border-slate-100 flex items-center space-x-2">
-            <span class="text-slate-400">📋</span>
-            <h3 class="text-base font-bold text-slate-800">All Student Records</h3>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider">
-                  <th class="p-4">Student</th>
-                  <th class="p-4">Day</th>
-                  <th class="p-4 text-emerald-600">Correct</th>
-                  <th class="p-4 text-rose-600">Wrong</th>
-                  <th class="p-4 text-slate-400">Date</th>
-                </tr>
-              </thead>
-              <tbody id="recordsBody" class="divide-y divide-slate-100 text-sm"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        function App() {
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
+            
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v3', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
-      <!-- Individual Student Analytics View -->
-      <div id="studentAnalyticsView" class="hidden space-y-8">
-        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div class="flex items-center space-x-2 mb-4">
-            <span class="text-slate-400">👤</span>
-            <label class="text-base font-bold text-slate-800">Select Student</label>
-          </div>
-          <select id="studentSelector" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">-- Choose a student --</option>
-          </select>
-        </div>
+            const [period, setPeriod] = useState(() => {
+                const saved = loadSavedState('igk_pro_period', null);
+                if (saved) return saved;
+                const today = new Date();
+                let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
+                let initY = today.getFullYear();
+                if (initM > 12) { initM -= 12; initY += 1; }
+                return `${initY}-${String(initM).padStart(2, '0')}`;
+            });
+            
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp', employees[0].id)); 
+            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage', 1200));
 
-        <div id="studentStatsContainer" class="hidden space-y-8">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-              <div class="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Total Attempts</div>
-              <div class="text-3xl font-black text-indigo-600 mt-2" id="totalAttempts">0</div>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-              <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Average Score</div>
-              <div class="text-3xl font-black text-emerald-600 mt-2" id="avgScore">0%</div>
-            </div>
-            <div class="bg-orange-50 border border-orange-100 rounded-xl p-4">
-              <div class="text-xs font-semibold text-orange-700 uppercase tracking-wider">Best Score</div>
-              <div class="text-3xl font-black text-orange-600 mt-2" id="bestScore">0/20</div>
-            </div>
-            <div class="bg-rose-50 border border-rose-100 rounded-xl p-4">
-              <div class="text-xs font-semibold text-rose-700 uppercase tracking-wider">Worst Score</div>
-              <div class="text-3xl font-black text-rose-600 mt-2" id="worstScore">0/20</div>
-            </div>
-          </div>
+            const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div class="flex items-center space-x-2 mb-4">
-              <span class="text-slate-400">📈</span>
-              <h3 class="text-base font-bold text-slate-800">Personal Progress Over Time</h3>
-            </div>
-            <canvas id="studentProgressChart" class="w-full" height="110"></canvas>
-          </div>
+            useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v3', JSON.stringify(employees)), [employees]);
 
-          <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex items-center space-x-2">
-              <span class="text-slate-400">📝</span>
-              <h3 class="text-base font-bold text-slate-800">Quiz History</h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider">
-                    <th class="p-4">#</th>
-                    <th class="p-4">Date</th>
-                    <th class="p-4">Day</th>
-                    <th class="p-4 text-emerald-600">Correct</th>
-                    <th class="p-4 text-rose-600">Wrong</th>
-                    <th class="p-4 text-indigo-600">Score %</th>
-                  </tr>
-                </thead>
-                <tbody id="studentHistoryBody" class="divide-y divide-slate-100 text-sm"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+            const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
-  <script>
-    const QUIZ_DATA = [
-      { jp: "いちがつ", en: "January" }, { jp: "にがつ", en: "February" }, { jp: "さんがつ", en: "March" }, { jp: "しがつ", en: "April" },
-      { jp: "ごがつ", en: "May" }, { jp: "ろくがつ", en: "June" }, { jp: "しちがつ", en: "July" }, { jp: "はちがつ", en: "August" },
-      { jp: "くがつ", en: "September" }, { jp: "じゅうがつ", en: "October" }, { jp: "じゅういちがつ", en: "November" }, { jp: "じゅうにがつ", en: "December" },
-      { jp: "なか", en: "in" }, { jp: "うえ", en: "on" }, { jp: "した", en: "under" }, { jp: "まえ", en: "in front of" },
-      { jp: "うしろ", en: "behind" }, { jp: "そば", en: ["by", "beside"] }, { jp: "あいだ", en: "between" }, { jp: "と", en: "and" }
-    ];
+            const [newSp, setNewSp] = useState({ 
+                name: '', start: '', end: '', timeIn: '09:30', timeOut: '18:30',
+                targetEmps: FULL_TIME_EMPS.map(e => e.id) 
+            });
 
-    const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+            const [pastedData, setPastedData] = useState('');
 
-    let records = [];
+            const dates = useMemo(() => {
+                if (!period || !period.includes('-')) return [];
+                const [y, m] = period.split('-').map(Number);
+                if (isNaN(y) || isNaN(m)) return [];
+                const start = new Date(y, m - 2, 16);
+                const end = new Date(y, m - 1, 15);
+                let arr = [];
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    arr.push(new Date(d));
+                }
+                return arr;
+            }, [period]);
 
-    const studentBtn = document.getElementById('studentBtn');
-    const teacherBtn = document.getElementById('teacherBtn');
-    const studentView = document.getElementById('studentView');
-    const teacherView = document.getElementById('teacherView');
-    const studentStart = document.getElementById('studentStart');
-    const quizForm = document.getElementById('quizForm');
-    const quizResult = document.getElementById('quizResult');
-    const studentNameInput = document.getElementById('studentNameInput');
-    const startQuizBtn = document.getElementById('startQuizBtn');
-    const recordsBody = document.getElementById('recordsBody');
-    
-    const overviewTab = document.getElementById('overviewTab');
-    const studentAnalyticsTab = document.getElementById('studentAnalyticsTab');
-    const overallView = document.getElementById('overallView');
-    const studentAnalyticsView = document.getElementById('studentAnalyticsView');
-    const studentSelector = document.getElementById('studentSelector');
-    const studentStatsContainer = document.getElementById('studentStatsContainer');
+            const dKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const formatDisplayDate = (d) => {
+                const days = ['日', '月', '火', '水', '木', '金', '土'];
+                return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+            };
+            const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
-    let currentAnswers = Array(20).fill('');
-    let studentName = '';
-    let selectedStudent = '';
+            const handleSaveEmployee = () => {
+                if (!empForm.name.trim()) return alert("名前を入力してください！");
+                const aliasArray = empForm.aliases.split(',').map(s => s.trim()).filter(Boolean);
+                
+                if (empForm.id) {
+                    setEmployees(prev => prev.map(e => e.id === empForm.id ? { ...empForm, aliases: aliasArray } : e));
+                    alert(`「${empForm.name}」の情報を更新しました。`);
+                } else {
+                    const newId = 'emp_' + Date.now();
+                    setEmployees(prev => [...prev, { ...empForm, id: newId, aliases: aliasArray }]);
+                    alert(`新しい従業員「${empForm.name}」を追加しました。`);
+                }
+                setEmpForm({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
+            };
 
-    // Tab navigation
-    function switchTab(tab) {
-      if (tab === 'overview') {
-        overallView.classList.remove('hidden');
-        studentAnalyticsView.classList.add('hidden');
-        overviewTab.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-        overviewTab.classList.remove('text-slate-600');
-        studentAnalyticsTab.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-        studentAnalyticsTab.classList.add('text-slate-600');
-      } else {
-        overallView.classList.add('hidden');
-        studentAnalyticsView.classList.remove('hidden');
-        studentAnalyticsTab.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-        studentAnalyticsTab.classList.remove('text-slate-600');
-        overviewTab.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-        overviewTab.classList.add('text-slate-600');
-        populateStudentSelector();
-      }
-    }
+            const handleEditEmployee = (emp) => {
+                setEmpForm({ ...emp, aliases: (emp.aliases || []).join(', ') });
+            };
 
-    // Get unique students
-    function getUniqueStudents() {
-      const students = [...new Set(records.map(r => r.name))];
-      return students.sort();
-    }
+            const handlePaste = () => {
+                if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
+                let newData = JSON.parse(JSON.stringify(attendance)); 
+                const text = pastedData.toLowerCase();
+                const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
+                
+                const matches = [...text.matchAll(timeRegex)];
+                if (matches.length === 0) return alert("一致する名前や時間のフォーマットが見つかりませんでした。");
 
-    // Populate student dropdown
-    function populateStudentSelector() {
-      const students = getUniqueStudents();
-      studentSelector.innerHTML = '<option value="">-- Choose a student --</option>';
-      students.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        studentSelector.appendChild(option);
-      });
-    }
+                let count = 0;
+                let autoPeriod = null;
+                let lastEmpLoc = null;
+                let lastFoundEmpId = null;
 
-    // Get stats for a specific student
-    function getStudentStats(studentName) {
-      const studentRecords = records.filter(r => r.name === studentName);
-      if (!studentRecords.length) return null;
+                const getClosestDist = (str, char, pivot) => {
+                    let left = str.lastIndexOf(char, pivot);
+                    let right = str.indexOf(char, pivot);
+                    let d1 = left !== -1 ? pivot - left : 9999;
+                    let d2 = right !== -1 ? right - pivot : 9999;
+                    return Math.min(d1, d2);
+                };
 
-      const totalAttempts = studentRecords.length;
-      const avgScore = Math.round((studentRecords.reduce((sum, r) => sum + r.correct, 0) / (totalAttempts * 20)) * 100);
-      const bestScore = Math.max(...studentRecords.map(r => r.correct));
-      const worstScore = Math.min(...studentRecords.map(r => r.correct));
+                for (let i = 0; i < matches.length; i++) {
+                    const match = matches[i];
+                    const month = match[1], day = match[2], hr = match[3], min = match[4];
+                    const timeStr = `${hr.padStart(2,'0')}:${min.padStart(2,'0')}`;
+                    
+                    const startIdx = i === 0 ? Math.max(0, match.index - 150) : matches[i-1].index + matches[i-1][0].length;
+                    const endIdx = i === matches.length - 1 ? Math.min(text.length, match.index + 150) : matches[i+1].index;
+                    const block = text.substring(startIdx, endIdx);
+                    
+                    let foundEmpId = null;
+                    for (let emp of employees) { 
+                        const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))];
+                        if (names.some(n => block.replace(/\s/g,'').includes(n))) {
+                            foundEmpId = emp.id;
+                            lastEmpLoc = emp.location; 
+                            break;
+                        }
+                    }
 
-      return { totalAttempts, avgScore, bestScore, worstScore, records: studentRecords };
-    }
+                    if (foundEmpId) lastFoundEmpId = foundEmpId;
+                    else foundEmpId = lastFoundEmpId; 
 
-    // Display individual student analytics
-    function displayStudentAnalytics(studentName) {
-      const stats = getStudentStats(studentName);
-      if (!stats) {
-        studentStatsContainer.classList.add('hidden');
-        return;
-      }
+                    if (foundEmpId) {
+                        const y = new Date().getFullYear(); 
+                        const dateObj = new Date(y, parseInt(month)-1, parseInt(day));
+                        const key = dKey(dateObj);
+                        
+                        if (!autoPeriod) {
+                            let tmpy = dateObj.getFullYear();
+                            let tmpm = dateObj.getDate() >= 16 ? dateObj.getMonth() + 2 : dateObj.getMonth() + 1;
+                            if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
+                            autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
+                        }
 
-      selectedStudent = studentName;
-      document.getElementById('totalAttempts').textContent = stats.totalAttempts;
-      document.getElementById('avgScore').textContent = stats.avgScore + '%';
-      document.getElementById('bestScore').textContent = stats.bestScore + '/20';
-      document.getElementById('worstScore').textContent = stats.worstScore + '/20';
+                        let timeLocalIdx = match.index - startIdx;
+                        let outDist = Math.min(getClosestDist(block, '退', timeLocalIdx), getClosestDist(block, 'out', timeLocalIdx));
+                        let inDist = Math.min(getClosestDist(block, '入', timeLocalIdx), getClosestDist(block, 'in', timeLocalIdx));
+                        
+                        let type = 'inTime';
+                        if (outDist < inDist) {
+                            type = 'outTime';
+                        } else if (outDist === 9999 && inDist === 9999) {
+                            if (newData[foundEmpId] && newData[foundEmpId][key] && newData[foundEmpId][key].inTime) type = 'outTime';
+                        }
 
-      renderStudentProgressChart(stats.records);
-      renderStudentHistory(stats.records);
-      studentStatsContainer.classList.remove('hidden');
-    }
+                        if (!newData[foundEmpId]) newData[foundEmpId] = {};
+                        if (!newData[foundEmpId][key]) newData[foundEmpId][key] = {};
+                        newData[foundEmpId][key][type] = timeStr;
+                        count++;
+                    }
+                }
+                
+                if (count > 0) {
+                    setAttendance(newData);
+                    setPastedData('');
+                    if (autoPeriod) setPeriod(autoPeriod);
+                    if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
+                    setActivePage('preview');
+                    alert(`${count} 件の打刻データを正常に取り込みました！`);
+                } else {
+                    alert("一致する名前や時間のフォーマットが見つかりませんでした。");
+                }
+            };
 
-    // Draw line chart for weekly trends (overall)
-    function drawWeeklyTrendLineChart() {
-      const canvas = document.getElementById('trendLineChart');
-      if (!canvas || !canvas.getContext) return;
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        const wb = new ExcelJS.Workbook();
+                        await wb.xlsx.load(evt.target.result);
+                        let newData = JSON.parse(JSON.stringify(attendance));
+                        let count = 0;
+                        let autoPeriod = null;
 
-      const ctx = canvas.getContext('2d');
-      const chartData = getChartData();
-      drawLineChart(ctx, chartData, ['Total submissions', 'Average correct answers'], ['rgb(99, 102, 241)', 'rgb(16, 185, 129)']);
-    }
+                        const extractTime = (val) => {
+                            if (!val) return null;
+                            let v = val.value !== undefined ? val.value : val;
+                            if (v && v.result !== undefined) v = v.result;
+                            if (typeof v === 'number' && v > 0 && v < 1) {
+                                let tm = Math.round(v * 24 * 60);
+                                return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
+                            }
+                            let str = (val.text || (typeof v === 'string' ? v : '')).trim();
+                            const m = str.match(/^(\d{1,2})[:：](\d{2})$/);
+                            if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+                            if (v instanceof Date) {
+                                return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
+                            }
+                            return null;
+                        };
 
-    // Draw line chart for student progress
-    function renderStudentProgressChart(studentRecords) {
-      const canvas = document.getElementById('studentProgressChart');
-      if (!canvas || !canvas.getContext) return;
+                        wb.worksheets.forEach(ws => {
+                            let currentDates = {}; 
+                            let currentColMap = {};
 
-      const ctx = canvas.getContext('2d');
-      const data = studentRecords.map((r, idx) => ({
-        label: `Attempt ${idx + 1}`,
-        value: r.correct
-      }));
+                            for (let r = 1; r <= ws.rowCount; r++) {
+                                for (let c = 1; c <= 10; c++) {
+                                    let t = (ws.getCell(r, c).text || '').replace(/\s+/g, '');
+                                    const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
+                                    if (m) {
+                                        let y = new Date().getFullYear();
+                                        const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
+                                        let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
+                                        currentDates[r] = { key: dKey(dObj), obj: dObj };
+                                        break;
+                                    }
+                                }
 
-      drawSimpleLineChart(ctx, data, 'Correct Answers Over Time');
-    }
+                                let matches = 0;
+                                let tempMap = {};
+                                for (let c = 1; c <= 40; c++) {
+                                    let v = (ws.getCell(r, c).text || '').toLowerCase().replace(/\s+/g, '');
+                                    if (v.length >= 1) {
+                                        for (const emp of employees) { 
+                                            let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                            if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
+                                                tempMap[c] = emp.id; matches++; break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (matches >= 2) currentColMap = tempMap;
 
-    // Generic line chart drawer
-    function drawLineChart(ctx, data, labels, colors) {
-      const width = ctx.canvas.clientWidth;
-      const height = ctx.canvas.clientHeight;
-      ctx.canvas.width = width;
-      ctx.canvas.height = height;
+                                let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
+                                if (activeDateRow && Object.keys(currentColMap).length > 0) {
+                                    let dateInfo = currentDates[activeDateRow];
+                                    
+                                    let rowTimeStr = null;
+                                    for(let c=1; c<=3; c++) {
+                                        rowTimeStr = extractTime(ws.getCell(r, c));
+                                        if(rowTimeStr) break;
+                                    }
+                                    
+                                    if (rowTimeStr) {
+                                        let rowMins = timeToMins(rowTimeStr);
+                                        if (!autoPeriod) {
+                                            let tmpy = dateInfo.obj.getFullYear();
+                                            let tmpm = dateInfo.obj.getDate() >= 16 ? dateInfo.obj.getMonth() + 2 : dateInfo.obj.getMonth() + 1;
+                                            if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
+                                            autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
+                                        }
 
-      const padding = 20;
-      const graphWidth = width - 2 * padding;
-      const graphHeight = height - 2 * padding;
+                                        let allExtractedData = {};
 
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, width, height);
+                                        Object.keys(currentColMap).forEach(c => {
+                                            const empId = currentColMap[c];
+                                            let actCell = ws.getCell(r, parseInt(c));
+                                            if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
+                                            
+                                            let cellText = (actCell.text || '').trim();
+                                            let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
+                                            
+                                            // ★ 嚴格萃取時間，只有抓到時間格式才算是有填入時間
+                                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
+                                            
+                                            let fill = actCell.fill || {};
+                                            let hex = '';
+                                            
+                                            if (fill.type === 'pattern' && fill.pattern !== 'none') {
+                                                hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
+                                                if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+                                            }
 
-      // Draw grid and axes
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padding + (graphHeight / 5) * i;
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
-        ctx.stroke();
-      }
+                                            let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
+                                            let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
 
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(padding, height - padding);
-      ctx.lineTo(width - padding, height - padding);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(padding, padding);
-      ctx.lineTo(padding, height - padding);
-      ctx.stroke();
+                                            if (hasContent || hex || theme !== -1 || indexed !== -1) {
+                                                const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965'];
+                                                let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
+                                                
+                                                const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
+                                                let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
 
-      // Draw data lines
-      const values1 = data.map(d => d.totalPeople || 0);
-      const values2 = data.map(d => d.avgScore || 0);
-      const maxValue1 = Math.max(...values1, 1);
-      const maxValue2 = Math.max(...values2, 20);
+                                                let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
-      // Line 1 - Total submissions
-      ctx.strokeStyle = colors[0];
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      values1.forEach((val, idx) => {
-        const x = padding + (graphWidth / (values1.length - 1 || 1)) * idx;
-        const y = height - padding - (val / maxValue1) * graphHeight;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+                                                let blockType = 'igkB'; 
 
-      // Line 2 - Average score
-      ctx.strokeStyle = colors[1];
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      values2.forEach((val, idx) => {
-        const x = padding + (graphWidth / (values2.length - 1 || 1)) * idx;
-        const y = height - padding - (val / maxValue2) * graphHeight;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+                                                if (cellText.includes('欠') || cellText.includes('休') || isGrey) {
+                                                    if (cellText.includes('欠') || cellText.includes('休')) {
+                                                        if (!newData[empId]) newData[empId] = {};
+                                                        if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
+                                                        newData[empId][dateInfo.key].leave = cellText.substring(0, 10);
+                                                    }
+                                                    return; 
+                                                }
 
-      // Draw labels
-      ctx.fillStyle = '#475569';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      data.forEach((d, idx) => {
-        const x = padding + (graphWidth / (data.length - 1 || 1)) * idx;
-        ctx.fillText(d.name, x, height - padding + 20);
-      });
+                                                // ★ 新版駕駛判斷：如果含有特定文字，或是「黃色且裡面有時間數字」，才視為 Driver
+                                                if (cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却') || (isYellow && exactMatches.length > 0)) {
+                                                    blockType = 'driver';
+                                                } else if (isYellow && exactMatches.length === 0) {
+                                                    // ★ 如果是黃色，但裡面完全沒寫時間數字 -> 忽略駕駛時間，當作一般 IGK B
+                                                    blockType = 'igkB';
+                                                } else if (!isBlue && hasContent) {
+                                                    blockType = 'igkA';
+                                                }
 
-      ctx.textAlign = 'left';
-      ctx.fillText('0', padding - 20, height - padding + 5);
-      ctx.fillText(Math.ceil(maxValue2), padding - 20, padding + 5);
-    }
+                                                if (!allExtractedData[empId]) allExtractedData[empId] = {};
+                                                if (!allExtractedData[empId][dateInfo.key]) {
+                                                    // ★ 新增 driverExactTimes 專門用來裝駕駛起迄時間
+                                                    allExtractedData[empId][dateInfo.key] = { minTime: 9999, maxTime: -1, exactTimes: [], driverExactTimes: [], driverMins: 0, igkAMins: 0, igkBMins: 0 };
+                                                }
+                                                
+                                                let ed = allExtractedData[empId][dateInfo.key];
+                                                
+                                                if (rowMins < ed.minTime) ed.minTime = rowMins;
+                                                if (rowMins > ed.maxTime) ed.maxTime = rowMins;
 
-    // Simple line chart for individual student
-    function drawSimpleLineChart(ctx, data, title) {
-      const width = ctx.canvas.clientWidth;
-      const height = ctx.canvas.clientHeight;
-      ctx.canvas.width = width;
-      ctx.canvas.height = height;
+                                                if (blockType === 'driver') {
+                                                    // 只有當裡面沒有寫時間，卻有標註"車"時，我們才加30分鐘當作緩衝防呆
+                                                    if (exactMatches.length === 0) ed.driverMins += 30;
+                                                }
+                                                else if (blockType === 'igkA') ed.igkAMins += 30;
+                                                else if (blockType === 'igkB') ed.igkBMins += 30;
 
-      const padding = 20;
-      const graphWidth = width - 2 * padding;
-      const graphHeight = height - 2 * padding;
+                                                exactMatches.forEach(m => {
+                                                    let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                    ed.exactTimes.push(tMins);
+                                                    if (blockType === 'driver') {
+                                                        ed.driverExactTimes.push(tMins);
+                                                    }
+                                                });
+                                            }
+                                        });
 
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, width, height);
+                                        Object.keys(allExtractedData).forEach(empId => {
+                                            Object.keys(allExtractedData[empId]).forEach(dateKey => {
+                                                const data = allExtractedData[empId][dateKey];
+                                                let startMins = data.minTime;
+                                                let endMins = data.maxTime + 30; 
 
-      // Draw grid
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padding + (graphHeight / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
-        ctx.stroke();
-      }
+                                                if (data.exactTimes.length > 0) {
+                                                    const minExact = Math.min(...data.exactTimes);
+                                                    const maxExact = Math.max(...data.exactTimes);
+                                                    if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
+                                                    if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                                }
 
-      // Draw axes
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(padding, height - padding);
-      ctx.lineTo(width - padding, height - padding);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(padding, padding);
-      ctx.lineTo(padding, height - padding);
-      ctx.stroke();
+                                                if (startMins < 9999 && endMins > -1) {
+                                                    if (!newData[empId]) newData[empId] = {};
+                                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
+                                                    
+                                                    let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
+                                                    let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
+                                                    
+                                                    if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
+                                                    if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
+                                                    
+                                                    if (data.igkAMins > 0) newData[empId][dateKey].igkA = minsToTime(data.igkAMins);
+                                                    
+                                                    // ★ 自動填寫出發與到達時間！
+                                                    if (data.driverExactTimes && data.driverExactTimes.length > 0) {
+                                                        let minD = Math.min(...data.driverExactTimes);
+                                                        let maxD = Math.max(...data.driverExactTimes);
+                                                        newData[empId][dateKey].driverDep = minsToTime(minD);
+                                                        if (maxD > minD) {
+                                                            newData[empId][dateKey].driverArr = minsToTime(maxD);
+                                                        }
+                                                    } else if (data.driverMins > 0) {
+                                                        newData[empId][dateKey].driverMins = minsToTime(data.driverMins);
+                                                    }
 
-      // Draw line
-      const values = data.map(d => d.value);
-      const maxValue = Math.max(...values, 20);
+                                                    count++;
+                                                }
+                                            });
+                                        });
+                                    }
+                                }
+                            }
+                        });
 
-      ctx.strokeStyle = 'rgb(99, 102, 241)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      values.forEach((val, idx) => {
-        const x = padding + (graphWidth / (values.length - 1 || 1)) * idx;
-        const y = height - padding - (val / maxValue) * graphHeight;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+                        if (count > 0) {
+                            setAttendance(newData);
+                            if (autoPeriod) setPeriod(autoPeriod);
+                            setActivePage('preview');
+                            alert(`シフト表から色ブロックと時間を自動解析しました！（反映セクション数: ${count}）`);
+                        } else {
+                            alert("読み込みに成功しましたが、色ブロックや時間が検出されませんでした。");
+                        }
+                    } catch (err) {
+                        alert(`❌ Excel 解析エラー: ${err.message}`);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = null;
+            };
 
-      // Draw points
-      ctx.fillStyle = 'rgb(99, 102, 241)';
-      values.forEach((val, idx) => {
-        const x = padding + (graphWidth / (values.length - 1 || 1)) * idx;
-        const y = height - padding - (val / maxValue) * graphHeight;
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
-        ctx.fill();
-      });
+            const updateCell = (id, d, field, val) => {
+                setAttendance(prev => ({
+                    ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: val } }
+                }));
+            };
 
-      // Draw labels
-      ctx.fillStyle = '#475569';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      data.forEach((d, idx) => {
-        const x = padding + (graphWidth / (data.length - 1 || 1)) * idx;
-        ctx.fillText(`A${idx + 1}`, x, height - padding + 20);
-      });
+            const updateMonthlyData = (id, p, field, val) => {
+                const key = `${id}_${p}`;
+                setMonthlyData(prev => ({
+                    ...prev, [key]: { ...prev[key], [field]: val }
+                }));
+            };
 
-      ctx.textAlign = 'left';
-      ctx.fillText('0', padding - 25, height - padding + 5);
-      ctx.fillText('20', padding - 25, padding + 5);
-    }
+            const calculateRow = (date, row, emp) => {
+                const isWknd = isWeekend(date);
+                let inTime = row.inTime || '';
+                let outTime = row.outTime || '';
+                let shiftIn = row.shiftIn || '';
+                let shiftOut = row.shiftOut || '';
+                let leave = row.leave || '';
+                
+                let igkA = row.igkA || '';
+                
+                let driverDep = row.driverDep || '';
+                let driverArr = row.driverArr || '';
 
-    // Render student history table
-    function renderStudentHistory(studentRecords) {
-      const historyBody = document.getElementById('studentHistoryBody');
-      historyBody.innerHTML = '';
-      studentRecords.forEach((r, idx) => {
-        const percentage = Math.round((r.correct / 20) * 100);
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-slate-50/70 transition-colors';
-        row.innerHTML = `
-          <td class="p-4 font-medium text-slate-400">${idx + 1}</td>
-          <td class="p-4 text-sm text-slate-700">${r.date}</td>
-          <td class="p-4"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">${r.day}</span></td>
-          <td class="p-4 font-bold text-emerald-600">${r.correct}</td>
-          <td class="p-4 font-medium text-rose-500">${r.wrong}</td>
-          <td class="p-4 font-bold text-indigo-600">${percentage}%</td>
-        `;
-        historyBody.appendChild(row);
-      });
-    }
+                let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
+                let breakMins = timeToMins(breakTime);
 
-    function showView(view) {
-      if (view === 'student') {
-        studentView.classList.remove('hidden');
-        teacherView.classList.add('hidden');
-        studentBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-        studentBtn.classList.remove('text-slate-600');
-        teacherBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-        teacherBtn.classList.add('text-slate-600');
-      } else {
-        studentView.classList.add('hidden');
-        teacherView.classList.remove('hidden');
-        teacherBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-        teacherBtn.classList.remove('text-slate-600');
-        studentBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-        studentBtn.classList.add('text-slate-600');
-        renderTeacherData();
-      }
-    }
+                if (emp.type === 'full') {
+                    shiftIn = shiftIn || settings.baseStart;
+                    shiftOut = shiftOut || settings.baseEnd;
+                    (settings.special || []).forEach(sp => {
+                        const isTarget = sp.targetEmps ? sp.targetEmps.includes(emp.id) : true;
+                        if (isTarget && new Date(date) >= new Date(sp.start) && new Date(date) <= new Date(sp.end)) {
+                            shiftIn = sp.timeIn; shiftOut = sp.timeOut;
+                        }
+                    });
+                }
 
-    function renderQuizForm() {
-      quizForm.innerHTML = '';
-      const form = document.createElement('form');
-      form.className = 'space-y-6';
-      form.addEventListener('submit', handleQuizSubmit);
+                let actualShiftIn = shiftIn;
+                if (inTime && shiftIn) {
+                    const inM = timeToMins(inTime);
+                    const sInM = timeToMins(shiftIn);
+                    if (inM > sInM && inM <= sInM + 4) actualShiftIn = minsToTime(sInM + 5);
+                    else if (inM > sInM + 4) actualShiftIn = minsToTime(Math.ceil(inM / 5) * 5);
+                }
 
-      const header = document.createElement('div');
-      header.className = 'bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex justify-between items-center';
-      header.innerHTML = `<span class="font-semibold text-indigo-900">Hello, ${studentName}!</span><span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold">20 questions total</span>`;
-      form.appendChild(header);
+                let earlyOtMins = 0, lateOtMins = 0;
+                if (emp.type === 'full' && !leave) {
+                    if (inTime && shiftIn) {
+                        let diff = timeToMins(shiftIn) - timeToMins(inTime);
+                        if (diff > 0) earlyOtMins = diff;
+                    }
+                    if (outTime && shiftOut) {
+                        let diff = timeToMins(outTime) - timeToMins(shiftOut);
+                        if (diff > 0) lateOtMins = diff;
+                    }
+                }
 
-      const questions = document.createElement('div');
-      questions.className = 'space-y-4';
+                let totalWorkMins = 0;
+                if (inTime && outTime && !leave) {
+                    totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
+                } else if (shiftIn && shiftOut && emp.type === 'full' && !leave) {
+                    totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(shiftIn) - breakMins);
+                }
 
-      QUIZ_DATA.forEach((q, idx) => {
-        const item = document.createElement('div');
-        item.className = 'bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs';
-        item.innerHTML = `
-          <div class="flex items-center space-x-3">
-            <span class="text-xs font-bold text-slate-400 w-5">${idx + 1}.</span>
-            <span class="text-xl font-bold text-slate-900">${q.jp}</span>
-          </div>
-          <input type="text" placeholder="English answer" data-index="${idx}" class="quiz-input px-3 py-1.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:w-64 font-mono" required />
-        `;
-        questions.appendChild(item);
-      });
+                const igkAMins = timeToMins(igkA);
+                const igkBMins = Math.max(0, totalWorkMins - igkAMins);
+                
+                // ★ 系統現在會靠著 Departure 與 Arrival 自動幫你計算駕駛時數 (不需要再塞死30分鐘了)
+                let dDepMins = timeToMins(driverDep);
+                let dArrMins = timeToMins(driverArr);
+                let dCalcMins = (dArrMins > dDepMins) ? dArrMins - dDepMins : 0;
+                const driverMins = row.driverMins ? timeToMins(row.driverMins) : dCalcMins;
 
-      const submitBtn = document.createElement('button');
-      submitBtn.type = 'submit';
-      submitBtn.className = 'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md text-lg';
-      submitBtn.textContent = 'Finish!';
+                return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
+            };
 
-      form.appendChild(questions);
-      form.appendChild(submitBtn);
-      quizForm.appendChild(form);
-      quizForm.classList.remove('hidden');
-      studentStart.classList.add('hidden');
-      quizResult.classList.add('hidden');
+            const switchLocation = (loc) => {
+                setActiveLocation(loc);
+            };
 
-      document.querySelectorAll('.quiz-input').forEach(input => {
-        input.addEventListener('input', (event) => {
-          const index = Number(event.target.dataset.index);
-          currentAnswers[index] = event.target.value;
-        });
-      });
-    }
+            const hasDataInPeriod = (empId) => {
+                if (!attendance[empId]) return false;
+                return dates.some(d => {
+                    const k = dKey(d);
+                    const r = attendance[empId][k];
+                    return r && (r.inTime || r.outTime || r.leave || r.driverDep || r.igkA || r.remark);
+                });
+            };
 
-    function handleQuizSubmit(event) {
-      event.preventDefault();
-      if (!studentName.trim()) { alert('Please enter your name!'); return; }
-      let correct = 0;
-      QUIZ_DATA.forEach((q, idx) => {
-        const answer = currentAnswers[idx].trim().toLowerCase();
-        if (Array.isArray(q.en)) {
-          if (q.en.some(valid => valid.toLowerCase() === answer)) correct += 1;
-        } else if (answer === q.en.toLowerCase()) {
-          correct += 1;
+            const currentEmployees = employees.filter(e => e.location === activeLocation && (e.isActive !== false || hasDataInPeriod(e.id)));
+            
+            useEffect(() => {
+                if (currentEmployees.length > 0 && !currentEmployees.find(e => e.id === activeEmp)) {
+                    setActiveEmp(currentEmployees[0].id);
+                }
+            }, [currentEmployees, activeEmp]);
+
+            const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
+
+            return (
+                <div className="min-h-screen flex flex-col font-sans">
+                    <div className="bg-white text-slate-800 p-4 flex gap-4 print:hidden shadow-sm items-center border-b border-gray-200">
+                        <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <h1 className="text-xl font-black tracking-widest mr-4 text-indigo-900">IGK 勤怠管理</h1>
+                        <button onClick={() => setActivePage('import')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'import' ? 'bg-indigo-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>① データ入力・設定</button>
+                        <button onClick={() => setActivePage('preview')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>② 個人勤務表・給与</button>
+                    </div>
+
+                    {activePage === 'import' && (
+                        <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
+                            
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
+                                        <path d="M12 22v-6" />
+                                        <path d="M12 16l-4-4" />
+                                        <path d="M12 16l4-4" />
+                                        <path d="M12 12l-4-4" />
+                                        <path d="M12 12l4-4" />
+                                        <path d="M12 8l-3-3" />
+                                        <path d="M12 8l3-3" />
+                                    </svg>
+                                    従業員名簿管理
+                                </h2>
+                                
+                                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 mb-6">
+                                    <h3 className="text-sm font-bold text-emerald-800 mb-3">{empForm.id ? '従業員情報の編集' : '新規従業員の追加'}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">表示名 (正式名称)</label>
+                                            <input type="text" value={empForm.name} onChange={e=>setEmpForm({...empForm, name: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400"/>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">別名 (Excel解析用 / カンマ区切り)</label>
+                                            <input type="text" value={empForm.aliases} onChange={e=>setEmpForm({...empForm, aliases: e.target.value})} placeholder="例: Minori, やまだ, Yamada" className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400"/>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1">雇用形態</label>
+                                                <select value={empForm.type} onChange={e=>setEmpForm({...empForm, type: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400">
+                                                    <option value="part">アルバイト</option>
+                                                    <option value="full">正社員</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1">所属校</label>
+                                                <select value={empForm.location} onChange={e=>setEmpForm({...empForm, location: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400">
+                                                    <option value="rokko">六甲校</option>
+                                                    <option value="myodani">名谷校</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 md:col-span-4 mt-2">
+                                            <label className="flex items-center cursor-pointer gap-2">
+                                                <input type="checkbox" checked={empForm.isActive} onChange={e=>setEmpForm({...empForm, isActive: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"/>
+                                                <span className="text-sm font-bold text-slate-700">在職中 (チェックを外すと一覧から非表示になります)</span>
+                                            </label>
+                                            <div className="ml-auto flex gap-2">
+                                                {empForm.id && <button onClick={() => setEmpForm({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true })} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg">キャンセル</button>}
+                                                <button onClick={handleSaveEmployee} className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg shadow-sm text-sm transition-colors">{empForm.id ? '更新する' : '追加する'}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {employees.map(emp => (
+                                        <div key={emp.id} className={`flex items-center justify-between p-3 border rounded-xl shadow-sm ${emp.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                                            <div>
+                                                <div className="font-black text-slate-700 text-sm flex items-center gap-2">
+                                                    {emp.name} 
+                                                    {!emp.isActive && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">退職</span>}
+                                                    {emp.isActive && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">在職</span>}
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1">{emp.location === 'rokko' ? '六甲校' : '名谷校'} / {emp.type === 'full' ? '正社員' : 'アルバイト'}</div>
+                                            </div>
+                                            <button onClick={() => handleEditEmployee(emp)} className="text-xs font-bold text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">編集</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                    <span className="text-indigo-500">◆</span> 正社員の基本勤務・特別期間設定
+                                </h2>
+                                <div className="flex gap-4 mb-4 bg-gray-50 p-4 rounded-xl">
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
+                                    <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
+                                </div>
+                                
+                                {settings.special && settings.special.length > 0 && (
+                                    <div className="mb-4 space-y-2">
+                                        <h3 className="text-xs font-bold text-indigo-400">現在設定されている特別期間:</h3>
+                                        {settings.special.map((sp, idx) => (
+                                            <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-indigo-100 shadow-sm text-sm">
+                                                <div>
+                                                    <div className="font-bold text-indigo-800">{sp.name} <span className="text-xs text-gray-500 ml-2">{sp.start} ~ {sp.end}</span></div>
+                                                    <div className="text-xs text-gray-600 mt-1">時間: <span className="font-mono bg-gray-100 px-1 rounded">{sp.timeIn} - {sp.timeOut}</span> | 対象: <span className="text-indigo-600">{!sp.targetEmps || sp.targetEmps.length === FULL_TIME_EMPS.length ? '全員' : sp.targetEmps.map(id => FULL_TIME_EMPS.find(e=>e.id===id)?.name).filter(Boolean).join(', ')}</span></div>
+                                                </div>
+                                                <button onClick={() => setSettings(s => ({...s, special: s.special.filter((_, i) => i !== idx)}))} className="text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors font-bold text-xs">削除</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="p-4 rounded-xl flex flex-col gap-4 border border-indigo-100 bg-indigo-50/30">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs font-bold text-indigo-600">対象者を選択:</span>
+                                        <button onClick={() => setNewSp(p => ({...p, targetEmps: FULL_TIME_EMPS.map(e=>e.id)}))} className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-gray-100 font-bold text-slate-600 shadow-sm">全員選択</button>
+                                        {FULL_TIME_EMPS.map(emp => (
+                                            <button key={emp.id} onClick={() => setNewSp(p => ({...p, targetEmps: p.targetEmps.includes(emp.id) ? p.targetEmps.filter(id=>id!==emp.id) : [...p.targetEmps, emp.id]}))} className={`text-xs px-3 py-1 rounded-full font-bold border transition-colors shadow-sm ${newSp.targetEmps.includes(emp.id) ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-slate-500 border-gray-300 hover:bg-gray-50'}`}>
+                                                {emp.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 items-end">
+                                        <input type="text" placeholder="特別期間名 (例: Summer School)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none text-sm"/>
+                                        <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
+                                        <span className="text-slate-400 font-bold mb-2">~</span>
+                                        <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
+                                        <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
+                                        <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
+                                        <button onClick={() => { if(newSp.name && newSp.targetEmps.length > 0){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30', targetEmps: FULL_TIME_EMPS.map(e=>e.id)}); } else { alert("期間名と対象者を設定してください"); } }} className="bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-600 shadow-sm text-sm">追加</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
+                                    <span className="text-blue-500">◆</span> シフト表 (Excel) の自動取り込み
+                                </h2>
+                                <p className="text-xs text-gray-500 mb-3">Excel (.xlsx) のシフト表をアップロードすると、色分けされたシフトを自動解析して反映します。</p>
+                                <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
+                                    <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
+                                    <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
+                                    <div className="text-blue-400 text-xs">色ブロックを自動計算（データは上書きされず追加・統合されます）</div>
+                                </label>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
+                                    <span className="text-purple-500">◆</span> 打刻データ (実績) の自動取り込み
+                                </h2>
+                                <p className="text-xs text-gray-500 mb-3">勤怠システムからコピーしたテキストをそのまま貼り付けてください。自動で判別し各シートへ振り分けます。</p>
+                                <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに打刻テキストを貼り付け..."></textarea>
+                                <button onClick={handlePaste} className="mt-3 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-purple-600 shadow-sm text-sm">解析してデータを反映する</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activePage === 'preview' && (
+                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col animate-fadeIn print:p-0 print:m-0">
+                            
+                            <div className="flex flex-wrap gap-4 mb-6 items-center justify-between print:hidden">
+                                <div className="flex items-center gap-6">
+                                    <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-200 rounded-xl p-2 font-black text-slate-700 outline-none focus:border-indigo-400 shadow-sm bg-white"/>
+                                    
+                                    <div className="flex bg-gray-200 p-1 rounded-full shadow-inner">
+                                        <button onClick={() => switchLocation('rokko')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
+                                        <button onClick={() => switchLocation('myodani')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
+                                    </div>
+                                </div>
+                                <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
+                            </div>
+
+                            <div className="flex flex-wrap items-end gap-x-1 gap-y-2 pb-0 border-b-[3px] border-slate-300 print:hidden pt-4 px-2">
+                                {currentEmployees.map((emp, i) => {
+                                    const colorClass = TAB_COLORS[i % TAB_COLORS.length];
+                                    const isActiveTab = activeEmp === emp.id;
+                                    return (
+                                        <button key={emp.id} onClick={() => setActiveEmp(emp.id)} 
+                                            className={`shrink-0 whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold rounded-t-xl transition-all duration-200 ${isActiveTab ? `${colorClass} pb-3 pt-2 md:pt-3 transform -translate-y-0.5 z-10 relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] border-x border-t border-x-black/5 border-t-black/5` : 'bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 border border-gray-200 border-b-0'}`}>
+                                            {emp.name} {!emp.isActive && <span className="ml-1 text-[10px] text-red-500">(退職)</span>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {currentEmp && (() => {
+                                let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
+                                let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
+
+                                return (
+                                    <div className="bg-white p-4 sm:p-8 rounded-b-3xl shadow-md print:border-none print:shadow-none print:p-0 print:m-0 border border-t-0 border-slate-200 mt-0">
+                                        <div className="flex items-end justify-between mb-4 border-b border-slate-100 pb-2">
+                                            <h2 className="text-2xl print:text-xl font-black text-slate-800">{currentEmp.name} <span className="text-xs font-bold text-indigo-500 ml-2 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">{currentEmp.type === 'full' ? '正社員' : 'アルバイト'}</span></h2>
+                                            <span className="text-sm font-bold text-slate-400 print:text-[10px]">{period} 度</span>
+                                        </div>
+                                        
+                                        <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none">
+                                            <table className="w-full text-sm border-collapse print:text-[10px]">
+                                                <thead>
+                                                    <tr className="bg-[#f8f9fa] text-slate-600 print:bg-gray-100">
+                                                        <th className="border-b border-r border-slate-200 p-2 min-w-[80px] font-black print:p-1">日付</th>
+                                                        <th className="border-b border-r border-slate-200 p-2 w-20 font-black print:p-1">入室</th>
+                                                        <th className="border-b border-r border-slate-200 p-2 w-20 font-black print:p-1">退室</th>
+                                                        <th className="border-b border-r border-slate-200 p-2 w-28 font-black print:p-1">シフト</th>
+                                                        <th className="border-b border-r border-slate-200 p-2 w-20 text-gray-500 font-black print:p-1">休憩</th>
+                                                        {currentEmp.type === 'full' ? (
+                                                            <>
+                                                                <th className="border-b border-r border-slate-200 p-2 min-w-[120px] font-black print:p-1">備考・特記事項</th>
+                                                                <th className="border-b border-r border-slate-200 p-2 w-20 text-orange-500 font-black print:p-1">早残業</th>
+                                                                <th className="border-b border-slate-200 p-2 w-20 text-orange-500 font-black print:p-1">後残業</th>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
+                                                                    <>
+                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">出発</th>
+                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">到着</th>
+                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">運転時間</th>
+                                                                    </>
+                                                                )}
+                                                                <th className="border-b border-r border-slate-200 p-2 w-16 text-pink-600 font-black print:p-1">IGK A</th>
+                                                                <th className="border-b border-r border-slate-200 p-2 w-16 text-blue-600 font-black print:p-1">IGK B</th>
+                                                                <th className="border-b border-slate-200 p-2 min-w-[120px] font-black print:p-1">備考・特記事項</th>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {dates.map(d => {
+                                                        const key = dKey(d);
+                                                        const row = attendance[currentEmp.id]?.[key] || {};
+                                                        const calc = calculateRow(d, row, currentEmp);
+                                                        
+                                                        // 出勤與請假統計
+                                                        if (row.inTime || row.outTime) sumDays++;
+                                                        if (row.leave === '有休') sumPaidLeave++;
+                                                        else if (row.leave === '事欠') sumUnpaidLeave++;
+                                                        else if (row.leave === '病欠') sumSickLeave++;
+
+                                                        sumIgka += calc.igkAMins; sumIgkb += calc.igkBMins;
+                                                        sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
+                                                        sumDriver += calc.driverMins;
+
+                                                        let rowBg = calc.isWknd ? 'bg-pink-50/40 print:bg-pink-50' : 'hover:bg-slate-50 transition-colors bg-white print:bg-transparent';
+                                                        let textClass = calc.isWknd ? 'text-red-500 font-bold' : 'text-slate-700';
+                                                        if (row.leave) { rowBg = 'bg-blue-50/50 print:bg-blue-50'; textClass = 'text-blue-600 font-bold'; }
+
+                                                        return (
+                                                            <tr key={key} className={`${rowBg} ${textClass} print:break-inside-avoid`}>
+                                                                <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold tracking-wider print:p-0.5">{formatDisplayDate(d)}</td>
+                                                                
+                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
+                                                                    {!row.inTime && !row.outTime && currentEmp.type === 'full' ? (
+                                                                        <select value={row.leave || ''} onChange={e => updateCell(currentEmp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-xs font-bold outline-none cursor-pointer text-slate-400 print:appearance-none print:text-black">
+                                                                            <option value="">-</option><option value="有休">有休</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
+                                                                        </select>
+                                                                    ) : (
+                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(currentEmp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700 print:text-[10px]"/>
+                                                                    )}
+                                                                </td>
+                                                                
+                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
+                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700 print:text-[10px]"/>}
+                                                                </td>
+                                                                
+                                                                <td className="border-b border-r border-slate-100 p-1.5 text-center font-mono text-xs font-bold text-slate-400 print:text-black">
+                                                                    {calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-'}
+                                                                </td>
+                                                                
+                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
+                                                                    {row.leave ? '-' : <input type="time" value={calc.breakTime} onChange={e => updateCell(currentEmp.id, key, 'breakTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-400 focus:text-indigo-600 print:text-[10px]"/>}
+                                                                </td>
+                                                                
+                                                                {currentEmp.type === 'full' ? (
+                                                                    <>
+                                                                        <td className="border-b border-r border-slate-100 p-1">
+                                                                            <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-0.5 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all print:text-[10px]" placeholder="備考..."/>
+                                                                        </td>
+                                                                        <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold text-orange-500 bg-orange-50/20 text-xs print:bg-transparent">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
+                                                                        <td className="border-b border-slate-100 p-1.5 text-center font-bold text-orange-500 bg-orange-50/20 text-xs print:bg-transparent">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
+                                                                            <>
+                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
+                                                                                    <input type="time" value={row.driverDep || ''} onChange={e => updateCell(currentEmp.id, key, 'driverDep', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
+                                                                                </td>
+                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
+                                                                                    <input type="time" value={row.driverArr || ''} onChange={e => updateCell(currentEmp.id, key, 'driverArr', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
+                                                                                </td>
+                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
+                                                                                    <input type="time" value={row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')} onChange={e => updateCell(currentEmp.id, key, 'driverMins', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
+                                                                                </td>
+                                                                            </>
+                                                                        )}
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-pink-50/20 print:bg-transparent">
+                                                                            <input type="time" value={row.igkA || ''} onChange={e => updateCell(currentEmp.id, key, 'igkA', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-pink-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
+                                                                        </td>
+                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-blue-50/20 print:bg-transparent">
+                                                                            <input type="time" value={calc.igkBMins > 0 ? minsToTime(calc.igkBMins) : ''} readOnly className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-blue-600 focus:ring-0 p-0 outline-none cursor-default print:border-none print:text-[10px]" placeholder="-"/>
+                                                                        </td>
+                                                                        <td className="border-b border-slate-100 p-1">
+                                                                            <input type="text" value={row.remark || ''} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-0.5 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all print:text-[10px]" placeholder="備考..."/>
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div className={`mt-6 pt-4 grid grid-cols-2 gap-3 print:break-inside-avoid print:gap-2 md:grid-cols-6`}>
+                                            
+                                            <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 shadow-sm flex items-stretch col-span-2 print:border-none print:bg-white">
+                                                <div className="flex-1 flex flex-col justify-center items-center border-r border-slate-200">
+                                                    <div className="text-[10px] font-bold text-slate-400 mb-0.5 print:text-[8px]">出勤日数</div>
+                                                    <div className="text-2xl font-black text-slate-700 leading-none print:text-lg">{sumDays} <span className="text-xs font-bold">日</span></div>
+                                                </div>
+                                                <div className="flex-1 flex flex-col justify-between pl-2 pr-1 text-[10px] font-bold">
+                                                    <div className="flex justify-between items-center text-slate-600"><span className="text-slate-400">有休</span><span>{sumPaidLeave} 日</span></div>
+                                                    <div className="flex justify-between items-center text-slate-600 border-y border-slate-200/60 py-0.5 my-0.5"><span className="text-slate-400">事欠</span><span>{sumUnpaidLeave} 日</span></div>
+                                                    <div className="flex justify-between items-center text-slate-600"><span className="text-slate-400">病欠</span><span>{sumSickLeave} 日</span></div>
+                                                </div>
+                                            </div>
+                                            
+                                            {currentEmp.type === 'full' ? (
+                                                <>
+                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">早残業</div>
+                                                        <div className="text-2xl font-black text-orange-600 print:text-lg">{sumEarly} <span className="text-sm font-bold print:text-[10px]">分</span></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">後残業</div>
+                                                        <div className="text-2xl font-black text-orange-600 print:text-lg">{sumLate} <span className="text-sm font-bold print:text-[10px]">分</span></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-center shadow-sm col-span-2 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-red-500 mb-1 print:text-[10px]">残業合計 (早+後)</div>
+                                                        <div className="text-3xl font-black text-red-600 print:text-xl">{sumEarly + sumLate} <span className="text-base font-bold mx-1 print:text-[10px]">分</span> <span className="text-base font-bold text-red-400 font-mono print:text-[10px]">({((sumEarly + sumLate) / 60).toFixed(2)} H)</span></div>
+                                                    </div>
+
+                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-6 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span className="text-lg font-bold text-emerald-700">¥</span>
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-2xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
+                                                        <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
+                                                            <div className="text-[10px] font-bold text-yellow-600 mb-1 print:text-[8px]">運転 実績</div>
+                                                            <div className="text-lg font-black text-yellow-700 font-mono print:text-base">{formatTimeWithDec(sumDriver)}</div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
+                                                        <div className="text-[10px] font-bold text-pink-500 mb-1 print:text-[8px]">IGK A 合計</div>
+                                                        <div className="text-lg font-black text-pink-600 font-mono print:text-base">{formatTimeWithDec(sumIgka)}</div>
+                                                    </div>
+
+                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
+                                                        <div className="text-[10px] font-bold text-blue-500 mb-1 print:text-[8px]">IGK B 合計</div>
+                                                        <div className="text-lg font-black text-blue-600 font-mono print:text-base">{formatTimeWithDec(sumIgkb)}</div>
+                                                    </div>
+
+                                                    <div className={`bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center shadow-sm flex flex-col justify-center print:border-none print:bg-white ${['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) ? 'col-span-1' : 'col-span-2'}`}>
+                                                        <div className="text-[10px] font-bold text-indigo-600 mb-1 print:text-[8px]">A+B 総労働</div>
+                                                        <div className="text-xl font-black text-indigo-700 font-mono print:text-lg">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
+                                                    </div>
+
+                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-6 flex flex-col justify-center print:border-none print:bg-white">
+                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span className="text-lg font-bold text-emerald-700">¥</span>
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
+                                                        </div>
+                                                    </div>
+
+                                                    {(() => {
+                                                        const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
+                                                        const totalPartTimeDec = (totalPartTimeMins / 60).toFixed(2);
+                                                        const transportTotal = Number(monthlyData[`${currentEmp.id}_${period}`]?.transportFee || 0);
+                                                        return (
+                                                            <div className="bg-white p-3 rounded-xl border-2 border-indigo-100 shadow-sm col-span-2 md:col-span-6 mt-1 print:border-slate-300 print:shadow-none">
+                                                                <h3 className="text-indigo-800 font-black mb-2 flex items-center gap-2 text-sm print:text-xs">💰 給与シミュレーション <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 print:border-none">管理者専用</span></h3>
+                                                                <div className="flex flex-wrap items-center gap-3 font-bold text-sm text-slate-600 print:text-[10px]">
+                                                                    <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-lg border border-slate-200 print:border-none print:bg-transparent">
+                                                                        <label className="text-xs">時給(円):</label>
+                                                                        <input type="number" value={hourlyWage} onChange={e => setHourlyWage(Number(e.target.value))} className="w-16 px-1 py-0.5 border border-slate-200 rounded text-right outline-none focus:border-indigo-400 font-black text-indigo-600 bg-white print:border-none" />
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">×</div>
+                                                                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-xs flex items-center print:border-none print:bg-transparent">
+                                                                        総労働+運転: <span className="text-indigo-600 text-base ml-1 print:text-sm">{totalPartTimeDec} <span className="text-[10px]">H</span></span>
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">＋</div>
+                                                                    <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-100 text-emerald-700 text-xs flex items-center print:border-none print:bg-transparent">
+                                                                        交通費: <span className="text-base ml-1 print:text-sm">¥{transportTotal.toLocaleString()}</span>
+                                                                    </div>
+                                                                    <div className="text-slate-300 font-black">＝</div>
+                                                                    <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-200 shadow-inner flex items-baseline print:border-none print:bg-transparent print:shadow-none">
+                                                                        <span className="text-indigo-800 mr-1 font-bold text-[10px]">推定給与:</span>
+                                                                        <span className="text-xl font-black text-indigo-600 print:text-base">¥{(Math.floor(totalPartTimeDec * hourlyWage) + transportTotal).toLocaleString()}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    )}
+                </div>
+            );
         }
-      });
-      const wrong = 20 - correct;
-      addRecord(correct, wrong);
-      renderResult(correct, wrong);
-    }
 
-    function renderResult(correct, wrong) {
-      quizResult.innerHTML = `
-        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">🎉</div>
-        <h2 class="text-2xl font-bold text-slate-900 mb-1">Great job, ${studentName}!</h2>
-        <p class="text-slate-500 mb-6">You've submitted your quiz successfully!</p>
-        <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-8">
-          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-            <div class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">せいかい</div>
-            <div class="text-3xl font-black text-emerald-600 mt-1">${correct} <span class="text-sm font-normal">questions</span></div>
-          </div>
-          <div class="bg-rose-50 border border-rose-100 rounded-xl p-4">
-            <div class="text-xs font-semibold text-rose-700 uppercase tracking-wider">おしい</div>
-            <div class="text-3xl font-black text-rose-600 mt-1">${wrong} <span class="text-sm font-normal">questions</span></div>
-          </div>
-        </div>
-        <button id="retryBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-6 py-2 rounded-lg transition-colors">Try again</button>
-      `;
-      quizResult.classList.remove('hidden');
-      quizForm.classList.add('hidden');
-      studentStart.classList.add('hidden');
-      document.getElementById('retryBtn').addEventListener('click', resetQuiz);
-    }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    function addRecord(correct, wrong) {
-      const todayIndex = new Date().getDay();
-      const dayName = DAYS_OF_WEEK[todayIndex - 1] || '星期一';
-      records.unshift({ id: records.length + 1, name: studentName, correct, wrong, day: dayName, date: new Date().toLocaleDateString() });
-      renderRecords();
-    }
-
-    function getChartData() {
-      return DAYS_OF_WEEK.map(day => {
-        const dayRecords = records.filter(r => r.day === day);
-        const totalPeople = dayRecords.length;
-        const avgScore = totalPeople ? Math.round((dayRecords.reduce((sum, r) => sum + r.correct, 0) / totalPeople)) : 0;
-        return { name: day, totalPeople, avgScore };
-      });
-    }
-
-    function renderTeacherData() {
-      renderRecords();
-      switchTab('overview');
-      setTimeout(() => drawWeeklyTrendLineChart(), 100);
-    }
-
-    function renderRecords() {
-      recordsBody.innerHTML = '';
-      if (!records.length) {
-        recordsBody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">No quiz records yet.</td></tr>';
-        return;
-      }
-      records.forEach(r => {
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-slate-50/70 transition-colors';
-        row.innerHTML = `
-          <td class="p-4 font-medium text-slate-900">${r.name}</td>
-          <td class="p-4"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">${r.day}</span></td>
-          <td class="p-4 font-bold text-emerald-600">${r.correct} / 20</td>
-          <td class="p-4 font-medium text-rose-500">${r.wrong}</td>
-          <td class="p-4 text-slate-400 text-xs">${r.date}</td>
-        `;
-        recordsBody.appendChild(row);
-      });
-    }
-
-    function resetQuiz() {
-      studentName = '';
-      currentAnswers = Array(20).fill('');
-      studentNameInput.value = '';
-      studentStart.classList.remove('hidden');
-      quizForm.classList.add('hidden');
-      quizResult.classList.add('hidden');
-    }
-
-    function clearAllRecords() {
-      if (confirm('Are you sure you want to delete all records? This action cannot be undone!')) {
-        records = [];
-        renderRecords();
-        switchTab('overview');
-        setTimeout(() => drawWeeklyTrendLineChart(), 100);
-        alert('All records have been cleared!');
-      }
-    }
-
-    startQuizBtn.addEventListener('click', () => {
-      studentName = studentNameInput.value.trim();
-      if (!studentName) { alert('Please enter your name first!'); return; }
-      renderQuizForm();
-    });
-
-    studentBtn.addEventListener('click', () => showView('student'));
-    teacherBtn.addEventListener('click', () => showView('teacher'));
-
-    overviewTab.addEventListener('click', () => {
-      switchTab('overview');
-      setTimeout(() => drawWeeklyTrendLineChart(), 100);
-    });
-    studentAnalyticsTab.addEventListener('click', () => switchTab('analytics'));
-
-    studentSelector.addEventListener('change', (e) => {
-      if (e.target.value) {
-        displayStudentAnalytics(e.target.value);
-      } else {
-        studentStatsContainer.classList.add('hidden');
-      }
-    });
-
-    document.getElementById('clearRecordsBtn').addEventListener('click', clearAllRecords);
-
-    renderRecords();
-    showView('student');
-  </script>
+        /* --- 列印專用 CSS --- */
+        @media print {
+            @page { margin: 1cm; size: A4 portrait; }
+            body { background: white !important; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .print\:hidden { display: none !important; }
+            .print\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+            input, select { border: none !important; background: transparent !important; box-shadow: none !important; }
+        }
+    </style>
 </body>
 </html>
-
-
