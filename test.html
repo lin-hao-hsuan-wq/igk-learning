@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 完美除蟲版</title>
+    <title>IGK Attendance System - 老闆娘特製版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body className="bg-[#f8f9fa] text-slate-700 font-sans print:bg-white">
     <div id="root"></div>
@@ -85,7 +86,7 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v3', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v4', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [period, setPeriod] = useState(() => {
                 const saved = loadSavedState('igk_pro_period', null);
@@ -113,7 +114,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v3', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v4', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -339,8 +340,6 @@
                                             
                                             let cellText = (actCell.text || '').trim();
                                             let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
-                                            
-                                            // ★ 嚴格萃取時間，只有抓到時間格式才算是有填入時間
                                             const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
                                             
                                             let fill = actCell.fill || {};
@@ -374,11 +373,9 @@
                                                     return; 
                                                 }
 
-                                                // ★ 新版駕駛判斷：如果含有特定文字，或是「黃色且裡面有時間數字」，才視為 Driver
                                                 if (cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却') || (isYellow && exactMatches.length > 0)) {
                                                     blockType = 'driver';
                                                 } else if (isYellow && exactMatches.length === 0) {
-                                                    // ★ 如果是黃色，但裡面完全沒寫時間數字 -> 忽略駕駛時間，當作一般 IGK B
                                                     blockType = 'igkB';
                                                 } else if (!isBlue && hasContent) {
                                                     blockType = 'igkA';
@@ -386,7 +383,6 @@
 
                                                 if (!allExtractedData[empId]) allExtractedData[empId] = {};
                                                 if (!allExtractedData[empId][dateInfo.key]) {
-                                                    // ★ 新增 driverExactTimes 專門用來裝駕駛起迄時間
                                                     allExtractedData[empId][dateInfo.key] = { minTime: 9999, maxTime: -1, exactTimes: [], driverExactTimes: [], driverMins: 0, igkAMins: 0, igkBMins: 0 };
                                                 }
                                                 
@@ -396,7 +392,6 @@
                                                 if (rowMins > ed.maxTime) ed.maxTime = rowMins;
 
                                                 if (blockType === 'driver') {
-                                                    // 只有當裡面沒有寫時間，卻有標註"車"時，我們才加30分鐘當作緩衝防呆
                                                     if (exactMatches.length === 0) ed.driverMins += 30;
                                                 }
                                                 else if (blockType === 'igkA') ed.igkAMins += 30;
@@ -437,7 +432,6 @@
                                                     
                                                     if (data.igkAMins > 0) newData[empId][dateKey].igkA = minsToTime(data.igkAMins);
                                                     
-                                                    // ★ 自動填寫出發與到達時間！
                                                     if (data.driverExactTimes && data.driverExactTimes.length > 0) {
                                                         let minD = Math.min(...data.driverExactTimes);
                                                         let maxD = Math.max(...data.driverExactTimes);
@@ -496,7 +490,6 @@
                 let leave = row.leave || '';
                 
                 let igkA = row.igkA || '';
-                
                 let driverDep = row.driverDep || '';
                 let driverArr = row.driverArr || '';
 
@@ -544,7 +537,6 @@
                 const igkAMins = timeToMins(igkA);
                 const igkBMins = Math.max(0, totalWorkMins - igkAMins);
                 
-                // ★ 系統現在會靠著 Departure 與 Arrival 自動幫你計算駕駛時數 (不需要再塞死30分鐘了)
                 let dDepMins = timeToMins(driverDep);
                 let dArrMins = timeToMins(driverArr);
                 let dCalcMins = (dArrMins > dDepMins) ? dArrMins - dDepMins : 0;
@@ -553,9 +545,7 @@
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
             };
 
-            const switchLocation = (loc) => {
-                setActiveLocation(loc);
-            };
+            const switchLocation = (loc) => setActiveLocation(loc);
 
             const hasDataInPeriod = (empId) => {
                 if (!attendance[empId]) return false;
@@ -576,6 +566,90 @@
 
             const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
 
+            // ★ 老闆娘專用：一鍵匯出 Excel 功能
+            const handleExportAllExcel = async () => {
+                const wb = new ExcelJS.Workbook();
+                
+                // 1. 建立「老闆娘最愛的總結算表」
+                const wsSummary = wb.addWorksheet('給与・勤怠まとめ(總結算)');
+                wsSummary.columns = [
+                    { header: '所属校', key: 'loc', width: 12 },
+                    { header: '氏名', key: 'name', width: 20 },
+                    { header: '雇用形態', key: 'type', width: 12 },
+                    { header: '出勤日数', key: 'days', width: 10 },
+                    { header: '有休', key: 'paidLeave', width: 8 },
+                    { header: '事/病欠', key: 'unpaidLeave', width: 10 },
+                    { header: '総労働時間(H)', key: 'totalH', width: 15 },
+                    { header: 'IGK A (H)', key: 'igkaH', width: 12 },
+                    { header: 'IGK B (H)', key: 'igkbH', width: 12 },
+                    { header: '運転 (H)', key: 'driverH', width: 12 },
+                    { header: '早残業(分)', key: 'earlyOT', width: 12 },
+                    { header: '後残業(分)', key: 'lateOT', width: 12 },
+                    { header: '交通費(円)', key: 'transport', width: 12 },
+                    { header: '推定給与(円)', key: 'salary', width: 15 },
+                ];
+
+                // 標題列上色
+                wsSummary.getRow(1).eachCell(cell => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                    cell.font = { bold: true };
+                });
+
+                // 找出這個月有資料的所有人 (不分校區)
+                const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
+                
+                if (activeEmpsThisMonth.length === 0) {
+                    return alert('この月のデータがありません！(該月份尚無資料)');
+                }
+
+                activeEmpsThisMonth.forEach(emp => {
+                    let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
+                    let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
+
+                    dates.forEach(d => {
+                        const key = dKey(d);
+                        const row = attendance[emp.id]?.[key] || {};
+                        const calc = calculateRow(d, row, emp);
+                        
+                        if (row.inTime || row.outTime) sumDays++;
+                        if (row.leave === '有休') sumPaidLeave++;
+                        else if (row.leave === '事欠') sumUnpaidLeave++;
+                        else if (row.leave === '病欠') sumSickLeave++;
+
+                        sumIgka += calc.igkAMins; sumIgkb += calc.igkBMins;
+                        sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
+                        sumDriver += calc.driverMins;
+                    });
+
+                    const transportFee = Number(monthlyData[`${emp.id}_${period}`]?.transportFee || 0);
+                    const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
+                    const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
+                    const estSalary = emp.type === 'part' ? Math.floor(totalPartTimeDec * hourlyWage) + transportFee : 0;
+
+                    wsSummary.addRow({
+                        loc: emp.location === 'rokko' ? '六甲校' : '名谷校',
+                        name: emp.name,
+                        type: emp.type === 'full' ? '正社員' : 'アルバイト',
+                        days: sumDays,
+                        paidLeave: sumPaidLeave,
+                        unpaidLeave: sumUnpaidLeave + sumSickLeave,
+                        totalH: emp.type === 'part' ? totalPartTimeDec : Number(((sumIgka + sumIgkb) / 60).toFixed(2)),
+                        igkaH: Number((sumIgka / 60).toFixed(2)),
+                        igkbH: Number((sumIgkb / 60).toFixed(2)),
+                        driverH: Number((sumDriver / 60).toFixed(2)),
+                        earlyOT: sumEarly,
+                        lateOT: sumLate,
+                        transport: transportFee,
+                        salary: estSalary > 0 ? estSalary : '-'
+                    });
+                });
+
+                // 產出 Excel 檔案
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                window.saveAs(blob, `IGK_勤怠給与まとめ_${period}.xlsx`);
+            };
+
             return (
                 <div className="min-h-screen flex flex-col font-sans">
                     <div className="bg-white text-slate-800 p-4 flex gap-4 print:hidden shadow-sm items-center border-b border-gray-200">
@@ -589,7 +663,7 @@
 
                     {activePage === 'import' && (
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
-                            
+                            {/* ... (同上一版的設定區塊) ... */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
@@ -660,7 +734,7 @@
                                     ))}
                                 </div>
                             </div>
-
+                            
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                                     <span className="text-indigo-500">◆</span> 正社員の基本勤務・特別期間設定
@@ -669,22 +743,6 @@
                                     <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト入室</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
                                     <div><label className="block text-xs font-bold text-gray-500 mb-1">デフォルト退室</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
                                 </div>
-                                
-                                {settings.special && settings.special.length > 0 && (
-                                    <div className="mb-4 space-y-2">
-                                        <h3 className="text-xs font-bold text-indigo-400">現在設定されている特別期間:</h3>
-                                        {settings.special.map((sp, idx) => (
-                                            <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-indigo-100 shadow-sm text-sm">
-                                                <div>
-                                                    <div className="font-bold text-indigo-800">{sp.name} <span className="text-xs text-gray-500 ml-2">{sp.start} ~ {sp.end}</span></div>
-                                                    <div className="text-xs text-gray-600 mt-1">時間: <span className="font-mono bg-gray-100 px-1 rounded">{sp.timeIn} - {sp.timeOut}</span> | 対象: <span className="text-indigo-600">{!sp.targetEmps || sp.targetEmps.length === FULL_TIME_EMPS.length ? '全員' : sp.targetEmps.map(id => FULL_TIME_EMPS.find(e=>e.id===id)?.name).filter(Boolean).join(', ')}</span></div>
-                                                </div>
-                                                <button onClick={() => setSettings(s => ({...s, special: s.special.filter((_, i) => i !== idx)}))} className="text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors font-bold text-xs">削除</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
                                 <div className="p-4 rounded-xl flex flex-col gap-4 border border-indigo-100 bg-indigo-50/30">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="text-xs font-bold text-indigo-600">対象者を選択:</span>
@@ -706,24 +764,20 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
                                     <span className="text-blue-500">◆</span> シフト表 (Excel) の自動取り込み
                                 </h2>
-                                <p className="text-xs text-gray-500 mb-3">Excel (.xlsx) のシフト表をアップロードすると、色分けされたシフトを自動解析して反映します。</p>
                                 <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
                                     <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
                                     <div className="text-blue-400 text-xs">色ブロックを自動計算（データは上書きされず追加・統合されます）</div>
                                 </label>
                             </div>
-
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
                                     <span className="text-purple-500">◆</span> 打刻データ (実績) の自動取り込み
                                 </h2>
-                                <p className="text-xs text-gray-500 mb-3">勤怠システムからコピーしたテキストをそのまま貼り付けてください。自動で判別し各シートへ振り分けます。</p>
                                 <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに打刻テキストを貼り付け..."></textarea>
                                 <button onClick={handlePaste} className="mt-3 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-purple-600 shadow-sm text-sm">解析してデータを反映する</button>
                             </div>
@@ -742,7 +796,15 @@
                                         <button onClick={() => switchLocation('myodani')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
                                     </div>
                                 </div>
-                                <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
+                                
+                                {/* ★ 新增的老闆娘專用匯出按鈕 */}
+                                <div className="flex gap-3">
+                                    <button onClick={handleExportAllExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        老闆娘専用：一括エクスポート (Excel)
+                                    </button>
+                                    <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
+                                </div>
                             </div>
 
                             <div className="flex flex-wrap items-end gap-x-1 gap-y-2 pb-0 border-b-[3px] border-slate-300 print:hidden pt-4 px-2">
