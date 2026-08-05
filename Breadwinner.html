@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 労務管理</title>
+    <title>IGK 労務管理　</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -66,7 +66,7 @@
             return (h * 60) + (isNaN(m) ? 0 : m);
         };
         const minsToTime = (m) => {
-            if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
+            if (m === null || m === undefined || isNaN(m) || m < 0) return '';
             return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
         };
         
@@ -86,9 +86,9 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v6', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v7，確保全新的司機計算邏輯生效
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v7', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
-            // ★ 新增：控制「員工名冊」是否展開的 State (預設收合)
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v6', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v7', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -165,7 +165,7 @@
 
             const handleEditEmployee = (emp) => {
                 setEmpForm({ ...emp, aliases: (emp.aliases || []).join(', ') });
-                setIsEmpManagerOpen(true); // 編輯時自動展開
+                setIsEmpManagerOpen(true);
             };
 
             const handlePaste = () => {
@@ -363,7 +363,6 @@
                                                 
                                                 const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
                                                 let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
-
                                                 let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
                                                 let blockType = 'igkB'; 
@@ -377,19 +376,27 @@
                                                     return; 
                                                 }
 
-                                                let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却');
+                                                // ★ 新版駕駛判定：乘車/下車/車
+                                                let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('出発') || cellText.includes('到着') || cellText.includes('車') || cellText.includes('返却');
                                                 
                                                 if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
-                                                    blockType = 'driver_with_time';
+                                                    blockType = 'driver_with_time'; // 裡面有時間的司機班表
                                                 } else if (isYellow || isDriverKeyword) {
-                                                    blockType = 'igkB';
+                                                    blockType = 'igkB'; // 黃色但沒時間，當一般班表，不再硬塞司機時間
                                                 } else if (!isBlue && hasContent) {
                                                     blockType = 'igkA';
                                                 }
 
                                                 if (!allExtractedData[empId]) allExtractedData[empId] = {};
                                                 if (!allExtractedData[empId][dateInfo.key]) {
-                                                    allExtractedData[empId][dateInfo.key] = { minTime: 9999, maxTime: -1, exactTimes: [], driverExactTimes: [], igkAMins: 0, igkBMins: 0 };
+                                                    // ★ 加入 driverMinRow / driverMaxRow 與各種駕駛時間陣列
+                                                    allExtractedData[empId][dateInfo.key] = { 
+                                                        minTime: 9999, maxTime: -1, 
+                                                        exactTimes: [], 
+                                                        driverMinRow: 9999, driverMaxRow: -1,
+                                                        driverDepExact: null, driverArrExact: null, driverOtherExact: [],
+                                                        igkAMins: 0, igkBMins: 0 
+                                                    };
                                                 }
                                                 
                                                 let ed = allExtractedData[empId][dateInfo.key];
@@ -401,12 +408,22 @@
                                                     ed.igkAMins += 30;
                                                 } else if (blockType === 'igkB') {
                                                     ed.igkBMins += 30;
+                                                } else if (blockType === 'driver_with_time') {
+                                                    if (rowMins < ed.driverMinRow) ed.driverMinRow = rowMins;
+                                                    if (rowMins > ed.driverMaxRow) ed.driverMaxRow = rowMins;
                                                 }
 
                                                 exactMatches.forEach(m => {
                                                     let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
                                                     if (blockType === 'driver_with_time') {
-                                                        ed.driverExactTimes.push(tMins);
+                                                        // 聰明識別中文字
+                                                        if (cellText.includes('下車') || cellText.includes('到着') || cellText.includes('返却')) {
+                                                            ed.driverArrExact = tMins;
+                                                        } else if (cellText.includes('乗車') || cellText.includes('出発')) {
+                                                            ed.driverDepExact = tMins;
+                                                        } else {
+                                                            ed.driverOtherExact.push(tMins);
+                                                        }
                                                     } else {
                                                         ed.exactTimes.push(tMins);
                                                     }
@@ -417,6 +434,8 @@
                                         Object.keys(allExtractedData).forEach(empId => {
                                             Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                                 const data = allExtractedData[empId][dateKey];
+                                                
+                                                // 計算一般打卡上下班時間
                                                 let startMins = data.minTime;
                                                 let endMins = data.maxTime + 30; 
 
@@ -437,15 +456,38 @@
                                                     if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                                     if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                                     
+                                                    // 覆寫 IGK 舊資料
                                                     newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
                                                     
-                                                    if (data.driverExactTimes && data.driverExactTimes.length > 0) {
-                                                        let minD = Math.min(...data.driverExactTimes);
-                                                        let maxD = Math.max(...data.driverExactTimes);
-                                                        newData[empId][dateKey].driverDep = minsToTime(minD);
-                                                        newData[empId][dateKey].driverArr = maxD > minD ? minsToTime(maxD) : '';
+                                                    // ★ 司機乘車/下車邏輯
+                                                    if (data.driverMinRow !== 9999) {
+                                                        let dStart = data.driverMinRow;
+                                                        let dEnd = data.driverMaxRow + 30;
+
+                                                        if (data.driverDepExact) dStart = data.driverDepExact;
+                                                        if (data.driverArrExact) dEnd = data.driverArrExact;
+
+                                                        // 如果格子裡有寫時間但沒寫中文，系統自動判斷哪個是出發哪個是到達
+                                                        if (data.driverOtherExact.length === 1) {
+                                                            let t = data.driverOtherExact[0];
+                                                            if (!data.driverDepExact && !data.driverArrExact) {
+                                                                if (Math.abs(t - dStart) < Math.abs(t - dEnd)) dStart = t;
+                                                                else dEnd = t;
+                                                            } else if (!data.driverDepExact) {
+                                                                dStart = t;
+                                                            } else if (!data.driverArrExact) {
+                                                                dEnd = t;
+                                                            }
+                                                        } else if (data.driverOtherExact.length >= 2) {
+                                                            if (!data.driverDepExact) dStart = Math.min(...data.driverOtherExact);
+                                                            if (!data.driverArrExact) dEnd = Math.max(...data.driverOtherExact);
+                                                        }
+
+                                                        newData[empId][dateKey].driverDep = minsToTime(dStart);
+                                                        newData[empId][dateKey].driverArr = dEnd > dStart ? minsToTime(dEnd) : '';
                                                         newData[empId][dateKey].driverMins = ''; 
                                                     } else {
+                                                        // 沒數字的黃框，乖乖留空
                                                         newData[empId][dateKey].driverDep = '';
                                                         newData[empId][dateKey].driverArr = '';
                                                         newData[empId][dateKey].driverMins = ''; 
@@ -545,6 +587,7 @@
                 const igkAMins = timeToMins(igkA);
                 const igkBMins = Math.max(0, totalWorkMins - igkAMins);
                 
+                // ★ 運轉時間正常計算，有到達時間減出發時間才會大於 0
                 let dDepMins = timeToMins(driverDep);
                 let dArrMins = timeToMins(driverArr);
                 let dCalcMins = (dArrMins > dDepMins) ? dArrMins - dDepMins : 0;
@@ -574,13 +617,11 @@
 
             const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
 
-            // ★ 老闆娘神級按鈕：一次匯出總表 + 個人明細表
             const handleExportAllExcel = async () => {
                 const wb = new ExcelJS.Workbook();
                 const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
                 if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！(該月份尚無資料)');
 
-                // --- 1. 建立「總結算表」 ---
                 const wsSummary = wb.addWorksheet('給与・勤怠まとめ');
                 wsSummary.columns = [
                     { header: '所属校', key: 'loc', width: 12 },
@@ -604,27 +645,24 @@
                     cell.font = { bold: true };
                 });
 
-                // --- 2. 準備個人的分頁資料 ---
                 activeEmpsThisMonth.forEach(emp => {
                     let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
                     let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
 
-                    // 建立個人工作表 (以名字命名，Excel 工作表名稱長度限制31)
                     const safeName = emp.name.substring(0, 30).replace(/[/\\?*:[\]]/g, '');
                     const wsEmp = wb.addWorksheet(safeName);
 
                     const isDriver = ['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => emp.name.includes(n) || (emp.aliases || []).includes(n));
 
-                    // 個人表頭資訊
                     wsEmp.addRow(['氏名', emp.name, '雇用形態', emp.type === 'full' ? '正社員' : 'アルバイト', '対象月', period]);
                     wsEmp.addRow([]);
 
-                    // 明細表標題
                     let headers = ['日付', '入室', '退室', 'シフト', '休憩'];
                     if (emp.type === 'full') {
                         headers.push('備考・特記事項', '早残業(分)', '後残業(分)');
                     } else {
-                        if (isDriver) headers.push('出発', '到着', '運転時間');
+                        // ★ Excel 匯出表頭也改成乗車 / 下車
+                        if (isDriver) headers.push('乗車', '下車', '運転時間');
                         headers.push('IGK A', 'IGK B', '備考・特記事項');
                     }
                     const headerRow = wsEmp.addRow(headers);
@@ -676,7 +714,6 @@
                         wsEmp.addRow(rowData);
                     });
 
-                    // 個人總結算寫入
                     const transportFee = Number(monthlyData[`${emp.id}_${period}`]?.transportFee || 0);
                     const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
                     const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
@@ -696,10 +733,8 @@
                     }
                     wsEmp.addRow(['交通費(円)', transportFee, '推定給与(円)', emp.type === 'part' ? estSalary : '-']);
 
-                    // 調整各欄寬度
                     wsEmp.columns.forEach(col => col.width = 14);
 
-                    // 寫回總表
                     wsSummary.addRow({
                         loc: emp.location === 'rokko' ? '六甲校' : '名谷校',
                         name: emp.name,
@@ -738,7 +773,6 @@
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
                             
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300">
-                                {/* ★ 點擊切換展開/收合 */}
                                 <h2 onClick={() => setIsEmpManagerOpen(!isEmpManagerOpen)} className={`text-lg font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-emerald-600 transition-colors ${isEmpManagerOpen ? 'mb-4' : 'mb-0'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
                                         <path d="M12 22v-6" />
@@ -755,7 +789,6 @@
                                     </span>
                                 </h2>
                                 
-                                {/* ★ 摺頁內容 */}
                                 {isEmpManagerOpen && (
                                     <div className="animate-fadeIn">
                                         <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 mb-6">
@@ -943,8 +976,8 @@
                                                             <>
                                                                 {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                     <>
-                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">出発</th>
-                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">到着</th>
+                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">乗車</th>
+                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">下車</th>
                                                                         <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">運転時間</th>
                                                                     </>
                                                                 )}
