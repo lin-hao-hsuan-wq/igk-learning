@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 老闆娘特製版</title>
+    <title>IGK Attendance System - 老闆娘特製除蟲版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -339,6 +339,8 @@
                                             if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                             
                                             let cellText = (actCell.text || '').trim();
+                                            
+                                            // ★ 嚴格正則：只抓取有意義的英數、平假名、片假名、漢字。過濾掉空白或純符號
                                             let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
                                             const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
                                             
@@ -373,17 +375,21 @@
                                                     return; 
                                                 }
 
-                                                if (cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却') || (isYellow && exactMatches.length > 0)) {
-                                                    blockType = 'driver';
-                                                } else if (isYellow && exactMatches.length === 0) {
-                                                    blockType = 'igkB';
+                                                // ★ 駕駛時間邏輯：有黃色或車字時
+                                                if (cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却') || isYellow) {
+                                                    if (exactMatches.length > 0) {
+                                                        blockType = 'driver_with_time'; // 黃框有數字 -> 自動填寫出發/到達
+                                                    } else {
+                                                        blockType = 'driver_empty'; // 黃框沒數字 -> 不自動填寫
+                                                    }
                                                 } else if (!isBlue && hasContent) {
                                                     blockType = 'igkA';
                                                 }
 
                                                 if (!allExtractedData[empId]) allExtractedData[empId] = {};
                                                 if (!allExtractedData[empId][dateInfo.key]) {
-                                                    allExtractedData[empId][dateInfo.key] = { minTime: 9999, maxTime: -1, exactTimes: [], driverExactTimes: [], driverMins: 0, igkAMins: 0, igkBMins: 0 };
+                                                    // 新增 driverExactTimes 陣列
+                                                    allExtractedData[empId][dateInfo.key] = { minTime: 9999, maxTime: -1, exactTimes: [], driverExactTimes: [], igkAMins: 0, igkBMins: 0 };
                                                 }
                                                 
                                                 let ed = allExtractedData[empId][dateInfo.key];
@@ -391,16 +397,17 @@
                                                 if (rowMins < ed.minTime) ed.minTime = rowMins;
                                                 if (rowMins > ed.maxTime) ed.maxTime = rowMins;
 
-                                                if (blockType === 'driver') {
-                                                    if (exactMatches.length === 0) ed.driverMins += 30;
+                                                if (blockType === 'igkA') {
+                                                    ed.igkAMins += 30;
+                                                } else if (blockType === 'igkB') {
+                                                    ed.igkBMins += 30;
                                                 }
-                                                else if (blockType === 'igkA') ed.igkAMins += 30;
-                                                else if (blockType === 'igkB') ed.igkBMins += 30;
 
+                                                // 將抓到的時間塞進對應的陣列
                                                 exactMatches.forEach(m => {
                                                     let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
                                                     ed.exactTimes.push(tMins);
-                                                    if (blockType === 'driver') {
+                                                    if (blockType === 'driver_with_time') {
                                                         ed.driverExactTimes.push(tMins);
                                                     }
                                                 });
@@ -430,17 +437,21 @@
                                                     if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                                     if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                                     
-                                                    if (data.igkAMins > 0) newData[empId][dateKey].igkA = minsToTime(data.igkAMins);
+                                                    // ★ 覆寫清空舊資料機制：如果解析是 0，就把原本快取裡的資料強制清空！
+                                                    newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
                                                     
+                                                    // ★ 駕駛出發/到達填寫機制
                                                     if (data.driverExactTimes && data.driverExactTimes.length > 0) {
                                                         let minD = Math.min(...data.driverExactTimes);
                                                         let maxD = Math.max(...data.driverExactTimes);
                                                         newData[empId][dateKey].driverDep = minsToTime(minD);
-                                                        if (maxD > minD) {
-                                                            newData[empId][dateKey].driverArr = minsToTime(maxD);
-                                                        }
-                                                    } else if (data.driverMins > 0) {
-                                                        newData[empId][dateKey].driverMins = minsToTime(data.driverMins);
+                                                        newData[empId][dateKey].driverArr = maxD > minD ? minsToTime(maxD) : '';
+                                                        newData[empId][dateKey].driverMins = ''; // 有出發到達就不填總時數
+                                                    } else {
+                                                        // 黃色框框沒數字，強制清空自動填寫，交由使用者手動輸入
+                                                        newData[empId][dateKey].driverDep = '';
+                                                        newData[empId][dateKey].driverArr = '';
+                                                        newData[empId][dateKey].driverMins = ''; 
                                                     }
 
                                                     count++;
@@ -663,7 +674,6 @@
 
                     {activePage === 'import' && (
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
-                            {/* ... (同上一版的設定區塊) ... */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
@@ -797,7 +807,6 @@
                                     </div>
                                 </div>
                                 
-                                {/* ★ 新增的老闆娘專用匯出按鈕 */}
                                 <div className="flex gap-3">
                                     <button onClick={handleExportAllExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm flex items-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -868,7 +877,6 @@
                                                         const row = attendance[currentEmp.id]?.[key] || {};
                                                         const calc = calculateRow(d, row, currentEmp);
                                                         
-                                                        // 出勤與請假統計
                                                         if (row.inTime || row.outTime) sumDays++;
                                                         if (row.leave === '有休') sumPaidLeave++;
                                                         else if (row.leave === '事欠') sumUnpaidLeave++;
