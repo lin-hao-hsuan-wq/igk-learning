@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 労務管理　</title>
+    <title>IGK 薪水</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -86,8 +86,8 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 更新快取鑰匙 v8，確保全新的「全形字元轉換與精準乗車邏輯」生效
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v8', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v10，強制載入新的防呆解析邏輯
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v10', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v8', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v10', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -267,6 +267,8 @@
                         let count = 0;
                         let autoPeriod = null;
 
+                        let allExtractedData = {};
+
                         const extractTime = (val) => {
                             if (!val) return null;
                             let v = val.value !== undefined ? val.value : val;
@@ -276,7 +278,8 @@
                                 return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
                             }
                             let str = (val.text || (typeof v === 'string' ? v : '')).trim();
-                            const m = str.match(/^(\d{1,2})[:：](\d{2})$/);
+                            // ★ 放寬時間抓取邏輯，確保 14:00~ 等附帶符號的時間也能被正確抓到
+                            const m = str.match(/(\d{1,2})[:：.](\d{2})/);
                             if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             if (v instanceof Date) {
                                 return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
@@ -314,194 +317,199 @@
                                         }
                                     }
                                 }
-                                if (matches >= 2) currentColMap = tempMap;
 
                                 let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
-                                if (activeDateRow && Object.keys(currentColMap).length > 0) {
+                                
+                                let rowTimeStr = null;
+                                for(let c=1; c<=3; c++) {
+                                    rowTimeStr = extractTime(ws.getCell(r, c));
+                                    if(rowTimeStr) break;
+                                }
+
+                                // ★ 防呆修復：只有在確認這是沒有時間的「表頭行」，或者匹配數超級多時，才去更新欄位鎖定！
+                                // 這樣就能防止資料行剛好有名字，卻把原本正確的表頭給洗掉的慘劇。
+                                if (!rowTimeStr || matches >= 4) {
+                                    if (matches >= 2) currentColMap = tempMap;
+                                }
+
+                                if (activeDateRow && Object.keys(currentColMap).length > 0 && rowTimeStr) {
                                     let dateInfo = currentDates[activeDateRow];
+                                    let rowMins = timeToMins(rowTimeStr);
                                     
-                                    let rowTimeStr = null;
-                                    for(let c=1; c<=3; c++) {
-                                        rowTimeStr = extractTime(ws.getCell(r, c));
-                                        if(rowTimeStr) break;
+                                    if (!autoPeriod) {
+                                        let tmpy = dateInfo.obj.getFullYear();
+                                        let tmpm = dateInfo.obj.getDate() >= 16 ? dateInfo.obj.getMonth() + 2 : dateInfo.obj.getMonth() + 1;
+                                        if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
+                                        autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
                                     }
-                                    
-                                    if (rowTimeStr) {
-                                        let rowMins = timeToMins(rowTimeStr);
-                                        if (!autoPeriod) {
-                                            let tmpy = dateInfo.obj.getFullYear();
-                                            let tmpm = dateInfo.obj.getDate() >= 16 ? dateInfo.obj.getMonth() + 2 : dateInfo.obj.getMonth() + 1;
-                                            if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
-                                            autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
+
+                                    Object.keys(currentColMap).forEach(c => {
+                                        const empId = currentColMap[c];
+                                        let actCell = ws.getCell(r, parseInt(c));
+                                        if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
+                                        
+                                        let rawText = '';
+                                        if (actCell.value && actCell.value.richText) {
+                                            rawText = actCell.value.richText.map(rt => rt.text).join('');
+                                        } else {
+                                            rawText = (actCell.text || '').toString();
+                                        }
+                                        rawText = rawText.trim();
+                                        
+                                        let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, function(s) {
+                                            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+                                        });
+                                        
+                                        let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
+                                        const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
+                                        
+                                        let fill = actCell.fill || {};
+                                        let hex = '';
+                                        
+                                        if (fill.type === 'pattern' && fill.pattern !== 'none') {
+                                            hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
+                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
                                         }
 
-                                        let allExtractedData = {};
+                                        let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
+                                        let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
 
-                                        Object.keys(currentColMap).forEach(c => {
-                                            const empId = currentColMap[c];
-                                            let actCell = ws.getCell(r, parseInt(c));
-                                            if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
+                                        if (hasContent || hex || theme !== -1 || indexed !== -1) {
+                                            const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965'];
+                                            let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
                                             
-                                            let rawText = (actCell.text || '').trim();
-                                            
-                                            // ★ 日文全形數字轉換器：把 ７：４５ 轉成半形的 7:45，徹底解決漏抓 Bug！
-                                            let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：]/g, function(s) {
-                                                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-                                            });
-                                            
-                                            let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
-                                            const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
-                                            
-                                            let fill = actCell.fill || {};
-                                            let hex = '';
-                                            
-                                            if (fill.type === 'pattern' && fill.pattern !== 'none') {
-                                                hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                                if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
-                                            }
+                                            const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
+                                            let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
+                                            let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
-                                            let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
-                                            let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
+                                            let blockType = 'igkB'; 
 
-                                            if (hasContent || hex || theme !== -1 || indexed !== -1) {
-                                                const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965'];
-                                                let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
-                                                
-                                                const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
-                                                let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
-                                                let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
-
-                                                let blockType = 'igkB'; 
-
-                                                if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
-                                                    if (normalizedText.includes('欠') || normalizedText.includes('休')) {
-                                                        if (!newData[empId]) newData[empId] = {};
-                                                        if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
-                                                        newData[empId][dateInfo.key].leave = normalizedText.substring(0, 10);
-                                                    }
-                                                    return; 
-                                                }
-
-                                                // 判斷是否為司機的相關字眼
-                                                let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
-                                                
-                                                if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
-                                                    blockType = 'driver_with_time'; 
-                                                } else if (isYellow || isDriverKeyword) {
-                                                    blockType = 'igkB'; // 沒數字的黃框，不填駕駛時間
-                                                } else if (!isBlue && hasContent) {
-                                                    blockType = 'igkA';
-                                                }
-
-                                                if (!allExtractedData[empId]) allExtractedData[empId] = {};
-                                                if (!allExtractedData[empId][dateInfo.key]) {
-                                                    // ★ 替駕駛時間準備專屬的收納籃
-                                                    allExtractedData[empId][dateInfo.key] = { 
-                                                        minTime: 9999, maxTime: -1, 
-                                                        exactTimes: [], 
-                                                        driverDepTimes: [], 
-                                                        driverArrTimes: [], 
-                                                        driverOtherTimes: [],
-                                                        igkAMins: 0, igkBMins: 0 
-                                                    };
-                                                }
-                                                
-                                                let ed = allExtractedData[empId][dateInfo.key];
-                                                
-                                                if (rowMins < ed.minTime) ed.minTime = rowMins;
-                                                if (rowMins > ed.maxTime) ed.maxTime = rowMins;
-
-                                                if (blockType === 'igkA') {
-                                                    ed.igkAMins += 30;
-                                                } else if (blockType === 'igkB') {
-                                                    ed.igkBMins += 30;
-                                                }
-
-                                                // ★ 精準歸類時間
-                                                exactMatches.forEach(m => {
-                                                    let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
-                                                    if (blockType === 'driver_with_time') {
-                                                        // 看到下車、到着，放進到達籃子
-                                                        if (normalizedText.includes('下車') || normalizedText.includes('到着') || normalizedText.includes('返却')) {
-                                                            ed.driverArrTimes.push(tMins);
-                                                        // 看到乗車、出発，放進出發籃子
-                                                        } else if (normalizedText.includes('乗車') || normalizedText.includes('出発')) {
-                                                            ed.driverDepTimes.push(tMins);
-                                                        } else {
-                                                            ed.driverOtherTimes.push(tMins);
-                                                        }
-                                                    } else {
-                                                        ed.exactTimes.push(tMins);
-                                                    }
-                                                });
-                                            }
-                                        });
-
-                                        Object.keys(allExtractedData).forEach(empId => {
-                                            Object.keys(allExtractedData[empId]).forEach(dateKey => {
-                                                const data = allExtractedData[empId][dateKey];
-                                                let startMins = data.minTime;
-                                                let endMins = data.maxTime + 30; 
-
-                                                if (data.exactTimes.length > 0) {
-                                                    const minExact = Math.min(...data.exactTimes);
-                                                    const maxExact = Math.max(...data.exactTimes);
-                                                    if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
-                                                    if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
-                                                }
-
-                                                if (startMins < 9999 && endMins > -1) {
+                                            if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
+                                                if (normalizedText.includes('欠') || normalizedText.includes('休')) {
                                                     if (!newData[empId]) newData[empId] = {};
-                                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
-                                                    
-                                                    let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
-                                                    let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
-                                                    
-                                                    if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
-                                                    if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
-                                                    
-                                                    newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
-                                                    
-                                                    // ★ 結算司機的乗車與下車時間
-                                                    let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
-                                                    let arr = data.driverArrTimes.length > 0 ? Math.max(...data.driverArrTimes) : null;
+                                                    if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
+                                                    newData[empId][dateInfo.key].leave = normalizedText.substring(0, 10);
+                                                }
+                                                return; 
+                                            }
 
-                                                    // 如果只有時間，沒有寫中文，系統自動防呆判斷
-                                                    if (data.driverOtherTimes.length > 0) {
-                                                        let minOther = Math.min(...data.driverOtherTimes);
-                                                        let maxOther = Math.max(...data.driverOtherTimes);
-                                                        if (dep === null && arr === null) {
-                                                            if (data.driverOtherTimes.length === 1) {
-                                                                dep = minOther; // 只有一個時間，預設放入乗車
-                                                            } else {
-                                                                dep = minOther;
-                                                                arr = maxOther;
-                                                            }
-                                                        } else if (dep === null) {
-                                                            if (minOther < arr) dep = minOther;
-                                                        } else if (arr === null) {
-                                                            if (maxOther > dep) arr = maxOther;
-                                                        }
-                                                    }
+                                            // ★ IGK A 強制關鍵字判定
+                                            let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') ||
+                                                                normalizedText.toLowerCase().includes('toe') ||
+                                                                normalizedText.toLowerCase().includes('activity') ||
+                                                                normalizedText.toLowerCase().includes('private');
 
-                                                    // 寫入最終結果 (如果沒時間，就強制清空原本錯誤的快取資料)
-                                                    if (dep !== null || arr !== null) {
-                                                        newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
-                                                        newData[empId][dateKey].driverArr = arr !== null ? minsToTime(arr) : '';
-                                                        newData[empId][dateKey].driverMins = ''; 
+                                            let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
+                                            
+                                            if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
+                                                blockType = 'driver_with_time'; 
+                                            } else if (isYellow || isDriverKeyword) {
+                                                blockType = 'igkB'; 
+                                            } else if (isIgkaKeyword || (!isBlue && hasContent)) {
+                                                blockType = 'igkA';
+                                            }
+
+                                            if (!allExtractedData[empId]) allExtractedData[empId] = {};
+                                            if (!allExtractedData[empId][dateInfo.key]) {
+                                                allExtractedData[empId][dateInfo.key] = { 
+                                                    minTime: 9999, maxTime: -1, 
+                                                    exactTimes: [], 
+                                                    driverDepTimes: [], 
+                                                    driverArrTimes: [], 
+                                                    driverOtherTimes: [],
+                                                    igkAMins: 0, igkBMins: 0 
+                                                };
+                                            }
+                                            
+                                            let ed = allExtractedData[empId][dateInfo.key];
+                                            
+                                            if (rowMins < ed.minTime) ed.minTime = rowMins;
+                                            if (rowMins > ed.maxTime) ed.maxTime = rowMins;
+
+                                            if (blockType === 'igkA') {
+                                                ed.igkAMins += 30;
+                                            } else if (blockType === 'igkB') {
+                                                ed.igkBMins += 30;
+                                            }
+
+                                            exactMatches.forEach(m => {
+                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                if (blockType === 'driver_with_time') {
+                                                    if (normalizedText.includes('下車') || normalizedText.includes('到着') || normalizedText.includes('返却')) {
+                                                        ed.driverArrTimes.push(tMins);
+                                                    } else if (normalizedText.includes('乗車') || normalizedText.includes('出発')) {
+                                                        ed.driverDepTimes.push(tMins);
                                                     } else {
-                                                        newData[empId][dateKey].driverDep = '';
-                                                        newData[empId][dateKey].driverArr = '';
-                                                        newData[empId][dateKey].driverMins = ''; 
+                                                        ed.driverOtherTimes.push(tMins);
                                                     }
-
-                                                    count++;
+                                                } else {
+                                                    ed.exactTimes.push(tMins);
                                                 }
                                             });
-                                        });
-                                    }
+                                        }
+                                    });
                                 }
                             }
+                        });
+
+                        Object.keys(allExtractedData).forEach(empId => {
+                            Object.keys(allExtractedData[empId]).forEach(dateKey => {
+                                const data = allExtractedData[empId][dateKey];
+                                let startMins = data.minTime;
+                                let endMins = data.maxTime + 30; 
+
+                                if (data.exactTimes.length > 0) {
+                                    const minExact = Math.min(...data.exactTimes);
+                                    const maxExact = Math.max(...data.exactTimes);
+                                    if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
+                                    if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                }
+
+                                if (startMins < 9999 && endMins > -1) {
+                                    if (!newData[empId]) newData[empId] = {};
+                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
+                                    
+                                    let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
+                                    let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
+                                    
+                                    if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
+                                    if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
+                                    
+                                    newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
+                                    
+                                    let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
+                                    let arr = data.driverArrTimes.length > 0 ? Math.max(...data.driverArrTimes) : null;
+
+                                    if (data.driverOtherTimes.length > 0) {
+                                        let minOther = Math.min(...data.driverOtherTimes);
+                                        let maxOther = Math.max(...data.driverOtherTimes);
+                                        if (dep === null && arr === null) {
+                                            if (data.driverOtherTimes.length === 1) {
+                                                dep = minOther; 
+                                            } else {
+                                                dep = minOther;
+                                                arr = maxOther;
+                                            }
+                                        } else if (dep === null) {
+                                            if (minOther < arr) dep = minOther;
+                                        } else if (arr === null) {
+                                            if (maxOther > dep) arr = maxOther;
+                                        }
+                                    }
+
+                                    if (dep !== null || arr !== null) {
+                                        newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
+                                        newData[empId][dateKey].driverArr = arr !== null ? minsToTime(arr) : '';
+                                        newData[empId][dateKey].driverMins = ''; 
+                                    } else {
+                                        newData[empId][dateKey].driverDep = '';
+                                        newData[empId][dateKey].driverArr = '';
+                                        newData[empId][dateKey].driverMins = ''; 
+                                    }
+
+                                    count++;
+                                }
+                            });
                         });
 
                         if (count > 0) {
@@ -579,9 +587,12 @@
                     }
                 }
 
+                // ★ IGK B 計算大修復：如果沒有排班 (actualShiftIn 空值)，就拿實際打卡的 inTime 當起點！
                 let totalWorkMins = 0;
                 if (inTime && outTime && !leave) {
-                    totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
+                    let startMins = timeToMins(actualShiftIn || inTime);
+                    let endMins = timeToMins(outTime);
+                    totalWorkMins = Math.max(0, endMins - startMins - breakMins);
                 } else if (shiftIn && shiftOut && emp.type === 'full' && !leave) {
                     totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(shiftIn) - breakMins);
                 }
