@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK</title>
+    <title>IGK Attendance System - 絕對防禦無敵版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -82,15 +82,43 @@
             catch(e) { return defaultVal; }
         };
 
+        // ★ 老將的絕對防禦引擎：無論遇到什麼妖魔鬼怪的 Null 或損壞公式，一律攔截化解！
+        const getSafeText = (cell) => {
+            if (!cell || cell.value === null || cell.value === undefined) return '';
+            try {
+                const v = cell.value;
+                if (typeof v === 'string') return v;
+                if (typeof v === 'number') return String(v);
+                if (v.richText) return v.richText.map(rt => rt.text || '').join('');
+                if (v.formula) {
+                    if (v.result !== undefined && v.result !== null) {
+                        if (v.result.error) return '';
+                        if (v.result instanceof Date) return `${v.result.getFullYear()}/${v.result.getMonth() + 1}/${v.result.getDate()}`;
+                        return String(v.result);
+                    }
+                    return '';
+                }
+                if (v instanceof Date) {
+                    return `${v.getFullYear()}/${v.getMonth() + 1}/${v.getDate()}`;
+                }
+                if (typeof v === 'object') {
+                    if (v.text) return String(v.text);
+                    return '';
+                }
+                return String(v);
+            } catch (e) {
+                return '';
+            }
+        };
+
         function App() {
-            // ★ 更新快取鑰匙 v21
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v21', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v21', 'rokko')); 
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v21', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v22', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v22', 'rokko')); 
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v22', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period_v21', null);
+                const saved = loadSavedState('igk_pro_period_v22', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -99,23 +127,23 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v21', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v21', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v21', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v21', employees[0].id)); 
-            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage_v21', 1200));
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v22', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v22', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v22', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v22', employees[0].id)); 
+            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage_v22', 1200));
 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            useEffect(() => localStorage.setItem('igk_pro_activePage_v21', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v21', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v21', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period_v21', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance_v21', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v21', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v21', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_hourlyWage_v21', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v21', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_activePage_v22', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v22', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v22', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period_v22', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance_v22', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v22', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v22', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_hourlyWage_v22', JSON.stringify(hourlyWage)), [hourlyWage]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v22', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -274,21 +302,24 @@
 
                         let allExtractedData = {};
 
-                        const extractTime = (val) => {
-                            if (!val) return null;
-                            let v = val.value !== undefined ? val.value : val;
+                        const extractTime = (cell) => {
+                            if (!cell || cell.value === null || cell.value === undefined) return null;
+                            let v = cell.value;
                             if (v && v.result !== undefined) v = v.result;
+
                             if (typeof v === 'number' && v > 0 && v < 1) {
                                 let tm = Math.round(v * 24 * 60);
                                 return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
                             }
-                            // ★ 防禦 null 錯誤：使用 String() 強制轉型
-                            let str = String(val.text || (typeof v === 'string' ? v : '')).trim();
-                            const m = str.match(/^(\d{1,2})[:：.](\d{2})$/);
-                            if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             if (v instanceof Date) {
                                 return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
                             }
+                            
+                            // ★ 使用新的防禦引擎
+                            let str = getSafeText(cell).trim();
+                            const m = str.match(/^(\d{1,2})[:：.](\d{2})$/);
+                            if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+                            
                             return null;
                         };
 
@@ -299,7 +330,8 @@
 
                             for (let r = 1; r <= ws.rowCount; r++) {
                                 for (let c = 1; c <= 10; c++) {
-                                    let t = String(ws.getCell(r, c).text || '').replace(/\s+/g, '');
+                                    // ★ 使用新的防禦引擎
+                                    let t = getSafeText(ws.getCell(r, c)).replace(/\s+/g, '');
                                     const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
                                     if (m) {
                                         let y = new Date().getFullYear();
@@ -313,7 +345,8 @@
                                 let matches = 0;
                                 let tempMap = {};
                                 for (let c = 1; c <= 40; c++) {
-                                    let v = String(ws.getCell(r, c).text || '').toLowerCase().replace(/\s+/g, '');
+                                    // ★ 使用新的防禦引擎
+                                    let v = getSafeText(ws.getCell(r, c)).toLowerCase().replace(/\s+/g, '');
                                     if (v.length >= 1) {
                                         for (const emp of employees) { 
                                             let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
@@ -352,14 +385,8 @@
                                         let actCell = ws.getCell(r, parseInt(c));
                                         if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                         
-                                        // ★ 防禦 null 錯誤
-                                        let rawText = '';
-                                        if (actCell.value && actCell.value.richText) {
-                                            rawText = actCell.value.richText.map(rt => rt.text).join('');
-                                        } else {
-                                            rawText = String(actCell.text || '');
-                                        }
-                                        rawText = rawText.trim();
+                                        // ★ 使用新的防禦引擎
+                                        let rawText = getSafeText(actCell).trim();
                                         
                                         let fill = actCell.fill || {};
                                         let hex = '';
@@ -384,8 +411,8 @@
                                                 let checkIndexed = checkFill.fgColor?.indexed ?? checkFill.bgColor?.indexed ?? -1;
                                                 
                                                 if (checkHex === hex && checkTheme === theme && checkIndexed === indexed) {
-                                                    // ★ 防禦 null 錯誤
-                                                    let text = (checkCell.value && checkCell.value.richText) ? checkCell.value.richText.map(rt=>rt.text).join('') : String(checkCell.text || '');
+                                                    // ★ 使用新的防禦引擎
+                                                    let text = getSafeText(checkCell);
                                                     if (text.trim()) {
                                                         borrowText = text.trim();
                                                         break;
@@ -418,6 +445,7 @@
                                         const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; 
                                         const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0', '9CC2E5']; 
                                         const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; 
+                                        const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE', 'CCECFF'];
                                         
                                         let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
                                         let isMagenta = hex && magentaHexes.some(m => hex.includes(m));
@@ -425,6 +453,7 @@
                                         let isCyan = hex && cyanHexes.some(c => hex.includes(c));
                                         let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
                                         
+                                        let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
                                         let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
                                         let blockType = 'igkB'; 
@@ -445,16 +474,12 @@
                                         if (hasContent) {
                                             if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                 blockType = 'driver_with_time'; 
-                                            } else if (isYellow && !hasEnglish && !isDriverKeyword) {
-                                                blockType = 'igkB'; 
-                                            } else if (hasEnglish || isIgkaKeyword) {
-                                                if (isIgkaKeyword || isMagenta || isPink || isCyan || isYellow) {
-                                                    blockType = 'igkA';
-                                                } else if (isJewelBlue) {
-                                                    blockType = (normalizedText.toLowerCase().includes('private') || isIgkaKeyword) ? 'igkA' : 'igkB';
-                                                } else {
-                                                    blockType = 'igkB';
-                                                }
+                                            } else if (isLightBlue) {
+                                                blockType = 'igkB';
+                                            } else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) {
+                                                blockType = (hasEnglish || isIgkaKeyword) ? 'igkA' : 'igkB';
+                                            } else if (isIgkaKeyword) {
+                                                blockType = 'igkA';
                                             } else {
                                                 blockType = 'igkB';
                                             }
