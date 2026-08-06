@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 全色彩制霸版</title>
+    <title>IGK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -86,8 +86,8 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 更新快取鑰匙 v16，強制載入全新的調色盤引擎
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v16', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v18，確保新的色彩鐵律生效
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v18', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v16', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v18', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -412,20 +412,21 @@
                                         let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
                                         const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
                                         
-                                        // ★ 老將精準調色盤
                                         const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'];
-                                        const magentaHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4']; // 名谷校的深粉色
-                                        const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; // 一般粉色
-                                        const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0']; // 水藍色
-                                        const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; // 寶石藍
-                                        const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE']; // Taka 一般的淺藍色
+                                        const magentaHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4']; 
+                                        const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; 
+                                        const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0']; 
+                                        const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; 
+                                        const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE', 'CCECFF'];
                                         
                                         let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
                                         let isMagenta = hex && magentaHexes.some(m => hex.includes(m));
                                         let isPink = hex && pinkHexes.some(p => hex.includes(p));
                                         let isCyan = hex && cyanHexes.some(c => hex.includes(c));
                                         let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
-                                        let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
+                                        
+                                        // ★ 淺藍色 (IGK B 專用藍)
+                                        let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
                                         
                                         let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
@@ -447,20 +448,17 @@
                                         if (hasContent) {
                                             if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                 blockType = 'driver_with_time'; 
-                                            } else if (isYellow && !hasEnglish && !isDriverKeyword) {
-                                                blockType = 'igkB'; 
-                                            } else if (hasEnglish || isIgkaKeyword) {
-                                                // ★ 終極語意與色彩鐵律
-                                                if (isIgkaKeyword || isMagenta || isPink || isCyan || isYellow) {
-                                                    blockType = 'igkA';
-                                                } else if (isJewelBlue) {
-                                                    // 寶石藍但沒有寫 private 等關鍵字，視為一般
-                                                    blockType = 'igkB';
-                                                } else {
-                                                    // 淺藍色或其他色
-                                                    blockType = 'igkB';
-                                                }
+                                            } else if (isLightBlue) {
+                                                // ★ 鐵律 1：只要是淺藍色(IGKB藍)，不管寫什麼都是 IGKB
+                                                blockType = 'igkB';
+                                            } else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) {
+                                                // ★ 鐵律 2：粉/黃/水藍/寶石藍，有英文字就是 IGKA
+                                                blockType = (hasEnglish || isIgkaKeyword) ? 'igkA' : 'igkB';
+                                            } else if (isIgkaKeyword) {
+                                                // 沒抓到明確顏色，但有 Activity 等字眼
+                                                blockType = 'igkA';
                                             } else {
+                                                // 剩下全都是 IGKB
                                                 blockType = 'igkB';
                                             }
                                         } else {
