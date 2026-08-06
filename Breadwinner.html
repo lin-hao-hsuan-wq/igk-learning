@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK</title>
+    <title>IGK Attendance System - 多段班表神級解析版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -86,8 +86,8 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 更新快取鑰匙 v12，確保字典擴充生效
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v12', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v13，強制載入新的多段班表邏輯
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v13', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v12', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v13', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -228,7 +228,6 @@
                         let outDist = Math.min(getClosestDist(block, '退', timeLocalIdx), getClosestDist(block, 'out', timeLocalIdx));
                         let inDist = Math.min(getClosestDist(block, '入', timeLocalIdx), getClosestDist(block, 'in', timeLocalIdx));
                         
-                        // ★ 文字貼上防呆：加入「返」的到達判定
                         let depDist = Math.min(getClosestDist(block, '乗', timeLocalIdx), getClosestDist(block, '出', timeLocalIdx));
                         let arrDist = Math.min(getClosestDist(block, '降', timeLocalIdx), getClosestDist(block, '下', timeLocalIdx), getClosestDist(block, '到', timeLocalIdx), getClosestDist(block, '返', timeLocalIdx));
 
@@ -399,7 +398,6 @@
                                                 return; 
                                             }
 
-                                            // ★ 完美擴充包含「返却」的關鍵字
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
                                             
                                             let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') ||
@@ -450,14 +448,12 @@
                                                 ed.igkBMins += 30;
                                             }
 
-                                            // ★ 上下車精準判斷
                                             exactMatches.forEach(m => {
                                                 let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
                                                 if (blockType === 'driver_with_time') {
                                                     const matchIndex = m.index;
                                                     const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
                                                     
-                                                    // ★ 把返却加入下車/到達陣列
                                                     if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
                                                         ed.driverArrTimes.push(tMins);
                                                     } else if (context.includes('乗車') || context.includes('出発')) {
@@ -500,31 +496,54 @@
                                     
                                     newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
                                     
-                                    let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
-                                    let arr = data.driverArrTimes.length > 0 ? Math.max(...data.driverArrTimes) : null;
+                                    // ★ 終極多段排班外掛引擎：完美處理 Taka 一天開兩次車的狀況！
+                                    let allDriver = [...data.driverDepTimes, ...data.driverArrTimes, ...data.driverOtherTimes].sort((a,b)=>a-b);
+                                    allDriver = [...new Set(allDriver)].sort((a,b)=>a-b);
 
-                                    if (data.driverOtherTimes.length > 0) {
-                                        let minOther = Math.min(...data.driverOtherTimes);
-                                        let maxOther = Math.max(...data.driverOtherTimes);
-                                        if (dep === null && arr === null) {
-                                            if (data.driverOtherTimes.length === 1) {
-                                                dep = minOther; 
+                                    if (allDriver.length >= 3) {
+                                        // 有超過 2 個駕駛時間點 (多段班表)
+                                        let totalMins = 0;
+                                        let pairStrs = [];
+                                        for(let i=0; i < allDriver.length; i+=2) {
+                                            let d = allDriver[i];
+                                            let a = allDriver[i+1];
+                                            if (a !== undefined) {
+                                                totalMins += (a - d);
+                                                pairStrs.push(`${minsToTime(d)}-${minsToTime(a)}`);
                                             } else {
-                                                dep = minOther;
-                                                arr = maxOther;
+                                                pairStrs.push(`${minsToTime(d)}-?`);
                                             }
-                                        } else if (dep === null) {
-                                            if (minOther < arr) dep = minOther;
-                                        } else if (arr === null) {
-                                            if (maxOther > dep) arr = maxOther;
                                         }
-                                    }
+                                        // 欄位留空，總時間算好放入運転時間，並自動把紀錄加到備註欄
+                                        newData[empId][dateKey].driverDep = '';
+                                        newData[empId][dateKey].driverArr = '';
+                                        newData[empId][dateKey].driverMins = minsToTime(totalMins);
 
-                                    if (dep !== null || arr !== null) {
-                                        newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
-                                        newData[empId][dateKey].driverArr = arr !== null ? minsToTime(arr) : '';
-                                        newData[empId][dateKey].driverMins = ''; 
+                                        let oldRm = newData[empId][dateKey].remark || '';
+                                        let newRm = `🚗${pairStrs.join(', ')}`;
+                                        if (!oldRm.includes(newRm)) {
+                                            newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
+                                        }
+                                    } else if (allDriver.length === 2) {
+                                        // 正常的一段班表
+                                        newData[empId][dateKey].driverDep = minsToTime(allDriver[0]);
+                                        newData[empId][dateKey].driverArr = minsToTime(allDriver[1]);
+                                        newData[empId][dateKey].driverMins = '';
+                                    } else if (allDriver.length === 1) {
+                                        // 只有一個時間 (防呆填入)
+                                        if (data.driverDepTimes.length > 0) {
+                                            newData[empId][dateKey].driverDep = minsToTime(allDriver[0]);
+                                            newData[empId][dateKey].driverArr = '';
+                                        } else if (data.driverArrTimes.length > 0) {
+                                            newData[empId][dateKey].driverDep = '';
+                                            newData[empId][dateKey].driverArr = minsToTime(allDriver[0]);
+                                        } else {
+                                            newData[empId][dateKey].driverDep = minsToTime(allDriver[0]);
+                                            newData[empId][dateKey].driverArr = '';
+                                        }
+                                        newData[empId][dateKey].driverMins = '';
                                     } else {
+                                        // 沒數字的黃框
                                         newData[empId][dateKey].driverDep = '';
                                         newData[empId][dateKey].driverArr = '';
                                         newData[empId][dateKey].driverMins = ''; 
@@ -625,6 +644,8 @@
                 let dDepMins = timeToMins(driverDep);
                 let dArrMins = timeToMins(driverArr);
                 let dCalcMins = (dArrMins > dDepMins) ? dArrMins - dDepMins : 0;
+                
+                // ★ 系統會優先採用直接寫在 driverMins 裡的時數 (針對多段排班)
                 const driverMins = row.driverMins ? timeToMins(row.driverMins) : dCalcMins;
 
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
@@ -654,7 +675,7 @@
             const handleExportAllExcel = async () => {
                 const wb = new ExcelJS.Workbook();
                 const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
-                if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！(該月份尚無資料)');
+                if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！');
 
                 const wsSummary = wb.addWorksheet('給与・勤怠まとめ');
                 wsSummary.columns = [
@@ -889,7 +910,7 @@
                                 </h2>
                                 <div className="flex gap-4 bg-gray-50 p-4 rounded-xl">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1">アルバイト基本時給 (円)</label>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">アルバイト時給 (円)</label>
                                         <input type="number" value={hourlyWage} onChange={e=>setHourlyWage(Number(e.target.value))} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/>
                                     </div>
                                 </div>
