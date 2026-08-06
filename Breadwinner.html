@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Attendance System - 色彩精準辨識版</title>
+    <title>IGK Attendance System - 全色彩制霸版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -86,8 +86,8 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 更新快取鑰匙 v15，強制套用色彩精準辨識邏輯
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v15', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ 更新快取鑰匙 v16，強制載入全新的調色盤引擎
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v16', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
@@ -117,7 +117,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v15', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v16', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -370,7 +370,6 @@
                                         let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
                                         let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
 
-                                        // 借文字系統 (解決 Activity 只有一格有字的問題)
                                         let borrowText = '';
                                         if (!rawText && (hex || theme !== -1 || indexed !== -1)) {
                                             for (let step = 1; step <= 8; step++) {
@@ -413,113 +412,110 @@
                                         let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
                                         const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
                                         
-                                        // ★ 老將的精準色彩資料庫
-                                        let isYellow = false;
-                                        let isIgkaColor = false;
+                                        // ★ 老將精準調色盤
+                                        const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'];
+                                        const magentaHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4']; // 名谷校的深粉色
+                                        const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; // 一般粉色
+                                        const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0']; // 水藍色
+                                        const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; // 寶石藍
+                                        const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE']; // Taka 一般的淺藍色
                                         
-                                        if (hex || theme !== -1 || indexed !== -1) {
-                                            // 1. 定義 IGKA 特殊顏色 (粉、黃、水藍、寶石藍)
-                                            const igkaHexes = [
-                                                'FF99CC', 'FFC0CB', 'FF66B2', 'FF00FF', 'FF3399', 'FF6699', 'FF99FF', 'FF0066', 'FF33CC', 'FFC4D9', // 粉
-                                                '00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', // 水藍
-                                                '0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF'  // 寶石藍
-                                            ];
-                                            isIgkaColor = (hex && igkaHexes.some(c => hex.includes(c))) || theme === 8 || indexed === 8 || indexed === 33 || indexed === 42;
-                                            
-                                            isYellow = (hex && ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'].some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
-                                            
-                                            // 黃色也是 IGKA 顏色的一環
-                                            if (isYellow) isIgkaColor = true;
+                                        let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
+                                        let isMagenta = hex && magentaHexes.some(m => hex.includes(m));
+                                        let isPink = hex && pinkHexes.some(p => hex.includes(p));
+                                        let isCyan = hex && cyanHexes.some(c => hex.includes(c));
+                                        let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
+                                        let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
+                                        
+                                        let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
-                                            // 2. 定義 灰色與假單
-                                            let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
+                                        let blockType = 'igkB'; 
 
-                                            let blockType = 'igkB'; 
-
-                                            if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
-                                                if (normalizedText.includes('欠') || normalizedText.includes('休')) {
-                                                    if (!newData[empId]) newData[empId] = {};
-                                                    if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
-                                                    newData[empId][dateInfo.key].leave = normalizedText.substring(0, 10);
-                                                }
-                                                return; 
+                                        if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
+                                            if (normalizedText.includes('欠') || normalizedText.includes('休')) {
+                                                if (!newData[empId]) newData[empId] = {};
+                                                if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
+                                                newData[empId][dateInfo.key].leave = normalizedText.substring(0, 10);
                                             }
+                                            return; 
+                                        }
 
-                                            // 3. 分析文字與顏色
-                                            let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
-                                            let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') || normalizedText.toLowerCase().includes('toe') || normalizedText.toLowerCase().includes('activity') || normalizedText.toLowerCase().includes('private');
-                                            let hasEnglish = /[a-zA-Z]/.test(normalizedText);
+                                        let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
+                                        let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') || normalizedText.toLowerCase().includes('toe') || normalizedText.toLowerCase().includes('activity') || normalizedText.toLowerCase().includes('private');
+                                        let hasEnglish = /[a-zA-Z]/.test(normalizedText);
 
-                                            if (hasContent) {
-                                                if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
-                                                    blockType = 'driver_with_time'; 
-                                                } else if (isYellow && !hasEnglish && !isDriverKeyword) {
-                                                    blockType = 'igkB'; // 黃色但沒字沒司機，當一般班表
-                                                } else if (hasEnglish) {
-                                                    // ★ 英文字 + 色彩分流鐵律
-                                                    if (isIgkaColor || isIgkaKeyword) {
-                                                        blockType = 'igkA';
-                                                    } else {
-                                                        blockType = 'igkB'; // 只要不是粉/黃/水藍/寶石藍，有英文字就是藍色的 IGKB
-                                                    }
+                                        if (hasContent) {
+                                            if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
+                                                blockType = 'driver_with_time'; 
+                                            } else if (isYellow && !hasEnglish && !isDriverKeyword) {
+                                                blockType = 'igkB'; 
+                                            } else if (hasEnglish || isIgkaKeyword) {
+                                                // ★ 終極語意與色彩鐵律
+                                                if (isIgkaKeyword || isMagenta || isPink || isCyan || isYellow) {
+                                                    blockType = 'igkA';
+                                                } else if (isJewelBlue) {
+                                                    // 寶石藍但沒有寫 private 等關鍵字，視為一般
+                                                    blockType = 'igkB';
                                                 } else {
-                                                    // 沒英文字也沒司機關鍵字
+                                                    // 淺藍色或其他色
                                                     blockType = 'igkB';
                                                 }
                                             } else {
-                                                // 顏色自動繼承系統 (對付沒寫字的連續色塊)
-                                                let stateKey = `${empId}_${dateInfo.key}`;
-                                                let prev = prevCellState[stateKey];
-                                                if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && (hex || theme !== -1 || indexed !== -1)) {
-                                                    blockType = prev.blockType;
-                                                } else {
-                                                    blockType = 'igkB';
-                                                }
+                                                blockType = 'igkB';
                                             }
-                                            
-                                            prevCellState[`${empId}_${dateInfo.key}`] = { hex, theme, indexed, blockType };
-
-                                            if (!allExtractedData[empId]) allExtractedData[empId] = {};
-                                            if (!allExtractedData[empId][dateInfo.key]) {
-                                                allExtractedData[empId][dateInfo.key] = { 
-                                                    minTime: 9999, maxTime: -1, 
-                                                    exactTimes: [], 
-                                                    driverDepTimes: [], 
-                                                    driverArrTimes: [], 
-                                                    driverOtherTimes: [],
-                                                    igkAMins: 0, igkBMins: 0 
-                                                };
+                                        } else {
+                                            // 顏色自動繼承 (對付 Activity 等沒寫字的連續色塊)
+                                            let stateKey = `${empId}_${dateInfo.key}`;
+                                            let prev = prevCellState[stateKey];
+                                            if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && (hex || theme !== -1 || indexed !== -1)) {
+                                                blockType = prev.blockType;
+                                            } else {
+                                                blockType = 'igkB';
                                             }
-                                            
-                                            let ed = allExtractedData[empId][dateInfo.key];
-                                            
-                                            if (rowMins < ed.minTime) ed.minTime = rowMins;
-                                            if (rowMins > ed.maxTime) ed.maxTime = rowMins;
-
-                                            if (blockType === 'igkA') {
-                                                ed.igkAMins += 30;
-                                            } else if (blockType === 'igkB') {
-                                                ed.igkBMins += 30;
-                                            }
-
-                                            exactMatches.forEach(m => {
-                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
-                                                if (blockType === 'driver_with_time') {
-                                                    const matchIndex = m.index;
-                                                    const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
-                                                    
-                                                    if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
-                                                        ed.driverArrTimes.push(tMins);
-                                                    } else if (context.includes('乗車') || context.includes('出発')) {
-                                                        ed.driverDepTimes.push(tMins);
-                                                    } else {
-                                                        ed.driverOtherTimes.push(tMins);
-                                                    }
-                                                } else {
-                                                    ed.exactTimes.push(tMins);
-                                                }
-                                            });
                                         }
+                                        
+                                        prevCellState[`${empId}_${dateInfo.key}`] = { hex, theme, indexed, blockType };
+
+                                        if (!allExtractedData[empId]) allExtractedData[empId] = {};
+                                        if (!allExtractedData[empId][dateInfo.key]) {
+                                            allExtractedData[empId][dateInfo.key] = { 
+                                                minTime: 9999, maxTime: -1, 
+                                                exactTimes: [], 
+                                                driverDepTimes: [], 
+                                                driverArrTimes: [], 
+                                                driverOtherTimes: [],
+                                                igkAMins: 0, igkBMins: 0 
+                                            };
+                                        }
+                                        
+                                        let ed = allExtractedData[empId][dateInfo.key];
+                                        
+                                        if (rowMins < ed.minTime) ed.minTime = rowMins;
+                                        if (rowMins > ed.maxTime) ed.maxTime = rowMins;
+
+                                        if (blockType === 'igkA') {
+                                            ed.igkAMins += 30;
+                                        } else if (blockType === 'igkB') {
+                                            ed.igkBMins += 30;
+                                        }
+
+                                        exactMatches.forEach(m => {
+                                            let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                            if (blockType === 'driver_with_time') {
+                                                const matchIndex = m.index;
+                                                const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
+                                                
+                                                if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
+                                                    ed.driverArrTimes.push(tMins);
+                                                } else if (context.includes('乗車') || context.includes('出発')) {
+                                                    ed.driverDepTimes.push(tMins);
+                                                } else {
+                                                    ed.driverOtherTimes.push(tMins);
+                                                }
+                                            } else {
+                                                ed.exactTimes.push(tMins);
+                                            }
+                                        });
                                     });
                                 }
                             }
