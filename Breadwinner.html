@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK</title>
+    <title>IGK Attendance System - 究極防呆清快取版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -83,16 +83,14 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
-            
-            // ★ 更新快取鑰匙 v18，確保新的色彩鐵律生效
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v18', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
-
+            // ★ 快取鑰匙全面更新至 v20！保證強制洗掉所有舊錯誤資料！
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v20', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v20', 'rokko')); 
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v20', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period', null);
+                const saved = loadSavedState('igk_pro_period_v20', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -101,23 +99,23 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp', employees[0].id)); 
-            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage', 1200));
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v20', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v20', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v20', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v20', employees[0].id)); 
+            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage_v20', 1200));
 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v18', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_activePage_v20', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v20', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v20', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period_v20', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance_v20', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v20', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v20', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_hourlyWage_v20', JSON.stringify(hourlyWage)), [hourlyWage]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v20', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -365,7 +363,7 @@
                                         let hex = '';
                                         if (fill.type === 'pattern' && fill.pattern !== 'none') {
                                             hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+                                            if (hex && hex.length === 8 && hex.startsWith('FF')) hex = hex.substring(2);
                                         }
                                         let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
                                         let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
@@ -379,7 +377,7 @@
                                                 if (checkCell.isMerged) checkCell = ws.getCell(checkCell.master.address);
                                                 let checkFill = checkCell.fill || {};
                                                 let checkHex = (checkFill.type === 'pattern' && checkFill.pattern !== 'none') ? (checkFill.fgColor?.argb || checkFill.bgColor?.argb || '').toUpperCase() : '';
-                                                if (checkHex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(checkHex)) checkHex = '';
+                                                if (checkHex && checkHex.length === 8 && checkHex.startsWith('FF')) checkHex = checkHex.substring(2);
                                                 let checkTheme = checkFill.fgColor?.theme ?? checkFill.bgColor?.theme ?? -1;
                                                 let checkIndexed = checkFill.fgColor?.indexed ?? checkFill.bgColor?.indexed ?? -1;
                                                 
@@ -412,23 +410,12 @@
                                         let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
                                         const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
                                         
-                                        const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'];
-                                        const magentaHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4']; 
-                                        const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; 
-                                        const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0']; 
-                                        const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; 
-                                        const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE', 'CCECFF'];
-                                        
-                                        let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
-                                        let isMagenta = hex && magentaHexes.some(m => hex.includes(m));
-                                        let isPink = hex && pinkHexes.some(p => hex.includes(p));
-                                        let isCyan = hex && cyanHexes.some(c => hex.includes(c));
-                                        let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
-                                        
-                                        // ★ 淺藍色 (IGK B 專用藍)
-                                        let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
-                                        
-                                        let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
+                                        // ★ 老將最精準色彩辨識器
+                                        const isYellow = (hex && ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'].some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
+                                        const isPink = (hex && ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9', 'FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4', 'FCE4D6'].some(p => hex.includes(p)));
+                                        const isCyan = (hex && ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0', '9CC2E5'].some(c => hex.includes(c)));
+                                        const isJewelBlue = (hex && ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF'].some(b => hex.includes(b)));
+                                        const isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
                                         let blockType = 'igkB'; 
 
@@ -441,24 +428,26 @@
                                             return; 
                                         }
 
-                                        let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
-                                        let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') || normalizedText.toLowerCase().includes('toe') || normalizedText.toLowerCase().includes('activity') || normalizedText.toLowerCase().includes('private');
+                                        let isDriverKeyword = /乗車|下車|降車|出発|到着|車|返却/.test(normalizedText);
+                                        let isIgkaKeyword = /kids|toe|activity|private/i.test(normalizedText);
                                         let hasEnglish = /[a-zA-Z]/.test(normalizedText);
 
                                         if (hasContent) {
                                             if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                 blockType = 'driver_with_time'; 
-                                            } else if (isLightBlue) {
-                                                // ★ 鐵律 1：只要是淺藍色(IGKB藍)，不管寫什麼都是 IGKB
-                                                blockType = 'igkB';
-                                            } else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) {
-                                                // ★ 鐵律 2：粉/黃/水藍/寶石藍，有英文字就是 IGKA
-                                                blockType = (hasEnglish || isIgkaKeyword) ? 'igkA' : 'igkB';
-                                            } else if (isIgkaKeyword) {
-                                                // 沒抓到明確顏色，但有 Activity 等字眼
-                                                blockType = 'igkA';
+                                            } else if (isYellow && !hasEnglish && !isDriverKeyword) {
+                                                blockType = 'igkB'; 
+                                            } else if (hasEnglish || isIgkaKeyword) {
+                                                // ★ 色彩與關鍵字終極鐵律
+                                                if (isPink || isCyan || isYellow) {
+                                                    blockType = 'igkA';
+                                                } else if (isJewelBlue) {
+                                                    blockType = (normalizedText.toLowerCase().includes('private') || isIgkaKeyword) ? 'igkA' : 'igkB';
+                                                } else {
+                                                    // 如果不是粉、黃、水藍、寶石藍，一律強制判為 IGKB (如 Taka 的淺藍色)
+                                                    blockType = 'igkB';
+                                                }
                                             } else {
-                                                // 剩下全都是 IGKB
                                                 blockType = 'igkB';
                                             }
                                         } else {
@@ -542,6 +531,7 @@
                                     if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                     if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                     
+                                    // ★ 每次解析必定覆寫該日的這五個欄位，保證不會有幽靈快取殘留！
                                     newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
                                     
                                     let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
