@@ -320,9 +320,34 @@
                         };
 
                         wb.worksheets.forEach(ws => {
-                            if (activeLocation === 'rokko') {
+                            // ==========================================
+                            // 📍 真正的自動判定：檢查 Excel 實體結構
+                            // ==========================================
+                            let layoutType = 'rokko'; // 預設為六甲校結構
+                            let horizontalDates = 0;
+                            
+                            // 掃描前 8 列尋找橫向展開的合併日期，如果有多個，就是名谷校排版
+                            for (let c = 1; c <= 30; c++) {
+                                for (let r = 1; r <= 8; r++) {
+                                    let cell = ws.getCell(r, c);
+                                    if (cell.isMerged) cell = ws.getCell(cell.master.address);
+                                    
+                                    let t = getSafeText(cell).replace(/\s+/g, '');
+                                    if (t.match(/^(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?$/)) {
+                                        horizontalDates++;
+                                        break; 
+                                    }
+                                }
+                            }
+                            
+                            // 橫向找到 3 個以上日期，確認為名谷校直向結構
+                            if (horizontalDates >= 3) {
+                                layoutType = 'myodani';
+                            }
+
+                            if (layoutType === 'rokko') {
                                 // ==========================================
-                                // 📍 六甲校 (橫向列) 解析引擎
+                                // 📍 六甲校 (橫向列) 解析引擎 (還原 100% 成功邏輯)
                                 // ==========================================
                                 let currentDates = {}; 
                                 let currentColMap = {};
@@ -348,8 +373,8 @@
                                         let v = getSafeText(ws.getCell(r, c)).toLowerCase().replace(/\s+/g, '');
                                         if (v.length >= 1) {
                                             for (const emp of employees) { 
-                                                // 六甲校解析時，搜尋所屬為 rokko 或 both 的員工
-                                                if (emp.location !== 'rokko' && emp.location !== 'both') continue;
+                                                // ★ 修復：移除校區過濾，只要名字出現在這張表就抓取！
+                                                if (!emp.isActive) continue; 
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     tempMap[c] = emp.id; matches++; break;
@@ -624,14 +649,13 @@
                                     });
                                 });
 
-                            } else if (activeLocation === 'myodani') {
+                            } else if (layoutType === 'myodani') {
                                 // ==========================================
                                 // 📍 名谷校 (直向欄) 解析引擎
                                 // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
 
-                                // 1. 掃描前 8 列尋找橫向展開的日期合併儲存格
                                 for (let c = 1; c <= 100; c++) {
                                     for (let r = 1; r <= 8; r++) {
                                         let cell = ws.getCell(r, c);
@@ -653,7 +677,6 @@
 
                                 let extractedMyodani = {};
 
-                                // 2. 逐欄尋找員工姓名並往下掃描排班
                                 for (let c = 1; c <= 100; c++) {
                                     if (!colDateMap[c]) continue; 
                                     let dateInfo = colDateMap[c];
@@ -661,7 +684,6 @@
                                     let foundEmpId = null;
                                     let empRowIndex = -1;
 
-                                    // 在該欄的第 1~20 列尋找員工姓名
                                     for (let r = 1; r <= 20; r++) {
                                         let cell = ws.getCell(r, c);
                                         if (cell.isMerged) cell = ws.getCell(cell.master.address);
@@ -681,7 +703,6 @@
                                         if (foundEmpId) break;
                                     }
 
-                                    // 找到員工後，往下掃描到第 80 列抓取時間與色塊
                                     if (foundEmpId) {
                                         if (!autoPeriod) {
                                             let tmpy = dateInfo.obj.getFullYear();
@@ -714,13 +735,11 @@
                                                 count++;
                                             }
 
-                                            // 抓取假單
                                             if (normalizedText.toLowerCase().includes('absent') || normalizedText.includes('欠') || normalizedText.includes('休')) {
                                                 ed.leave = normalizedText.substring(0, 5);
                                                 count++;
                                             }
 
-                                            // 辨識色塊與關鍵字
                                             let fill = cell.fill || {};
                                             let hex = '';
                                             if (fill.type === 'pattern' && fill.pattern !== 'none') {
@@ -735,16 +754,15 @@
                                             let isCyanBlue = hex && cyanBlueHexes.some(x => hex.includes(x));
                                             
                                             let lowerNorm = normalizedText.toLowerCase();
-                                            let hasEnglish = /[a-zA-Z]/.test(normalizedText); // ★ 判斷是否含有英文字
+                                            let hasEnglish = /[a-zA-Z]/.test(normalizedText); 
                                             let isIgkbKeyword = lowerNorm.includes('park') || lowerNorm.includes('prep');
 
-                                            // 如果是休息時間 Break，不要算作任何時數
                                             if (lowerNorm.includes('break')) {
                                                 // do nothing
-                                            } else if (isMagentaPink && hasEnglish) { // ★ 名谷校專屬規則：桃紅色且含有英文字 = IGK A
+                                            } else if (isMagentaPink && hasEnglish) { 
                                                 ed.igkAMins += 30; 
                                                 count++;
-                                            } else if (isCyanBlue || isIgkbKeyword) { // 其他藍色系或關鍵字 = IGK B
+                                            } else if (isCyanBlue || isIgkbKeyword) { 
                                                 ed.igkBMins += 30;
                                                 count++;
                                             }
@@ -752,7 +770,6 @@
                                     }
                                 }
 
-                                // 3. 將名谷校資料寫入總狀態
                                 Object.keys(extractedMyodani).forEach(empId => {
                                     Object.keys(extractedMyodani[empId]).forEach(dateKey => {
                                         const data = extractedMyodani[empId][dateKey];
@@ -836,7 +853,6 @@
                     shiftIn = shiftIn || settings.baseStart;
                     shiftOut = shiftOut || settings.baseEnd;
 
-                    // ★ 新增：Yoon (r3) 每週四提早 15 分鐘 (09:15 - 18:15)
                     if (emp.id === 'r3' && date.getDay() === 4) {
                         if (!row.shiftIn) shiftIn = '09:15';
                         if (!row.shiftOut) shiftOut = '18:15';
@@ -1196,7 +1212,7 @@
                                 <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
                                     <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
-                                    <div className="text-blue-400 text-xs">【自動判定】六甲校(横列) / 名谷校(縦列) を判別して解析します</div>
+                                    <div className="text-blue-400 text-xs">【自動判定】六甲校(横列) / 名谷校(縦列) の排版を自動検知して解析します</div>
                                 </label>
                             </div>
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
