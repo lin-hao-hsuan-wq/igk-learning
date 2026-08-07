@@ -326,21 +326,20 @@
                             let layoutType = 'rokko'; // 預設為六甲校結構
                             let horizontalDates = 0;
                             
-                            // 掃描前 8 列尋找橫向展開的合併日期，如果有多個，就是名谷校排版
                             for (let c = 1; c <= 30; c++) {
                                 for (let r = 1; r <= 8; r++) {
                                     let cell = ws.getCell(r, c);
                                     if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                     
                                     let t = getSafeText(cell).replace(/\s+/g, '');
-                                    if (t.match(/^(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?$/)) {
+                                    // 更寬鬆的判定，只要開頭有符合日期的特徵就計入
+                                    if (t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/)) {
                                         horizontalDates++;
                                         break; 
                                     }
                                 }
                             }
                             
-                            // 橫向找到 3 個以上日期，確認為名谷校直向結構
                             if (horizontalDates >= 3) {
                                 layoutType = 'myodani';
                             }
@@ -373,8 +372,7 @@
                                         let v = getSafeText(ws.getCell(r, c)).toLowerCase().replace(/\s+/g, '');
                                         if (v.length >= 1) {
                                             for (const emp of employees) { 
-                                                // ★ 修復：移除校區過濾，只要名字出現在這張表就抓取！
-                                                if (!emp.isActive) continue; 
+                                                // ★ 修復：完全移除解析階段的過濾！只要名字在這張表上就無條件抓取
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     tempMap[c] = emp.id; matches++; break;
@@ -662,11 +660,11 @@
                                         if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                         
                                         let t = getSafeText(cell).replace(/\s+/g, '');
-                                        const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
-                                        if (m) {
+                                        if (t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/)) {
                                             let y = new Date().getFullYear();
                                             const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
-                                            lastSeenDate = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
+                                            const match = t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/);
+                                            lastSeenDate = new Date(y, parseInt(match[1])-1, parseInt(match[2]));
                                             break;
                                         }
                                     }
@@ -691,7 +689,7 @@
                                         
                                         if (v.length >= 2) {
                                             for (const emp of employees) {
-                                                if (!emp.isActive) continue; 
+                                                // ★ 修復：完全移除解析階段的過濾！只要名字在這張表上就無條件抓取
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     foundEmpId = emp.id;
