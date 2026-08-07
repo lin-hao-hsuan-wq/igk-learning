@@ -17,7 +17,6 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        // ★ 更新：設定 Sammy, Kim, ファーガス 為 'both'，並新增 Fergus Costard 別名
         const INITIAL_EMPLOYEES = [
             { id: 'r1', name: '葛野みのり', aliases: ['Minori', '葛野 みのり', 'みのり'], type: 'full', location: 'rokko', isActive: true },
             { id: 'r2', name: 'Ratu Yassmyn Khairussalima', aliases: ['Yassmyn', 'ヤスミン'], type: 'full', location: 'rokko', isActive: true },
@@ -321,11 +320,10 @@
                         };
 
                         wb.worksheets.forEach(ws => {
-                            // ==========================================
-                            // 📍 雙軌解析：依據選定的校區自動切換邏輯
-                            // ==========================================
                             if (activeLocation === 'rokko') {
-                                // --- 六甲校 (橫向列) 解析引擎 ---
+                                // ==========================================
+                                // 📍 六甲校 (橫向列) 解析引擎
+                                // ==========================================
                                 let currentDates = {}; 
                                 let currentColMap = {};
                                 let prevCellState = {}; 
@@ -627,13 +625,15 @@
                                 });
 
                             } else if (activeLocation === 'myodani') {
-                                // --- 名谷校 (直向欄) 解析引擎 ---
+                                // ==========================================
+                                // 📍 名谷校 (直向欄) 解析引擎
+                                // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
 
-                                // 1. 建立欄位與日期的對應地圖 (掃描前 3 列找合併儲存格的日期)
+                                // 1. 掃描前 8 列尋找橫向展開的日期合併儲存格
                                 for (let c = 1; c <= 100; c++) {
-                                    for (let r = 1; r <= 3; r++) {
+                                    for (let r = 1; r <= 8; r++) {
                                         let cell = ws.getCell(r, c);
                                         if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                         
@@ -661,16 +661,15 @@
                                     let foundEmpId = null;
                                     let empRowIndex = -1;
 
-                                    // 在該欄的第 2~15 列尋找員工姓名
-                                    for (let r = 2; r <= 15; r++) {
+                                    // 在該欄的第 1~20 列尋找員工姓名
+                                    for (let r = 1; r <= 20; r++) {
                                         let cell = ws.getCell(r, c);
                                         if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                         let v = getSafeText(cell).toLowerCase().replace(/\s+/g, '');
                                         
-                                        if (v.length >= 1) {
+                                        if (v.length >= 2) {
                                             for (const emp of employees) {
-                                                // 名谷校解析時，搜尋所屬為 myodani 或 both 的員工
-                                                if (emp.location !== 'myodani' && emp.location !== 'both') continue; 
+                                                if (!emp.isActive) continue; 
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     foundEmpId = emp.id;
@@ -682,7 +681,7 @@
                                         if (foundEmpId) break;
                                     }
 
-                                    // 找到員工後，往下掃描到第 60 列抓取時間與色塊
+                                    // 找到員工後，往下掃描到第 80 列抓取時間與色塊
                                     if (foundEmpId) {
                                         if (!autoPeriod) {
                                             let tmpy = dateInfo.obj.getFullYear();
@@ -697,18 +696,21 @@
                                         }
                                         let ed = extractedMyodani[foundEmpId][dateInfo.key];
 
-                                        for (let r = empRowIndex + 1; r <= 60; r++) {
+                                        for (let r = empRowIndex + 1; r <= 80; r++) {
                                             let cell = ws.getCell(r, c);
                                             if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                             
                                             let rawText = getSafeText(cell).trim();
                                             let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-                                            // 抓取完整班表時間區間 (如 9:15-18:15)
-                                            const timeRangeMatch = normalizedText.match(/(\d{1,2})[:：.](\d{2})\s*[-~]\s*(\d{1,2})[:：.](\d{2})/);
+                                            let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
+                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~](\d{1,2})(?:[:：.](\d{2}))?/);
+                                            
                                             if (timeRangeMatch) {
-                                                ed.shiftIn = `${timeRangeMatch[1].padStart(2, '0')}:${timeRangeMatch[2]}`;
-                                                ed.shiftOut = `${timeRangeMatch[3].padStart(2, '0')}:${timeRangeMatch[4]}`;
+                                                let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
+                                                let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
+                                                ed.shiftIn = `${h1.padStart(2, '0')}:${m1}`;
+                                                ed.shiftOut = `${h2.padStart(2, '0')}:${m2}`;
                                                 count++;
                                             }
 
@@ -718,7 +720,7 @@
                                                 count++;
                                             }
 
-                                            // 辨識色塊
+                                            // 辨識色塊與關鍵字
                                             let fill = cell.fill || {};
                                             let hex = '';
                                             if (fill.type === 'pattern' && fill.pattern !== 'none') {
@@ -731,12 +733,18 @@
 
                                             let isMagentaPink = hex && magentaPinkHexes.some(m => hex.includes(m));
                                             let isCyanBlue = hex && cyanBlueHexes.some(x => hex.includes(x));
-                                            let isActivity = normalizedText.toLowerCase().includes('activity');
+                                            
+                                            let lowerNorm = normalizedText.toLowerCase();
+                                            let hasEnglish = /[a-zA-Z]/.test(normalizedText); // ★ 判斷是否含有英文字
+                                            let isIgkbKeyword = lowerNorm.includes('park') || lowerNorm.includes('prep');
 
-                                            if (isMagentaPink || isActivity) {
+                                            // 如果是休息時間 Break，不要算作任何時數
+                                            if (lowerNorm.includes('break')) {
+                                                // do nothing
+                                            } else if (isMagentaPink && hasEnglish) { // ★ 名谷校專屬規則：桃紅色且含有英文字 = IGK A
                                                 ed.igkAMins += 30; 
                                                 count++;
-                                            } else if (isCyanBlue) {
+                                            } else if (isCyanBlue || isIgkbKeyword) { // 其他藍色系或關鍵字 = IGK B
                                                 ed.igkBMins += 30;
                                                 count++;
                                             }
@@ -756,7 +764,6 @@
                                         if (data.leave) newData[empId][dateKey].leave = data.leave;
                                         
                                         if (data.igkAMins > 0) {
-                                            // 使用自訂的 timeToMins 避免 NaN
                                             let oldAMins = timeToMins(newData[empId][dateKey].igkA || '00:00');
                                             newData[empId][dateKey].igkA = minsToTime(oldAMins + data.igkAMins);
                                         }
@@ -830,7 +837,6 @@
                     shiftOut = shiftOut || settings.baseEnd;
 
                     // ★ 新增：Yoon (r3) 每週四提早 15 分鐘 (09:15 - 18:15)
-                    // date.getDay() === 4 代表星期四
                     if (emp.id === 'r3' && date.getDay() === 4) {
                         if (!row.shiftIn) shiftIn = '09:15';
                         if (!row.shiftOut) shiftOut = '18:15';
@@ -896,7 +902,6 @@
                 });
             };
 
-            // ★ 更新：讓過濾器支援 'both' (兩校兼任) 的員工
             const currentEmployees = employees.filter(e => 
                 (e.location === activeLocation || e.location === 'both') && 
                 (e.isActive !== false || hasDataInPeriod(e.id))
