@@ -24,14 +24,14 @@
             { id: 'r4', name: '林昊嬛', aliases: ['Koukei', '林 昊嬛', '林'], type: 'full', location: 'rokko', isActive: true },
             { id: 'r5', name: '實熊功光', aliases: ['Mikuma', '実熊', 'みくま', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r6', name: '上山貴行', aliases: ['Taka', '上山', 'たか', '上山 貴行'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r7', name: 'ファーガス', aliases: ['Fergus', 'Fergus Costard'], type: 'part', location: 'both', isActive: true },
+            { id: 'r7', name: 'Fergus', aliases: ['Fergus', 'Fergus Costard', 'Costard Fergus William Andrew', 'Costard'], type: 'part', location: 'both', isActive: true },
             { id: 'r8', name: 'Sammy Abukmeil', aliases: ['Sammy', 'サミー'], type: 'part', location: 'both', isActive: true },
             { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part', location: 'both', isActive: true },
             { id: 'r10', name: 'Nathan Morrison', aliases: ['Nathan', 'ネイサン'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r11', name: '沼田真里子', aliases: ['Mariko', 'マリコ', 'まりこ', '沼田 真里子'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r12', name: '安藤佑也', aliases: ['Ando', '安藤', 'あんどう', '安藤 佑也'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r13', name: 'ミサト', aliases: ['Misato', 'みさと'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r14', name: 'ナオ', aliases: ['Nao', 'なお'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r13', name: 'Misato', aliases: ['Misato', 'みさと'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r14', name: 'Nao', aliases: ['Nao', 'なお'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko', isActive: true },
             { id: 'm1', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full', location: 'myodani', isActive: true },
@@ -118,13 +118,13 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v24', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v24', 'rokko')); 
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v24', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v25', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v25', 'rokko')); 
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v25', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period_v24', null);
+                const saved = loadSavedState('igk_pro_period_v25', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -133,21 +133,21 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v24', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v24', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v24', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v24', employees[0].id)); 
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v25', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v25', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v25', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v25', employees[0].id)); 
 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            useEffect(() => localStorage.setItem('igk_pro_activePage_v24', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v24', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v24', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period_v24', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance_v24', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v24', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v24', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v24', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_activePage_v25', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v25', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v25', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period_v25', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance_v25', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v25', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v25', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v25', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -420,7 +420,11 @@
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
                                             let actCell = ws.getCell(r, parseInt(c));
-                                            if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
+                                            let cellAddr = actCell.address;
+
+                                            if (actCell.isMerged) {
+                                                actCell = ws.getCell(actCell.master.address);
+                                            }
                                             
                                             let rawText = getSafeText(actCell).trim();
                                             let fill = actCell.fill || {};
@@ -485,7 +489,7 @@
                                                     exactTimes: [], driverDepTimes: [], driverArrTimes: [], driverOtherTimes: [],
                                                     igkAMins: 0, igkBMins: 0,
                                                     explicitShiftIn: null, explicitShiftOut: null, leave: null,
-                                                    shiftCaptured: false
+                                                    shiftCaptured: false, processedBlocks: new Set()
                                                 };
                                             }
                                             let ed = allExtractedData[empId][dateInfo.key];
@@ -498,7 +502,6 @@
                                                 return; 
                                             }
 
-                                            // ★ 完美捕捉正社員手寫的排班時間 (例如 10:00-19:00 或是 10-19)
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
                                             const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
                                             if (timeRangeMatch && !ed.shiftCaptured) {
@@ -532,7 +535,6 @@
                                             
                                             let blockType = 'igkB'; 
                                             let lowerNorm = normalizedText.toLowerCase();
-
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
                                             let isIgkaKeyword = lowerNorm.includes('kids') || lowerNorm.includes('toe') || lowerNorm.includes('activity');
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText);
@@ -552,34 +554,35 @@
                                                     blockType = 'igkB';
                                                 }
                                             } else if (hasColor) {
-                                                // 如果沒有字只有顏色，根據之前判定的顏色繼續
                                                 if (isLightBlue) blockType = 'igkB';
-                                                else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) blockType = 'igkA'; // 預設空彩色為A
+                                                else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) blockType = 'igkA';
                                             }
 
-                                            // ★ 完美解除合併儲存格的干擾，每一次迴圈就代表經過一個 30分鐘 的時段，直接疊加！
-                                            if (hasColor) {
-                                                if (blockType === 'igkA') ed.igkAMins += 30;
-                                                else if (blockType === 'igkB') ed.igkBMins += 30;
-                                            }
-
-                                            exactMatches.forEach(m => {
-                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
-                                                if (blockType === 'driver_with_time') {
-                                                    const matchIndex = m.index;
-                                                    const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
-                                                    
-                                                    if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
-                                                        ed.driverArrTimes.push(tMins);
-                                                    } else if (context.includes('乗車') || context.includes('出発')) {
-                                                        ed.driverDepTimes.push(tMins);
-                                                    } else {
-                                                        ed.driverOtherTimes.push(tMins);
-                                                    }
-                                                } else {
-                                                    ed.exactTimes.push(tMins);
+                                            if (!ed.processedBlocks.has(cellAddr)) {
+                                                ed.processedBlocks.add(cellAddr);
+                                                
+                                                if (hasColor) {
+                                                    if (blockType === 'igkA') ed.igkAMins += 30;
+                                                    else if (blockType === 'igkB') ed.igkBMins += 30;
                                                 }
-                                            });
+
+                                                exactMatches.forEach(m => {
+                                                    let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                    if (blockType === 'driver_with_time') {
+                                                        const matchIndex = m.index;
+                                                        const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
+                                                        if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
+                                                            ed.driverArrTimes.push(tMins);
+                                                        } else if (context.includes('乗車') || context.includes('出発')) {
+                                                            ed.driverDepTimes.push(tMins);
+                                                        } else {
+                                                            ed.driverOtherTimes.push(tMins);
+                                                        }
+                                                    } else {
+                                                        ed.exactTimes.push(tMins);
+                                                    }
+                                                });
+                                            }
                                         });
                                     }
                                 }
@@ -592,9 +595,7 @@
                                         if (!newData[empId]) newData[empId] = {};
                                         if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
 
-                                        if (data.leave) {
-                                            newData[empId][dateKey].leave = data.leave;
-                                        }
+                                        if (data.leave) newData[empId][dateKey].leave = data.leave;
 
                                         let startMins = data.minTime;
                                         let endMins = data.maxTime !== -1 ? data.maxTime + 30 : -1; 
@@ -603,7 +604,6 @@
                                             startMins = timeToMins(data.explicitShiftIn);
                                             endMins = timeToMins(data.explicitShiftOut);
                                         } else if (emp && emp.type === 'full') {
-                                            // 正社員若沒有明確的手寫排班，則清空舊版匯入的色塊邊界，等待系統自動預設排班
                                             startMins = 9999;
                                             endMins = -1;
                                             if (newData[empId] && newData[empId][dateKey]) {
@@ -620,7 +620,6 @@
                                         if (startMins < 9999 && endMins > -1) {
                                             let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
                                             let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
-                                            
                                             if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                             if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                         }
@@ -634,12 +633,8 @@
                                             let minOther = Math.min(...data.driverOtherTimes);
                                             let maxOther = Math.max(...data.driverOtherTimes);
                                             if (dep === null && arr === null) {
-                                                if (data.driverOtherTimes.length === 1) {
-                                                    dep = minOther; 
-                                                } else {
-                                                    dep = minOther;
-                                                    arr = maxOther;
-                                                }
+                                                if (data.driverOtherTimes.length === 1) dep = minOther; 
+                                                else { dep = minOther; arr = maxOther; }
                                             } else if (dep === null) {
                                                 if (minOther < arr) dep = minOther;
                                             } else if (arr === null) {
@@ -659,9 +654,7 @@
                                                 if (a !== undefined) {
                                                     totalMins += (a - d);
                                                     pairStrs.push(`${minsToTime(d)}-${minsToTime(a)}`);
-                                                } else {
-                                                    pairStrs.push(`${minsToTime(d)}-?`);
-                                                }
+                                                } else pairStrs.push(`${minsToTime(d)}-?`);
                                             }
                                             newData[empId][dateKey].driverDep = '';
                                             newData[empId][dateKey].driverArr = '';
@@ -669,9 +662,7 @@
 
                                             let oldRm = newData[empId][dateKey].remark || '';
                                             let newRm = `🚗${pairStrs.join(', ')}`;
-                                            if (!oldRm.includes(newRm)) {
-                                                newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
-                                            }
+                                            if (!oldRm.includes(newRm)) newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
                                         } else {
                                             if (dep !== null || arr !== null) {
                                                 newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
@@ -683,15 +674,11 @@
                                                 newData[empId][dateKey].driverMins = ''; 
                                             }
                                         }
-
                                         count++;
                                     });
                                 });
 
                             } else if (layoutType === 'myodani') {
-                                // ==========================================
-                                // 📍 名谷校解析引擎
-                                // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
 
@@ -709,9 +696,7 @@
                                             break;
                                         }
                                     }
-                                    if (lastSeenDate) {
-                                        colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
-                                    }
+                                    if (lastSeenDate) colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
                                 }
 
                                 let extractedMyodani = {};
@@ -751,22 +736,27 @@
 
                                         if (!extractedMyodani[foundEmpId]) extractedMyodani[foundEmpId] = {};
                                         if (!extractedMyodani[foundEmpId][dateInfo.key]) {
-                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null, shiftCaptured: false };
+                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null, shiftCaptured: false, processedBlocks: new Set() };
                                         }
                                         let ed = extractedMyodani[foundEmpId][dateInfo.key];
 
                                         for (let r = empRowIndex + 1; r <= 80; r++) {
                                             let cell = ws.getCell(r, c);
-                                            if (cell.isMerged) cell = ws.getCell(cell.master.address);
+                                            let cellAddress = cell.address;
                                             
+                                            if (cell.isMerged) {
+                                                cell = ws.getCell(cell.master.address);
+                                            }
+                                            
+                                            if (ed.processedBlocks.has(cellAddress)) continue;
+                                            ed.processedBlocks.add(cellAddress);
+
                                             let rawText = getSafeText(cell).trim();
                                             let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-                                            // ★ 完美捕捉正社員排班時間 (支援 9:15-18:15 或是 9-18)
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
                                             const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
                                             
-                                            // 只攔截「名字下方第一次出現的時間區間」，避免誤抓成上課時間
                                             if (timeRangeMatch && !ed.shiftCaptured) {
                                                 let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
                                                 let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
@@ -798,9 +788,7 @@
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText); 
                                             let isIgkbKeyword = lowerNorm.includes('park') || lowerNorm.includes('prep');
 
-                                            // ★ 完美解除合併儲存格的干擾，每一次迴圈就代表經過一個 30分鐘 的時段！
                                             if (lowerNorm.includes('break')) {
-                                                // do nothing
                                             } else if (isMagentaPink && hasEnglish) { 
                                                 ed.igkAMins += 30; count++;
                                             } else if (isCyanBlue || isIgkbKeyword) { 
@@ -975,7 +963,7 @@
             };
 
             const currentEmployees = employees.filter(e => 
-                (e.location === activeLocation || e.location === 'both') && 
+                e.location === activeLocation && 
                 (e.isActive !== false || hasDataInPeriod(e.id))
             );
             
@@ -1315,6 +1303,7 @@
                                     <div className="flex bg-gray-200 p-1 rounded-full shadow-inner">
                                         <button onClick={() => switchLocation('rokko')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
                                         <button onClick={() => switchLocation('myodani')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
+                                        <button onClick={() => switchLocation('both')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'both' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>両校</button>
                                     </div>
                                 </div>
                                 
