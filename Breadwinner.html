@@ -133,7 +133,8 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v22', { baseStart: '09:30', baseEnd: '18:30', special: [] }));
+            // ★ 新增：設定加入 myoStart 與 myoEnd 欄位
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v23', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
             const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v22', {})); 
             const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v22', {})); 
             const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v22', employees[0].id)); 
@@ -146,7 +147,7 @@
             useEffect(() => localStorage.setItem('igk_pro_period_v22', JSON.stringify(period)), [period]);
             useEffect(() => localStorage.setItem('igk_pro_attendance_v22', JSON.stringify(attendance)), [attendance]);
             useEffect(() => localStorage.setItem('igk_pro_monthlyData_v22', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v22', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v23', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_employees_v22', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
@@ -874,9 +875,8 @@
                 let breakMins = timeToMins(breakTime);
 
                 if (emp.type === 'full') {
-                    // ★ 名谷校預設 09:15-18:15 / 六甲校預設使用上方輸入的時間
-                    let defaultIn = emp.location === 'myodani' ? '09:15' : settings.baseStart;
-                    let defaultOut = emp.location === 'myodani' ? '18:15' : settings.baseEnd;
+                    let defaultIn = emp.location === 'myodani' ? (settings.myoStart || '09:15') : (settings.baseStart || '09:30');
+                    let defaultOut = emp.location === 'myodani' ? (settings.myoEnd || '18:15') : (settings.baseEnd || '18:30');
 
                     if (emp.id === 'r3' && date.getDay() === 4) {
                         defaultIn = '09:15';
@@ -985,8 +985,7 @@
                     { header: 'IGK B (H)', key: 'igkbH', width: 12 },
                     { header: '運転 (H)', key: 'driverH', width: 12 },
                     { header: '早残業(分)', key: 'earlyOT', width: 12 },
-                    { header: '後残業(分)', key: 'lateOT', width: 12 },
-                    { header: '交通費(円)', key: 'transport', width: 12 }
+                    { header: '後残業(分)', key: 'lateOT', width: 12 }
                 ];
 
                 wsSummary.getRow(1).eachCell(cell => {
@@ -1062,7 +1061,6 @@
                         wsEmp.addRow(rowData);
                     });
 
-                    const transportFee = Number(monthlyData[`${emp.id}_${period}`]?.transportFee || 0);
                     const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
                     const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
 
@@ -1078,7 +1076,6 @@
                         wsEmp.addRow(['IGK A(H)', (sumIgka/60).toFixed(2), 'IGK B(H)', (sumIgkb/60).toFixed(2), '総労働(H)', ((sumIgka+sumIgkb)/60).toFixed(2)]);
                         if (isDriver) wsEmp.addRow(['運転実績(H)', (sumDriver/60).toFixed(2)]);
                     }
-                    wsEmp.addRow(['交通費(円)', transportFee]);
 
                     wsEmp.columns.forEach(col => col.width = 14);
 
@@ -1094,8 +1091,7 @@
                         igkbH: Number((sumIgkb / 60).toFixed(2)),
                         driverH: Number((sumDriver / 60).toFixed(2)),
                         earlyOT: sumEarly,
-                        lateOT: sumLate,
-                        transport: transportFee
+                        lateOT: sumLate
                     });
                 });
 
@@ -1198,9 +1194,15 @@
                                         <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                                             <span className="text-indigo-500">◆</span> 正社員の基本勤務・特別期間設定
                                         </h2>
-                                        <div className="flex gap-4 mb-4 bg-gray-50 p-4 rounded-xl">
-                                            <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 預設上班</label><input type="time" value={settings.baseStart} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400 text-sm"/></div>
-                                            <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 預設下班</label><input type="time" value={settings.baseEnd} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400 text-sm"/></div>
+                                        <div className="flex flex-wrap gap-6 mb-4 bg-gray-50 p-4 rounded-xl">
+                                            <div className="flex gap-4">
+                                                <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 預設上班</label><input type="time" value={settings.baseStart || '09:30'} onChange={e=>setSettings({...settings, baseStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400 text-sm"/></div>
+                                                <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 預設下班</label><input type="time" value={settings.baseEnd || '18:30'} onChange={e=>setSettings({...settings, baseEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400 text-sm"/></div>
+                                            </div>
+                                            <div className="flex gap-4 border-l border-gray-200 pl-6">
+                                                <div><label className="block text-xs font-bold text-gray-500 mb-1">名谷校 預設上班</label><input type="time" value={settings.myoStart || '09:15'} onChange={e=>setSettings({...settings, myoStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400 text-sm"/></div>
+                                                <div><label className="block text-xs font-bold text-gray-500 mb-1">名谷校 預設下班</label><input type="time" value={settings.myoEnd || '18:15'} onChange={e=>setSettings({...settings, myoEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400 text-sm"/></div>
+                                            </div>
                                         </div>
                                         <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
                                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -1490,14 +1492,6 @@
                                                         <div className="text-xs font-bold text-red-500 mb-1 print:text-[10px]">残業合計 (早+後)</div>
                                                         <div className="text-3xl font-black text-red-600 print:text-xl">{sumEarly + sumLate} <span className="text-base font-bold mx-1 print:text-[10px]">分</span> <span className="text-base font-bold text-red-400 font-mono print:text-[10px]">({((sumEarly + sumLate) / 60).toFixed(2)} H)</span></div>
                                                     </div>
-
-                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-6 flex flex-col justify-center print:border-none print:bg-white">
-                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-lg font-bold text-emerald-700">¥</span>
-                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-2xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
-                                                        </div>
-                                                    </div>
                                                 </>
                                             ) : (
                                                 <>
@@ -1521,14 +1515,6 @@
                                                     <div className={`bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center shadow-sm flex flex-col justify-center print:border-none print:bg-white ${['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) ? 'col-span-1' : 'col-span-2'}`}>
                                                         <div className="text-[10px] font-bold text-indigo-600 mb-1 print:text-[8px]">A+B 総労働</div>
                                                         <div className="text-xl font-black text-indigo-700 font-mono print:text-lg">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
-                                                    </div>
-
-                                                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center shadow-sm md:col-span-6 flex flex-col justify-center print:border-none print:bg-white">
-                                                        <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-lg font-bold text-emerald-700">¥</span>
-                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
-                                                        </div>
                                                     </div>
                                                 </>
                                             )}
