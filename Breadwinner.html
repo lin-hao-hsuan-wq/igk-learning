@@ -60,6 +60,14 @@
             'bg-teal-50 border-t-4 border-teal-400 text-teal-700 shadow-sm print:border-none',
         ];
 
+        // 日本國定假日清單 (2024~2027)
+        const JP_HOLIDAYS = [
+            "2024-01-01", "2024-01-08", "2024-02-11", "2024-02-12", "2024-02-23", "2024-03-20", "2024-04-29", "2024-05-03", "2024-05-04", "2024-05-05", "2024-05-06", "2024-07-15", "2024-08-11", "2024-08-12", "2024-09-16", "2024-09-22", "2024-09-23", "2024-10-14", "2024-11-03", "2024-11-04", "2024-11-23",
+            "2025-01-01", "2025-01-13", "2025-02-11", "2025-02-23", "2025-02-24", "2025-03-20", "2025-04-29", "2025-05-03", "2025-05-04", "2025-05-05", "2025-05-06", "2025-07-21", "2025-08-11", "2025-09-15", "2025-09-23", "2025-10-13", "2025-11-03", "2025-11-23", "2025-11-24",
+            "2026-01-01", "2026-01-12", "2026-02-11", "2026-02-23", "2026-03-20", "2026-04-29", "2026-05-03", "2026-05-04", "2026-05-05", "2026-05-06", "2026-07-20", "2026-08-11", "2026-09-21", "2026-09-22", "2026-09-23", "2026-10-12", "2026-11-03", "2026-11-23",
+            "2027-01-01", "2027-01-11", "2027-02-11", "2027-02-23", "2027-03-21", "2027-03-22", "2027-04-29", "2027-05-03", "2027-05-04", "2027-05-05", "2027-07-19", "2027-08-11", "2027-09-20", "2027-09-23", "2027-10-11", "2027-11-03", "2027-11-23"
+        ];
+
         const timeToMins = (t) => {
             if (!t || typeof t !== 'string') return 0;
             const [h, m] = t.split(':').map(Number);
@@ -167,11 +175,22 @@
             }, [period]);
 
             const dKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            
+            // 判斷是否為假日 (週末或國定假日)
+            const isHoliday = (d) => {
+                const day = d.getDay();
+                if (day === 0 || day === 6) return true;
+                const key = dKey(d);
+                return JP_HOLIDAYS.includes(key);
+            };
+
             const formatDisplayDate = (d) => {
                 const days = ['日', '月', '火', '水', '木', '金', '土'];
-                return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+                const key = dKey(d);
+                const isHol = JP_HOLIDAYS.includes(key);
+                let holMarker = isHol && d.getDay() !== 0 && d.getDay() !== 6 ? ' ㊗️' : '';
+                return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})${holMarker}`;
             };
-            const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
 
             const handleSaveEmployee = () => {
                 if (!empForm.name.trim()) return alert("名前を入力してください！");
@@ -197,7 +216,6 @@
                 if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
-                // 忽略空格與換行來抓取時間
                 const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?[\s\r\n]*(\d{1,2})[\s\r\n]*[\/\-月][\s\r\n]*(\d{1,2})[\s\r\n]*日?[\s\r\n]*(\d{1,2})[\s\r\n]*[:：][\s\r\n]*(\d{2})/g;
                 
                 const matches = [...text.matchAll(timeRegex)];
@@ -314,14 +332,14 @@
                             }
                             
                             let str = getSafeText(cell).trim();
-                            const m = str.match(/^(\d{1,2})[:：.](\d{2})$/);
+                            const m = str.match(/^(\d{1,2})[:：.](\d{2})(?:[:：.]\d{2})?$/);
                             if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             
                             return null;
                         };
 
                         wb.worksheets.forEach(ws => {
-                            let layoutType = 'rokko'; // 預設為六甲校結構
+                            let layoutType = 'rokko';
                             let horizontalDates = 0;
                             
                             for (let c = 1; c <= 30; c++) {
@@ -342,9 +360,6 @@
                             }
 
                             if (layoutType === 'rokko') {
-                                // ==========================================
-                                // 📍 六甲校解析引擎 
-                                // ==========================================
                                 let currentDates = {}; 
                                 let currentColMap = {};
                                 let prevCellState = {}; 
@@ -414,9 +429,16 @@
                                             }
                                             let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
                                             let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
+                                            
+                                            let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                                            let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF\-]/.test(normalizedText); 
+                                            
+                                            let hasColor = hex || (theme !== -1 && theme !== 1 && theme !== 0) || (indexed !== -1 && indexed !== 64);
+                                            
+                                            if (!hasContent && !hasColor) return;
 
                                             let borrowText = '';
-                                            if (!rawText && (hex || theme !== -1 || indexed !== -1)) {
+                                            if (!rawText && hasColor) {
                                                 for (let step = 1; step <= 8; step++) {
                                                     let checkC = parseInt(c) - step;
                                                     if (checkC < 1) break;
@@ -426,7 +448,7 @@
                                                     let checkHex = (checkFill.type === 'pattern' && checkFill.pattern !== 'none') ? String(checkFill.fgColor?.argb || checkFill.bgColor?.argb || '').toUpperCase() : '';
                                                     if (checkHex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(checkHex)) checkHex = '';
                                                     let checkTheme = checkFill.fgColor?.theme ?? checkFill.bgColor?.theme ?? -1;
-                                                    let checkIndexed = checkFill.fgColor?.indexed ?? checkFill.bgColor?.indexed ?? -1;
+                                                    let checkIndexed = checkFill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
                                                     
                                                     if (checkHex === hex && checkTheme === theme && checkIndexed === indexed) {
                                                         let text = getSafeText(checkCell);
@@ -450,11 +472,43 @@
                                                 }
                                             }
 
-                                            let normalizedText = textToProcess.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, function(s) {
+                                            normalizedText = textToProcess.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, function(s) {
                                                 return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
                                             });
-                                            
-                                            let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(normalizedText);
+
+                                            if (!allExtractedData[empId]) allExtractedData[empId] = {};
+                                            if (!allExtractedData[empId][dateInfo.key]) {
+                                                allExtractedData[empId][dateInfo.key] = { 
+                                                    minTime: 9999, maxTime: -1, 
+                                                    exactTimes: [], driverDepTimes: [], driverArrTimes: [], driverOtherTimes: [],
+                                                    igkAMins: 0, igkBMins: 0,
+                                                    explicitShiftIn: null, explicitShiftOut: null, leave: null
+                                                };
+                                            }
+                                            let ed = allExtractedData[empId][dateInfo.key];
+
+                                            let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
+                                            if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
+                                                if (normalizedText.includes('欠') || normalizedText.includes('休')) {
+                                                    ed.leave = normalizedText.substring(0, 10);
+                                                }
+                                                return; 
+                                            }
+
+                                            let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
+                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~](\d{1,2})(?:[:：.](\d{2}))?/);
+                                            if (timeRangeMatch) {
+                                                let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
+                                                let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
+                                                ed.explicitShiftIn = `${h1.padStart(2, '0')}:${m1}`;
+                                                ed.explicitShiftOut = `${h2.padStart(2, '0')}:${m2}`;
+                                            }
+
+                                            if (hasColor) {
+                                                if (rowMins < ed.minTime) ed.minTime = rowMins;
+                                                if (rowMins > ed.maxTime) ed.maxTime = rowMins;
+                                            }
+
                                             const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
                                             
                                             const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'];
@@ -469,22 +523,10 @@
                                             let isPink = hex && pinkHexes.some(p => hex.includes(p));
                                             let isCyan = hex && cyanHexes.some(c => hex.includes(c));
                                             let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
-                                            
                                             let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
-                                            let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
-
+                                            
                                             let blockType = 'igkB'; 
                                             let lowerNorm = normalizedText.toLowerCase();
-
-                                            if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
-                                                if (normalizedText.includes('欠') || normalizedText.includes('休')) {
-                                                    if (!newData[empId]) newData[empId] = {};
-                                                    if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
-                                                    newData[empId][dateInfo.key].leave = normalizedText.substring(0, 10);
-                                                }
-                                                return; 
-                                            }
-
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
                                             let isIgkaKeyword = lowerNorm.includes('kids') || lowerNorm.includes('toe') || lowerNorm.includes('activity');
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText);
@@ -492,8 +534,7 @@
                                             if (hasContent) {
                                                 if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                     blockType = 'driver_with_time'; 
-                                                } else if (isLightBlue && (lowerNorm.includes('private lesson') || lowerNorm.includes('privatelesson'))) {
-                                                    // 水藍色 + 包含 Private lesson 判定為 IGK A
+                                                } else if (isLightBlue && (lowerNorm.includes('private lesson') || lowerNorm.includes('privatelesson') || lowerNorm.includes('private'))) {
                                                     blockType = 'igkA';
                                                 } else if (isLightBlue) {
                                                     blockType = 'igkB';
@@ -507,7 +548,7 @@
                                             } else {
                                                 let stateKey = `${empId}_${dateInfo.key}`;
                                                 let prev = prevCellState[stateKey];
-                                                if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && (hex || theme !== -1 || indexed !== -1)) {
+                                                if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && hasColor) {
                                                     blockType = prev.blockType;
                                                 } else {
                                                     blockType = 'igkB';
@@ -516,27 +557,9 @@
                                             
                                             prevCellState[`${empId}_${dateInfo.key}`] = { hex, theme, indexed, blockType };
 
-                                            if (!allExtractedData[empId]) allExtractedData[empId] = {};
-                                            if (!allExtractedData[empId][dateInfo.key]) {
-                                                allExtractedData[empId][dateInfo.key] = { 
-                                                    minTime: 9999, maxTime: -1, 
-                                                    exactTimes: [], 
-                                                    driverDepTimes: [], 
-                                                    driverArrTimes: [], 
-                                                    driverOtherTimes: [],
-                                                    igkAMins: 0, igkBMins: 0 
-                                                };
-                                            }
-                                            
-                                            let ed = allExtractedData[empId][dateInfo.key];
-                                            
-                                            if (rowMins < ed.minTime) ed.minTime = rowMins;
-                                            if (rowMins > ed.maxTime) ed.maxTime = rowMins;
-
-                                            if (blockType === 'igkA') {
-                                                ed.igkAMins += 30;
-                                            } else if (blockType === 'igkB') {
-                                                ed.igkBMins += 30;
+                                            if (hasColor) {
+                                                if (blockType === 'igkA') ed.igkAMins += 30;
+                                                else if (blockType === 'igkB') ed.igkBMins += 30;
                                             }
 
                                             exactMatches.forEach(m => {
@@ -544,7 +567,6 @@
                                                 if (blockType === 'driver_with_time') {
                                                     const matchIndex = m.index;
                                                     const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
-                                                    
                                                     if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
                                                         ed.driverArrTimes.push(tMins);
                                                     } else if (context.includes('乗車') || context.includes('出発')) {
@@ -561,96 +583,97 @@
                                 }
 
                                 Object.keys(allExtractedData).forEach(empId => {
+                                    const emp = employees.find(e => e.id === empId);
                                     Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                         const data = allExtractedData[empId][dateKey];
-                                        let startMins = data.minTime;
-                                        let endMins = data.maxTime + 30; 
+                                        
+                                        if (!newData[empId]) newData[empId] = {};
+                                        if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
 
-                                        if (data.exactTimes.length > 0) {
+                                        if (data.leave) newData[empId][dateKey].leave = data.leave;
+
+                                        let startMins = data.minTime;
+                                        let endMins = data.maxTime !== -1 ? data.maxTime + 30 : -1; 
+
+                                        if (data.explicitShiftIn) {
+                                            startMins = timeToMins(data.explicitShiftIn);
+                                            endMins = timeToMins(data.explicitShiftOut);
+                                        } else if (emp && emp.type === 'full') {
+                                            startMins = 9999;
+                                            endMins = -1;
+                                            if (newData[empId] && newData[empId][dateKey]) {
+                                                newData[empId][dateKey].shiftIn = '';
+                                                newData[empId][dateKey].shiftOut = '';
+                                            }
+                                        } else if (data.exactTimes.length > 0) {
                                             const minExact = Math.min(...data.exactTimes);
                                             const maxExact = Math.max(...data.exactTimes);
-                                            if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
-                                            if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                            if (startMins === 9999 || Math.abs(minExact - startMins) <= 120) startMins = minExact;
+                                            if (endMins === -1 || Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
                                         }
 
                                         if (startMins < 9999 && endMins > -1) {
-                                            if (!newData[empId]) newData[empId] = {};
-                                            if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
-                                            
                                             let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
                                             let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
-                                            
                                             if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                             if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
-                                            
-                                            newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
-                                            
-                                            let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
-                                            let arr = data.driverArrTimes.length > 0 ? Math.max(...data.driverArrTimes) : null;
+                                        }
+                                        
+                                        newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
+                                        
+                                        let dep = data.driverDepTimes.length > 0 ? Math.min(...data.driverDepTimes) : null;
+                                        let arr = data.driverArrTimes.length > 0 ? Math.max(...data.driverArrTimes) : null;
 
-                                            if (data.driverOtherTimes.length > 0) {
-                                                let minOther = Math.min(...data.driverOtherTimes);
-                                                let maxOther = Math.max(...data.driverOtherTimes);
-                                                if (dep === null && arr === null) {
-                                                    if (data.driverOtherTimes.length === 1) {
-                                                        dep = minOther; 
-                                                    } else {
-                                                        dep = minOther;
-                                                        arr = maxOther;
-                                                    }
-                                                } else if (dep === null) {
-                                                    if (minOther < arr) dep = minOther;
-                                                } else if (arr === null) {
-                                                    if (maxOther > dep) arr = maxOther;
-                                                }
+                                        if (data.driverOtherTimes.length > 0) {
+                                            let minOther = Math.min(...data.driverOtherTimes);
+                                            let maxOther = Math.max(...data.driverOtherTimes);
+                                            if (dep === null && arr === null) {
+                                                if (data.driverOtherTimes.length === 1) dep = minOther; 
+                                                else { dep = minOther; arr = maxOther; }
+                                            } else if (dep === null) {
+                                                if (minOther < arr) dep = minOther;
+                                            } else if (arr === null) {
+                                                if (maxOther > dep) arr = maxOther;
                                             }
+                                        }
 
-                                            let allDriver = [...data.driverDepTimes, ...data.driverArrTimes, ...data.driverOtherTimes].sort((a,b)=>a-b);
-                                            allDriver = [...new Set(allDriver)].sort((a,b)=>a-b);
+                                        let allDriver = [...data.driverDepTimes, ...data.driverArrTimes, ...data.driverOtherTimes].sort((a,b)=>a-b);
+                                        allDriver = [...new Set(allDriver)].sort((a,b)=>a-b);
 
-                                            if (allDriver.length >= 3) {
-                                                let totalMins = 0;
-                                                let pairStrs = [];
-                                                for(let i=0; i < allDriver.length; i+=2) {
-                                                    let d = allDriver[i];
-                                                    let a = allDriver[i+1];
-                                                    if (a !== undefined) {
-                                                        totalMins += (a - d);
-                                                        pairStrs.push(`${minsToTime(d)}-${minsToTime(a)}`);
-                                                    } else {
-                                                        pairStrs.push(`${minsToTime(d)}-?`);
-                                                    }
-                                                }
+                                        if (allDriver.length >= 3) {
+                                            let totalMins = 0;
+                                            let pairStrs = [];
+                                            for(let i=0; i < allDriver.length; i+=2) {
+                                                let d = allDriver[i];
+                                                let a = allDriver[i+1];
+                                                if (a !== undefined) {
+                                                    totalMins += (a - d);
+                                                    pairStrs.push(`${minsToTime(d)}-${minsToTime(a)}`);
+                                                } else pairStrs.push(`${minsToTime(d)}-?`);
+                                            }
+                                            newData[empId][dateKey].driverDep = '';
+                                            newData[empId][dateKey].driverArr = '';
+                                            newData[empId][dateKey].driverMins = minsToTime(totalMins);
+
+                                            let oldRm = newData[empId][dateKey].remark || '';
+                                            let newRm = `🚗${pairStrs.join(', ')}`;
+                                            if (!oldRm.includes(newRm)) newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
+                                        } else {
+                                            if (dep !== null || arr !== null) {
+                                                newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
+                                                newData[empId][dateKey].driverArr = arr !== null ? minsToTime(arr) : '';
+                                                newData[empId][dateKey].driverMins = ''; 
+                                            } else {
                                                 newData[empId][dateKey].driverDep = '';
                                                 newData[empId][dateKey].driverArr = '';
-                                                newData[empId][dateKey].driverMins = minsToTime(totalMins);
-
-                                                let oldRm = newData[empId][dateKey].remark || '';
-                                                let newRm = `🚗${pairStrs.join(', ')}`;
-                                                if (!oldRm.includes(newRm)) {
-                                                    newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
-                                                }
-                                            } else {
-                                                if (dep !== null || arr !== null) {
-                                                    newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
-                                                    newData[empId][dateKey].driverArr = arr !== null ? minsToTime(arr) : '';
-                                                    newData[empId][dateKey].driverMins = ''; 
-                                                } else {
-                                                    newData[empId][dateKey].driverDep = '';
-                                                    newData[empId][dateKey].driverArr = '';
-                                                    newData[empId][dateKey].driverMins = ''; 
-                                                }
+                                                newData[empId][dateKey].driverMins = ''; 
                                             }
-
-                                            count++;
                                         }
+                                        count++;
                                     });
                                 });
 
                             } else if (layoutType === 'myodani') {
-                                // ==========================================
-                                // 📍 名谷校解析引擎
-                                // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
 
@@ -668,9 +691,7 @@
                                             break;
                                         }
                                     }
-                                    if (lastSeenDate) {
-                                        colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
-                                    }
+                                    if (lastSeenDate) colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
                                 }
 
                                 let extractedMyodani = {};
@@ -757,12 +778,9 @@
                                             if (lowerNorm.includes('break')) {
                                                 // do nothing
                                             } else if (isMagentaPink && hasEnglish) { 
-                                                // 粉色格子 + 有包含英文字 判定為 IGK A
-                                                ed.igkAMins += 30; 
-                                                count++;
+                                                ed.igkAMins += 30; count++;
                                             } else if (isCyanBlue || isIgkbKeyword) { 
-                                                ed.igkBMins += 30;
-                                                count++;
+                                                ed.igkBMins += 30; count++;
                                             }
                                         }
                                     }
@@ -833,7 +851,7 @@
             };
 
             const calculateRow = (date, row, emp) => {
-                const isWknd = isWeekend(date);
+                const isWknd = isHoliday(date);
                 let inTime = row.inTime || '';
                 let outTime = row.outTime || '';
                 let shiftIn = row.shiftIn || '';
@@ -844,7 +862,6 @@
                 let driverDep = row.driverDep || '';
                 let driverArr = row.driverArr || '';
 
-                // 正社員如果「有上班 (有排班或有打卡)」則自動帶入一小時休息時間
                 let breakTime = row.breakTime !== undefined ? row.breakTime : '00:00';
                 if (row.breakTime === undefined && emp.type === 'full') {
                     if ((inTime && outTime && !leave) || (shiftIn && shiftOut && !leave)) {
@@ -854,20 +871,31 @@
                 let breakMins = timeToMins(breakTime);
 
                 if (emp.type === 'full') {
-                    shiftIn = shiftIn || settings.baseStart;
-                    shiftOut = shiftOut || settings.baseEnd;
+                    let defaultIn = settings.baseStart;
+                    let defaultOut = settings.baseEnd;
 
                     if (emp.id === 'r3' && date.getDay() === 4) {
-                        if (!row.shiftIn) shiftIn = '09:15';
-                        if (!row.shiftOut) shiftOut = '18:15';
+                        defaultIn = '09:15';
+                        defaultOut = '18:15';
                     }
 
                     (settings.special || []).forEach(sp => {
-                        const isTarget = sp.targetEmps ? sp.targetEmps.includes(emp.id) : true;
-                        if (isTarget && new Date(date) >= new Date(sp.start) && new Date(date) <= new Date(sp.end)) {
-                            shiftIn = sp.timeIn; shiftOut = sp.timeOut;
+                        if (sp.start && sp.end) {
+                            const isTarget = sp.targetEmps ? sp.targetEmps.includes(emp.id) : true;
+                            const [sy, sm, sd] = sp.start.split('-').map(Number);
+                            const [ey, em, ed] = sp.end.split('-').map(Number);
+                            const spStart = new Date(sy, sm - 1, sd, 0, 0, 0);
+                            const spEnd = new Date(ey, em - 1, ed, 23, 59, 59);
+
+                            if (isTarget && date >= spStart && date <= spEnd) {
+                                defaultIn = sp.timeIn; 
+                                defaultOut = sp.timeOut;
+                            }
                         }
                     });
+                    
+                    shiftIn = shiftIn || defaultIn;
+                    shiftOut = shiftOut || defaultOut;
                 }
 
                 let actualShiftIn = shiftIn;
