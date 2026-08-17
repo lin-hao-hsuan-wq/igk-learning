@@ -118,13 +118,13 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v22', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v22', 'rokko')); 
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v22', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v24', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v24', 'rokko')); 
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v24', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period_v22', null);
+                const saved = loadSavedState('igk_pro_period_v24', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -133,22 +133,21 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            // ★ 新增：設定加入 myoStart 與 myoEnd 欄位
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v23', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v22', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v22', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v22', employees[0].id)); 
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v24', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v24', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v24', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v24', employees[0].id)); 
 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            useEffect(() => localStorage.setItem('igk_pro_activePage_v22', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v22', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v22', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period_v22', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance_v22', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v22', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v23', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v22', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_activePage_v24', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v24', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v24', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period_v24', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance_v24', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v24', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v24', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v24', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -366,7 +365,6 @@
                             if (layoutType === 'rokko') {
                                 let currentDates = {}; 
                                 let currentColMap = {};
-                                let prevCellState = {}; 
                                 let allExtractedData = {};
 
                                 for (let r = 1; r <= ws.rowCount; r++) {
@@ -486,7 +484,8 @@
                                                     minTime: 9999, maxTime: -1, 
                                                     exactTimes: [], driverDepTimes: [], driverArrTimes: [], driverOtherTimes: [],
                                                     igkAMins: 0, igkBMins: 0,
-                                                    explicitShiftIn: null, explicitShiftOut: null, leave: null
+                                                    explicitShiftIn: null, explicitShiftOut: null, leave: null,
+                                                    shiftCaptured: false
                                                 };
                                             }
                                             let ed = allExtractedData[empId][dateInfo.key];
@@ -499,13 +498,15 @@
                                                 return; 
                                             }
 
+                                            // ★ 完美捕捉正社員手寫的排班時間 (例如 10:00-19:00 或是 10-19)
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
-                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~](\d{1,2})(?:[:：.](\d{2}))?/);
-                                            if (timeRangeMatch) {
+                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
+                                            if (timeRangeMatch && !ed.shiftCaptured) {
                                                 let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
                                                 let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
                                                 ed.explicitShiftIn = `${h1.padStart(2, '0')}:${m1}`;
                                                 ed.explicitShiftOut = `${h2.padStart(2, '0')}:${m2}`;
+                                                ed.shiftCaptured = true;
                                             }
 
                                             if (hasColor) {
@@ -531,6 +532,7 @@
                                             
                                             let blockType = 'igkB'; 
                                             let lowerNorm = normalizedText.toLowerCase();
+
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
                                             let isIgkaKeyword = lowerNorm.includes('kids') || lowerNorm.includes('toe') || lowerNorm.includes('activity');
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText);
@@ -549,18 +551,13 @@
                                                 } else {
                                                     blockType = 'igkB';
                                                 }
-                                            } else {
-                                                let stateKey = `${empId}_${dateInfo.key}`;
-                                                let prev = prevCellState[stateKey];
-                                                if (prev && prev.hex === hex && prev.theme === theme && prev.indexed === indexed && hasColor) {
-                                                    blockType = prev.blockType;
-                                                } else {
-                                                    blockType = 'igkB';
-                                                }
+                                            } else if (hasColor) {
+                                                // 如果沒有字只有顏色，根據之前判定的顏色繼續
+                                                if (isLightBlue) blockType = 'igkB';
+                                                else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) blockType = 'igkA'; // 預設空彩色為A
                                             }
-                                            
-                                            prevCellState[`${empId}_${dateInfo.key}`] = { hex, theme, indexed, blockType };
 
+                                            // ★ 完美解除合併儲存格的干擾，每一次迴圈就代表經過一個 30分鐘 的時段，直接疊加！
                                             if (hasColor) {
                                                 if (blockType === 'igkA') ed.igkAMins += 30;
                                                 else if (blockType === 'igkB') ed.igkBMins += 30;
@@ -571,6 +568,7 @@
                                                 if (blockType === 'driver_with_time') {
                                                     const matchIndex = m.index;
                                                     const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
+                                                    
                                                     if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
                                                         ed.driverArrTimes.push(tMins);
                                                     } else if (context.includes('乗車') || context.includes('出発')) {
@@ -594,7 +592,9 @@
                                         if (!newData[empId]) newData[empId] = {};
                                         if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
 
-                                        if (data.leave) newData[empId][dateKey].leave = data.leave;
+                                        if (data.leave) {
+                                            newData[empId][dateKey].leave = data.leave;
+                                        }
 
                                         let startMins = data.minTime;
                                         let endMins = data.maxTime !== -1 ? data.maxTime + 30 : -1; 
@@ -603,6 +603,7 @@
                                             startMins = timeToMins(data.explicitShiftIn);
                                             endMins = timeToMins(data.explicitShiftOut);
                                         } else if (emp && emp.type === 'full') {
+                                            // 正社員若沒有明確的手寫排班，則清空舊版匯入的色塊邊界，等待系統自動預設排班
                                             startMins = 9999;
                                             endMins = -1;
                                             if (newData[empId] && newData[empId][dateKey]) {
@@ -619,6 +620,7 @@
                                         if (startMins < 9999 && endMins > -1) {
                                             let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
                                             let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
+                                            
                                             if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
                                             if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
                                         }
@@ -632,8 +634,12 @@
                                             let minOther = Math.min(...data.driverOtherTimes);
                                             let maxOther = Math.max(...data.driverOtherTimes);
                                             if (dep === null && arr === null) {
-                                                if (data.driverOtherTimes.length === 1) dep = minOther; 
-                                                else { dep = minOther; arr = maxOther; }
+                                                if (data.driverOtherTimes.length === 1) {
+                                                    dep = minOther; 
+                                                } else {
+                                                    dep = minOther;
+                                                    arr = maxOther;
+                                                }
                                             } else if (dep === null) {
                                                 if (minOther < arr) dep = minOther;
                                             } else if (arr === null) {
@@ -653,7 +659,9 @@
                                                 if (a !== undefined) {
                                                     totalMins += (a - d);
                                                     pairStrs.push(`${minsToTime(d)}-${minsToTime(a)}`);
-                                                } else pairStrs.push(`${minsToTime(d)}-?`);
+                                                } else {
+                                                    pairStrs.push(`${minsToTime(d)}-?`);
+                                                }
                                             }
                                             newData[empId][dateKey].driverDep = '';
                                             newData[empId][dateKey].driverArr = '';
@@ -661,7 +669,9 @@
 
                                             let oldRm = newData[empId][dateKey].remark || '';
                                             let newRm = `🚗${pairStrs.join(', ')}`;
-                                            if (!oldRm.includes(newRm)) newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
+                                            if (!oldRm.includes(newRm)) {
+                                                newData[empId][dateKey].remark = oldRm ? `${oldRm} | ${newRm}` : newRm;
+                                            }
                                         } else {
                                             if (dep !== null || arr !== null) {
                                                 newData[empId][dateKey].driverDep = dep !== null ? minsToTime(dep) : '';
@@ -673,11 +683,15 @@
                                                 newData[empId][dateKey].driverMins = ''; 
                                             }
                                         }
+
                                         count++;
                                     });
                                 });
 
                             } else if (layoutType === 'myodani') {
+                                // ==========================================
+                                // 📍 名谷校解析引擎
+                                // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
 
@@ -695,7 +709,9 @@
                                             break;
                                         }
                                     }
-                                    if (lastSeenDate) colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
+                                    if (lastSeenDate) {
+                                        colDateMap[c] = { key: dKey(lastSeenDate), obj: lastSeenDate };
+                                    }
                                 }
 
                                 let extractedMyodani = {};
@@ -735,7 +751,7 @@
 
                                         if (!extractedMyodani[foundEmpId]) extractedMyodani[foundEmpId] = {};
                                         if (!extractedMyodani[foundEmpId][dateInfo.key]) {
-                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null };
+                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null, shiftCaptured: false };
                                         }
                                         let ed = extractedMyodani[foundEmpId][dateInfo.key];
 
@@ -746,14 +762,17 @@
                                             let rawText = getSafeText(cell).trim();
                                             let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
+                                            // ★ 完美捕捉正社員排班時間 (支援 9:15-18:15 或是 9-18)
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
-                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~](\d{1,2})(?:[:：.](\d{2}))?/);
+                                            const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
                                             
-                                            if (timeRangeMatch) {
+                                            // 只攔截「名字下方第一次出現的時間區間」，避免誤抓成上課時間
+                                            if (timeRangeMatch && !ed.shiftCaptured) {
                                                 let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
                                                 let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
                                                 ed.shiftIn = `${h1.padStart(2, '0')}:${m1}`;
                                                 ed.shiftOut = `${h2.padStart(2, '0')}:${m2}`;
+                                                ed.shiftCaptured = true;
                                                 count++;
                                             }
 
@@ -779,6 +798,7 @@
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText); 
                                             let isIgkbKeyword = lowerNorm.includes('park') || lowerNorm.includes('prep');
 
+                                            // ★ 完美解除合併儲存格的干擾，每一次迴圈就代表經過一個 30分鐘 的時段！
                                             if (lowerNorm.includes('break')) {
                                                 // do nothing
                                             } else if (isMagentaPink && hasEnglish) { 
