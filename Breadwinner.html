@@ -24,14 +24,14 @@
             { id: 'r4', name: '林昊嬛', aliases: ['Koukei', '林 昊嬛', '林'], type: 'full', location: 'rokko', isActive: true },
             { id: 'r5', name: '實熊功光', aliases: ['Mikuma', '実熊', 'みくま', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r6', name: '上山貴行', aliases: ['Taka', '上山', 'たか', '上山 貴行'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r7', name: 'Fergus', aliases: ['Fergus', 'Fergus Costard', 'Costard Fergus William Andrew', 'Costard'], type: 'part', location: 'both', isActive: true },
-            { id: 'r8', name: 'Sammy Abukmeil', aliases: ['Sammy', 'サミー'], type: 'part', location: 'both', isActive: true },
-            { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part', location: 'both', isActive: true },
+            { id: 'r7', name: 'ファーガス', aliases: ['Fergus', 'Fergus Costard', 'Costard Fergus William Andrew', 'Costard', 'ファーガス'], type: 'part', location: 'both', isActive: true },
+            { id: 'r8', name: 'Sammy Abukmeil', aliases: ['Sammy', 'サミー', 'Sammy Abukmeil'], type: 'part', location: 'both', isActive: true },
+            { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung', 'Kim Nakyung'], type: 'part', location: 'both', isActive: true },
             { id: 'r10', name: 'Nathan Morrison', aliases: ['Nathan', 'ネイサン'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r11', name: '沼田真里子', aliases: ['Mariko', 'マリコ', 'まりこ', '沼田 真里子'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r12', name: '安藤佑也', aliases: ['Ando', '安藤', 'あんどう', '安藤 佑也'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r13', name: 'Misato', aliases: ['Misato', 'みさと'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r14', name: 'Nao', aliases: ['Nao', 'なお'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r13', name: 'ミサト', aliases: ['Misato', 'みさと'], type: 'part', location: 'rokko', isActive: true },
+            { id: 'r14', name: 'ナオ', aliases: ['Nao', 'なお'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko', isActive: true },
             { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko', isActive: true },
             { id: 'm1', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full', location: 'myodani', isActive: true },
@@ -118,13 +118,13 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v25', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v25', 'rokko')); 
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v25', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage_v27', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation_v27', 'rokko')); 
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v27', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period_v25', null);
+                const saved = loadSavedState('igk_pro_period_v27', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -133,21 +133,21 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v25', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v25', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v25', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v25', employees[0].id)); 
+            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v27', { baseStart: '09:30', baseEnd: '18:30', myoStart: '09:15', myoEnd: '18:15', special: [] }));
+            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance_v27', {})); 
+            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData_v27', {})); 
+            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp_v27', employees[0].id)); 
 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            useEffect(() => localStorage.setItem('igk_pro_activePage_v25', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v25', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v25', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period_v25', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance_v25', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v25', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v25', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v25', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_activePage_v27', JSON.stringify(activePage)), [activePage]);
+            useEffect(() => localStorage.setItem('igk_pro_activeLocation_v27', JSON.stringify(activeLocation)), [activeLocation]);
+            useEffect(() => localStorage.setItem('igk_pro_activeEmp_v27', JSON.stringify(activeEmp)), [activeEmp]);
+            useEffect(() => localStorage.setItem('igk_pro_period_v27', JSON.stringify(period)), [period]);
+            useEffect(() => localStorage.setItem('igk_pro_attendance_v27', JSON.stringify(attendance)), [attendance]);
+            useEffect(() => localStorage.setItem('igk_pro_monthlyData_v27', JSON.stringify(monthlyData)), [monthlyData]);
+            useEffect(() => localStorage.setItem('igk_pro_settings_v27', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v27', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -362,6 +362,11 @@
                                 layoutType = 'myodani';
                             }
 
+                            // 統一最新的顏色圖庫
+                            const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700', 'FFFFD966'];
+                            const magentaPinkHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4', 'FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9', 'FFFBA4D1']; 
+                            const cyanBlueHexes = ['00FFFF', 'CCFFFF', '00B0F0', 'FF00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0', '9CC2E5', 'FFA4F0FB', 'A4F0FB', '0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF', 'B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE', 'CCECFF', 'FFCFE2F3', 'CFE2F3'];
+
                             if (layoutType === 'rokko') {
                                 let currentDates = {}; 
                                 let currentColMap = {};
@@ -420,8 +425,8 @@
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
                                             let actCell = ws.getCell(r, parseInt(c));
-                                            let cellAddr = actCell.address;
-
+                                            
+                                            // 借位：如果被合併，直接讀取母儲存格
                                             if (actCell.isMerged) {
                                                 actCell = ws.getCell(actCell.master.address);
                                             }
@@ -429,16 +434,15 @@
                                             let rawText = getSafeText(actCell).trim();
                                             let fill = actCell.fill || {};
                                             let hex = '';
-                                            if (fill.type === 'pattern' && fill.pattern !== 'none') {
-                                                hex = String(fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                                if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
-                                            }
+                                            if (fill.fgColor && fill.fgColor.argb) hex = String(fill.fgColor.argb).toUpperCase();
+                                            else if (fill.bgColor && fill.bgColor.argb) hex = String(fill.bgColor.argb).toUpperCase();
+                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+
                                             let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
                                             let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
                                             
                                             let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
                                             let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF\-]/.test(normalizedText); 
-                                            
                                             let hasColor = hex || (theme !== -1 && theme !== 1 && theme !== 0) || (indexed !== -1 && indexed !== 64);
                                             
                                             if (!hasContent && !hasColor) return;
@@ -451,10 +455,12 @@
                                                     let checkCell = ws.getCell(r, checkC);
                                                     if (checkCell.isMerged) checkCell = ws.getCell(checkCell.master.address);
                                                     let checkFill = checkCell.fill || {};
-                                                    let checkHex = (checkFill.type === 'pattern' && checkFill.pattern !== 'none') ? String(checkFill.fgColor?.argb || checkFill.bgColor?.argb || '').toUpperCase() : '';
+                                                    let checkHex = '';
+                                                    if (checkFill.fgColor && checkFill.fgColor.argb) checkHex = String(checkFill.fgColor.argb).toUpperCase();
+                                                    else if (checkFill.bgColor && checkFill.bgColor.argb) checkHex = String(checkFill.bgColor.argb).toUpperCase();
                                                     if (checkHex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(checkHex)) checkHex = '';
                                                     let checkTheme = checkFill.fgColor?.theme ?? checkFill.bgColor?.theme ?? -1;
-                                                    let checkIndexed = checkFill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
+                                                    let checkIndexed = checkFill.fgColor?.indexed ?? checkFill.bgColor?.indexed ?? -1;
                                                     
                                                     if (checkHex === hex && checkTheme === theme && checkIndexed === indexed) {
                                                         let text = getSafeText(checkCell);
@@ -462,9 +468,7 @@
                                                             borrowText = text.trim();
                                                             break;
                                                         }
-                                                    } else {
-                                                        break;
-                                                    }
+                                                    } else break;
                                                 }
                                             }
 
@@ -489,7 +493,7 @@
                                                     exactTimes: [], driverDepTimes: [], driverArrTimes: [], driverOtherTimes: [],
                                                     igkAMins: 0, igkBMins: 0,
                                                     explicitShiftIn: null, explicitShiftOut: null, leave: null,
-                                                    shiftCaptured: false, processedBlocks: new Set()
+                                                    shiftCaptured: false
                                                 };
                                             }
                                             let ed = allExtractedData[empId][dateInfo.key];
@@ -504,7 +508,9 @@
 
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
                                             const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
-                                            if (timeRangeMatch && !ed.shiftCaptured) {
+                                            
+                                            // ★ 若無顏色，視為排班文字 (如 10:00-19:00)
+                                            if (timeRangeMatch && !ed.shiftCaptured && !hasColor) {
                                                 let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
                                                 let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
                                                 ed.explicitShiftIn = `${h1.padStart(2, '0')}:${m1}`;
@@ -519,32 +525,26 @@
 
                                             const exactMatches = [...normalizedText.matchAll(/([0-9]{1,2})[:：.]([0-9]{2})/g)];
                                             
-                                            const yellowHexes = ['FFFF00', 'FFC000', 'FFD966', 'FFE699', 'FFF2CC', 'FFEB9C', 'D965', 'FFCC00', 'FFD700'];
-                                            const magentaHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'E000E0', 'D500D5', 'FF1493', 'C71585', 'FF69B4']; 
-                                            const pinkHexes = ['FF99CC', 'FFC0CB', 'FF66B2', 'FF3399', 'FF6699', 'FF99FF', 'FFC4D9']; 
-                                            const cyanHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '66FFFF', '44CCFF', '99FFFF', 'B3D9FF', '00E5FF', '00CED1', '40E0D0', '9CC2E5']; 
-                                            const jewelBlueHexes = ['0070C0', '002060', '3366FF', '0000FF', '0054A6', '0033CC', '0066FF', '0055FF', '0000CC', '000099', '0A3FFF']; 
-                                            const lightBlueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', 'BDD7EE', 'CCECFF'];
-                                            
                                             let isYellow = (hex && yellowHexes.some(y => hex.includes(y))) || theme === 7 || indexed === 34 || indexed === 51 || indexed === 13;
-                                            let isMagenta = hex && magentaHexes.some(m => hex.includes(m));
-                                            let isPink = hex && pinkHexes.some(p => hex.includes(p));
-                                            let isCyan = hex && cyanHexes.some(c => hex.includes(c));
-                                            let isJewelBlue = hex && jewelBlueHexes.some(b => hex.includes(b));
-                                            let isLightBlue = (hex && lightBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
+                                            let isMagenta = hex && magentaPinkHexes.some(m => hex.includes(m));
+                                            let isPink = hex && magentaPinkHexes.some(p => hex.includes(p));
+                                            let isCyan = hex && cyanBlueHexes.some(c => hex.includes(c));
+                                            let isJewelBlue = hex && cyanBlueHexes.some(b => hex.includes(b));
+                                            let isLightBlue = (hex && cyanBlueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37 || indexed === 42;
                                             
                                             let blockType = 'igkB'; 
                                             let lowerNorm = normalizedText.toLowerCase();
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
                                             let isIgkaKeyword = lowerNorm.includes('kids') || lowerNorm.includes('toe') || lowerNorm.includes('activity');
+                                            let isPrivateKeyword = lowerNorm.includes('private');
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText);
 
                                             if (hasContent) {
                                                 if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                     blockType = 'driver_with_time'; 
-                                                } else if (isLightBlue && (lowerNorm.includes('private lesson') || lowerNorm.includes('privatelesson') || lowerNorm.includes('private'))) {
+                                                } else if (isPrivateKeyword) {
                                                     blockType = 'igkA';
-                                                } else if (isLightBlue) {
+                                                } else if (isLightBlue && !isPrivateKeyword) {
                                                     blockType = 'igkB';
                                                 } else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) {
                                                     blockType = (hasEnglish || isIgkaKeyword) ? 'igkA' : 'igkB';
@@ -554,35 +554,33 @@
                                                     blockType = 'igkB';
                                                 }
                                             } else if (hasColor) {
-                                                if (isLightBlue) blockType = 'igkB';
+                                                if (isLightBlue && !isPrivateKeyword) blockType = 'igkB';
                                                 else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) blockType = 'igkA';
                                             }
 
-                                            if (!ed.processedBlocks.has(cellAddr)) {
-                                                ed.processedBlocks.add(cellAddr);
-                                                
-                                                if (hasColor) {
-                                                    if (blockType === 'igkA') ed.igkAMins += 30;
-                                                    else if (blockType === 'igkB') ed.igkBMins += 30;
-                                                }
-
-                                                exactMatches.forEach(m => {
-                                                    let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
-                                                    if (blockType === 'driver_with_time') {
-                                                        const matchIndex = m.index;
-                                                        const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
-                                                        if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
-                                                            ed.driverArrTimes.push(tMins);
-                                                        } else if (context.includes('乗車') || context.includes('出発')) {
-                                                            ed.driverDepTimes.push(tMins);
-                                                        } else {
-                                                            ed.driverOtherTimes.push(tMins);
-                                                        }
-                                                    } else {
-                                                        ed.exactTimes.push(tMins);
-                                                    }
-                                                });
+                                            // ★ 不管是不是合併儲存格，每讀取一次(代表半小時)就強制加 30 分鐘！
+                                            if (hasColor) {
+                                                if (blockType === 'igkA') ed.igkAMins += 30;
+                                                else if (blockType === 'igkB') ed.igkBMins += 30;
+                                                count++;
                                             }
+
+                                            exactMatches.forEach(m => {
+                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                if (blockType === 'driver_with_time') {
+                                                    const matchIndex = m.index;
+                                                    const context = normalizedText.substring(Math.max(0, matchIndex - 5), matchIndex + 15);
+                                                    if (context.includes('下車') || context.includes('到着') || context.includes('降車') || context.includes('返却')) {
+                                                        ed.driverArrTimes.push(tMins);
+                                                    } else if (context.includes('乗車') || context.includes('出発')) {
+                                                        ed.driverDepTimes.push(tMins);
+                                                    } else {
+                                                        ed.driverOtherTimes.push(tMins);
+                                                    }
+                                                } else {
+                                                    ed.exactTimes.push(tMins);
+                                                }
+                                            });
                                         });
                                     }
                                 }
@@ -674,7 +672,6 @@
                                                 newData[empId][dateKey].driverMins = ''; 
                                             }
                                         }
-                                        count++;
                                     });
                                 });
 
@@ -736,28 +733,44 @@
 
                                         if (!extractedMyodani[foundEmpId]) extractedMyodani[foundEmpId] = {};
                                         if (!extractedMyodani[foundEmpId][dateInfo.key]) {
-                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null, shiftCaptured: false, processedBlocks: new Set() };
+                                            extractedMyodani[foundEmpId][dateInfo.key] = { shiftIn: null, shiftOut: null, igkAMins: 0, igkBMins: 0, leave: null, shiftCaptured: false };
                                         }
                                         let ed = extractedMyodani[foundEmpId][dateInfo.key];
 
-                                        for (let r = empRowIndex + 1; r <= 80; r++) {
+                                        for (let r = empRowIndex + 1; r <= empRowIndex + 30; r++) {
                                             let cell = ws.getCell(r, c);
-                                            let cellAddress = cell.address;
                                             
+                                            // 借位：若是被合併的儲存格，讀取最左上角的母儲存格屬性
                                             if (cell.isMerged) {
                                                 cell = ws.getCell(cell.master.address);
                                             }
-                                            
-                                            if (ed.processedBlocks.has(cellAddress)) continue;
-                                            ed.processedBlocks.add(cellAddress);
 
                                             let rawText = getSafeText(cell).trim();
+                                            
+                                            // 防呆：如果撞到下一個員工的名字，直接跳出這天
+                                            let checkV = rawText.toLowerCase().replace(/\s+/g, '');
+                                            if (checkV.length >= 2 && employees.some(e => {
+                                                if (e.id === foundEmpId) return false;
+                                                let s = [e.name.toLowerCase().replace(/\s+/g, ''), ...e.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                                return s.includes(checkV) || s.some(name => checkV.includes(name) && name.length >= 2);
+                                            })) {
+                                                break;
+                                            }
+
                                             let normalizedText = rawText.replace(/[Ａ-Ｚａ-ｚ０-９：．]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
+                                            let fill = cell.fill || {};
+                                            let hex = '';
+                                            if (fill.fgColor && fill.fgColor.argb) hex = String(fill.fgColor.argb).toUpperCase();
+                                            else if (fill.bgColor && fill.bgColor.argb) hex = String(fill.bgColor.argb).toUpperCase();
+                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+                                            
+                                            let hasColor = hex || (fill.fgColor?.theme !== undefined) || (fill.fgColor?.indexed !== undefined);
+
+                                            // ★ 若無顏色，視為排班文字 (如 9:15-18:15)
                                             let textForTime = normalizedText.replace(/[\r\n\s]+/g, ''); 
                                             const timeRangeMatch = textForTime.match(/(\d{1,2})(?:[:：.](\d{2}))?[-~〜ー－]+(\d{1,2})(?:[:：.](\d{2}))?/);
-                                            
-                                            if (timeRangeMatch && !ed.shiftCaptured) {
+                                            if (timeRangeMatch && !ed.shiftCaptured && !hasColor) {
                                                 let h1 = timeRangeMatch[1], m1 = timeRangeMatch[2] || '00';
                                                 let h2 = timeRangeMatch[3], m2 = timeRangeMatch[4] || '00';
                                                 ed.shiftIn = `${h1.padStart(2, '0')}:${m1}`;
@@ -770,29 +783,25 @@
                                                 ed.leave = normalizedText.substring(0, 5);
                                                 count++;
                                             }
-
-                                            let fill = cell.fill || {};
-                                            let hex = '';
-                                            if (fill.type === 'pattern' && fill.pattern !== 'none') {
-                                                hex = String(fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                                if (['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
-                                            }
                                             
-                                            const magentaPinkHexes = ['FF00FF', 'FF00CC', 'FF33CC', 'CC00CC', 'FF0099', 'FF1493', 'FF69B4', 'FF99CC', 'FFC0CB'];
-                                            const cyanBlueHexes = ['00FFFF', 'CCFFFF', '00B0F0', '99CCFF', '33CCFF', '00CCFF', '40E0D0', 'B4C6E7', 'D9E1F2'];
-
                                             let isMagentaPink = hex && magentaPinkHexes.some(m => hex.includes(m));
                                             let isCyanBlue = hex && cyanBlueHexes.some(x => hex.includes(x));
                                             
                                             let lowerNorm = normalizedText.toLowerCase();
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText); 
                                             let isIgkbKeyword = lowerNorm.includes('park') || lowerNorm.includes('prep');
+                                            let isPrivateKeyword = lowerNorm.includes('private');
 
+                                            // ★ 完美解除合併儲存格干擾：每一次迴圈就加 30 分鐘，不管格子多大
                                             if (lowerNorm.includes('break')) {
+                                            } else if (isCyanBlue && isPrivateKeyword) { 
+                                                ed.igkAMins += 30; count++;
                                             } else if (isMagentaPink && hasEnglish) { 
                                                 ed.igkAMins += 30; count++;
                                             } else if (isCyanBlue || isIgkbKeyword) { 
                                                 ed.igkBMins += 30; count++;
+                                            } else if (hasColor && isMagentaPink) {
+                                                ed.igkAMins += 30; count++; // 只有粉色沒字
                                             }
                                         }
                                     }
@@ -963,7 +972,7 @@
             };
 
             const currentEmployees = employees.filter(e => 
-                e.location === activeLocation && 
+                (activeLocation === 'both' ? e.location === 'both' : e.location === activeLocation) && 
                 (e.isActive !== false || hasDataInPeriod(e.id))
             );
             
