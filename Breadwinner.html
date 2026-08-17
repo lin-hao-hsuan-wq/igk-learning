@@ -197,7 +197,8 @@
                 if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
                 let newData = JSON.parse(JSON.stringify(attendance)); 
                 const text = pastedData.toLowerCase();
-                const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
+                // 忽略空格與換行來抓取時間
+                const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?[\s\r\n]*(\d{1,2})[\s\r\n]*[\/\-月][\s\r\n]*(\d{1,2})[\s\r\n]*日?[\s\r\n]*(\d{1,2})[\s\r\n]*[:：][\s\r\n]*(\d{2})/g;
                 
                 const matches = [...text.matchAll(timeRegex)];
                 if (matches.length === 0) return alert("一致する名前や時間のフォーマットが見つかりませんでした。");
@@ -226,8 +227,8 @@
                     
                     let foundEmpId = null;
                     for (let emp of employees) { 
-                        const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))];
-                        if (names.some(n => block.replace(/\s/g,'').includes(n))) {
+                        const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/[\s\r\n]+/g,''))];
+                        if (names.some(n => block.replace(/[\s\r\n]+/g,'').includes(n))) {
                             foundEmpId = emp.id;
                             lastEmpLoc = emp.location !== 'both' ? emp.location : activeLocation; 
                             break;
@@ -320,9 +321,6 @@
                         };
 
                         wb.worksheets.forEach(ws => {
-                            // ==========================================
-                            // 📍 真正的自動判定：檢查 Excel 實體結構
-                            // ==========================================
                             let layoutType = 'rokko'; // 預設為六甲校結構
                             let horizontalDates = 0;
                             
@@ -332,7 +330,6 @@
                                     if (cell.isMerged) cell = ws.getCell(cell.master.address);
                                     
                                     let t = getSafeText(cell).replace(/\s+/g, '');
-                                    // 更寬鬆的判定，只要開頭有符合日期的特徵就計入
                                     if (t.match(/(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?/)) {
                                         horizontalDates++;
                                         break; 
@@ -346,7 +343,7 @@
 
                             if (layoutType === 'rokko') {
                                 // ==========================================
-                                // 📍 六甲校 (橫向列) 解析引擎 (還原 100% 成功邏輯)
+                                // 📍 六甲校解析引擎 
                                 // ==========================================
                                 let currentDates = {}; 
                                 let currentColMap = {};
@@ -372,7 +369,6 @@
                                         let v = getSafeText(ws.getCell(r, c)).toLowerCase().replace(/\s+/g, '');
                                         if (v.length >= 1) {
                                             for (const emp of employees) { 
-                                                // ★ 修復：完全移除解析階段的過濾！只要名字在這張表上就無條件抓取
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     tempMap[c] = emp.id; matches++; break;
@@ -478,6 +474,7 @@
                                             let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
                                             let blockType = 'igkB'; 
+                                            let lowerNorm = normalizedText.toLowerCase();
 
                                             if (normalizedText.includes('欠') || normalizedText.includes('休') || isGrey) {
                                                 if (normalizedText.includes('欠') || normalizedText.includes('休')) {
@@ -489,12 +486,15 @@
                                             }
 
                                             let isDriverKeyword = normalizedText.includes('乗車') || normalizedText.includes('下車') || normalizedText.includes('降車') || normalizedText.includes('出発') || normalizedText.includes('到着') || normalizedText.includes('車') || normalizedText.includes('返却');
-                                            let isIgkaKeyword = normalizedText.toLowerCase().includes('kids') || normalizedText.toLowerCase().includes('toe') || normalizedText.toLowerCase().includes('activity') || normalizedText.toLowerCase().includes('private');
+                                            let isIgkaKeyword = lowerNorm.includes('kids') || lowerNorm.includes('toe') || lowerNorm.includes('activity');
                                             let hasEnglish = /[a-zA-Z]/.test(normalizedText);
 
                                             if (hasContent) {
                                                 if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                     blockType = 'driver_with_time'; 
+                                                } else if (isLightBlue && (lowerNorm.includes('private lesson') || lowerNorm.includes('privatelesson'))) {
+                                                    // 水藍色 + 包含 Private lesson 判定為 IGK A
+                                                    blockType = 'igkA';
                                                 } else if (isLightBlue) {
                                                     blockType = 'igkB';
                                                 } else if (isMagenta || isPink || isCyan || isJewelBlue || isYellow) {
@@ -649,7 +649,7 @@
 
                             } else if (layoutType === 'myodani') {
                                 // ==========================================
-                                // 📍 名谷校 (直向欄) 解析引擎
+                                // 📍 名谷校解析引擎
                                 // ==========================================
                                 let colDateMap = {}; 
                                 let lastSeenDate = null;
@@ -689,7 +689,6 @@
                                         
                                         if (v.length >= 2) {
                                             for (const emp of employees) {
-                                                // ★ 修復：完全移除解析階段的過濾！只要名字在這張表上就無條件抓取
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
                                                     foundEmpId = emp.id;
@@ -758,6 +757,7 @@
                                             if (lowerNorm.includes('break')) {
                                                 // do nothing
                                             } else if (isMagentaPink && hasEnglish) { 
+                                                // 粉色格子 + 有包含英文字 判定為 IGK A
                                                 ed.igkAMins += 30; 
                                                 count++;
                                             } else if (isCyanBlue || isIgkbKeyword) { 
@@ -844,7 +844,13 @@
                 let driverDep = row.driverDep || '';
                 let driverArr = row.driverArr || '';
 
-                let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
+                // 正社員如果「有上班 (有排班或有打卡)」則自動帶入一小時休息時間
+                let breakTime = row.breakTime !== undefined ? row.breakTime : '00:00';
+                if (row.breakTime === undefined && emp.type === 'full') {
+                    if ((inTime && outTime && !leave) || (shiftIn && shiftOut && !leave)) {
+                        breakTime = '01:00';
+                    }
+                }
                 let breakMins = timeToMins(breakTime);
 
                 if (emp.type === 'full') {
