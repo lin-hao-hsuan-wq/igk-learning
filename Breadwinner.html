@@ -94,14 +94,14 @@
             if (cell.value instanceof Date) return ''; 
             if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
             if (cell.value.result !== undefined && cell.value.result !== null) return String(cell.value.result);
-            return '';
+            try { return String(cell.value); } catch(e) { return ''; }
         };
 
         function App() {
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ V9 記憶刷新：確保載入最新英文名稱
+            // ★ V9 強制更新記憶，英文名正式生效
             const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v9', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
 
@@ -119,7 +119,6 @@
             const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance', {})); 
             const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData', {})); 
             const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp', employees[0].id)); 
-            const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage', 1200));
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
             useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
@@ -129,7 +128,6 @@
             useEffect(() => localStorage.setItem('igk_pro_attendance', JSON.stringify(attendance)), [attendance]);
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
             useEffect(() => localStorage.setItem('igk_pro_employees_v9', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
@@ -320,12 +318,14 @@
 
                             if (!isGridFormat) {
                                 // ==========================================
-                                // 名谷校模式 (橫向區塊)
+                                // 名谷校模式 (全範圍 2D 掃描)
                                 // ==========================================
                                 detectedLocation = 'myodani';
-                                let dateCols = [];
+                                let blocks = [];
                                 
-                                for (let r = 1; r <= 3; r++) {
+                                // 1. 抓取所有出現在表格中的日期標籤 (不限行數)
+                                for (let r = 1; r <= ws.rowCount; r++) {
+                                    let dateColsThisRow = [];
                                     for (let c = 1; c <= 40; c++) {
                                         let cell = ws.getCell(r, c);
                                         let dObj = null;
@@ -341,68 +341,77 @@
                                                 dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
                                             }
                                         }
-                                        if (dObj) dateCols.push({ col: c, dateKey: dKey(dObj), obj: dObj });
+                                        if (dObj) dateColsThisRow.push({ col: c, dateKey: dKey(dObj), obj: dObj });
+                                    }
+                                    if (dateColsThisRow.length > 0) {
+                                        dateColsThisRow.sort((a, b) => a.col - b.col);
+                                        for (let i = 0; i < dateColsThisRow.length; i++) {
+                                            dateColsThisRow[i].endCol = i + 1 < dateColsThisRow.length ? dateColsThisRow[i+1].col - 1 : 40;
+                                        }
+                                        blocks.push({ row: r, dates: dateColsThisRow });
                                     }
                                 }
                                 
-                                dateCols.sort((a, b) => a.col - b.col);
-                                for (let i = 0; i < dateCols.length; i++) {
-                                    dateCols[i].endCol = i + 1 < dateCols.length ? dateCols[i+1].col - 1 : 40;
-                                }
-
-                                for (let dInfo of dateCols) {
-                                    if (!autoPeriod) {
-                                        let tmpy = dInfo.obj.getFullYear();
-                                        let tmpm = dInfo.obj.getDate() >= 16 ? dInfo.obj.getMonth() + 2 : dInfo.obj.getMonth() + 1;
-                                        if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
-                                        autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
-                                    }
+                                // 2. 針對每個日期區塊向下掃描 (直到碰到下一個日期區塊)
+                                for (let b = 0; b < blocks.length; b++) {
+                                    let currentBlock = blocks[b];
+                                    let nextBlockRow = blocks[b+1] ? blocks[b+1].row : ws.rowCount + 1;
                                     
-                                    for (let c = dInfo.col; c <= dInfo.endCol; c++) {
-                                        for (let r = 2; r <= ws.rowCount; r++) {
-                                            let cellText = getSafeText(ws.getCell(r, c)).replace(/\s/g, '').toLowerCase();
-                                            if (!cellText || cellText.length < 2) continue;
-                                            
-                                            let matchedEmpId = null;
-                                            for (const emp of localEmps) {
-                                                let s = [emp.name.toLowerCase().replace(/\s/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g, ''))];
-                                                if (s.includes(cellText) || s.some(name => cellText.includes(name) && name.length >= 2)) {
-                                                    matchedEmpId = emp.id; break;
-                                                }
-                                            }
-                                            
-                                            if (matchedEmpId) {
-                                                let shiftIn = null, shiftOut = null;
+                                    for (let dInfo of currentBlock.dates) {
+                                        if (!autoPeriod) {
+                                            let tmpy = dInfo.obj.getFullYear();
+                                            let tmpm = dInfo.obj.getDate() >= 16 ? dInfo.obj.getMonth() + 2 : dInfo.obj.getMonth() + 1;
+                                            if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
+                                            autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
+                                        }
+                                        
+                                        for (let c = dInfo.col; c <= dInfo.endCol; c++) {
+                                            for (let r = currentBlock.row + 1; r < nextBlockRow; r++) {
+                                                let cellText = getSafeText(ws.getCell(r, c)).replace(/\s/g, '').toLowerCase();
+                                                if (!cellText || cellText.length < 2) continue;
                                                 
-                                                for (let tr = r + 1; tr <= Math.min(ws.rowCount, r + 5); tr++) {
-                                                    let tCell = ws.getCell(tr, c);
-                                                    let tText = getSafeText(tCell).replace(/\s/g, '');
-                                                    let tVal = tCell.value;
-                                                    
-                                                    let tm = tText.match(/(\d{1,2}[:：\.]\d{2})[-~～](\d{1,2}[:：\.]\d{2})/);
-                                                    if (tm) {
-                                                        shiftIn = tm[1].replace(/[：\.]/g,':');
-                                                        shiftOut = tm[2].replace(/[：\.]/g,':');
-                                                        break;
+                                                let matchedEmpId = null;
+                                                for (const emp of localEmps) {
+                                                    let s = [emp.name.toLowerCase().replace(/\s/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g, ''))];
+                                                    if (s.includes(cellText) || s.some(name => cellText.includes(name) && name.length >= 2)) {
+                                                        matchedEmpId = emp.id; break;
                                                     }
+                                                }
+                                                
+                                                if (matchedEmpId) {
+                                                    let shiftIn = null, shiftOut = null;
                                                     
-                                                    if (tVal instanceof Date && tVal.getHours() === 0 && tVal.getMinutes() === 0) {
-                                                        let fakeM = tVal.getMonth() + 1;
-                                                        let fakeD = tVal.getDate();
-                                                        if (fakeM >= 7 && fakeM <= 22 && fakeD >= 7 && fakeD <= 22) {
-                                                            shiftIn = `${String(fakeM).padStart(2, '0')}:00`;
-                                                            shiftOut = `${String(fakeD).padStart(2, '0')}:00`;
+                                                    // 往下掃描 5 行抓取時間
+                                                    for (let tr = r + 1; tr <= Math.min(nextBlockRow - 1, r + 5); tr++) {
+                                                        let tCell = ws.getCell(tr, c);
+                                                        let tText = getSafeText(tCell).replace(/\s/g, '');
+                                                        let tVal = tCell.value;
+                                                        
+                                                        let tm = tText.match(/(\d{1,2}[:：\.]\d{2})[-~～](\d{1,2}[:：\.]\d{2})/);
+                                                        if (tm) {
+                                                            shiftIn = tm[1].replace(/[：\.]/g,':');
+                                                            shiftOut = tm[2].replace(/[：\.]/g,':');
                                                             break;
                                                         }
+                                                        
+                                                        if (tVal instanceof Date && tVal.getHours() === 0 && tVal.getMinutes() === 0) {
+                                                            let fakeM = tVal.getMonth() + 1;
+                                                            let fakeD = tVal.getDate();
+                                                            if (fakeM >= 7 && fakeM <= 22 && fakeD >= 7 && fakeD <= 22) {
+                                                                shiftIn = `${String(fakeM).padStart(2, '0')}:00`;
+                                                                shiftOut = `${String(fakeD).padStart(2, '0')}:00`;
+                                                                break;
+                                                            }
+                                                        }
                                                     }
-                                                }
-                                                
-                                                if (shiftIn && shiftOut) {
-                                                    if (!newData[matchedEmpId]) newData[matchedEmpId] = {};
-                                                    if (!newData[matchedEmpId][dInfo.dateKey]) newData[matchedEmpId][dInfo.dateKey] = {};
-                                                    newData[matchedEmpId][dInfo.dateKey].shiftIn = shiftIn;
-                                                    newData[matchedEmpId][dInfo.dateKey].shiftOut = shiftOut;
-                                                    count++;
+                                                    
+                                                    if (shiftIn && shiftOut) {
+                                                        if (!newData[matchedEmpId]) newData[matchedEmpId] = {};
+                                                        if (!newData[matchedEmpId][dInfo.dateKey]) newData[matchedEmpId][dInfo.dateKey] = {};
+                                                        newData[matchedEmpId][dInfo.dateKey].shiftIn = shiftIn;
+                                                        newData[matchedEmpId][dInfo.dateKey].shiftOut = shiftOut;
+                                                        count++;
+                                                    }
                                                 }
                                             }
                                         }
@@ -582,7 +591,7 @@
                                     Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                         const data = allExtractedData[empId][dateKey];
                                         
-                                        // ★ 老將修復：打工者不再被強制灌水 08:00-19:30
+                                        // ★ 老將修正：打工者不再被強制灌水 08:00-19:30
                                         let empObj = localEmps.find(e => e.id === empId);
                                         let isPartTime = empObj && empObj.type === 'part';
 
@@ -593,13 +602,18 @@
                                             endMins = Math.max(...data.exactTimes);
                                         }
 
+                                        if (!newData[empId]) newData[empId] = {};
+                                        if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
+
                                         if (isPartTime) {
-                                            // 打工者：只依據有出現顏色區塊或精確時間的範圍
-                                            if (startMins === 9999 && data.minTime !== 9999) startMins = data.minTime;
-                                            if (endMins === -1 && data.maxTime !== -1) {
-                                                endMins = data.maxTime + 30;
-                                            } else if (endMins !== -1 && data.maxTime !== -1) {
-                                                endMins = Math.max(endMins, data.maxTime + 30);
+                                            // 打工者：只記錄有顏色的實際時數與確切時間字串，不主動填滿 ShiftIn/Out
+                                            if (data.igkAMins > 0) {
+                                                let prevIgkA = timeToMins(newData[empId][dateKey].igkA || '');
+                                                newData[empId][dateKey].igkA = minsToTime(prevIgkA + data.igkAMins);
+                                            }
+                                            if (data.igkBMins > 0) {
+                                                let prevIgkB = timeToMins(newData[empId][dateKey].igkB || '');
+                                                newData[empId][dateKey].igkB = minsToTime(prevIgkB + data.igkBMins);
                                             }
                                         } else {
                                             // 正社員：依據排版極端值擴展
@@ -611,46 +625,43 @@
                                                 if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
                                                 if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
                                             }
-                                        }
-
-                                        if (startMins < 9999 && endMins > -1) {
-                                            if (!newData[empId]) newData[empId] = {};
-                                            if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
-                                            
-                                            let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
-                                            let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
-                                            
-                                            if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
-                                            if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
-                                            
+                                            if (startMins < 9999 && endMins > -1) {
+                                                let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
+                                                let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
+                                                if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
+                                                if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
+                                            }
                                             if (data.igkAMins > 0) {
                                                 let prevIgkA = timeToMins(newData[empId][dateKey].igkA || '');
                                                 newData[empId][dateKey].igkA = minsToTime(prevIgkA + data.igkAMins);
                                             }
-                                            
-                                            // 司機區段計算與備註合併
-                                            if (data.driverExactTimes && data.driverExactTimes.length > 0) {
-                                                let times = data.driverExactTimes.sort((a,b) => a - b);
-                                                let totalDriverMins = 0;
-                                                let tripStrs = [];
-                                                
-                                                for (let i = 0; i < times.length - 1; i += 2) {
-                                                    totalDriverMins += (times[i+1] - times[i]);
-                                                    tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
-                                                }
-                                                if (times.length % 2 !== 0) {
-                                                    tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
-                                                }
+                                        }
 
-                                                let prevDriver = timeToMins(newData[empId][dateKey].driverMins || '');
-                                                newData[empId][dateKey].driverMins = minsToTime(prevDriver + totalDriverMins);
-                                                
-                                                let existingRemark = newData[empId][dateKey].remark || '';
-                                                let newRemark = tripStrs.join(', ');
-                                                if (newRemark) {
-                                                    newData[empId][dateKey].remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
-                                                }
+                                        // ★ 司機區段計算與備註合併
+                                        if (data.driverExactTimes && data.driverExactTimes.length > 0) {
+                                            let times = data.driverExactTimes.sort((a,b) => a - b);
+                                            let totalDriverMins = 0;
+                                            let tripStrs = [];
+                                            
+                                            for (let i = 0; i < times.length - 1; i += 2) {
+                                                totalDriverMins += (times[i+1] - times[i]);
+                                                tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
                                             }
+                                            if (times.length % 2 !== 0) {
+                                                tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                                            }
+
+                                            let prevDriver = timeToMins(newData[empId][dateKey].driverMins || '');
+                                            newData[empId][dateKey].driverMins = minsToTime(prevDriver + totalDriverMins);
+                                            
+                                            let existingRemark = newData[empId][dateKey].remark || '';
+                                            let newRemark = tripStrs.join(', ');
+                                            if (newRemark) {
+                                                newData[empId][dateKey].remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
+                                            }
+                                        }
+
+                                        if (startMins < 9999 || data.driverExactTimes.length > 0 || data.igkBMins > 0) {
                                             count++;
                                         }
                                     });
@@ -683,14 +694,6 @@
                 }));
             };
 
-            const updateMonthlyData = (id, p, field, val) => {
-                const key = `${id}_${p}`;
-                setMonthlyData(prev => ({
-                    ...prev, [key]: { ...prev[key], [field]: val }
-                }));
-            };
-
-            // ★ 動態時間計算引擎：完美區分全職與打工邏輯
             const calculateRow = (date, row, emp) => {
                 const isWknd = isWeekend(date);
                 let inTime = row.inTime || '';
@@ -702,7 +705,6 @@
                 let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
                 let breakMins = timeToMins(breakTime);
 
-                // 全職人員：套用預設值與特別期間
                 if (emp.type === 'full') {
                     shiftIn = shiftIn || settings.baseStart;
                     shiftOut = shiftOut || settings.baseEnd;
@@ -735,17 +737,27 @@
                 }
 
                 let totalWorkMins = 0;
-                if (inTime && outTime && !leave) {
-                    totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
-                } else if (shiftIn && shiftOut && !leave) {
-                    // 若無實際打卡，預先利用排班區段預估時間
-                    totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(actualShiftIn) - breakMins);
-                }
-
                 const igkAMins = timeToMins(igkA);
                 const driverMins = row.driverMins ? timeToMins(row.driverMins) : 0;
-                // 打工者的駕駛時間不列入 IGK B 浮增
-                const igkBMins = Math.max(0, totalWorkMins - igkAMins - (emp.type === 'part' ? driverMins : 0));
+                let igkBMins = timeToMins(row.igkB || '');
+
+                if (emp.type === 'part') {
+                    if (inTime && outTime && !leave) {
+                        // 有打卡資料時，以打卡時間計算 IGK B (扣除 IGKA 與開車)
+                        totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn || inTime) - breakMins);
+                        igkBMins = Math.max(0, totalWorkMins - igkAMins - driverMins);
+                    } else {
+                        // 僅為預覽班表時，總時間就是排班總和
+                        totalWorkMins = igkAMins + igkBMins + driverMins;
+                    }
+                } else {
+                    if (inTime && outTime && !leave) {
+                        totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
+                    } else if (shiftIn && shiftOut && !leave) {
+                        totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(shiftIn) - breakMins);
+                    }
+                    igkBMins = Math.max(0, totalWorkMins - igkAMins);
+                }
 
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
             };
@@ -757,7 +769,7 @@
                 return dates.some(d => {
                     const k = dKey(d);
                     const r = attendance[empId][k];
-                    return r && (r.inTime || r.outTime || r.shiftIn || r.shiftOut || r.leave || r.driverMins || r.igkA || r.remark);
+                    return r && (r.inTime || r.outTime || r.shiftIn || r.shiftOut || r.leave || r.driverMins || r.igkA || r.igkB || r.remark);
                 });
             };
 
@@ -790,8 +802,7 @@
                     { header: '運転 (H)', key: 'driverH', width: 12 },
                     { header: '早残業(分)', key: 'earlyOT', width: 12 },
                     { header: '後残業(分)', key: 'lateOT', width: 12 },
-                    { header: '交通費(円)', key: 'transport', width: 12 },
-                    { header: '推定給与(円)', key: 'salary', width: 15 },
+                    { header: '交通費(円)', key: 'transport', width: 12 }
                 ];
 
                 wsSummary.getRow(1).eachCell(cell => {
@@ -827,7 +838,7 @@
                         const row = attendance[emp.id]?.[key] || {};
                         const calc = calculateRow(d, row, emp);
                         
-                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut) sumDays++;
+                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut || row.igkB || row.driverMins) sumDays++;
                         if (row.leave === '有休') sumPaidLeave++;
                         else if (row.leave === '事欠') sumUnpaidLeave++;
                         else if (row.leave === '病欠') sumSickLeave++;
@@ -868,7 +879,6 @@
                     const transportFee = Number(monthlyData[`${emp.id}_${period}`]?.transportFee || 0);
                     const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
                     const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
-                    const estSalary = emp.type === 'part' ? Math.floor(totalPartTimeDec * hourlyWage) + transportFee : 0;
 
                     wsEmp.addRow([]);
                     const summaryTitleRow = wsEmp.addRow(['【集計】']);
@@ -882,7 +892,7 @@
                         wsEmp.addRow(['IGK A(H)', (sumIgka/60).toFixed(2), 'IGK B(H)', (sumIgkb/60).toFixed(2), '総労働(H)', ((sumIgka+sumIgkb)/60).toFixed(2)]);
                         if (isDriver) wsEmp.addRow(['運転実績(H)', (sumDriver/60).toFixed(2)]);
                     }
-                    wsEmp.addRow(['交通費(円)', transportFee, '推定給与(円)', emp.type === 'part' ? estSalary : '-']);
+                    wsEmp.addRow(['交通費(円)', transportFee]);
 
                     wsEmp.columns.forEach(col => col.width = 14);
 
@@ -899,14 +909,13 @@
                         driverH: Number((sumDriver / 60).toFixed(2)),
                         earlyOT: sumEarly,
                         lateOT: sumLate,
-                        transport: transportFee,
-                        salary: estSalary > 0 ? estSalary : '-'
+                        transport: transportFee
                     });
                 });
 
                 const buffer = await wb.xlsx.writeBuffer();
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                window.saveAs(blob, `IGK_勤怠給与まとめ_${period}.xlsx`);
+                window.saveAs(blob, `IGK_勤怠まとめ_${period}.xlsx`);
             };
 
             return (
@@ -917,7 +926,7 @@
                         </div>
                         <h1 className="text-xl font-black tracking-widest mr-4 text-indigo-900">IGK 勤怠管理</h1>
                         <button onClick={() => setActivePage('import')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'import' ? 'bg-indigo-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>① データ入力・設定</button>
-                        <button onClick={() => setActivePage('preview')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>② 個人勤務表・給与</button>
+                        <button onClick={() => setActivePage('preview')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>② 個人勤務表</button>
                     </div>
 
                     {activePage === 'import' && (
@@ -985,6 +994,7 @@
                                                 </div>
                                             </div>
 
+                                            {/* ★ 人員名單：六甲與名谷分開顯示 */}
                                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                                 <div>
                                                     <h4 className="text-sm font-black text-indigo-600 mb-2 border-b border-indigo-100 pb-1">六甲校</h4>
@@ -1037,6 +1047,7 @@
                                     </div>
                                     <div className="p-4 rounded-xl flex flex-col gap-4 border border-indigo-100 bg-indigo-50/30">
                                         
+                                        {/* ★ 設定對象：六甲與名谷分開顯示 */}
                                         <div className="flex flex-col gap-2">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-xs font-bold text-indigo-600">対象者を選択:</span>
@@ -1096,17 +1107,6 @@
                                     </h2>
                                     <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに KING OF TIME 等の打刻テキストを貼り付け..."></textarea>
                                     <button onClick={handlePaste} className="mt-3 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-purple-600 shadow-sm text-sm">解析してデータを反映する</button>
-                                </div>
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="text-emerald-500">◆</span> 給与設定 (Excel エクスポート用)
-                                    </h2>
-                                    <div className="flex gap-4 bg-gray-50 p-4 rounded-xl">
-                                        <div className="flex-1">
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">アルバイト基本時給 (円)</label>
-                                            <input type="number" value={hourlyWage} onChange={e=>setHourlyWage(Number(e.target.value))} className="w-full border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1175,6 +1175,7 @@
                                                             </>
                                                         ) : (
                                                             <>
+                                                                {/* ★ UI 網頁預覽表頭只保留「運転時間」 */}
                                                                 {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                     <th className="border-b border-r border-slate-200 p-2 w-20 text-yellow-600 font-black print:p-1">運転時間</th>
                                                                 )}
@@ -1191,7 +1192,7 @@
                                                         const row = attendance[currentEmp.id]?.[key] || {};
                                                         const calc = calculateRow(d, row, currentEmp);
                                                         
-                                                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut) sumDays++;
+                                                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut || row.igkB || row.driverMins) sumDays++;
                                                         if (row.leave === '有休') sumPaidLeave++;
                                                         else if (row.leave === '事欠') sumUnpaidLeave++;
                                                         else if (row.leave === '病欠') sumSickLeave++;
@@ -1240,6 +1241,7 @@
                                                                     </>
                                                                 ) : (
                                                                     <>
+                                                                        {/* ★ UI 網頁預覽欄位只保留「運転時間」 */}
                                                                         {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                             <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
                                                                                 <input type="time" value={row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')} onChange={e => updateCell(currentEmp.id, key, 'driverMins', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
@@ -1298,7 +1300,7 @@
                                                         <div className="text-xs font-bold text-emerald-600 mb-1 print:text-[10px]">交通費 (月額)</div>
                                                         <div className="flex items-center justify-center gap-1">
                                                             <span className="text-lg font-bold text-emerald-700">¥</span>
-                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-2xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
+                                                            <input type="number" value={monthlyData[`${currentEmp.id}_${period}`]?.transportFee || ''} onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)} className="w-24 bg-transparent border-b-2 border-emerald-200 text-xl font-black text-emerald-700 text-center focus:outline-none focus:border-emerald-400 print:border-none print:text-base" placeholder="0" />
                                                         </div>
                                                     </div>
                                                 </>
