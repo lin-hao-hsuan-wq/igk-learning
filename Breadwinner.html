@@ -86,7 +86,6 @@
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            // ★ 強制洗掉舊記憶，改用 v8 讀取最新名單
             const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v8', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
 
@@ -562,14 +561,40 @@
                                 Object.keys(allExtractedData).forEach(empId => {
                                     Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                         const data = allExtractedData[empId][dateKey];
-                                        let startMins = data.minTime;
-                                        let endMins = data.maxTime + 30; 
+                                        
+                                        // ★ 核心修復：針對打工者 (Part)，絕對不以 minTime/maxTime 擴展到整天！
+                                        // 僅使用實際被塗色/有時間標記的區段來決定上下班。
+                                        let empObj = localEmps.find(e => e.id === empId);
+                                        let isPartTime = empObj && empObj.type === 'part';
+
+                                        let startMins = 9999, endMins = -1;
 
                                         if (data.exactTimes.length > 0) {
-                                            const minExact = Math.min(...data.exactTimes);
-                                            const maxExact = Math.max(...data.exactTimes);
-                                            if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
-                                            if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                            startMins = Math.min(...data.exactTimes);
+                                            endMins = Math.max(...data.exactTimes);
+                                        }
+
+                                        if (isPartTime) {
+                                            // 打工者：若有精確時間就用精確時間，若無則依據區塊累積計算
+                                            if (startMins === 9999) {
+                                                if (data.minTime !== 9999) startMins = data.minTime;
+                                            }
+                                            if (endMins === -1) {
+                                                if (data.maxTime !== -1) endMins = data.maxTime + 30;
+                                            } else {
+                                                // 確保有包含最後一個 30 分鐘區塊
+                                                endMins = Math.max(endMins, data.maxTime + 30);
+                                            }
+                                        } else {
+                                            // 正社員維持原本的邏輯
+                                            startMins = data.minTime;
+                                            endMins = data.maxTime + 30;
+                                            if (data.exactTimes.length > 0) {
+                                                const minExact = Math.min(...data.exactTimes);
+                                                const maxExact = Math.max(...data.exactTimes);
+                                                if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
+                                                if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                            }
                                         }
 
                                         if (startMins < 9999 && endMins > -1) {
