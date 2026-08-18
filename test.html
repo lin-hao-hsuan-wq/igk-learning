@@ -87,8 +87,6 @@
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
             const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v6', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
-
-            // ★ 新增：控制「員工名冊」是否展開的 State (預設收合)
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(false);
 
             const [period, setPeriod] = useState(() => {
@@ -106,7 +104,6 @@
             const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData', {})); 
             const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp', employees[0].id)); 
             const [hourlyWage, setHourlyWage] = useState(() => loadSavedState('igk_pro_hourlyWage', 1200));
-
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
             useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
@@ -165,7 +162,7 @@
 
             const handleEditEmployee = (emp) => {
                 setEmpForm({ ...emp, aliases: (emp.aliases || []).join(', ') });
-                setIsEmpManagerOpen(true); // 編輯時自動展開
+                setIsEmpManagerOpen(true);
             };
 
             const handlePaste = () => {
@@ -264,8 +261,12 @@
                         const wb = new ExcelJS.Workbook();
                         await wb.xlsx.load(evt.target.result);
                         let newData = JSON.parse(JSON.stringify(attendance));
+                        let localEmps = JSON.parse(JSON.stringify(employees));
+                        let employeesChanged = false;
                         let count = 0;
                         let autoPeriod = null;
+                        
+                        let sessionIgnores = new Set(); // ★ 防呆記憶：本次上傳忽略的名詞
 
                         const extractTime = (val) => {
                             if (!val) return null;
@@ -303,18 +304,53 @@
 
                                 let matches = 0;
                                 let tempMap = {};
+                                let tempUnknown = [];
+
                                 for (let c = 1; c <= 40; c++) {
-                                    let v = (ws.getCell(r, c).text || '').toLowerCase().replace(/\s+/g, '');
+                                    let cellRaw = ws.getCell(r, c).text || '';
+                                    let v = cellRaw.toLowerCase().replace(/\s+/g, '');
                                     if (v.length >= 1) {
-                                        for (const emp of employees) { 
+                                        let matched = false;
+                                        for (const emp of localEmps) { 
                                             let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                             if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
-                                                tempMap[c] = emp.id; matches++; break;
+                                                tempMap[c] = emp.id; matches++; matched = true; break;
+                                            }
+                                        }
+                                        // ★ 放寬未知字詞抓取條件，讓新的英文名字也能被詢問
+                                        if (!matched && v.length >= 2 && v.length <= 20 && !v.match(/^[0-9:\.\-\/]+$/)) {
+                                            if (!sessionIgnores.has(v)) {
+                                                tempUnknown.push({col: c, name: cellRaw.trim(), key: v});
                                             }
                                         }
                                     }
                                 }
-                                if (matches >= 2) currentColMap = tempMap;
+                                
+                                if (matches >= 2) { 
+                                    if (tempUnknown.length > 0) {
+                                        tempUnknown.forEach(unk => {
+                                            if (sessionIgnores.has(unk.key)) return; 
+                                            
+                                            const mappedName = window.prompt(`未知の担当者/項目「${unk.name}」が見つかりました。\n既存の従業員に紐付ける場合は、その従業員の名前（または一部）を入力してください。\n（無視する場合はそのまま空白でOKを押してください。次回以降はスキップされます）`);
+                                            
+                                            if (mappedName && mappedName.trim()) {
+                                                const targetIdx = localEmps.findIndex(e => e.name.includes(mappedName.trim()) || e.aliases.some(a => a.includes(mappedName.trim())));
+                                                if (targetIdx !== -1) {
+                                                    alert(`「${unk.name}」を ${localEmps[targetIdx].name} に紐付けました（以降は自動で記憶されます）。`);
+                                                    localEmps[targetIdx].aliases.push(unk.name);
+                                                    tempMap[unk.col] = localEmps[targetIdx].id;
+                                                    employeesChanged = true;
+                                                } else {
+                                                    alert('一致する従業員が見つかりませんでした。スキップします。');
+                                                    sessionIgnores.add(unk.key);
+                                                }
+                                            } else {
+                                                sessionIgnores.add(unk.key); // 加入黑名單，本次不再詢問
+                                            }
+                                        });
+                                    }
+                                    currentColMap = tempMap;
+                                }
 
                                 let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
                                 if (activeDateRow && Object.keys(currentColMap).length > 0) {
@@ -377,7 +413,7 @@
                                                     return; 
                                                 }
 
-                                                let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('車') || cellText.includes('返却');
+                                                let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
                                                 
                                                 if ((isYellow || isDriverKeyword) && exactMatches.length > 0) {
                                                     blockType = 'driver_with_time';
@@ -439,15 +475,36 @@
                                                     
                                                     newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
                                                     
+                                                    // ★ 司機自動計算時間與備註匯入
                                                     if (data.driverExactTimes && data.driverExactTimes.length > 0) {
-                                                        let minD = Math.min(...data.driverExactTimes);
-                                                        let maxD = Math.max(...data.driverExactTimes);
-                                                        newData[empId][dateKey].driverDep = minsToTime(minD);
-                                                        newData[empId][dateKey].driverArr = maxD > minD ? minsToTime(maxD) : '';
-                                                        newData[empId][dateKey].driverMins = ''; 
+                                                        let times = data.driverExactTimes.sort((a,b) => a - b);
+                                                        let totalDriverMins = 0;
+                                                        let tripStrs = [];
+                                                        
+                                                        // 兩兩配對計算差值
+                                                        for (let i = 0; i < times.length - 1; i += 2) {
+                                                            let t1 = times[i];
+                                                            let t2 = times[i+1];
+                                                            totalDriverMins += (t2 - t1);
+                                                            tripStrs.push(`${minsToTime(t1)}-${minsToTime(t2)}`);
+                                                        }
+                                                        
+                                                        // 若為奇數代表有缺漏配對，也將其顯示於備註
+                                                        if (times.length % 2 !== 0) {
+                                                            tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                                                        }
+
+                                                        newData[empId][dateKey].driverMins = minsToTime(totalDriverMins);
+
+                                                        // 自動匯入備註區段
+                                                        let existingRemark = newData[empId][dateKey].remark || '';
+                                                        let newRemark = tripStrs.join(', ');
+                                                        if (existingRemark && !existingRemark.includes(newRemark)) {
+                                                            newData[empId][dateKey].remark = newRemark + ' / ' + existingRemark;
+                                                        } else if (!existingRemark) {
+                                                            newData[empId][dateKey].remark = newRemark;
+                                                        }
                                                     } else {
-                                                        newData[empId][dateKey].driverDep = '';
-                                                        newData[empId][dateKey].driverArr = '';
                                                         newData[empId][dateKey].driverMins = ''; 
                                                     }
 
@@ -459,6 +516,10 @@
                                 }
                             }
                         });
+                        
+                        if (employeesChanged) {
+                            setEmployees(localEmps);
+                        }
 
                         if (count > 0) {
                             setAttendance(newData);
@@ -498,8 +559,6 @@
                 let leave = row.leave || '';
                 
                 let igkA = row.igkA || '';
-                let driverDep = row.driverDep || '';
-                let driverArr = row.driverArr || '';
 
                 let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
                 let breakMins = timeToMins(breakTime);
@@ -545,10 +604,7 @@
                 const igkAMins = timeToMins(igkA);
                 const igkBMins = Math.max(0, totalWorkMins - igkAMins);
                 
-                let dDepMins = timeToMins(driverDep);
-                let dArrMins = timeToMins(driverArr);
-                let dCalcMins = (dArrMins > dDepMins) ? dArrMins - dDepMins : 0;
-                const driverMins = row.driverMins ? timeToMins(row.driverMins) : dCalcMins;
+                const driverMins = row.driverMins ? timeToMins(row.driverMins) : 0;
 
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
             };
@@ -560,7 +616,7 @@
                 return dates.some(d => {
                     const k = dKey(d);
                     const r = attendance[empId][k];
-                    return r && (r.inTime || r.outTime || r.leave || r.driverDep || r.igkA || r.remark);
+                    return r && (r.inTime || r.outTime || r.leave || r.driverMins || r.igkA || r.remark);
                 });
             };
 
@@ -574,13 +630,11 @@
 
             const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
 
-            // ★ 老闆娘神級按鈕：一次匯出總表 + 個人明細表
             const handleExportAllExcel = async () => {
                 const wb = new ExcelJS.Workbook();
                 const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
                 if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！(該月份尚無資料)');
 
-                // --- 1. 建立「總結算表」 ---
                 const wsSummary = wb.addWorksheet('給与・勤怠まとめ');
                 wsSummary.columns = [
                     { header: '所属校', key: 'loc', width: 12 },
@@ -604,27 +658,23 @@
                     cell.font = { bold: true };
                 });
 
-                // --- 2. 準備個人的分頁資料 ---
                 activeEmpsThisMonth.forEach(emp => {
                     let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
                     let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
 
-                    // 建立個人工作表 (以名字命名，Excel 工作表名稱長度限制31)
                     const safeName = emp.name.substring(0, 30).replace(/[/\\?*:[\]]/g, '');
                     const wsEmp = wb.addWorksheet(safeName);
 
                     const isDriver = ['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => emp.name.includes(n) || (emp.aliases || []).includes(n));
 
-                    // 個人表頭資訊
                     wsEmp.addRow(['氏名', emp.name, '雇用形態', emp.type === 'full' ? '正社員' : 'アルバイト', '対象月', period]);
                     wsEmp.addRow([]);
 
-                    // 明細表標題
                     let headers = ['日付', '入室', '退室', 'シフト', '休憩'];
                     if (emp.type === 'full') {
                         headers.push('備考・特記事項', '早残業(分)', '後残業(分)');
                     } else {
-                        if (isDriver) headers.push('出発', '到着', '運転時間');
+                        if (isDriver) headers.push('運転時間'); // ★ 只保留運転時間
                         headers.push('IGK A', 'IGK B', '備考・特記事項');
                     }
                     const headerRow = wsEmp.addRow(headers);
@@ -662,8 +712,6 @@
                         } else {
                             if (isDriver) {
                                 rowData.push(
-                                    row.driverDep || '', 
-                                    row.driverArr || '', 
                                     row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')
                                 );
                             }
@@ -676,7 +724,6 @@
                         wsEmp.addRow(rowData);
                     });
 
-                    // 個人總結算寫入
                     const transportFee = Number(monthlyData[`${emp.id}_${period}`]?.transportFee || 0);
                     const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
                     const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
@@ -696,10 +743,8 @@
                     }
                     wsEmp.addRow(['交通費(円)', transportFee, '推定給与(円)', emp.type === 'part' ? estSalary : '-']);
 
-                    // 調整各欄寬度
                     wsEmp.columns.forEach(col => col.width = 14);
 
-                    // 寫回總表
                     wsSummary.addRow({
                         loc: emp.location === 'rokko' ? '六甲校' : '名谷校',
                         name: emp.name,
@@ -738,7 +783,6 @@
                         <div className="p-6 max-w-5xl mx-auto space-y-6 w-full animate-fadeIn">
                             
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300">
-                                {/* ★ 點擊切換展開/收合 */}
                                 <h2 onClick={() => setIsEmpManagerOpen(!isEmpManagerOpen)} className={`text-lg font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-emerald-600 transition-colors ${isEmpManagerOpen ? 'mb-4' : 'mb-0'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
                                         <path d="M12 22v-6" />
@@ -755,7 +799,6 @@
                                     </span>
                                 </h2>
                                 
-                                {/* ★ 摺頁內容 */}
                                 {isEmpManagerOpen && (
                                     <div className="animate-fadeIn">
                                         <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 mb-6">
@@ -943,8 +986,6 @@
                                                             <>
                                                                 {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                     <>
-                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">出発</th>
-                                                                        <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">到着</th>
                                                                         <th className="border-b border-r border-slate-200 p-2 w-16 text-yellow-600 font-black print:p-1">運転時間</th>
                                                                     </>
                                                                 )}
@@ -1012,12 +1053,6 @@
                                                                     <>
                                                                         {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                             <>
-                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
-                                                                                    <input type="time" value={row.driverDep || ''} onChange={e => updateCell(currentEmp.id, key, 'driverDep', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
-                                                                                </td>
-                                                                                <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
-                                                                                    <input type="time" value={row.driverArr || ''} onChange={e => updateCell(currentEmp.id, key, 'driverArr', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
-                                                                                </td>
                                                                                 <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
                                                                                     <input type="time" value={row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')} onChange={e => updateCell(currentEmp.id, key, 'driverMins', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
                                                                                 </td>
