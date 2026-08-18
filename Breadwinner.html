@@ -82,11 +82,27 @@
             catch(e) { return defaultVal; }
         };
 
+        // ★ 終極防護罩：安全提取儲存格文字，徹底根除 toString 報錯
+        const getSafeText = (cell) => {
+            if (!cell) return '';
+            try {
+                if (cell.text !== undefined && cell.text !== null) return String(cell.text);
+            } catch(e) {}
+            if (cell.value === null || cell.value === undefined) return '';
+            if (typeof cell.value === 'string') return cell.value;
+            if (typeof cell.value === 'number') return String(cell.value);
+            if (cell.value instanceof Date) return ''; 
+            if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
+            if (cell.value.result !== undefined && cell.value.result !== null) return String(cell.value.result);
+            return '';
+        };
+
         function App() {
             const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
             
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v8', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            // ★ V9 記憶刷新：確保載入最新英文名稱
+            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v9', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
 
             const [period, setPeriod] = useState(() => {
@@ -114,7 +130,7 @@
             useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
             useEffect(() => localStorage.setItem('igk_pro_settings', JSON.stringify(settings)), [settings]);
             useEffect(() => localStorage.setItem('igk_pro_hourlyWage', JSON.stringify(hourlyWage)), [hourlyWage]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v8', JSON.stringify(employees)), [employees]);
+            useEffect(() => localStorage.setItem('igk_pro_employees_v9', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
@@ -279,7 +295,7 @@
                             if (v instanceof Date) {
                                 return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
                             }
-                            let str = (val.text || (typeof v === 'string' ? v : '')).trim();
+                            let str = getSafeText(val).trim();
                             const m = str.match(/^(\d{1,2})[:：\.](\d{2})(?:[:：\.]\d{2})?$/);
                             if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             
@@ -289,9 +305,9 @@
                         wb.worksheets.forEach(ws => {
                             let isGridFormat = false;
                             for (let r = 1; r <= 20; r++) {
-                                let t1 = (ws.getCell(r, 1).text || '').replace(/\s/g, '');
+                                let t1 = getSafeText(ws.getCell(r, 1)).replace(/\s/g, '');
                                 let v1 = ws.getCell(r, 1).value;
-                                let t2 = (ws.getCell(r+1, 1).text || '').replace(/\s/g, '');
+                                let t2 = getSafeText(ws.getCell(r+1, 1)).replace(/\s/g, '');
                                 let v2 = ws.getCell(r+1, 1).value;
                                 
                                 let has8 = t1.includes('8:00') || t1.includes('08:00') || (v1 instanceof Date && v1.getUTCHours()===8 && v1.getUTCMinutes()===0);
@@ -303,7 +319,9 @@
                             }
 
                             if (!isGridFormat) {
-                                // 名谷校模式
+                                // ==========================================
+                                // 名谷校模式 (橫向區塊)
+                                // ==========================================
                                 detectedLocation = 'myodani';
                                 let dateCols = [];
                                 
@@ -314,7 +332,7 @@
                                         if (cell.value instanceof Date && cell.value.getFullYear() > 2000) {
                                             dObj = cell.value;
                                         } else {
-                                            let t = (cell.text || '').replace(/\s+/g, '');
+                                            let t = getSafeText(cell).replace(/\s+/g, '');
                                             if (t.match(/\d{1,2}[:：]\d{2}/)) continue;
                                             let m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日]\))?$/);
                                             if (m) {
@@ -342,7 +360,7 @@
                                     
                                     for (let c = dInfo.col; c <= dInfo.endCol; c++) {
                                         for (let r = 2; r <= ws.rowCount; r++) {
-                                            let cellText = (ws.getCell(r, c).text || '').replace(/\s/g, '').toLowerCase();
+                                            let cellText = getSafeText(ws.getCell(r, c)).replace(/\s/g, '').toLowerCase();
                                             if (!cellText || cellText.length < 2) continue;
                                             
                                             let matchedEmpId = null;
@@ -358,7 +376,7 @@
                                                 
                                                 for (let tr = r + 1; tr <= Math.min(ws.rowCount, r + 5); tr++) {
                                                     let tCell = ws.getCell(tr, c);
-                                                    let tText = (tCell.text || '').replace(/\s/g, '');
+                                                    let tText = getSafeText(tCell).replace(/\s/g, '');
                                                     let tVal = tCell.value;
                                                     
                                                     let tm = tText.match(/(\d{1,2}[:：\.]\d{2})[-~～](\d{1,2}[:：\.]\d{2})/);
@@ -391,7 +409,9 @@
                                     }
                                 }
                             } else {
-                                // 六甲校模式
+                                // ==========================================
+                                // 六甲校模式 (垂直網格)
+                                // ==========================================
                                 detectedLocation = 'rokko';
                                 let allExtractedData = {};
                                 let currentDates = {}; 
@@ -399,7 +419,7 @@
 
                                 for (let r = 1; r <= ws.rowCount; r++) {
                                     for (let c = 1; c <= 10; c++) {
-                                        let textStr = ws.getCell(r, c).text || '';
+                                        let textStr = getSafeText(ws.getCell(r, c));
                                         let valObj = ws.getCell(r, c).value;
                                         
                                         if (valObj instanceof Date && valObj.getFullYear() > 2000) {
@@ -425,7 +445,7 @@
                                     let tempUnknown = [];
 
                                     for (let c = 1; c <= 40; c++) {
-                                        let cellRaw = ws.getCell(r, c).text || '';
+                                        let cellRaw = getSafeText(ws.getCell(r, c));
                                         let v = cellRaw.toLowerCase().replace(/\s+/g, '');
                                         if (v.length >= 1) {
                                             let matched = false;
@@ -485,7 +505,7 @@
                                                 let actCell = ws.getCell(r, parseInt(c));
                                                 if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                                 
-                                                let cellText = (actCell.text || '').trim();
+                                                let cellText = getSafeText(actCell).trim();
                                                 let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
                                                 const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                                 
@@ -562,8 +582,7 @@
                                     Object.keys(allExtractedData[empId]).forEach(dateKey => {
                                         const data = allExtractedData[empId][dateKey];
                                         
-                                        // ★ 核心修復：針對打工者 (Part)，絕對不以 minTime/maxTime 擴展到整天！
-                                        // 僅使用實際被塗色/有時間標記的區段來決定上下班。
+                                        // ★ 老將修復：打工者不再被強制灌水 08:00-19:30
                                         let empObj = localEmps.find(e => e.id === empId);
                                         let isPartTime = empObj && empObj.type === 'part';
 
@@ -575,18 +594,15 @@
                                         }
 
                                         if (isPartTime) {
-                                            // 打工者：若有精確時間就用精確時間，若無則依據區塊累積計算
-                                            if (startMins === 9999) {
-                                                if (data.minTime !== 9999) startMins = data.minTime;
-                                            }
-                                            if (endMins === -1) {
-                                                if (data.maxTime !== -1) endMins = data.maxTime + 30;
-                                            } else {
-                                                // 確保有包含最後一個 30 分鐘區塊
+                                            // 打工者：只依據有出現顏色區塊或精確時間的範圍
+                                            if (startMins === 9999 && data.minTime !== 9999) startMins = data.minTime;
+                                            if (endMins === -1 && data.maxTime !== -1) {
+                                                endMins = data.maxTime + 30;
+                                            } else if (endMins !== -1 && data.maxTime !== -1) {
                                                 endMins = Math.max(endMins, data.maxTime + 30);
                                             }
                                         } else {
-                                            // 正社員維持原本的邏輯
+                                            // 正社員：依據排版極端值擴展
                                             startMins = data.minTime;
                                             endMins = data.maxTime + 30;
                                             if (data.exactTimes.length > 0) {
@@ -612,6 +628,7 @@
                                                 newData[empId][dateKey].igkA = minsToTime(prevIgkA + data.igkAMins);
                                             }
                                             
+                                            // 司機區段計算與備註合併
                                             if (data.driverExactTimes && data.driverExactTimes.length > 0) {
                                                 let times = data.driverExactTimes.sort((a,b) => a - b);
                                                 let totalDriverMins = 0;
@@ -673,6 +690,7 @@
                 }));
             };
 
+            // ★ 動態時間計算引擎：完美區分全職與打工邏輯
             const calculateRow = (date, row, emp) => {
                 const isWknd = isWeekend(date);
                 let inTime = row.inTime || '';
@@ -684,6 +702,7 @@
                 let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
                 let breakMins = timeToMins(breakTime);
 
+                // 全職人員：套用預設值與特別期間
                 if (emp.type === 'full') {
                     shiftIn = shiftIn || settings.baseStart;
                     shiftOut = shiftOut || settings.baseEnd;
@@ -718,13 +737,15 @@
                 let totalWorkMins = 0;
                 if (inTime && outTime && !leave) {
                     totalWorkMins = Math.max(0, timeToMins(outTime) - timeToMins(actualShiftIn) - breakMins);
-                } else if (shiftIn && shiftOut && emp.type === 'full' && !leave) {
-                    totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(shiftIn) - breakMins);
+                } else if (shiftIn && shiftOut && !leave) {
+                    // 若無實際打卡，預先利用排班區段預估時間
+                    totalWorkMins = Math.max(0, timeToMins(shiftOut) - timeToMins(actualShiftIn) - breakMins);
                 }
 
                 const igkAMins = timeToMins(igkA);
-                const igkBMins = Math.max(0, totalWorkMins - igkAMins);
                 const driverMins = row.driverMins ? timeToMins(row.driverMins) : 0;
+                // 打工者的駕駛時間不列入 IGK B 浮增
+                const igkBMins = Math.max(0, totalWorkMins - igkAMins - (emp.type === 'part' ? driverMins : 0));
 
                 return { isWknd, actualShiftIn, shiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
             };
@@ -900,8 +921,10 @@
                     </div>
 
                     {activePage === 'import' && (
+                        /* ★ 版面大改造：左右兩大直行 (左邊設定、右邊資料) */
                         <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 w-full animate-fadeIn">
                             
+                            {/* ===================== 左側區塊：名單管理與設定 ===================== */}
                             <div className="space-y-6 flex flex-col">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300">
                                     <h2 onClick={() => setIsEmpManagerOpen(!isEmpManagerOpen)} className={`text-lg font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-emerald-600 transition-colors ${isEmpManagerOpen ? 'mb-4' : 'mb-0'}`}>
@@ -952,7 +975,7 @@
                                                     <div className="flex items-center gap-3 md:col-span-4 mt-2">
                                                         <label className="flex items-center cursor-pointer gap-2">
                                                             <input type="checkbox" checked={empForm.isActive} onChange={e=>setEmpForm({...empForm, isActive: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"/>
-                                                            <span className="text-sm font-bold text-slate-700">在職中 (チェックを外すと一覧から非表示になります)</span>
+                                                            <span className="text-sm font-bold text-slate-700">在職中 (非表示にする場合は外す)</span>
                                                         </label>
                                                         <div className="ml-auto flex gap-2">
                                                             {empForm.id && <button onClick={() => setEmpForm({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true })} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg">キャンセル</button>}
@@ -965,7 +988,7 @@
                                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                                 <div>
                                                     <h4 className="text-sm font-black text-indigo-600 mb-2 border-b border-indigo-100 pb-1">六甲校</h4>
-                                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                                         {employees.filter(emp => emp.location === 'rokko').map(emp => (
                                                             <div key={emp.id} className={`flex items-center justify-between p-3 border rounded-xl shadow-sm ${emp.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
                                                                 <div>
@@ -983,7 +1006,7 @@
                                                 </div>
                                                 <div>
                                                     <h4 className="text-sm font-black text-emerald-600 mb-2 border-b border-emerald-100 pb-1">名谷校</h4>
-                                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                                         {employees.filter(emp => emp.location === 'myodani').map(emp => (
                                                             <div key={emp.id} className={`flex items-center justify-between p-3 border rounded-xl shadow-sm ${emp.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
                                                                 <div>
@@ -1002,18 +1025,6 @@
                                             </div>
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="text-emerald-500">◆</span> 給与設定 (Excel エクスポート用)
-                                    </h2>
-                                    <div className="flex gap-4 bg-gray-50 p-4 rounded-xl">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">アルバイト基本時給 (円)</label>
-                                            <input type="number" value={hourlyWage} onChange={e=>setHourlyWage(Number(e.target.value))} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/>
-                                        </div>
-                                    </div>
                                 </div>
                                 
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -1067,6 +1078,7 @@
                                 </div>
                             </div>
 
+                            {/* ===================== 右側區塊：資料匯入與環境設定 ===================== */}
                             <div className="space-y-6 flex flex-col">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                     <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
@@ -1075,15 +1087,26 @@
                                     <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
                                         <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
                                         <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
-                                        <div className="text-blue-400 text-xs">色ブロックを自動計算（データは上書きされず追加・統合されます）</div>
+                                        <div className="text-blue-400 text-xs">六甲校・名谷校のシフトを自動判別し、色ブロックと時間を計算します。</div>
                                     </label>
                                 </div>
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                     <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
                                         <span className="text-purple-500">◆</span> 打刻データ (実績) の自動取り込み
                                     </h2>
-                                    <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに打刻テキストを貼り付け..."></textarea>
+                                    <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに KING OF TIME 等の打刻テキストを貼り付け..."></textarea>
                                     <button onClick={handlePaste} className="mt-3 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-purple-600 shadow-sm text-sm">解析してデータを反映する</button>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                        <span className="text-emerald-500">◆</span> 給与設定 (Excel エクスポート用)
+                                    </h2>
+                                    <div className="flex gap-4 bg-gray-50 p-4 rounded-xl">
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">アルバイト基本時給 (円)</label>
+                                            <input type="number" value={hourlyWage} onChange={e=>setHourlyWage(Number(e.target.value))} className="w-full border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
