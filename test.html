@@ -267,6 +267,9 @@
                         let autoPeriod = null;
                         
                         let sessionIgnores = new Set(); 
+                        
+                        // ★ 老將修正：將 allExtractedData 移到全域，確保同一天不同行的時間能正確整合！
+                        let allExtractedData = {};
 
                         const extractTime = (val) => {
                             if (!val) return null;
@@ -277,7 +280,8 @@
                                 return `${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;
                             }
                             let str = (val.text || (typeof v === 'string' ? v : '')).trim();
-                            const m = str.match(/^(\d{1,2})[:：](\d{2})$/);
+                            // ★ 老將修正：容許 8.30 這樣的時間格式
+                            const m = str.match(/^(\d{1,2})[:：\.](\d{2})$/);
                             if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
                             if (v instanceof Date) {
                                 return `${String(v.getUTCHours()).padStart(2,'0')}:${String(v.getUTCMinutes()).padStart(2,'0')}`;
@@ -330,7 +334,7 @@
                                         tempUnknown.forEach(unk => {
                                             if (sessionIgnores.has(unk.key)) return; 
                                             
-                                            const mappedName = window.prompt(`未知の担当者/項目「${unk.name}」が見つかりました。\n既存の従業員に紐付ける場合は、その従業員の名前（または一部）を入力してください。\n（無視する場合はそのまま空白でOKを押してください）`);
+                                            const mappedName = window.prompt(`未知の担当者/項目「${unk.name}」が見つかりました。\n既存の従業員に紐付ける場合は、その従業員の名前（または一部）を入力してください。\n（無視する場合はそのまま空白でOKを押してください。次回以降はスキップされます）`);
                                             
                                             if (mappedName && mappedName.trim()) {
                                                 const targetIdx = localEmps.findIndex(e => e.name.includes(mappedName.trim()) || e.aliases.some(a => a.includes(mappedName.trim())));
@@ -369,8 +373,6 @@
                                             autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
                                         }
 
-                                        let allExtractedData = {};
-
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
                                             let actCell = ws.getCell(r, parseInt(c));
@@ -378,7 +380,7 @@
                                             
                                             let cellText = (actCell.text || '').trim();
                                             let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
-                                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：]([0-9]{2})/g)];
+                                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                             
                                             let fill = actCell.fill || {};
                                             let hex = '';
@@ -407,6 +409,7 @@
                                                         if (!newData[empId]) newData[empId] = {};
                                                         if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
                                                         newData[empId][dateInfo.key].leave = cellText.substring(0, 10);
+                                                        count++; // ★ 確保休假也會算作一次成功擷取
                                                     }
                                                     return; 
                                                 }
@@ -447,70 +450,92 @@
                                                 });
                                             }
                                         });
-
-                                        Object.keys(allExtractedData).forEach(empId => {
-                                            Object.keys(allExtractedData[empId]).forEach(dateKey => {
-                                                const data = allExtractedData[empId][dateKey];
-                                                let startMins = data.minTime;
-                                                let endMins = data.maxTime + 30; 
-
-                                                if (data.exactTimes.length > 0) {
-                                                    const minExact = Math.min(...data.exactTimes);
-                                                    const maxExact = Math.max(...data.exactTimes);
-                                                    if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
-                                                    if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
-                                                }
-
-                                                if (startMins < 9999 && endMins > -1) {
-                                                    if (!newData[empId]) newData[empId] = {};
-                                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
-                                                    
-                                                    let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
-                                                    let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
-                                                    
-                                                    if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
-                                                    if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
-                                                    
-                                                    newData[empId][dateKey].igkA = data.igkAMins > 0 ? minsToTime(data.igkAMins) : '';
-                                                    
-                                                    if (data.driverExactTimes && data.driverExactTimes.length > 0) {
-                                                        let times = data.driverExactTimes.sort((a,b) => a - b);
-                                                        let totalDriverMins = 0;
-                                                        let tripStrs = [];
-                                                        
-                                                        for (let i = 0; i < times.length - 1; i += 2) {
-                                                            totalDriverMins += (times[i+1] - times[i]);
-                                                            tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
-                                                        }
-                                                        
-                                                        newData[empId][dateKey].driverMins = minsToTime(totalDriverMins);
-                                                        let existingRemark = newData[empId][dateKey].remark || '';
-                                                        let newRemark = tripStrs.join(', ');
-                                                        newData[empId][dateKey].remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
-                                                    } else {
-                                                        newData[empId][dateKey].driverMins = ''; 
-                                                    }
-                                                    count++;
-                                                }
-                                            });
-                                        });
                                     }
+                                }
+                            }
+                        });
+                        
+                        // ★ 老將修正：將寫入 newData 的動作移出迴圈外，等全部資料蒐集完後再一次性結算！不會再被後面的空白覆蓋！
+                        Object.keys(allExtractedData).forEach(empId => {
+                            Object.keys(allExtractedData[empId]).forEach(dateKey => {
+                                const data = allExtractedData[empId][dateKey];
+                                let startMins = data.minTime;
+                                let endMins = data.maxTime + 30; 
+
+                                if (data.exactTimes.length > 0) {
+                                    const minExact = Math.min(...data.exactTimes);
+                                    const maxExact = Math.max(...data.exactTimes);
+                                    if (Math.abs(minExact - startMins) <= 120) startMins = minExact;
+                                    if (Math.abs(maxExact - endMins) <= 120) endMins = maxExact;
+                                }
+
+                                if (startMins < 9999 && endMins > -1) {
+                                    if (!newData[empId]) newData[empId] = {};
+                                    if (!newData[empId][dateKey]) newData[empId][dateKey] = {};
+                                    
+                                    let curIn = timeToMins(newData[empId][dateKey].shiftIn || '23:59');
+                                    let curOut = timeToMins(newData[empId][dateKey].shiftOut || '00:00');
+                                    
+                                    if (startMins < curIn) newData[empId][dateKey].shiftIn = minsToTime(startMins);
+                                    if (endMins > curOut) newData[empId][dateKey].shiftOut = minsToTime(endMins);
+                                    
+                                    // 寫入 IGKA 時間
+                                    if (data.igkAMins > 0) {
+                                        let prevIgkA = timeToMins(newData[empId][dateKey].igkA || '');
+                                        newData[empId][dateKey].igkA = minsToTime(prevIgkA + data.igkAMins);
+                                    }
+                                    
+                                    // 計算司機開車時間與組合備考
+                                    if (data.driverExactTimes && data.driverExactTimes.length > 0) {
+                                        let times = data.driverExactTimes.sort((a,b) => a - b);
+                                        let totalDriverMins = 0;
+                                        let tripStrs = [];
+                                        
+                                        // 兩兩成對計算駕駛時間
+                                        for (let i = 0; i < times.length - 1; i += 2) {
+                                            totalDriverMins += (times[i+1] - times[i]);
+                                            tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
+                                        }
+                                        
+                                        // 處理單獨不成對的情況
+                                        if (times.length % 2 !== 0) {
+                                            tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                                        }
+
+                                        let prevDriver = timeToMins(newData[empId][dateKey].driverMins || '');
+                                        newData[empId][dateKey].driverMins = minsToTime(prevDriver + totalDriverMins);
+                                        
+                                        let existingRemark = newData[empId][dateKey].remark || '';
+                                        let newRemark = tripStrs.join(', ');
+                                        if (newRemark) {
+                                            if (existingRemark && !existingRemark.includes(newRemark)) {
+                                                newData[empId][dateKey].remark = newRemark + ' / ' + existingRemark;
+                                            } else if (!existingRemark) {
+                                                newData[empId][dateKey].remark = newRemark;
+                                            }
+                                        }
+                                    }
+                                    count++;
                                 }
                             });
                         });
                         
                         if (employeesChanged) setEmployees(localEmps);
+                        
                         if (count > 0) {
                             setAttendance(newData);
                             if (autoPeriod) setPeriod(autoPeriod);
                             setActivePage('preview');
                             alert(`取り込み完了！セクション数: ${count}`);
+                        } else {
+                            alert("読み込みに成功しましたが、色ブロックや時間が検出されませんでした。");
                         }
                     } catch (err) {
                         alert(`❌ 解析エラー: ${err.message}`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
+                e.target.value = null;
             };
 
             const updateCell = (id, d, field, val) => {
@@ -589,7 +614,8 @@
                 return dates.some(d => {
                     const k = dKey(d);
                     const r = attendance[empId][k];
-                    return r && (r.inTime || r.outTime || r.leave || r.driverMins || r.igkA || r.remark);
+                    // ★ 確保只要有抓到任何欄位，該員工就會顯示在表單列表上
+                    return r && (r.inTime || r.outTime || r.shiftIn || r.shiftOut || r.leave || r.driverMins || r.igkA || r.remark);
                 });
             };
 
@@ -606,7 +632,7 @@
             const handleExportAllExcel = async () => {
                 const wb = new ExcelJS.Workbook();
                 const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
-                if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！');
+                if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！(該月份無資料)');
 
                 const wsSummary = wb.addWorksheet('給与・勤怠まとめ');
                 wsSummary.columns = [
@@ -626,17 +652,24 @@
                     { header: '推定給与(円)', key: 'salary', width: 15 },
                 ];
 
+                wsSummary.getRow(1).eachCell(cell => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                    cell.font = { bold: true };
+                });
+
                 activeEmpsThisMonth.forEach(emp => {
                     let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
                     let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
 
-                    const wsEmp = wb.addWorksheet(emp.name.substring(0, 30).replace(/[/\\?*:[\]]/g, ''));
+                    const safeName = emp.name.substring(0, 30).replace(/[/\\?*:[\]]/g, '');
+                    const wsEmp = wb.addWorksheet(safeName);
+
                     const isDriver = ['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => emp.name.includes(n) || (emp.aliases || []).includes(n));
 
                     wsEmp.addRow(['氏名', emp.name, '雇用形態', emp.type === 'full' ? '正社員' : 'アルバイト', '対象月', period]);
                     wsEmp.addRow([]);
 
-                    // ★ Excel匯出的表頭也徹底清除了出發/到達
+                    // ★ Excel 匯出表頭，司機只保留「運転時間」
                     let headers = ['日付', '入室', '退室', 'シフト', '休憩'];
                     if (emp.type === 'full') {
                         headers.push('備考・特記事項', '早残業(分)', '後残業(分)');
@@ -652,20 +685,41 @@
                         const key = dKey(d);
                         const row = attendance[emp.id]?.[key] || {};
                         const calc = calculateRow(d, row, emp);
-                        if (row.inTime || row.outTime) sumDays++;
+                        
+                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut) sumDays++;
                         if (row.leave === '有休') sumPaidLeave++;
                         else if (row.leave === '事欠') sumUnpaidLeave++;
                         else if (row.leave === '病欠') sumSickLeave++;
+
                         sumIgka += calc.igkAMins; sumIgkb += calc.igkBMins;
                         sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
                         sumDriver += calc.driverMins;
 
-                        let rowData = [formatDisplayDate(d), row.leave ? row.leave : (row.inTime || ''), row.leave ? '-' : (row.outTime || ''), calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-', row.leave ? '-' : calc.breakTime];
+                        let rowData = [
+                            formatDisplayDate(d),
+                            row.leave ? row.leave : (row.inTime || ''),
+                            row.leave ? '-' : (row.outTime || ''),
+                            calc.actualShiftIn && calc.shiftOut && !row.leave ? `${calc.actualShiftIn}-${calc.shiftOut}` : '-',
+                            row.leave ? '-' : calc.breakTime
+                        ];
+
                         if (emp.type === 'full') {
-                            rowData.push(row.remark || (row.leave ? row.leave : ''), calc.earlyOtMins > 0 ? calc.earlyOtMins : '', calc.lateOtMins > 0 ? calc.lateOtMins : '');
+                            rowData.push(
+                                row.remark || (row.leave ? row.leave : ''),
+                                calc.earlyOtMins > 0 ? calc.earlyOtMins : '',
+                                calc.lateOtMins > 0 ? calc.lateOtMins : ''
+                            );
                         } else {
-                            if (isDriver) rowData.push(row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : ''));
-                            rowData.push(row.igkA || '', calc.igkBMins > 0 ? minsToTime(calc.igkBMins) : '', row.remark || '');
+                            if (isDriver) {
+                                rowData.push(
+                                    row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')
+                                );
+                            }
+                            rowData.push(
+                                row.igkA || '',
+                                calc.igkBMins > 0 ? minsToTime(calc.igkBMins) : '',
+                                row.remark || ''
+                            );
                         }
                         wsEmp.addRow(rowData);
                     });
@@ -930,7 +984,7 @@
                                                             </>
                                                         ) : (
                                                             <>
-                                                                {/* ★ UI表頭只保留運転時間 */}
+                                                                {/* ★ UI 網頁預覽表頭只保留「運転時間」 */}
                                                                 {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                     <th className="border-b border-r border-slate-200 p-2 w-20 text-yellow-600 font-black print:p-1">運転時間</th>
                                                                 )}
@@ -947,7 +1001,7 @@
                                                         const row = attendance[currentEmp.id]?.[key] || {};
                                                         const calc = calculateRow(d, row, currentEmp);
                                                         
-                                                        if (row.inTime || row.outTime) sumDays++;
+                                                        if (row.inTime || row.outTime || row.shiftIn || row.shiftOut) sumDays++;
                                                         if (row.leave === '有休') sumPaidLeave++;
                                                         else if (row.leave === '事欠') sumUnpaidLeave++;
                                                         else if (row.leave === '病欠') sumSickLeave++;
@@ -996,7 +1050,7 @@
                                                                     </>
                                                                 ) : (
                                                                     <>
-                                                                        {/* ★ UI欄位只保留運転時間 */}
+                                                                        {/* ★ UI 網頁預覽欄位只保留「運転時間」 */}
                                                                         {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
                                                                             <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
                                                                                 <input type="time" value={row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')} onChange={e => updateCell(currentEmp.id, key, 'driverMins', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
