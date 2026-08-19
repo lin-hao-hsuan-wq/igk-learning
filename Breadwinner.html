@@ -3,18 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 労務管理</title>
+    <title>IGK 労務管理 (Cloud Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <!-- ★ Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body className="bg-[#f8f9fa] text-slate-700 font-sans print:bg-white">
     <div id="root"></div>
 
     <script type="text/babel">
+        // ★ Firebase 初始化設定 (使用您的專屬金鑰)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
+            authDomain: "igk-breadwinner.firebaseapp.com",
+            projectId: "igk-breadwinner",
+            storageBucket: "igk-breadwinner.firebasestorage.app",
+            messagingSenderId: "1017510582907",
+            appId: "1:1017510582907:web:2059d68dd57816398020de",
+            measurementId: "G-KJLMVFW3RH"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const docRef = db.collection('igk_data').doc('v1'); // 所有資料統一存在這個雲端文件中
+
         const { useState, useMemo, useEffect } = React;
 
         const INITIAL_EMPLOYEES = [
@@ -77,16 +98,15 @@
             return <>{hm} <span className="text-xs font-bold opacity-60 print:text-[10px]">({dec} H)</span></>;
         };
 
-        const loadSavedState = (key, defaultVal) => {
+        // 本地儲存僅保留畫面 UI 狀態 (換電腦時會回到預設畫面)
+        const loadUIState = (key, defaultVal) => {
             try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : defaultVal; }
             catch(e) { return defaultVal; }
         };
 
         const getSafeText = (cell) => {
             if (!cell) return '';
-            try {
-                if (cell.text !== undefined && cell.text !== null) return String(cell.text);
-            } catch(e) {}
+            try { if (cell.text !== undefined && cell.text !== null) return String(cell.text); } catch(e) {}
             if (cell.value === null || cell.value === undefined) return '';
             if (typeof cell.value === 'string') return cell.value;
             if (typeof cell.value === 'number') return String(cell.value);
@@ -97,15 +117,17 @@
         };
 
         function App() {
-            const [activePage, setActivePage] = useState(() => loadSavedState('igk_pro_activePage', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadSavedState('igk_pro_activeLocation', 'rokko')); 
-            
-            const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v10', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
+            const [isCloudLoaded, setIsCloudLoaded] = useState(false); // ★ 雲端載入狀態
+
+            // UI 狀態 (存在本地)
+            const [activePage, setActivePage] = useState(() => loadUIState('igk_pro_activePage', 'import')); 
+            const [activeLocation, setActiveLocation] = useState(() => loadUIState('igk_pro_activeLocation', 'rokko')); 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
-            const [shiftFileName, setShiftFileName] = useState(''); // ★ 新增：儲存上傳檔案的名稱
+            const [shiftFileName, setShiftFileName] = useState('');
+            const [activeEmp, setActiveEmp] = useState(() => loadUIState('igk_pro_activeEmp', INITIAL_EMPLOYEES[0].id)); 
 
             const [period, setPeriod] = useState(() => {
-                const saved = loadSavedState('igk_pro_period', null);
+                const saved = loadUIState('igk_pro_period', null);
                 if (saved) return saved;
                 const today = new Date();
                 let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
@@ -113,31 +135,60 @@
                 if (initM > 12) { initM -= 12; initY += 1; }
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
-            
-            const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v3', { 
-                rokkoStart: '09:30', rokkoEnd: '18:30', 
-                myodaniStart: '09:15', myodaniEnd: '18:15', 
-                special: [] 
-            }));
-            const [attendance, setAttendance] = useState(() => loadSavedState('igk_pro_attendance', {})); 
-            const [monthlyData, setMonthlyData] = useState(() => loadSavedState('igk_pro_monthlyData', {})); 
-            const [activeEmp, setActiveEmp] = useState(() => loadSavedState('igk_pro_activeEmp', employees[0].id)); 
+
+            // ★ 核心資料狀態 (存在雲端)
+            const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
+            const [settings, setSettings] = useState({ rokkoStart: '09:30', rokkoEnd: '18:30', myodaniStart: '09:15', myodaniEnd: '18:15', special: [] });
+            const [attendance, setAttendance] = useState({}); 
+            const [monthlyData, setMonthlyData] = useState({}); 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
+            // ★ 載入雲端資料 (僅在網頁開啟時執行一次)
+            useEffect(() => {
+                docRef.get().then((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.employees) setEmployees(data.employees);
+                        if (data.settings) setSettings(data.settings);
+                        if (data.attendance) setAttendance(data.attendance);
+                        if (data.monthlyData) setMonthlyData(data.monthlyData);
+                    }
+                    setIsCloudLoaded(true); // 標記已載入
+                }).catch(err => {
+                    console.error("Firestore 讀取失敗:", err);
+                    alert("⚠️ 雲端資料讀取失敗！請確認 Firebase Firestore 是否已開啟並設定為「測試模式」。");
+                    setIsCloudLoaded(true); 
+                });
+            }, []);
+
+            // ★ 儲存至雲端 (當核心資料改變時自動觸發，加入防呆延遲)
+            useEffect(() => {
+                if (!isCloudLoaded) return; // 確保不會把預設空資料蓋掉雲端的
+                
+                const timer = setTimeout(() => {
+                    docRef.set({
+                        employees,
+                        settings,
+                        attendance,
+                        monthlyData,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true }).catch(err => console.error("Firestore 寫入失敗:", err));
+                }, 1500); // 延遲 1.5 秒儲存，避免打字時狂寫資料庫
+                
+                return () => clearTimeout(timer);
+            }, [employees, settings, attendance, monthlyData, isCloudLoaded]);
+
+            // 儲存 UI 狀態至本地
             useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
             useEffect(() => localStorage.setItem('igk_pro_activeLocation', JSON.stringify(activeLocation)), [activeLocation]);
             useEffect(() => localStorage.setItem('igk_pro_activeEmp', JSON.stringify(activeEmp)), [activeEmp]);
             useEffect(() => localStorage.setItem('igk_pro_period', JSON.stringify(period)), [period]);
-            useEffect(() => localStorage.setItem('igk_pro_attendance', JSON.stringify(attendance)), [attendance]);
-            useEffect(() => localStorage.setItem('igk_pro_monthlyData', JSON.stringify(monthlyData)), [monthlyData]);
-            useEffect(() => localStorage.setItem('igk_pro_settings_v3', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('igk_pro_employees_v10', JSON.stringify(employees)), [employees]);
 
             const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
 
             const [newSp, setNewSp] = useState({ 
                 name: '', start: '', end: '', timeIn: '09:30', timeOut: '18:30',
-                targetEmps: FULL_TIME_EMPS.map(e => e.id) 
+                targetEmps: [] 
             });
 
             const [pastedData, setPastedData] = useState('');
@@ -267,7 +318,7 @@
             const handleExcelUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                setShiftFileName(file.name); // 記錄檔名
+                setShiftFileName(file.name); 
                 
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
@@ -279,7 +330,6 @@
                         let employeesChanged = false;
                         let count = 0;
                         let autoPeriod = null;
-                        let detectedLocation = null; 
                         let sessionIgnores = new Set(); 
 
                         wb.worksheets.forEach(ws => {
@@ -471,7 +521,6 @@
             };
 
             const updateCell = (id, d, field, val) => {
-                // ★ 攔截 00:00，將其轉為空白
                 const finalVal = val === '00:00' ? '' : val;
                 setAttendance(prev => ({
                     ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: finalVal } }
@@ -490,7 +539,6 @@
                 let outTime = row.outTime || '';
                 let leave = row.leave || '';
                 let igkA = row.igkA || '';
-                // ★ 預設時數為空白而不是 00:00
                 let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '');
                 let breakMins = timeToMins(breakTime);
 
@@ -621,7 +669,6 @@
                         const row = attendance[emp.id]?.[key] || {};
                         const calc = calculateRow(d, row, emp);
                         
-                        // ★ 出勤日數只計算實際有打卡的
                         if (row.inTime || row.outTime) sumDays++;
                         
                         if (row.leave === '有休') sumPaidLeave++;
@@ -704,6 +751,16 @@
                 window.saveAs(blob, `IGK_勤怠まとめ_${period}.xlsx`);
             };
 
+            // ★ 等待雲端資料載入畫面
+            if (!isCloudLoaded) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] font-sans">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                        <h2 className="text-xl font-black text-slate-700">☁️ 雲端データを読み込み中...</h2>
+                    </div>
+                );
+            }
+
             return (
                 <div className="min-h-screen flex flex-col font-sans">
                     <div className="bg-white text-slate-800 p-4 flex gap-4 print:hidden shadow-sm items-center border-b border-gray-200">
@@ -718,7 +775,6 @@
                     {activePage === 'import' && (
                         <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 w-full animate-fadeIn">
                             
-                            {/* ===================== 左側：名單與設定 ===================== */}
                             <div className="space-y-6 flex flex-col">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300">
                                     <h2 onClick={() => setIsEmpManagerOpen(!isEmpManagerOpen)} className={`text-lg font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-emerald-600 transition-colors ${isEmpManagerOpen ? 'mb-4' : 'mb-0'}`}>
@@ -874,7 +930,6 @@
                                 </div>
                             </div>
 
-                            {/* ===================== 右側：資料匯入 ===================== */}
                             <div className="space-y-6 flex flex-col">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                     <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
@@ -885,7 +940,6 @@
                                         <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
                                         <div className="text-blue-400 text-xs">六甲校・名谷校のシフトを自動判別し、色ブロックと時間を計算します。</div>
                                         
-                                        {/* ★ 新增：顯示已上傳的檔案名稱 */}
                                         {shiftFileName && <div className="mt-4 text-sm font-bold text-blue-700 bg-blue-100 p-2 rounded-lg inline-block shadow-sm">📄 アップロード済み: {shiftFileName}</div>}
                                     </label>
                                 </div>
@@ -1150,7 +1204,6 @@
         .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- 列印專用 CSS --- */
         @media print {
             @page { margin: 1cm; size: A4 portrait; }
             body { background: white !important; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
