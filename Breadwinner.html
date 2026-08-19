@@ -82,7 +82,6 @@
             catch(e) { return defaultVal; }
         };
 
-        // ★ 終極防呆函數：根除 Cannot read properties of null (reading 'toString')
         const getSafeText = (cell) => {
             if (!cell) return '';
             try {
@@ -103,6 +102,7 @@
             
             const [employees, setEmployees] = useState(() => loadSavedState('igk_pro_employees_v10', INITIAL_EMPLOYEES.map(e => ({...e, isActive: e.isActive !== false}))));
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
+            const [shiftFileName, setShiftFileName] = useState(''); // ★ 新增：儲存上傳檔案的名稱
 
             const [period, setPeriod] = useState(() => {
                 const saved = loadSavedState('igk_pro_period', null);
@@ -114,7 +114,6 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
             
-            // ★ 設定分為六甲校與名谷校的獨立預設時間
             const [settings, setSettings] = useState(() => loadSavedState('igk_pro_settings_v3', { 
                 rokkoStart: '09:30', rokkoEnd: '18:30', 
                 myodaniStart: '09:15', myodaniEnd: '18:15', 
@@ -268,6 +267,7 @@
             const handleExcelUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                setShiftFileName(file.name); // 記錄檔名
                 
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
@@ -286,7 +286,6 @@
                             let currentDates = {}; 
                             let currentColMap = {};
 
-                            // 找出所有的日期
                             for (let r = 1; r <= ws.rowCount; r++) {
                                 for (let c = 1; c <= 10; c++) {
                                     let textStr = getSafeText(ws.getCell(r, c));
@@ -314,7 +313,6 @@
                                 let tempMap = {};
                                 let tempUnknown = [];
 
-                                // 找出人員所在的 Column
                                 for (let c = 1; c <= 40; c++) {
                                     let cellRaw = getSafeText(ws.getCell(r, c));
                                     let v = cellRaw.toLowerCase().replace(/\s+/g, '');
@@ -352,7 +350,6 @@
                                     currentColMap = tempMap;
                                 }
 
-                                // 開始分析該行的每一格，完全只抓取 IGKA, 休假, 開車時間，不再提取 Shift 上下班時間！
                                 let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
                                 if (activeDateRow && Object.keys(currentColMap).length > 0) {
                                     let dateInfo = currentDates[activeDateRow];
@@ -383,11 +380,9 @@
                                         let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
                                         let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
 
-                                        // 紅色/粉色判斷，加上英文即視為 IGK A
                                         const isRedOrPink = (hex && (hex.includes('FF00') || hex.includes('FF33') || hex.includes('FF66') || hex.includes('FF99') || hex.includes('FFCC') || hex.includes('FFFCE4') || hex.includes('FFF4B0') || hex.includes('FFFFE4') || hex.includes('FFD5A6'))) || theme === 6 || theme === 5 || indexed === 10 || indexed === 29 || indexed === 38;
                                         const isEnglish = /[a-zA-Z]/.test(cellText);
                                         
-                                        // 藍色區塊（六甲校 IGKA）
                                         const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
                                         let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
                                         
@@ -424,7 +419,6 @@
                             }
                         });
                         
-                        // 將司機的陣列轉換為實際的分鐘與備註
                         Object.keys(newData).forEach(empId => {
                             Object.keys(newData[empId]).forEach(dateKey => {
                                 let dataRef = newData[empId][dateKey];
@@ -460,7 +454,6 @@
                             setAttendance(newData);
                             if (autoPeriod) setPeriod(autoPeriod);
                             
-                            // 自動判斷地點跳轉
                             let testEmp = localEmps.find(e => newData[e.id] && Object.keys(newData[e.id]).length > 0);
                             if (testEmp) setActiveLocation(testEmp.location);
                             
@@ -478,25 +471,32 @@
             };
 
             const updateCell = (id, d, field, val) => {
+                // ★ 攔截 00:00，將其轉為空白
+                const finalVal = val === '00:00' ? '' : val;
                 setAttendance(prev => ({
-                    ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: val } }
+                    ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: finalVal } }
                 }));
             };
 
-            // ★ 動態時間引擎：完美處理寬限期，且讓打工者自由呈現班表
+            const updateMonthlyData = (id, p, field, val) => {
+                setMonthlyData(prev => ({
+                    ...prev, [id]: { ...prev[id], [p]: { ...prev[id]?.[p], [field]: val } }
+                }));
+            };
+
             const calculateRow = (date, row, emp) => {
                 const isWknd = isWeekend(date);
                 let inTime = row.inTime || '';
                 let outTime = row.outTime || '';
                 let leave = row.leave || '';
                 let igkA = row.igkA || '';
-                let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '00:00');
+                // ★ 預設時數為空白而不是 00:00
+                let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '');
                 let breakMins = timeToMins(breakTime);
 
                 let displayShiftIn = row.shiftIn !== undefined ? row.shiftIn : '';
                 let displayShiftOut = row.shiftOut !== undefined ? row.shiftOut : '';
 
-                // 若尚未手動輸入，則自動生成預設 Shift
                 if (!displayShiftIn && !displayShiftOut) {
                     if (emp.type === 'full') {
                         displayShiftIn = emp.location === 'rokko' ? settings.rokkoStart : settings.myodaniStart;
@@ -508,7 +508,6 @@
                             }
                         });
                     } else {
-                        // ★ 打工者自動推算：9:59 算 10:00，17:14 算 17:00
                         if (inTime) displayShiftIn = minsToTime(Math.ceil((timeToMins(inTime) - 5) / 30) * 30);
                         if (outTime) displayShiftOut = minsToTime(Math.floor(timeToMins(outTime) / 15) * 15);
                     }
@@ -586,6 +585,7 @@
                     { header: '運転 (H)', key: 'driverH', width: 12 },
                     { header: '早残業(分)', key: 'earlyOT', width: 12 },
                     { header: '後残業(分)', key: 'lateOT', width: 12 },
+                    { header: '交通費(円)', key: 'transport', width: 12 },
                 ];
 
                 wsSummary.getRow(1).eachCell(cell => {
@@ -621,7 +621,9 @@
                         const row = attendance[emp.id]?.[key] || {};
                         const calc = calculateRow(d, row, emp);
                         
-                        if (row.inTime || row.outTime || calc.displayShiftIn || calc.displayShiftOut || row.leave) sumDays++;
+                        // ★ 出勤日數只計算實際有打卡的
+                        if (row.inTime || row.outTime) sumDays++;
+                        
                         if (row.leave === '有休') sumPaidLeave++;
                         else if (row.leave === '事欠') sumUnpaidLeave++;
                         else if (row.leave === '病欠') sumSickLeave++;
@@ -661,6 +663,7 @@
 
                     const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
                     const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
+                    const empTransport = monthlyData[emp.id]?.[period]?.transportFee || 0;
 
                     wsEmp.addRow([]);
                     const summaryTitleRow = wsEmp.addRow(['【集計】']);
@@ -674,6 +677,8 @@
                         wsEmp.addRow(['IGK A(H)', (sumIgka/60).toFixed(2), 'IGK B(H)', (sumIgkb/60).toFixed(2), '総労働(H)', ((sumIgka+sumIgkb)/60).toFixed(2)]);
                         if (isDriver) wsEmp.addRow(['運転実績(H)', (sumDriver/60).toFixed(2)]);
                     }
+                    
+                    wsEmp.addRow(['交通費(円)', empTransport]);
 
                     wsEmp.columns.forEach(col => col.width = 14);
 
@@ -689,7 +694,8 @@
                         igkbH: Number((sumIgkb / 60).toFixed(2)),
                         driverH: Number((sumDriver / 60).toFixed(2)),
                         earlyOT: sumEarly,
-                        lateOT: sumLate
+                        lateOT: sumLate,
+                        transport: empTransport
                     });
                 });
 
@@ -878,6 +884,9 @@
                                         <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
                                         <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
                                         <div className="text-blue-400 text-xs">六甲校・名谷校のシフトを自動判別し、色ブロックと時間を計算します。</div>
+                                        
+                                        {/* ★ 新增：顯示已上傳的檔案名稱 */}
+                                        {shiftFileName && <div className="mt-4 text-sm font-bold text-blue-700 bg-blue-100 p-2 rounded-lg inline-block shadow-sm">📄 アップロード済み: {shiftFileName}</div>}
                                     </label>
                                 </div>
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -907,7 +916,7 @@
                                 <div className="flex gap-3">
                                     <button onClick={handleExportAllExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm flex items-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                        老闆娘専用：一括エクスポート (Excel)
+                                        【一括エクスポート】
                                     </button>
                                     <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
                                 </div>
@@ -970,7 +979,9 @@
                                                         const row = attendance[currentEmp.id]?.[key] || {};
                                                         const calc = calculateRow(d, row, currentEmp);
                                                         
-                                                        if (row.inTime || row.outTime || calc.displayShiftIn || calc.displayShiftOut || row.leave) sumDays++;
+                                                        // ★ 出勤日數只計算實際有打卡的
+                                                        if (row.inTime || row.outTime) sumDays++;
+                                                        
                                                         if (row.leave === '有休') sumPaidLeave++;
                                                         else if (row.leave === '事欠') sumUnpaidLeave++;
                                                         else if (row.leave === '病欠') sumSickLeave++;
@@ -1001,7 +1012,6 @@
                                                                     {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700 print:text-[10px]"/>}
                                                                 </td>
                                                                 
-                                                                {/* ★ シフト 欄位：變成可手動編輯的區塊，並自動填入寬限計算結果 */}
                                                                 <td className="border-b border-r border-slate-100 p-1 text-center font-mono text-xs font-bold text-slate-500">
                                                                     {row.leave ? '-' : (
                                                                         <div className="flex items-center justify-center gap-0.5">
@@ -1106,6 +1116,21 @@
                                                 </>
                                             )}
                                         </div>
+
+                                        {/* ★ 新增：交通費手動輸入區塊 */}
+                                        <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between print:bg-transparent print:border-none print:p-0 print:mt-4">
+                                            <span className="font-bold text-slate-700 print:text-[10px]">交通費 (手動入力)</span>
+                                            <div className="flex items-center gap-2">
+                                                <input type="number"
+                                                    value={monthlyData[currentEmp.id]?.[period]?.transportFee || ''}
+                                                    onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
+                                                    className="border border-slate-300 rounded-lg p-2 w-32 text-right font-bold outline-none focus:border-indigo-500 print:border-none print:p-0 print:text-right"
+                                                    placeholder="0"
+                                                />
+                                                <span className="font-bold text-slate-500 print:text-[10px]">円</span>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 );
                             })()}
