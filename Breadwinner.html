@@ -103,7 +103,6 @@
             catch(e) { return defaultVal; }
         };
 
-        // ★ 舊版讀取本地紀錄的函數 (用來把舊資料搬去雲端)
         const loadOldLocalData = (key, defaultVal) => {
             try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : defaultVal; }
             catch(e) { return defaultVal; }
@@ -124,7 +123,6 @@
         function App() {
             const [isCloudLoaded, setIsCloudLoaded] = useState(false); 
 
-            // UI 狀態 (存在本地)
             const [activePage, setActivePage] = useState(() => loadUIState('igk_pro_activePage', 'import')); 
             const [activeLocation, setActiveLocation] = useState(() => loadUIState('igk_pro_activeLocation', 'rokko')); 
             const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
@@ -141,37 +139,39 @@
                 return `${initY}-${String(initM).padStart(2, '0')}`;
             });
 
-            // 核心資料狀態 (存在雲端)
             const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
             const [settings, setSettings] = useState({ rokkoStart: '09:30', rokkoEnd: '18:30', myodaniStart: '09:15', myodaniEnd: '18:15', special: [] });
             const [attendance, setAttendance] = useState({}); 
             const [monthlyData, setMonthlyData] = useState({}); 
             const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
 
-            // ★ 載入雲端資料，如果雲端是空的，就把舊的本地資料搬上去！
+            // ★ 強制搬家與同步邏輯
             useEffect(() => {
+                const oldAttendance = loadOldLocalData('igk_pro_attendance', {});
+                const hasLocalData = Object.keys(oldAttendance).length > 0;
+
                 docRef.get().then((doc) => {
-                    if (doc.exists && Object.keys(doc.data()).length > 0) {
-                        // 雲端有資料，使用雲端資料
-                        const data = doc.data();
-                        if (data.employees) setEmployees(data.employees);
-                        if (data.settings) setSettings(data.settings);
-                        if (data.attendance) setAttendance(data.attendance);
-                        if (data.monthlyData) setMonthlyData(data.monthlyData);
+                    const cloudData = doc.exists ? doc.data() : null;
+                    const hasCloudData = cloudData && cloudData.attendance && Object.keys(cloudData.attendance).length > 0;
+
+                    if (hasCloudData && !hasLocalData) {
+                        // 情況 A：雲端有資料，且這臺電腦沒有舊資料 -> 採用雲端資料
+                        if (cloudData.employees) setEmployees(cloudData.employees);
+                        if (cloudData.settings) setSettings(cloudData.settings);
+                        if (cloudData.attendance) setAttendance(cloudData.attendance);
+                        if (cloudData.monthlyData) setMonthlyData(cloudData.monthlyData);
                     } else {
-                        // 雲端是空的！啟動「本地轉移雲端」計畫
+                        // 情況 B：這臺電腦有舊資料（或兩邊都有），優先把本機舊資料「強制覆蓋/同步」到雲端！
                         const oldEmployees = loadOldLocalData('igk_pro_employees_v10', INITIAL_EMPLOYEES);
                         const oldSettings = loadOldLocalData('igk_pro_settings_v3', { rokkoStart: '09:30', rokkoEnd: '18:30', myodaniStart: '09:15', myodaniEnd: '18:15', special: [] });
-                        const oldAttendance = loadOldLocalData('igk_pro_attendance', {});
                         const oldMonthly = loadOldLocalData('igk_pro_monthlyData', {});
 
-                        // 設定到畫面上
                         setEmployees(oldEmployees);
                         setSettings(oldSettings);
                         setAttendance(oldAttendance);
                         setMonthlyData(oldMonthly);
 
-                        // 寫入雲端
+                        // 強制寫入雲端
                         docRef.set({
                             employees: oldEmployees,
                             settings: oldSettings,
@@ -183,7 +183,8 @@
                     setIsCloudLoaded(true); 
                 }).catch(err => {
                     console.error("Firestore 讀取失敗:", err);
-                    alert("⚠️ 雲端資料讀取失敗！請確認 Firebase Firestore 是否已開啟並設定為「測試模式」。");
+                    // 網路或權限失敗時，至少保證本機資料讀得出來
+                    setAttendance(loadOldLocalData('igk_pro_attendance', {}));
                     setIsCloudLoaded(true); 
                 });
             }, []);
