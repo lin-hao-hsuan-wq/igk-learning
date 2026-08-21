@@ -3,23 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK Record System (Print Optimized)</title>
+    <title>IGK Record System - Cute Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Cute Fonts from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --bg-color: #f8fafc;
+            /* Cute Pastel Color Palette */
+            --primary-color: #ff8fb3; /* Pastel Pink */
+            --primary-dark: #f0789d;
+            --accent-color: #74c0fc; /* Pastel Blue */
+            --accent-dark: #52a9ed;
+            --bg-color: #fff0f5; /* Lavender Blush */
             --card-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
+            --border-color: #ffc2d4;
+            --text-main: #5c4d53;
+            --text-muted: #9e8e93;
+            --highlight: #ffe066; /* Soft Yellow */
         }
 
         body {
-            font-family: 'Inter', 'Segoe UI', sans-serif;
+            font-family: 'Nunito', 'M PLUS Rounded 1c', sans-serif;
             background-color: var(--bg-color);
+            /* Cute subtle background pattern */
+            background-image: radial-gradient(var(--border-color) 2px, transparent 2px);
+            background-size: 30px 30px;
             color: var(--text-main);
             margin: 0;
             padding: 40px 20px;
@@ -30,374 +39,393 @@
             margin: 0 auto;
             background: var(--card-bg);
             padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-radius: 30px;
+            box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15);
+            border: 4px dashed var(--border-color);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
         }
+
+        /* Watermark Background */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 250px;
+            font-weight: 800;
+            color: rgba(255, 143, 179, 0.08); /* Very light pink */
+            z-index: -1;
+            pointer-events: none;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        /* Cute Floating Decorations */
+        .cute-deco {
+            position: absolute;
+            font-size: 35px;
+            animation: float 3s ease-in-out infinite;
+            z-index: 10;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(8deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .deco-1 { top: -15px; left: -15px; animation-delay: 0s; font-size: 45px;}
+        .deco-2 { top: -20px; right: 20px; animation-delay: 0.5s; }
+        .deco-3 { bottom: -15px; left: 30px; animation-delay: 1s; }
+        .deco-4 { bottom: -15px; right: -10px; animation-delay: 1.5s; font-size: 40px;}
 
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
+            position: relative;
+            z-index: 2;
         }
 
-        .btn-group {
-            display: flex;
-            gap: 10px;
-        }
+        .btn-group { display: flex; gap: 12px; }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 6px;
-            font-weight: bold;
+            border-radius: 20px;
+            font-weight: 800;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
+            font-size: 15px;
+            font-family: inherit;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.1);
         }
+        .btn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0); }
 
-        .btn-print { background-color: #2ecc71; color: white; }
-        .btn-print:hover { background-color: #27ae60; }
-        
-        .btn-print-all { background-color: #f1c40f; color: #2c3e50; }
-        .btn-print-all:hover { background-color: #f39c12; color: white; }
-
-        .btn-sync { background-color: #f39c12; color: white; }
-        .btn-sync:hover { background-color: #d35400; }
+        .btn-print { background-color: #a8e6cf; color: #3d6a58; }
+        .btn-print:hover { background-color: #93d8bf; }
+        .btn-print-all { background-color: var(--highlight); color: #8c7300; }
+        .btn-print-all:hover { background-color: #f2d24e; }
+        .btn-sync { background-color: var(--accent-color); color: white; }
+        .btn-sync:hover { background-color: var(--accent-dark); }
 
         .logo {
             text-align: center;
-            font-size: 48px;
+            font-size: 56px;
             font-weight: 800;
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             color: var(--primary-color);
-            margin-bottom: 30px;
-            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
             padding-bottom: 15px;
+            position: relative;
+            text-shadow: 3px 3px 0 var(--border-color);
         }
 
         h2 {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 24px;
+            font-weight: 800;
             color: var(--primary-color);
-            margin: 35px 0 15px 0;
+            margin: 40px 0 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         h2 span {
-            display: block;
-            font-size: 13px;
+            font-size: 14px;
             color: var(--text-muted);
-            font-weight: 400;
-            margin-top: 5px;
+            font-weight: 700;
+            background: #fff0f5;
+            padding: 4px 12px;
+            border-radius: 12px;
         }
 
         .form-group {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
-            background: #f1f5f9;
-            padding: 25px;
-            border-radius: 12px;
+            background: #fffafa;
+            padding: 30px;
+            border-radius: 24px;
             margin-bottom: 30px;
+            border: 3px solid var(--border-color);
+            box-shadow: inset 0 0 15px rgba(255, 143, 179, 0.1);
+            position: relative;
+            z-index: 2;
         }
 
         label {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary-color);
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-main);
             margin-bottom: 8px;
             display: block;
         }
-        label span {
-            display: block;
-            font-size: 11px;
-            color: var(--text-muted);
-            font-weight: 400;
-        }
+        label span { display: block; font-size: 12px; color: var(--text-muted); font-weight: 700; }
 
-        select, input, button {
+        select, input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 15px;
+            padding: 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: 700;
+            color: var(--text-main);
             outline: none;
             background-color: white;
             box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        select:focus, input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(255, 143, 179, 0.2);
         }
 
         button.btn-save {
-            background-color: var(--accent-color);
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            cursor: pointer;
-            font-weight: 700;
-            margin-top: 20px;
-            height: 48px;
-        }
-        button.btn-save:hover { background-color: #2980b9; }
-
-        table {
             width: 100%;
-            border-collapse: collapse;
+            height: 56px;
+            font-size: 16px;
+            margin-top: 24px;
+        }
+        button.btn-save:hover { background-color: var(--primary-dark); }
+
+        .table-container {
+            position: relative;
+            background: white;
+            border-radius: 24px;
+            border: 3px solid var(--border-color);
+            padding: 10px;
+            z-index: 2;
             margin-bottom: 30px;
         }
 
-        th, td {
-            padding: 14px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-        }
-
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th, td { padding: 16px; text-align: center; border-bottom: 2px dashed var(--border-color); }
+        tr:last-child td { border-bottom: none; }
+        
         th {
-            background-color: #f8fafc;
-            color: var(--primary-color);
-            font-weight: 600;
-            font-size: 14px;
+            background-color: #fff0f5;
+            color: var(--text-main);
+            font-weight: 800;
+            font-size: 15px;
         }
-        th span {
-            display: block;
-            font-size: 11px;
-            color: var(--text-muted);
-            font-weight: 400;
-        }
+        th:first-child { border-top-left-radius: 16px; border-bottom-left-radius: 16px; }
+        th:last-child { border-top-right-radius: 16px; border-bottom-right-radius: 16px; }
+        
+        th span { display: block; font-size: 12px; color: var(--primary-color); font-weight: 700; }
+        td { font-weight: 700; color: #6b5c62; }
 
         .btn-action {
-            padding: 6px 12px;
-            background-color: #e2e8f0;
-            color: var(--primary-color);
+            padding: 8px 16px;
+            background-color: #ffe4e1;
+            color: var(--primary-dark);
             border: none;
-            border-radius: 4px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 800;
+            font-family: inherit;
+            transition: all 0.2s;
         }
-        .btn-action:hover { background-color: #cbd5e1; }
+        .btn-action:hover { background-color: #ffc2d4; transform: scale(1.05); }
 
         .charts-wrapper {
             display: flex;
-            gap: 20px;
+            gap: 25px;
             margin-top: 20px;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 2;
         }
 
         .chart-box {
             flex: 1;
-            min-width: 450px;
-            background: #fff;
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            border-radius: 12px;
+            min-width: 400px;
+            background: #fffafa;
+            border: 3px solid var(--border-color);
+            padding: 25px;
+            border-radius: 24px;
             box-sizing: border-box;
+            box-shadow: 0 8px 24px rgba(255, 143, 179, 0.08);
         }
 
         .chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
-        .chart-title { font-weight: 700; color: var(--primary-color); font-size: 16px; }
-        .chart-title span { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+        .chart-title { font-weight: 800; color: var(--primary-color); font-size: 18px; display: flex; align-items: center; gap: 8px;}
+        .chart-title span { display: block; font-size: 12px; color: var(--text-muted); font-weight: 700; background: #fff; padding: 2px 8px; border-radius: 10px;}
         .chart-container { height: 280px; width: 100%; position: relative; }
 
         .motivation-box {
             margin-top: 40px;
             text-align: center;
-            padding: 25px;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border-radius: 12px;
+            padding: 30px;
+            background: linear-gradient(135deg, #fff0f5 0%, #e0f2fe 100%);
+            border-radius: 24px;
+            border: 3px dashed #b8daff;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
         }
 
-        .motivation-en { font-size: 18px; font-weight: 700; color: var(--primary-color); font-style: italic; margin-bottom: 10px; }
-        .motivation-jp { font-size: 15px; color: var(--text-muted); }
+        .motivation-en { font-size: 20px; font-weight: 800; color: var(--primary-dark); font-style: italic; margin-bottom: 12px; }
+        .motivation-jp { font-size: 16px; color: var(--accent-dark); font-weight: 700; }
 
-        /* ================= 🖨️ Print Area Elements ================= */
-        .print-header {
-            display: none;
-            border-bottom: 2px dashed var(--primary-color);
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-        .print-header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-        }
-        .print-name { font-size: 20px; font-weight: 700; color: var(--primary-color); }
-        .print-date { font-size: 12px; color: var(--text-muted); }
-        .print-quote { font-size: 12px; font-style: italic; color: #34495e; margin-top: 4px; }
-
-        #printAllContainer { display: none; }
-        
-        .chart-print-img {
-            display: none; 
-            width: 100%;
-            height: auto;
-        }
-
-        /* ================= 🛑 Custom Modal for Data Management ================= */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(92, 77, 83, 0.6);
+            backdrop-filter: blur(4px);
             justify-content: center; align-items: center;
-            z-index: 1000;
+            z-index: 9999;
         }
         .modal-content {
             background-color: white;
-            padding: 30px;
-            border-radius: 12px;
+            padding: 35px;
+            border-radius: 30px;
             width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-width: 450px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            border: 5px solid var(--border-color);
+            position: relative;
         }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+        .dialog-content { text-align: center; }
+        .dialog-icon { font-size: 50px; margin-bottom: 15px; animation: bounce 2s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
-        .modal-title { font-weight: 700; font-size: 18px; color: var(--primary-color); }
-        .close-modal { font-size: 24px; cursor: pointer; color: var(--text-muted); }
-        .close-modal:hover { color: black; }
-        .detail-list { max-height: 300px; overflow-y: auto; margin-bottom: 15px; }
+        .dialog-title { font-weight: 800; font-size: 22px; color: var(--primary-dark); margin-bottom: 15px; }
+        .dialog-msg { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 25px; line-height: 1.5; white-space: pre-line; }
+        .dialog-input { display: none; width: 100%; margin-bottom: 25px; text-align: center; }
+        .dialog-btns { display: flex; gap: 15px; justify-content: center; }
+        
+        /* Manage Data Specific Modal */
+        .manage-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
+        .close-modal { font-size: 28px; cursor: pointer; color: var(--primary-color); font-weight: bold; line-height: 1; }
+        .close-modal:hover { transform: scale(1.1); }
+        .detail-list { max-height: 300px; overflow-y: auto; margin-bottom: 20px; padding-right: 10px; }
         .detail-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #f1f5f9;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px; background: #fff0f5; border-radius: 12px; margin-bottom: 10px;
+            font-weight: 700; border: 1px solid var(--border-color);
         }
-        .btn-delete {
-            background-color: #ff7675;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .btn-delete:hover { background-color: #d63031; }
+        .btn-delete { background-color: #ff9999; color: white; border: none; padding: 6px 12px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-delete:hover { background-color: #ff6b6b; }
 
-        /* ================= 🖨️ A4 嚴格單頁不溢出樣式修復 ================= */
+        .print-header { display: none; border-bottom: 3px dashed var(--primary-color); padding-bottom: 12px; margin-bottom: 15px; position: relative; z-index: 2;}
+        .print-header-top { display: flex; justify-content: space-between; align-items: baseline; }
+        .print-name { font-size: 24px; font-weight: 800; color: var(--primary-dark); }
+        .print-date { font-size: 14px; font-weight: 700; color: var(--text-muted); background: #fff0f5; padding: 4px 10px; border-radius: 8px;}
+        .print-quote { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-top: 8px; }
+        #printAllContainer { display: none; }
+        .chart-print-img { display: none; width: 100%; height: auto; border-radius: 16px; }
+
         @media print {
-            @page { 
-                size: A4 portrait; 
-                margin: 0.8cm 1.0cm; 
-            }
+            @page { size: A4 portrait; margin: 0.8cm 1.0cm; }
             body { 
-                background: white !important; 
-                color: #000 !important; 
-                padding: 0 !important; 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important;
+                background: white !important; color: #000 !important; padding: 0 !important; 
+                -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
             }
             .container { display: none !important; } 
             
-            #printAllContainer { 
-                display: block !important; 
-                width: 100% !important;
-            }
+            #printAllContainer { display: block !important; width: 100% !important; }
             
             .print-page {
+                position: relative;
                 page-break-inside: avoid !important; 
                 page-break-after: always !important; 
-                box-sizing: border-box;
-                width: 100% !important;
-                padding: 0;
-                margin: 0 0 20px 0;
+                box-sizing: border-box; width: 100% !important; padding: 0; margin: 0 0 20px 0;
             }
-            .print-page:last-child {
-                page-break-after: avoid !important;
+            .print-page:last-child { page-break-after: avoid !important; }
+
+            .watermark-print {
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg);
+                font-size: 180px; font-weight: 800; color: rgba(255, 143, 179, 0.1) !important;
+                z-index: -1; pointer-events: none;
             }
 
             .print-header { display: block !important; }
             
-            h2 { font-size: 14px !important; margin: 12px 0 6px 0 !important; }
-            h2 span { font-size: 10px !important; display: inline-block !important; margin-left: 4px; }
+            h2 { font-size: 16px !important; margin: 12px 0 8px 0 !important; color: var(--primary-dark) !important;}
+            h2 span { font-size: 11px !important; display: inline-block !important; margin-left: 6px; }
 
-            th { background-color: #f1f5f9 !important; color: #000 !important; font-size: 11px !important; }
-            td, th { border: 1px solid #cbd5e1 !important; padding: 5px !important; font-size: 11px !important; }
-            table { margin-bottom: 10px !important; }
+            th { background-color: #fff0f5 !important; color: #000 !important; font-size: 12px !important; border-bottom: 2px solid #ffb6c1 !important;}
+            td, th { padding: 6px !important; font-size: 12px !important; }
+            table { margin-bottom: 12px !important; border: 2px solid var(--border-color) !important; border-radius: 12px !important; overflow: hidden;}
             
             .charts-wrapper { 
-                display: flex !important; 
-                flex-direction: row !important; 
-                gap: 10px !important; 
-                flex-wrap: nowrap !important; 
-                margin-top: 5px !important;
-                margin-bottom: 10px !important;
+                display: flex !important; flex-direction: row !important; gap: 12px !important; 
+                flex-wrap: nowrap !important; margin-top: 10px !important; margin-bottom: 10px !important;
             }
             .chart-box { 
-                flex: 1 !important; 
-                min-width: 0 !important; 
-                border: 1px solid #cbd5e1 !important; 
-                padding: 6px !important; 
-                background: white !important;
-                border-radius: 6px !important;
+                flex: 1 !important; min-width: 0 !important; border: 2px solid var(--border-color) !important; 
+                padding: 10px !important; background: white !important; border-radius: 16px !important;
+                box-shadow: none !important;
             }
-            .chart-title { font-size: 12px !important; }
-            .chart-title span { display: inline-block !important; font-size: 9px !important; margin-left: 3px; }
+            .chart-title { font-size: 13px !important; margin-bottom: 10px !important;}
+            .chart-title span { display: inline-block !important; font-size: 10px !important; margin-left: 4px; }
             
-            .chart-container {
-                height: 180px !important; 
-                width: 100% !important;
-            }
-
-            .chart-print-img {
-                display: block !important; 
-                max-width: 100% !important;
-                height: 180px !important; 
-                object-fit: contain;
-            }
+            .chart-container { height: 180px !important; width: 100% !important; }
+            .chart-print-img { display: block !important; max-width: 100% !important; height: 180px !important; object-fit: contain; }
             
             .motivation-box { 
-                background: #f8fafc !important; 
-                border: 1px solid #e2e8f0 !important; 
-                margin-top: 5px !important; 
-                padding: 8px !important; 
-                border-radius: 6px !important;
+                background: #fffafa !important; border: 2px dashed #b8daff !important; 
+                margin-top: 10px !important; padding: 10px !important; border-radius: 16px !important;
             }
-            .motivation-en { font-size: 12px !important; margin-bottom: 2px !important; }
-            .motivation-jp { font-size: 10px !important; }
+            .motivation-en { font-size: 14px !important; margin-bottom: 4px !important; }
+            .motivation-jp { font-size: 11px !important; }
+            
+            .cute-deco { display: none !important; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="watermark">IGK</div>
+    <!-- Cute Floating Icons -->
+    <div class="cute-deco deco-1">🍎</div>
+    <div class="cute-deco deco-2">🔤</div>
+
     <div class="top-bar">
         <div>
-            <label style="display:inline-block; margin-right: 10px; margin-bottom:0;">Target Month <span>対象月</span></label>
-            <select id="monthSelect" onchange="handleMonthChange()" style="width: 160px; display:inline-block; padding: 6px; font-size: 14px;"></select>
+            <label style="display:inline-block; margin-right: 12px; margin-bottom:0; font-size: 16px;">Target Month <span>対象月</span></label>
+            <select id="monthSelect" onchange="handleMonthChange()" style="width: 180px; display:inline-block; padding: 10px 16px; font-size: 15px;"></select>
         </div>
         <div class="btn-group">
-            <button class="btn btn-sync" onclick="exportData()">📤 Export Data</button>
-            <button class="btn btn-sync" onclick="importData()">📥 Import Data</button>
-            <button class="btn btn-print-all" onclick="printAllMembers()">🌟 Print All Members</button>
+            <button class="btn btn-sync" onclick="exportData()">📤 Export</button>
+            <button class="btn btn-sync" onclick="importData()">📥 Import</button>
+            <button class="btn btn-print-all" onclick="printAllMembers()">🌟 Print All</button>
             <button class="btn btn-print" onclick="printCurrentMember()">🖨️ Print Single</button>
         </div>
     </div>
 
     <div class="logo">IGK</div>
 
-    <h2>📊 Daily Data Entry <span>毎日のデータ入力</span></h2>
+    <h2>🧸 Daily Data Entry <span>毎日のデータ入力</span></h2>
     <div class="form-group">
         <div>
             <label>Member Name <span>メンバー名</span></label>
             <select id="userSelect"></select>
         </div>
         <div>
-            <!-- 修改這裡：將 select 改為 input type="date" -->
             <label>Record Date <span>記録日</span></label>
             <input type="date" id="dateSelect">
         </div>
@@ -406,27 +434,39 @@
             <input type="number" id="scoreInput" min="0" max="20" value="0">
         </div>
         <div>
-            <button class="btn-save" onclick="saveData()">Save Record<br><span style="font-size:10px; font-weight:400; display:block; margin-top:-2px;">データを保存</span></button>
+            <button class="btn btn-save" onclick="saveData()">✏️ Save Record<br><span style="font-size:11px; font-weight:700; display:block; margin-top:2px;">データを保存</span></button>
         </div>
     </div>
 
-    <h2>📋 Monthly Overview <span>今月のデータ概要</span></h2>
-    <table id="dailySummaryTable">
-        <thead>
-            <tr>
-                <th>Date <span>日付</span></th>
-                <th>Total Participants <span>参加人数</span></th>
-                <th>Highest Score (Max 20) <span>最高得点 (20題中)</span></th>
-                <th>Action <span>操作</span></th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <h2>🖍️ Monthly Overview <span>今月のデータ概要</span></h2>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px; position: relative; z-index: 2;">
+        <div style="display: flex; align-items: center; gap: 10px; background: #fff0f5; padding: 8px 16px; border-radius: 16px; border: 2px solid var(--border-color);">
+            <span style="font-weight: 800; color: var(--primary-dark); font-size: 14px;">View Personal Score for: </span>
+            <select id="chartUserSelect" onchange="handleUserSelectChange()" style="width: 140px; padding: 6px 12px; font-size: 14px; border-radius: 10px;"></select>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <div class="cute-deco" style="top:-25px; left:-15px; font-size: 30px;">📚</div>
+        <div class="cute-deco" style="bottom:-20px; right:-15px; font-size: 30px;">🎨</div>
+        <table id="dailySummaryTable">
+            <thead>
+                <tr>
+                    <th>Date 📅<span>日付</span></th>
+                    <th>Participants 👥<span>参加人数</span></th>
+                    <th>Avg Score 📊<span>平均点 (20題中)</span></th>
+                    <th>Personal Score 👤<span>個人点</span></th>
+                    <th>Action ⚙️<span>操作</span></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <div class="charts-wrapper">
         <div class="chart-box">
             <div class="chart-header">
-                <div class="chart-title">📊 Overall Team Progress <span>全体平均の推移</span></div>
+                <div class="chart-title">🌟 Overall Team Progress <span>全体平均の推移</span></div>
             </div>
             <div class="chart-container">
                 <canvas id="overallChart"></canvas>
@@ -435,8 +475,7 @@
 
         <div class="chart-box">
             <div class="chart-header">
-                <div class="chart-title">👤 Individual Performance <span>個人スコアの傾向</span></div>
-                <select id="chartUserSelect" onchange="updateCharts()" style="width: 120px; padding: 5px; font-size: 13px;"></select>
+                <div class="chart-title">🏅 Individual Performance <span>個人スコアの傾向</span></div>
             </div>
             <div class="chart-container">
                 <canvas id="personalChart"></canvas>
@@ -445,21 +484,36 @@
     </div>
 
     <div class="motivation-box">
-        <div class="motivation-en">"Consistency is the key to mastery."</div>
-        <div class="motivation-jp">「継続こそが、卓越した技術への唯一の道です。」</div>
+        <div class="motivation-en">"Consistency is the key to mastery." 🚀</div>
+        <div class="motivation-jp">「継続こそが、卓越した技術への唯一の道です。」✨</div>
     </div>
 </div>
 
 <div id="printAllContainer"></div>
 
+<!-- Custom Manage Data Modal -->
 <div id="dataModal" class="modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <div class="modal-title" id="modalTitle">Manage Data</div>
+        <div class="manage-header">
+            <div class="dialog-title" id="modalTitle" style="margin:0;">📅 Manage Data</div>
             <span class="close-modal" onclick="closeModal()">&times;</span>
         </div>
         <div class="detail-list" id="modalList"></div>
-        <button onclick="closeModal()" style="background-color: var(--primary-color); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Close / 閉じる</button>
+        <button class="btn btn-save" onclick="closeModal()" style="margin-top: 0; border-radius: 16px;">Done / 完了 🎀</button>
+    </div>
+</div>
+
+<!-- Custom Generic Dialog (Replaces alert, confirm, prompt) -->
+<div id="customDialog" class="modal">
+    <div class="modal-content dialog-content">
+        <div id="dialogIcon" class="dialog-icon">💖</div>
+        <div class="dialog-title" id="dialogTitle">Title</div>
+        <div class="dialog-msg" id="dialogMessage">Message goes here.</div>
+        <input type="text" id="dialogInput" class="dialog-input">
+        <div class="dialog-btns">
+            <button id="dialogBtnCancel" class="btn" style="background: #e2e8f0; color: #475569; display: none;">Cancel / キャンセル</button>
+            <button id="dialogBtnConfirm" class="btn btn-save" style="margin-top: 0; width: auto; padding-left: 30px; padding-right: 30px;">OK / 確認</button>
+        </div>
     </div>
 </div>
 
@@ -484,6 +538,39 @@
 
     const monthSelect = document.getElementById('monthSelect');
     
+    
+    // Custom Dialog Logic
+    function customMessage(title, text, type = 'alert', icon = '💖', callback = null) {
+        document.getElementById('dialogTitle').innerText = title;
+        document.getElementById('dialogMessage').innerText = text;
+        document.getElementById('dialogIcon').innerText = icon;
+        
+        const input = document.getElementById('dialogInput');
+        const btnCancel = document.getElementById('dialogBtnCancel');
+        const btnConfirm = document.getElementById('dialogBtnConfirm');
+        const dialog = document.getElementById('customDialog');
+
+        input.style.display = type === 'prompt' ? 'block' : 'none';
+        btnCancel.style.display = (type === 'confirm' || type === 'prompt') ? 'block' : 'none';
+        input.value = '';
+
+        btnConfirm.onclick = () => {
+            dialog.style.display = 'none';
+            if (callback) {
+                if (type === 'prompt') callback(input.value);
+                else callback(true);
+            }
+        };
+
+        btnCancel.onclick = () => {
+            dialog.style.display = 'none';
+            if (callback && type !== 'prompt') callback(false);
+            if (callback && type === 'prompt') callback(null);
+        };
+
+        dialog.style.display = 'flex';
+    }
+
     function initMonthSelector() {
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -500,13 +587,11 @@
             monthSelect.add(option);
         }
 
-        // 初始化日期選擇器預設為今天
         const todayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         document.getElementById('dateSelect').value = todayStr;
     }
     initMonthSelector();
 
-    // 動態抓取選定月份中有紀錄的所有日期
     function getActiveDates(monthKey) {
         const monthData = recordData[monthKey] || {};
         const dates = new Set();
@@ -515,10 +600,15 @@
                 dates.add(date);
             }
         }
-        return Array.from(dates).sort(); // 依照日期先後排序
+        return Array.from(dates).sort();
     }
 
     function handleMonthChange() {
+        renderSummaryTable();
+        updateCharts();
+    }
+
+    function handleUserSelectChange() {
         renderSummaryTable();
         updateCharts();
     }
@@ -529,26 +619,23 @@
         const score = parseInt(document.getElementById('scoreInput').value);
 
         if (!dateInput) {
-            alert("⚠️ Please select a date.\n日付を選択してください。");
+            customMessage("Hold on! ⚠️", "Please select a date.\n日付を選択してください。", "alert", "📅");
             return;
         }
 
         if (score < 0 || score > 20 || isNaN(score)) {
-            alert("⚠️ Please enter a score between 0 and 20.\n0から20の間の数値を入力してください。");
+            customMessage("Oops! 🖍️", "Please enter a score between 0 and 20.\n0から20の間の数値を入力してください。", "alert", "🔢");
             return;
         }
 
-        // 從選擇的日期自動判斷所屬月份 YYYY-MM
         const saveMonth = dateInput.substring(0, 7);
 
-        // 如果選擇的日期不在此月份選單內，自動新增選項
         let optionExists = Array.from(monthSelect.options).some(opt => opt.value === saveMonth);
         if (!optionExists) {
             const [y, m] = saveMonth.split('-');
             monthSelect.add(new Option(`${y}年 ${m}月`, saveMonth));
         }
 
-        // 將檢視月份切換到儲存的月份
         monthSelect.value = saveMonth;
 
         if (!recordData[saveMonth]) recordData[saveMonth] = {};
@@ -557,8 +644,11 @@
         recordData[saveMonth][user][dateInput] = score;
         localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
         
-        handleMonthChange(); // 重新渲染表格和圖表
-        alert(`✅ Record saved successfully for ${user}!\n${user}のデータが正常に保存されました！`);
+        // Sync chartUserSelect to the user who just saved for convenience
+        chartUserSelect.value = user;
+        
+        handleMonthChange(); 
+        customMessage("Yay! 🎉", `Record saved successfully for ${user}!\n${user}のデータが正常に保存されました！`, "alert", "🌟");
     }
 
     function renderSummaryTable() {
@@ -567,27 +657,37 @@
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
         const activeDates = getActiveDates(selectedMonth);
+        const currentUser = chartUserSelect.value;
 
         if (activeDates.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="color: var(--text-muted);">No records found for this month.<br>今月のデータはありません。</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="color: var(--text-muted); padding: 30px;">No records found for this month 🧸<br>今月のデータはありません。</td></tr>`;
             return;
         }
 
         activeDates.forEach(date => {
-            let count = 0, max = 0, hasData = false;
+            let totalScore = 0, count = 0, hasData = false;
+            let personalScore = '-';
+            
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
+                    totalScore += monthData[u][date];
                     count++;
                     hasData = true;
-                    if (monthData[u][date] > max) max = monthData[u][date];
+                    if (u === currentUser) {
+                        personalScore = `<span style="color: var(--accent-dark); font-weight: 800;">${monthData[u][date]} Qs</span>`;
+                    }
                 }
             }
+            
+            const avgScore = count > 0 ? (totalScore / count).toFixed(1) + ' Qs' : '-';
+            
             tbody.innerHTML += `
                 <tr>
                     <td>${date}</td>
-                    <td>${count} Ppl / 人</td>
-                    <td>${hasData ? max + ' Qs / 題' : '-'}</td>
-                    <td><button class="btn-action" onclick="openManageModal('${date}')">🔍 View / Edit</button></td>
+                    <td>${count} Ppl</td>
+                    <td style="color: var(--primary-dark); font-weight: 800;">${hasData ? avgScore : '-'}</td>
+                    <td>${personalScore}</td>
+                    <td><button class="btn-action" onclick="openManageModal('${date}')">🔍 View</button></td>
                 </tr>`;
         });
     }
@@ -596,7 +696,7 @@
         const selectedMonth = monthSelect.value;
         const monthData = recordData[selectedMonth] || {};
         
-        document.getElementById('modalTitle').innerText = `📅 Manage Data: ${date}`;
+        document.getElementById('modalTitle').innerText = `📅 ${date} Details`;
         const listContainer = document.getElementById('modalList');
         listContainer.innerHTML = '';
 
@@ -607,32 +707,34 @@
                 const score = monthData[user][date];
                 listContainer.innerHTML += `
                     <div class="detail-item">
-                        <span><strong>${user}</strong>: ${score} Qs / 題</span>
-                        <button class="btn-delete" onclick="deleteSingleRecord('${selectedMonth}', '${user}', '${date}')">🗑️ Delete</button>
+                        <span><span style="font-size:18px;">👤</span> <strong>${user}</strong>: ${score} Qs</span>
+                        <button class="btn-delete" onclick="deleteSingleRecord('${selectedMonth}', '${user}', '${date}')">🗑️ Del</button>
                     </div>`;
             }
         }
 
         if (!hasData) {
-            listContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No records found for this day.<br>この日のデータはありません。</p>';
+            listContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-weight:bold;">No records found 🧸</p>';
         }
 
         document.getElementById('dataModal').style.display = 'flex';
     }
 
     function deleteSingleRecord(month, user, date) {
-        if (confirm(`Are you sure you want to delete the record for ${user} on ${date}?\n${user}（${date}）のデータを削除してもよろしいですか？`)) {
-            if (recordData[month] && recordData[month][user]) {
-                delete recordData[month][user][date];
-                if (Object.keys(recordData[month][user]).length === 0) {
-                    delete recordData[month][user];
+        customMessage("Are you sure? 🥺", `Delete record for ${user} on ${date}?\n${user}（${date}）のデータを削除しますか？`, "confirm", "🗑️", (confirmed) => {
+            if (confirmed) {
+                if (recordData[month] && recordData[month][user]) {
+                    delete recordData[month][user][date];
+                    if (Object.keys(recordData[month][user]).length === 0) {
+                        delete recordData[month][user];
+                    }
+                    localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
+                    renderSummaryTable();
+                    updateCharts();
+                    openManageModal(date); 
                 }
-                localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-                renderSummaryTable();
-                updateCharts();
-                openManageModal(date); 
             }
-        }
+        });
     }
 
     function closeModal() {
@@ -671,9 +773,13 @@
         if (overallChart) overallChart.destroy();
         if (personalChart) personalChart.destroy();
 
-        // 隱藏年份，只顯示 MM-DD
+        Chart.defaults.font.family = "'Nunito', 'M PLUS Rounded 1c', sans-serif";
+        Chart.defaults.font.weight = '700';
+        Chart.defaults.color = '#9e8e93';
+
         const labels = activeDates.map(d => d.slice(5));
 
+        // Overall Team Progress - Bar Chart (Pastel Blue)
         overallChart = new Chart(ctxOverall, {
             type: 'bar',
             data: {
@@ -681,26 +787,29 @@
                 datasets: [{
                     label: 'Team Avg',
                     data: avgScores,
-                    backgroundColor: 'rgba(52, 152, 219, 0.4)',
-                    borderColor: '#3498db',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(116, 192, 252, 0.6)', /* Pastel Blue */
+                    borderColor: '#74c0fc',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    barPercentage: 0.6
                 }]
             },
             options: chartOptions(20, 'Avg Score', false) 
         });
 
+        // Individual Performance - NOW A BAR CHART TOO (Pastel Pink)
         personalChart = new Chart(ctxPersonal, {
-            type: 'line',
+            type: 'bar', // Changed to match overall format
             data: {
                 labels: labels,
                 datasets: [{
-                    label: `Score`,
+                    label: 'Personal Score',
                     data: userScores,
-                    borderColor: '#2c3e50',
-                    borderWidth: 1,
-                    pointRadius: 4,
-                    fill: false,
-                    tension: 0.3
+                    backgroundColor: 'rgba(255, 143, 179, 0.6)', /* Pastel Pink */
+                    borderColor: '#ff8fb3',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    barPercentage: 0.6
                 }]
             },
             options: chartOptions(20, 'Score', false)
@@ -711,20 +820,24 @@
         return {
             responsive: true,
             maintainAspectRatio: false,
-            animation: animate, 
+            animation: animate ? { duration: 1000, easing: 'easeOutQuart' } : false, 
             scales: {
-                y: { min: 0, max: max, ticks: { stepSize: 2 }, title: { display: true, text: yLabel, font: { size: 11 } } }
+                y: { 
+                    min: 0, max: max, 
+                    ticks: { stepSize: 4 }, 
+                    title: { display: true, text: yLabel, font: { size: 12, weight: 'bold' } },
+                    grid: { color: 'rgba(255, 194, 212, 0.2)' }
+                },
+                x: { grid: { display: false } }
             },
-            plugins: { legend: { display: false } }
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(92, 77, 83, 0.9)', titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' } } }
         };
     }
 
-    // ================= 🖨️ ADVANCED PRINT GENERATOR =================
-    
     function createHiddenChartAndCapture(imgId, config) {
         return new Promise((resolve) => {
             const hiddenCanvas = document.createElement('canvas');
-            hiddenCanvas.width = 500;
+            hiddenCanvas.width = 600;
             hiddenCanvas.height = 240;
             
             config.options = config.options || {};
@@ -749,26 +862,34 @@
         });
     }
 
-    function generateSummaryHtml(monthData, activeDates) {
+    function generateSummaryHtml(monthData, activeDates, targetUser) {
         if (activeDates.length === 0) {
-            return `<tr><td colspan="3" style="color: var(--text-muted);">No records found / データなし</td></tr>`;
+            return `<tr><td colspan="4" style="color: var(--text-muted);">No records found / データなし</td></tr>`;
         }
 
         let tableRowsHtml = '';
         activeDates.forEach(date => {
-            let count = 0, max = 0, hasData = false;
+            let total = 0, count = 0, hasData = false;
+            let personalScore = '-';
+            
             for (let u in monthData) {
                 if (monthData[u][date] !== undefined) {
+                    total += monthData[u][date];
                     count++;
                     hasData = true;
-                    if (monthData[u][date] > max) max = monthData[u][date];
+                    if (u === targetUser) {
+                        personalScore = monthData[u][date] + ' Qs';
+                    }
                 }
             }
+            const avgScore = count > 0 ? (total / count).toFixed(1) + ' Qs' : '-';
+            
             tableRowsHtml += `
                 <tr>
                     <td>${date}</td>
-                    <td>${count} Ppl / 人</td>
-                    <td>${hasData ? max + ' Qs / 題' : '-'}</td>
+                    <td>${count} Ppl</td>
+                    <td>${hasData ? avgScore : '-'}</td>
+                    <td><strong>${personalScore}</strong></td>
                 </tr>`;
         });
         return tableRowsHtml;
@@ -777,29 +898,31 @@
     const targetMonthFormatted = () => monthSelect.options[monthSelect.selectedIndex].text;
     const commonMotivationHtml = `
         <div class="motivation-box">
-            <div class="motivation-en">"Consistency is the key to mastery."</div>
-            <div class="motivation-jp">「継続こそが、卓越した技術への唯一の道です。」</div>
+            <div class="motivation-en">"Consistency is the key to mastery." 🚀</div>
+            <div class="motivation-jp">「継続こそが、卓越した技術への唯一の道です。」✨</div>
         </div>
     `;
 
     function renderPrintPageSkeleton(user, index, summaryRowsHtml) {
         return `
             <div class="print-page">
+                <div class="watermark-print">IGK</div>
                 <div class="print-header">
                     <div class="print-header-top">
-                        <div class="print-name">👤 Member Name: ${user}</div>
-                        <div class="print-date">Target Period: ${targetMonthFormatted()}</div>
+                        <div class="print-name">👤 Member: ${user}</div>
+                        <div class="print-date">📅 ${targetMonthFormatted()}</div>
                     </div>
                     <div class="print-quote">"Consistency is the key to mastery. / 継続こそが、卓越した技術への唯一の道です。"</div>
                 </div>
 
-                <h2>📋 Monthly Overview <span>今月のデータ概要</span></h2>
+                <h2>🖍️ Monthly Overview <span>今月のデータ概要</span></h2>
                 <table>
                     <thead>
                         <tr>
                             <th>Date <span>日付</span></th>
-                            <th>Total Participants <span>参加人数</span></th>
-                            <th>Highest Score (Max 20) <span>最高得点 (20題中)</span></th>
+                            <th>Participants <span>参加人数</span></th>
+                            <th>Avg Score <span>平均点</span></th>
+                            <th>Personal Score <span>個人点</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -809,13 +932,13 @@
 
                 <div class="charts-wrapper">
                     <div class="chart-box">
-                        <div class="chart-title">📊 Overall Team Progress <span>全体平均の推移</span></div>
+                        <div class="chart-title">🌟 Overall Team Progress <span>全体平均</span></div>
                         <div class="chart-container">
                             <img id="print-overall-img-${index}" class="chart-print-img" src="" alt="Team Chart">
                         </div>
                     </div>
                     <div class="chart-box">
-                        <div class="chart-title">👤 Individual Performance <span>個人スコアの傾向</span></div>
+                        <div class="chart-title">🏅 Individual Performance <span>個人スコア</span></div>
                         <div class="chart-container">
                             <img id="print-personal-img-${index}" class="chart-print-img" src="" alt="Individual Chart">
                         </div>
@@ -834,7 +957,7 @@
         const { avgScores, userScores, activeDates } = getChartData();
         const labels = activeDates.map(d => d.slice(5));
 
-        container.innerHTML = renderPrintPageSkeleton(singleUser, 0, generateSummaryHtml(monthData, activeDates));
+        container.innerHTML = renderPrintPageSkeleton(singleUser, 0, generateSummaryHtml(monthData, activeDates, singleUser));
 
         await createHiddenChartAndCapture('print-overall-img-0', {
             type: 'bar',
@@ -842,25 +965,23 @@
                 labels: labels,
                 datasets: [{
                     data: avgScores,
-                    backgroundColor: 'rgba(52, 152, 219, 0.4)',
-                    borderColor: '#3498db',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(116, 192, 252, 0.6)',
+                    borderColor: '#74c0fc',
+                    borderWidth: 2, borderRadius: 6
                 }]
             },
             options: chartOptions(20, 'Avg Score', false)
         });
 
         await createHiddenChartAndCapture('print-personal-img-0', {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
                     data: userScores,
-                    borderColor: '#2c3e50',
-                    borderWidth: 1,
-                    pointRadius: 3,
-                    fill: false,
-                    tension: 0.3
+                    backgroundColor: 'rgba(255, 143, 179, 0.6)',
+                    borderColor: '#ff8fb3',
+                    borderWidth: 2, borderRadius: 6
                 }]
             },
             options: chartOptions(20, 'Score', false)
@@ -870,72 +991,72 @@
     }
 
     async function printAllMembers() {
-        if (!confirm(`Generating print preview for all ${users.length} members. This may take a few seconds.\n全${users.length}名分の列印預覽生成中。數秒かかります。`)) return;
+        customMessage("Getting Ready! 🖨️", `Generating print preview for all ${users.length} members. This may take a few seconds.\n全${users.length}名分のプレビューを生成中です。`, "confirm", "⏳", async (confirmed) => {
+            if (!confirmed) return;
 
-        const container = document.getElementById('printAllContainer');
-        container.innerHTML = ''; 
-        
-        const selectedMonth = monthSelect.value;
-        const monthData = recordData[selectedMonth] || {};
-        const activeDates = getActiveDates(selectedMonth);
-        const labels = activeDates.map(d => d.slice(5));
-        const summaryRowsHtml = generateSummaryHtml(monthData, activeDates);
+            const container = document.getElementById('printAllContainer');
+            container.innerHTML = ''; 
+            
+            const selectedMonth = monthSelect.value;
+            const monthData = recordData[selectedMonth] || {};
+            const activeDates = getActiveDates(selectedMonth);
+            const labels = activeDates.map(d => d.slice(5));
 
-        const avgScores = activeDates.map(date => {
-            let total = 0, count = 0;
-            for (let u in monthData) {
-                if (monthData[u][date] !== undefined) {
-                    total += monthData[u][date];
-                    count++;
+            const avgScores = activeDates.map(date => {
+                let total = 0, count = 0;
+                for (let u in monthData) {
+                    if (monthData[u][date] !== undefined) {
+                        total += monthData[u][date];
+                        count++;
+                    }
                 }
+                return count > 0 ? (total / count).toFixed(1) : null;
+            });
+
+            let massiveHtml = '';
+            users.forEach((user, index) => {
+                const summaryRowsHtml = generateSummaryHtml(monthData, activeDates, user);
+                massiveHtml += renderPrintPageSkeleton(user, index, summaryRowsHtml);
+            });
+            container.innerHTML = massiveHtml;
+
+            for (let index = 0; index < users.length; index++) {
+                const user = users[index];
+                const userScores = activeDates.map(date => 
+                    (monthData[user] && monthData[user][date] !== undefined) ? monthData[user][date] : null
+                );
+
+                await createHiddenChartAndCapture(`print-overall-img-${index}`, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: avgScores,
+                            backgroundColor: 'rgba(116, 192, 252, 0.6)',
+                            borderColor: '#74c0fc',
+                            borderWidth: 2, borderRadius: 6
+                        }]
+                    },
+                    options: chartOptions(20, 'Avg Score', false)
+                });
+
+                await createHiddenChartAndCapture(`print-personal-img-${index}`, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: userScores,
+                            backgroundColor: 'rgba(255, 143, 179, 0.6)',
+                            borderColor: '#ff8fb3',
+                            borderWidth: 2, borderRadius: 6
+                        }]
+                    },
+                    options: chartOptions(20, 'Score', false)
+                });
             }
-            return count > 0 ? (total / count).toFixed(1) : null;
+
+            window.print();
         });
-
-        let massiveHtml = '';
-        users.forEach((user, index) => {
-            massiveHtml += renderPrintPageSkeleton(user, index, summaryRowsHtml);
-        });
-        container.innerHTML = massiveHtml;
-
-        for (let index = 0; index < users.length; index++) {
-            const user = users[index];
-            const userScores = activeDates.map(date => 
-                (monthData[user] && monthData[user][date] !== undefined) ? monthData[user][date] : null
-            );
-
-            await createHiddenChartAndCapture(`print-overall-img-${index}`, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: avgScores,
-                        backgroundColor: 'rgba(52, 152, 219, 0.4)',
-                        borderColor: '#3498db',
-                        borderWidth: 1
-                    }]
-                },
-                options: chartOptions(20, 'Avg Score', false)
-            });
-
-            await createHiddenChartAndCapture(`print-personal-img-${index}`, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: userScores,
-                        borderColor: '#2c3e50',
-                        borderWidth: 1,
-                        pointRadius: 3,
-                        fill: false,
-                        tension: 0.3
-                    }]
-                },
-                options: chartOptions(20, 'Score', false)
-            });
-        }
-
-        window.print();
     }
 
     function exportData() {
@@ -946,32 +1067,37 @@
         tempTextArea.select();
         document.execCommand('copy');
         document.body.removeChild(tempTextArea);
-        alert("📋 All data copied to clipboard!\nすべてのデータがクリップボードにコピーされました！");
+        customMessage("Success! 📋", "All data copied to clipboard!\nすべてのデータがクリップボードにコピーされました！", "alert", "✨");
     }
 
     function importData() {
-        const input = prompt("📥 Please paste the data code (JSON String):\nデータを貼り付けてください:");
-        if (input) {
-            try {
-                const parsed = JSON.parse(input);
-                if (typeof parsed === 'object') {
-                    recordData = parsed;
-                    localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-                    handleMonthChange();
-                    alert("✨ Data imported successfully!\nデータのインポートが成功しました！");
-                } else {
-                    alert("⚠️ Invalid data format.\n無効なデータ形式です。");
+        customMessage("Import Data 📥", "Please paste the data code (JSON String):\nデータを貼り付けてください:", "prompt", "📦", (input) => {
+            if (input) {
+                try {
+                    const parsed = JSON.parse(input);
+                    if (typeof parsed === 'object') {
+                        recordData = parsed;
+                        localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
+                        handleMonthChange();
+                        customMessage("Woohoo! ✨", "Data imported successfully!\nデータのインポートが成功しました！", "alert", "🎉");
+                    } else {
+                        customMessage("Uh oh! ⚠️", "Invalid data format.\n無効なデータ形式です。", "alert", "❌");
+                    }
+                } catch (e) {
+                    customMessage("Oh no! ⚠️", "Parsing error.\nデータの解析に失敗しました。", "alert", "🔌");
                 }
-            } catch (e) {
-                alert("⚠️ Parsing error.\nデータの解析に失敗しました。");
             }
-        }
+        });
     }
 
+    // Modal Background Click handlers
     window.onclick = function(event) {
-        const modal = document.getElementById('dataModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
+        const dataModal = document.getElementById('dataModal');
+        const customDialog = document.getElementById('customDialog');
+        if (event.target == dataModal) { dataModal.style.display = 'none'; }
+        // We prevent clicking outside for customDialog if it's a prompt or confirm to avoid accidental dismissal
+        if (event.target == customDialog && document.getElementById('dialogBtnCancel').style.display === 'none') {
+            customDialog.style.display = 'none';
         }
     }
 
