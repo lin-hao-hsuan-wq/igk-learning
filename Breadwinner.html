@@ -298,7 +298,7 @@
                 setTimecardText('');
             };
 
-            // 支援 交通費 與 排班表 的真實解析，並修正 emp is not defined 錯誤
+            // ★ 修正版：雙模式真實解析 (已完全修復 emp is not defined 和只萃取顏色限制的 Bug)
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -319,7 +319,7 @@
                         let localEmps = JSON.parse(JSON.stringify(employees));
                         let count = 0;
 
-                        // 判別檔案類型：檔名或工作表名稱包含「交通費」
+                        // 判別是否為交通費檔案
                         const isTransportFile = file.name.includes('交通費') || wb.worksheets.some(ws => ws.name.includes('交通費'));
 
                         if (isTransportFile) {
@@ -361,6 +361,7 @@
                                 }
                             });
                         } else {
+                            // 判別為 排班表
                             wb.worksheets.forEach(ws => {
                                 let currentDates = {}; 
                                 let currentColMap = {};
@@ -391,6 +392,7 @@
                                     let matches = 0;
                                     let tempMap = {};
 
+                                    // 判斷這一列是否為人名
                                     for (let c = 1; c <= 40; c++) {
                                         let cellRaw = getSafeText(ws.getCell(r, c));
                                         let v = cellRaw.toLowerCase().replace(/\s+/g, '');
@@ -414,14 +416,14 @@
                                         
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
-                                            // ★ 修復：在這裡找出員工物件，避免 emp is not defined
+                                            
+                                            // ★ 修正：透過 empId 找出員工物件，避免 emp is not defined 錯誤
                                             const emp = localEmps.find(e => e.id === empId);
 
                                             let actCell = ws.getCell(r, parseInt(c));
                                             if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                             
                                             let cellText = getSafeText(actCell).trim();
-                                            let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
                                             const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                             
                                             let fill = actCell.fill || {};
@@ -431,51 +433,65 @@
                                                 if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
                                             }
 
-                                            let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
-                                            let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
-
-                                            const isRedOrPink = (hex && (hex.includes('FF00') || hex.includes('FF33') || hex.includes('FF66') || hex.includes('FF99') || hex.includes('FFCC') || hex.includes('FFFCE4') || hex.includes('FFF4B0') || hex.includes('FFFFE4') || hex.includes('FFD5A6'))) || theme === 6 || theme === 5 || indexed === 10 || indexed === 29 || indexed === 38;
-                                            const isEnglish = /[a-zA-Z]/.test(cellText);
+                                            // 只要有顏色（非白色或透明），就視為一個區塊
+                                            let isColoredBlock = hex !== '';
                                             
-                                            const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
-                                            let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
-                                            let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
-
                                             if (!newData[empId]) newData[empId] = {};
-                                            // ★ 修復：加入 emp ? 判斷防呆
                                             if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
                                             let dataRef = newData[empId][dateInfo.key];
 
-                                            if (cellText.includes('欠') || cellText.includes('休') || isGrey) {
-                                                if (cellText.includes('欠') || cellText.includes('休')) {
-                                                    dataRef.leaveType = cellText.substring(0, 10);
-                                                    count++;
-                                                }
-                                                return; 
-                                            }
-
                                             let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
-                                            
-                                            if (isDriverKeyword && exactMatches.length > 0) {
+
+                                            // 優先處理「休假」
+                                            if (cellText.includes('欠') || cellText.includes('休')) {
+                                                dataRef.leaveType = cellText.substring(0, 10);
+                                                count++;
+                                            } 
+                                            // 處理文字時間 (例如: 9:15-18:15)
+                                            else if (exactMatches.length === 2 && !isDriverKeyword) {
+                                                let t1 = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
+                                                let t2 = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
+                                                dataRef.shiftStart = t1;
+                                                dataRef.shiftEnd = t2;
+                                                count++;
+                                            } 
+                                            // 處理司機時間
+                                            else if (isDriverKeyword && exactMatches.length > 0) {
                                                 exactMatches.forEach(m => {
                                                     let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
                                                     if (!dataRef._tempDrivers) dataRef._tempDrivers = [];
                                                     dataRef._tempDrivers.push(tMins);
                                                 });
                                                 count++;
-                                            } else if ((isRedOrPink && isEnglish) || (isBlue && hasContent)) {
-                                                let prevIgkA = parseInt(dataRef.igkA || 0);
-                                                dataRef.igkA = prevIgkA + 30;
-                                                count++;
+                                            } 
+                                            // 處理所有顏色區塊 (解決 Summer School 遺漏問題)
+                                            else if (isColoredBlock) {
+                                                let timeValA = ws.getCell(r, 1).value;
+                                                let rowTimeStr = null;
+                                                if (timeValA instanceof Date) {
+                                                    rowTimeStr = `${String(timeValA.getHours()).padStart(2, '0')}:${String(timeValA.getMinutes()).padStart(2, '0')}`;
+                                                } else if (typeof timeValA === 'string') {
+                                                    let tm = timeValA.match(/(\d{1,2})[:：](\d{2})/);
+                                                    if (tm) rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
+                                                }
+                                                
+                                                if (rowTimeStr) {
+                                                    if (!dataRef._tempBlocks) dataRef._tempBlocks = [];
+                                                    dataRef._tempBlocks.push(timeToMins(rowTimeStr));
+                                                }
                                             }
                                         });
                                     }
                                 }
                             });
                             
+                            // 將計算出的 _tempBlocks 和 _tempDrivers 轉成最終值
                             Object.keys(newData).forEach(empId => {
                                 Object.keys(newData[empId]).forEach(dateKey => {
                                     let dataRef = newData[empId][dateKey];
+                                    let emp = localEmps.find(e => e.id === empId);
+
+                                    // 處理司機
                                     if (dataRef._tempDrivers && dataRef._tempDrivers.length > 0) {
                                         let times = dataRef._tempDrivers.sort((a,b) => a - b);
                                         let totalDriverMins = 0;
@@ -498,6 +514,21 @@
                                             dataRef.remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
                                         }
                                         delete dataRef._tempDrivers;
+                                    }
+
+                                    // 處理色塊 (IGK 或 shiftStart/End)
+                                    if (dataRef._tempBlocks && dataRef._tempBlocks.length > 0) {
+                                        let times = dataRef._tempBlocks.sort((a,b) => a - b);
+                                        if (emp && emp.type === 'full') {
+                                            if (!dataRef.shiftStart) dataRef.shiftStart = minsToTime(times[0]);
+                                            if (!dataRef.shiftEnd) dataRef.shiftEnd = minsToTime(times[times.length - 1] + 30);
+                                            count++;
+                                        } else {
+                                            let prevIgkA = parseInt(dataRef.igkA || 0);
+                                            dataRef.igkA = prevIgkA + (times.length * 30);
+                                            count++;
+                                        }
+                                        delete dataRef._tempBlocks;
                                     }
                                 });
                             });
