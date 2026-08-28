@@ -298,7 +298,7 @@
                 setTimecardText('');
             };
 
-            // 支援 交通費 與 排班表 的真實解析
+            // 支援 交通費 與 排班表 的真實解析，並修正 emp is not defined 錯誤
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -414,6 +414,9 @@
                                         
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
+                                            // ★ 修復：在這裡找出員工物件，避免 emp is not defined
+                                            const emp = localEmps.find(e => e.id === empId);
+
                                             let actCell = ws.getCell(r, parseInt(c));
                                             if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                             
@@ -439,7 +442,8 @@
                                             let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
 
                                             if (!newData[empId]) newData[empId] = {};
-                                            if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp.location };
+                                            // ★ 修復：加入 emp ? 判斷防呆
+                                            if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
                                             let dataRef = newData[empId][dateInfo.key];
 
                                             if (cellText.includes('欠') || cellText.includes('休') || isGrey) {
@@ -960,7 +964,7 @@
                                     <div className="text-lg font-black text-gray-700">{formatHM(totalInOutGlobal)} <span className="text-[9px] font-normal ml-1 text-gray-400">({(totalInOutGlobal/60).toFixed(2)}H)</span></div>
                                 </div>
 
-                                {/* ★ 交通費放置於此 (依照要求移至入退室總時間右邊) */}
+                                {/* ★ 交通費放置於此 (置於入退室總時間右邊) */}
                                 {employee.type === 'full' ? (
                                     <div className="bg-blue-50/50 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-blue-200 min-w-[120px]">
                                         <div className="text-[10px] text-blue-800 font-bold mb-1"><i className="fa-solid fa-train-subway mr-1"></i>交通費 (手動入力)</div>
