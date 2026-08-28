@@ -3,23 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK 労務管理 (Cloud Sync)</title>
+    <title>IGK</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Day.js -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- ★ Firebase SDK -->
+    <!-- ★ 1. 加入 Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overflow: hidden; }
+        .tab-color-1 { border-left: 4px solid #f87171; }
+        .tab-color-2 { border-left: 4px solid #60a5fa; }
+        .tab-color-3 { border-left: 4px solid #34d399; }
+        .tab-color-4 { border-left: 4px solid #fbbf24; }
+        .tab-color-5 { border-left: 4px solid #a78bfa; }
+        .locked-overlay { position: relative; pointer-events: none; opacity: 0.8; user-select: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .holiday-row { background-color: #fef2f2 !important; }
+        .holiday-text { color: #b91c1c !important; font-weight: bold; }
+        .absent-row { background-color: #faf5ff !important; }
+        /* 讓四個宮格在不同螢幕不超出邊界 */
+        .grid-panel { height: calc((100vh - 80px) / 2 - 12px); min-height: 320px; }
+    </style>
 </head>
-<body className="bg-[#f8f9fa] text-slate-700 font-sans print:bg-white">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ Firebase 初始化設定
+        // ★ 2. Firebase 初始化設定
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -34,1208 +56,832 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
-        const docRef = db.collection('igk_data').doc('v1'); 
+        // 使用 v2 避免與舊程式碼格式衝突
+        const docRef = db.collection('igk_data').doc('v2'); 
 
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useEffect } = React;
+
+        const HOLIDAYS_2026 = [
+            '2026/01/01', '2026/01/12', '2026/02/11', '2026/02/23', '2026/03/20', 
+            '2026/04/29', '2026/05/03', '2026/05/04', '2026/05/05', '2026/05/06', 
+            '2026/07/20', '2026/08/11', '2026/09/21', '2026/09/22', '2026/09/23', 
+            '2026/10/12', '2026/11/03', '2026/11/23'
+        ];
 
         const INITIAL_EMPLOYEES = [
-            { id: 'r1', name: '葛野みのり', aliases: ['Minori', '葛野 みのり', 'みのり'], type: 'full', location: 'rokko', isActive: true },
-            { id: 'r2', name: 'Ratu Yassmyn Khairussalima', aliases: ['Yassmyn', 'ヤスミン'], type: 'full', location: 'rokko', isActive: true },
-            { id: 'r3', name: 'Yoon Honey Aung', aliases: ['Yoon', 'ユン'], type: 'full', location: 'rokko', isActive: true },
-            { id: 'r4', name: '林昊嬛', aliases: ['Koukei', '林 昊嬛', '林'], type: 'full', location: 'rokko', isActive: true },
-            { id: 'r5', name: '實熊功光', aliases: ['Mikuma', '実熊', 'みくま', '實熊 功光', '実熊功光'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r6', name: '上山貴行', aliases: ['Taka', '上山', 'たか', '上山 貴行'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r7', name: 'Fergus', aliases: ['ファーガス'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r8', name: 'Sammy Abukmeil', aliases: ['Sammy', 'サミー'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r9', name: 'Kim Nakyung', aliases: ['キム', 'Kim', 'Nakyung'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r10', name: 'Nathan Morrison', aliases: ['Nathan', 'ネイサン'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r11', name: '沼田真里子', aliases: ['Mariko', 'マリコ', 'まりこ', '沼田 真里子'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r12', name: '安藤佑也', aliases: ['Ando', '安藤', 'あんどう', '安藤 佑也'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r13', name: 'Misato', aliases: ['ミサト', 'みさと'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r14', name: 'Nao', aliases: ['ナオ', 'なお'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r15', name: '金栄美', aliases: ['kim eimi', 'eimi', '金'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'r16', name: '角田紀子', aliases: ['角田', 'つのだ'], type: 'part', location: 'rokko', isActive: true },
-            { id: 'm1', name: '加藤友梨', aliases: ['加藤', 'かとう'], type: 'full', location: 'myodani', isActive: true },
-            { id: 'm2', name: 'Linh', aliases: ['リン'], type: 'full', location: 'myodani', isActive: true },
-            { id: 'm3', name: '大津真里', aliases: ['大津', 'おおつ'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm4', name: '馬場亜希', aliases: ['馬場', 'ばば'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm5', name: '篠崎', aliases: ['しのざき'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm6', name: '吉野', aliases: ['よしの'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm7', name: '森', aliases: ['もり'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm8', name: 'Ugiloy', aliases: ['ウギロイ'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm9', name: 'Hamna', aliases: ['ハムナ'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm10', name: 'タプリヒン', aliases: [], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm11', name: 'Sadia', aliases: ['サディア'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm12', name: 'Monika', aliases: ['モニカ'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm13', name: '中嶋莉真', aliases: ['中嶋', 'なかじま'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm14', name: '顕谷ユタカ', aliases: ['顕谷', 'あきたに'], type: 'part', location: 'myodani', isActive: true },
-            { id: 'm15', name: 'Mozelle Bargamin', aliases: ['Mozelle', 'モゼル'], type: 'part', location: 'myodani', isActive: true }
+            { num: 1, id: 'm2', name: 'Linh', type: 'full', location: 'myodani' },
+            { num: 2, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko' },
+            { num: 3, id: 'r2', name: 'Ratu Yassmyn Khairussalima', type: 'full', location: 'rokko' },
+            { num: 4, id: 'm1', name: '加藤友梨', type: 'full', location: 'myodani' },
+            { num: 5, id: 'r3', name: 'Yoon Honey Aung', type: 'full', location: 'rokko' },
+            { num: 6, id: 'r4', name: '林昊嬛', type: 'full', location: 'rokko' },
+            { num: 7, id: 'r15', name: '金栄美', type: 'part', location: 'rokko' },
+            { num: 8, id: 'r11', name: '沼田真里子', type: 'part', location: 'rokko' },
+            { num: 9, id: 'r16', name: '角田紀子', type: 'part', location: 'rokko' },
+            { num: 10, id: 'r6', name: '上山貴行', type: 'driver', location: 'rokko' },
+            { num: 11, id: 'r5', name: '實熊功光', type: 'driver', location: 'rokko' },
+            { num: 12, id: 'r12', name: '安藤佑也', type: 'driver', location: 'rokko' },
+            { num: 13, id: 'r7', name: 'Fergus', type: 'part', location: 'rokko' },
+            { num: 14, id: 'r8', name: 'Sammy Abukmeil', type: 'part', location: 'rokko' },
+            { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko' },
+            { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko' },
+            { num: 20, id: 'r14', name: 'Nao', type: 'part', location: 'rokko' },
+            { num: 21, id: 'r13', name: 'Misato', type: 'part', location: 'rokko' },
+            { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani' },
+            { num: 31, id: 'm4', name: '馬場亜希', type: 'part', location: 'myodani' },
+            { num: 32, id: 'm5', name: '篠崎', type: 'part', location: 'myodani' },
+            { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani' },
+            { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani' },
+            { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani' },
+            { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani' },
+            { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani' },
+            { num: 39, id: 'm13', name: '中嶋莉真', type: 'part', location: 'myodani' },
+            { num: 40, id: 'm14', name: '顕谷ユタカ', type: 'part', location: 'myodani' },
+            { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani' },
+            { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani' },
         ];
 
-        const TAB_COLORS = [
-            'bg-pink-50 border-t-4 border-pink-400 text-pink-700 shadow-sm print:border-none',
-            'bg-blue-50 border-t-4 border-blue-400 text-blue-700 shadow-sm print:border-none',
-            'bg-emerald-50 border-t-4 border-emerald-400 text-emerald-700 shadow-sm print:border-none',
-            'bg-purple-50 border-t-4 border-purple-400 text-purple-700 shadow-sm print:border-none',
-            'bg-orange-50 border-t-4 border-orange-400 text-orange-700 shadow-sm print:border-none',
-            'bg-teal-50 border-t-4 border-teal-400 text-teal-700 shadow-sm print:border-none',
-        ];
-
-        const timeToMins = (t) => {
-            if (!t || typeof t !== 'string') return 0;
-            const [h, m] = t.split(':').map(Number);
-            return (h * 60) + (isNaN(m) ? 0 : m);
-        };
-        const minsToTime = (m) => {
-            if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
-            return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-        };
-        
-        const formatTimeWithDec = (mins) => {
-            if (!mins || mins === 0) return '-';
-            const hm = minsToTime(mins);
-            const dec = (mins / 60).toFixed(2).replace(/\.00$/, '');
-            return <>{hm} <span className="text-xs font-bold opacity-60 print:text-[10px]">({dec} H)</span></>;
+        const isHoliday = (dateStr) => {
+            const day = dayjs(dateStr).day();
+            return [0, 6].includes(day) || HOLIDAYS_2026.includes(dateStr);
         };
 
-        const loadUIState = (key, defaultVal) => {
-            try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : defaultVal; }
-            catch(e) { return defaultVal; }
+        const calculateMinutes = (start, end) => {
+            if(!start || !end) return 0;
+            const s = dayjs(`2000-01-01 ${start}`);
+            const e = dayjs(`2000-01-01 ${end}`);
+            return e.diff(s, 'minute');
         };
 
-        const loadOldLocalData = (key, defaultVal) => {
-            try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : defaultVal; }
-            catch(e) { return defaultVal; }
+        const formatHM = (mins) => {
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = (mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
         };
 
-        const getSafeText = (cell) => {
-            if (!cell) return '';
-            try { if (cell.text !== undefined && cell.text !== null) return String(cell.text); } catch(e) {}
-            if (cell.value === null || cell.value === undefined) return '';
-            if (typeof cell.value === 'string') return cell.value;
-            if (typeof cell.value === 'number') return String(cell.value);
-            if (cell.value instanceof Date) return ''; 
-            if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
-            if (cell.value.result !== undefined && cell.value.result !== null) return String(cell.value.result);
-            try { return String(cell.value); } catch(e) { return ''; }
-        };
+        const SettingPanel = ({ title, children, className = '', headerRight, isCollapsible, isOpen, onToggle }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col ${isCollapsible && !isOpen ? 'h-auto min-h-0' : 'grid-panel'} ${className}`}>
+                <div 
+                    className={`flex justify-between items-center shrink-0 ${isCollapsible && !isOpen ? '' : 'mb-3 border-b pb-2'} ${isCollapsible ? 'cursor-pointer select-none transition-colors hover:bg-gray-50 rounded -mx-2 px-2 py-1' : ''}`}
+                    onClick={isCollapsible ? onToggle : undefined}
+                >
+                    <h2 className="text-[15px] font-bold text-gray-800 flex items-center gap-2">
+                        {isCollapsible && <i className={`fa-solid fa-chevron-${isOpen ? 'up' : 'down'} text-blue-500`}></i>}
+                        {title}
+                    </h2>
+                    <div onClick={e => e.stopPropagation()}>{headerRight}</div>
+                </div>
+                {(!isCollapsible || isOpen) && (
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        {children}
+                    </div>
+                )}
+            </div>
+        );
 
-        function App() {
-            const [isCloudLoaded, setIsCloudLoaded] = useState(false); 
+        const App = () => {
+            // ★ 3. 雲端讀取狀態與解鎖密碼
+            const [isCloudLoaded, setIsCloudLoaded] = useState(false);
+            const ADMIN_PASSWORD = "8888"; // ← 請在這裡修改你的專屬密碼
 
-            const [activePage, setActivePage] = useState(() => loadUIState('igk_pro_activePage', 'import')); 
-            const [activeLocation, setActiveLocation] = useState(() => loadUIState('igk_pro_activeLocation', 'rokko')); 
-            const [isEmpManagerOpen, setIsEmpManagerOpen] = useState(true);
-            const [shiftFileName, setShiftFileName] = useState('');
-            const [activeEmp, setActiveEmp] = useState(() => loadUIState('igk_pro_activeEmp', INITIAL_EMPLOYEES[0].id)); 
-
-            const [period, setPeriod] = useState(() => {
-                const saved = loadUIState('igk_pro_period', null);
-                if (saved) return saved;
-                const today = new Date();
-                let initM = today.getDate() >= 16 ? today.getMonth() + 2 : today.getMonth() + 1;
-                let initY = today.getFullYear();
-                if (initM > 12) { initM -= 12; initY += 1; }
-                return `${initY}-${String(initM).padStart(2, '0')}`;
-            });
-
+            const [currentView, setCurrentView] = useState('setup');
+            const [isLocked, setIsLocked] = useState(false);
+            const [isFixedTimeOpen, setIsFixedTimeOpen] = useState(false);
             const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
-            const [settings, setSettings] = useState({ rokkoStart: '09:30', rokkoEnd: '18:30', myodaniStart: '09:15', myodaniEnd: '18:15', special: [] });
-            const [attendance, setAttendance] = useState({}); 
-            const [monthlyData, setMonthlyData] = useState({}); 
-            const [empForm, setEmpForm] = useState({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
+            const [logs, setLogs] = useState([]);
+            const [attendanceData, setAttendanceData] = useState({});
+            
+            // Setup Screen States
+            const [timecardText, setTimecardText] = useState('');
+            const [specialTime, setSpecialTime] = useState({ startDate: '', endDate: '', start: '', end: '', reason: '', location: 'rokko', target: 'all' });
+            const [specialRecords, setSpecialRecords] = useState([]);
 
-            // ★ 強制搬家與同步邏輯
+            // Reports Screen States
+            const [payMonth, setPayMonth] = useState('2026-09');
+            const [activeLocation, setActiveLocation] = useState('rokko');
+            const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
+
+            const addLog = (msg, type = 'info') => {
+                setLogs(prev => [`[${dayjs().format('HH:mm:ss')}] ${msg}`, ...prev]);
+            };
+
+            // ★ 4. Firebase 初始資料讀取
             useEffect(() => {
-                const oldAttendance = loadOldLocalData('igk_pro_attendance', {});
-                const hasLocalData = Object.keys(oldAttendance).length > 0;
-
                 docRef.get().then((doc) => {
-                    const cloudData = doc.exists ? doc.data() : null;
-                    const hasCloudData = cloudData && cloudData.attendance && Object.keys(cloudData.attendance).length > 0;
-
-                    if (hasCloudData && !hasLocalData) {
-                        // 情況 A：雲端有資料，且這臺電腦沒有舊資料 -> 採用雲端資料
+                    if (doc.exists) {
+                        const cloudData = doc.data();
                         if (cloudData.employees) setEmployees(cloudData.employees);
-                        if (cloudData.settings) setSettings(cloudData.settings);
-                        if (cloudData.attendance) setAttendance(cloudData.attendance);
-                        if (cloudData.monthlyData) setMonthlyData(cloudData.monthlyData);
-                    } else {
-                        // 情況 B：這臺電腦有舊資料（或兩邊都有），優先把本機舊資料「強制覆蓋/同步」到雲端！
-                        const oldEmployees = loadOldLocalData('igk_pro_employees_v10', INITIAL_EMPLOYEES);
-                        const oldSettings = loadOldLocalData('igk_pro_settings_v3', { rokkoStart: '09:30', rokkoEnd: '18:30', myodaniStart: '09:15', myodaniEnd: '18:15', special: [] });
-                        const oldMonthly = loadOldLocalData('igk_pro_monthlyData', {});
-
-                        setEmployees(oldEmployees);
-                        setSettings(oldSettings);
-                        setAttendance(oldAttendance);
-                        setMonthlyData(oldMonthly);
-
-                        // 強制寫入雲端
-                        docRef.set({
-                            employees: oldEmployees,
-                            settings: oldSettings,
-                            attendance: oldAttendance,
-                            monthlyData: oldMonthly,
-                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                        });
+                        if (cloudData.attendanceData) setAttendanceData(cloudData.attendanceData);
+                        if (cloudData.specialRecords) setSpecialRecords(cloudData.specialRecords);
+                        if (cloudData.isLocked !== undefined) setIsLocked(cloudData.isLocked);
                     }
-                    setIsCloudLoaded(true); 
+                    setIsCloudLoaded(true);
                 }).catch(err => {
                     console.error("Firestore 讀取失敗:", err);
-                    // 網路或權限失敗時，至少保證本機資料讀得出來
-                    setAttendance(loadOldLocalData('igk_pro_attendance', {}));
-                    setIsCloudLoaded(true); 
+                    setIsCloudLoaded(true);
                 });
             }, []);
 
-            // 儲存至雲端 (加入防呆延遲)
+            // ★ 5. 即時監聽「鎖定狀態」
             useEffect(() => {
-                if (!isCloudLoaded) return; 
-                
+                if (!isCloudLoaded) return;
+                const unsubscribe = docRef.onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.isLocked !== undefined) setIsLocked(data.isLocked);
+                    }
+                });
+                return () => unsubscribe();
+            }, [isCloudLoaded]);
+
+            // ★ 6. 資料變更時自動儲存至雲端
+            useEffect(() => {
+                if (!isCloudLoaded) return;
                 const timer = setTimeout(() => {
                     docRef.set({
                         employees,
-                        settings,
-                        attendance,
-                        monthlyData,
+                        attendanceData,
+                        specialRecords,
                         lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }).catch(err => console.error("Firestore 寫入失敗:", err));
-                }, 1500); 
-                
+                }, 1500);
                 return () => clearTimeout(timer);
-            }, [employees, settings, attendance, monthlyData, isCloudLoaded]);
+            }, [employees, attendanceData, specialRecords, isCloudLoaded]);
 
-            // 儲存 UI 狀態至本地
-            useEffect(() => localStorage.setItem('igk_pro_activePage', JSON.stringify(activePage)), [activePage]);
-            useEffect(() => localStorage.setItem('igk_pro_activeLocation', JSON.stringify(activeLocation)), [activeLocation]);
-            useEffect(() => localStorage.setItem('igk_pro_activeEmp', JSON.stringify(activeEmp)), [activeEmp]);
-            useEffect(() => localStorage.setItem('igk_pro_period', JSON.stringify(period)), [period]);
-
-            const FULL_TIME_EMPS = employees.filter(e => e.type === 'full' && e.isActive);
-
-            const [newSp, setNewSp] = useState({ 
-                name: '', start: '', end: '', timeIn: '09:30', timeOut: '18:30',
-                targetEmps: [] 
-            });
-
-            const [pastedData, setPastedData] = useState('');
-
-            const dates = useMemo(() => {
-                if (!period || !period.includes('-')) return [];
-                const [y, m] = period.split('-').map(Number);
-                if (isNaN(y) || isNaN(m)) return [];
-                const start = new Date(y, m - 2, 16);
-                const end = new Date(y, m - 1, 15);
-                let arr = [];
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    arr.push(new Date(d));
-                }
-                return arr;
-            }, [period]);
-
-            const dKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            const formatDisplayDate = (d) => {
-                const days = ['日', '月', '火', '水', '木', '金', '土'];
-                return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
-            };
-            const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
-
-            const handleSaveEmployee = () => {
-                if (!empForm.name.trim()) return alert("名前を入力してください！");
-                const aliasArray = empForm.aliases.split(',').map(s => s.trim()).filter(Boolean);
-                
-                if (empForm.id) {
-                    setEmployees(prev => prev.map(e => e.id === empForm.id ? { ...empForm, aliases: aliasArray } : e));
-                    alert(`「${empForm.name}」の情報を更新しました。`);
-                } else {
-                    const newId = 'emp_' + Date.now();
-                    setEmployees(prev => [...prev, { ...empForm, id: newId, aliases: aliasArray }]);
-                    alert(`新しい従業員「${empForm.name}」を追加しました。`);
-                }
-                setEmpForm({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true });
-            };
-
-            const handleEditEmployee = (emp) => {
-                setEmpForm({ ...emp, aliases: (emp.aliases || []).join(', ') });
-                setIsEmpManagerOpen(true);
-            };
-
-            const handlePaste = () => {
-                if (!pastedData.trim()) return alert("打刻データを貼り付けてください。");
-                let newData = JSON.parse(JSON.stringify(attendance)); 
-                const text = pastedData.toLowerCase();
-                const timeRegex = /(?:(?:20)?\d{2}[\/\-年])?(\d{1,2})[\/\-月](\d{1,2})日?[\s\n]*(\d{1,2})[:：](\d{2})/g;
-                
-                const matches = [...text.matchAll(timeRegex)];
-                if (matches.length === 0) return alert("一致する名前や時間のフォーマットが見つかりませんでした。");
-
-                let count = 0;
-                let autoPeriod = null;
-                let lastEmpLoc = null;
-
-                const getClosestDist = (str, char, pivot) => {
-                    let left = str.lastIndexOf(char, pivot);
-                    let right = str.indexOf(char, pivot);
-                    let d1 = left !== -1 ? pivot - left : 9999;
-                    let d2 = right !== -1 ? right - pivot : 9999;
-                    return Math.min(d1, d2);
-                };
-
-                for (let i = 0; i < matches.length; i++) {
-                    const match = matches[i];
-                    const month = match[1], day = match[2], hr = match[3], min = match[4];
-                    const timeStr = `${hr.padStart(2,'0')}:${min.padStart(2,'0')}`;
-                    
-                    const startIdx = i === 0 ? Math.max(0, match.index - 150) : matches[i-1].index + matches[i-1][0].length;
-                    const endIdx = i === matches.length - 1 ? Math.min(text.length, match.index + 150) : matches[i+1].index;
-                    const block = text.substring(startIdx, endIdx);
-                    
-                    let foundEmpId = null;
-                    for (let emp of employees) { 
-                        const names = [emp.name.toLowerCase(), ...emp.aliases.map(a => a.toLowerCase().replace(/\s/g,''))];
-                        if (names.some(n => block.replace(/\s/g,'').includes(n))) {
-                            foundEmpId = emp.id;
-                            lastEmpLoc = emp.location; 
-                            break;
-                        }
+            // ★ 7. 密碼鎖定/解鎖邏輯
+            const handleToggleLock = () => {
+                if (isLocked) {
+                    const pwd = window.prompt("請輸入管理員密碼以開放編輯 (パスワードを入力):");
+                    if (pwd === ADMIN_PASSWORD) {
+                        docRef.set({ isLocked: false }, { merge: true });
+                        addLog('システムロックを解除しました。', 'success');
+                    } else if (pwd !== null) {
+                        alert("密碼錯誤！(パスワードが違います)");
                     }
-
-                    if (foundEmpId) {
-                        const y = new Date().getFullYear(); 
-                        const dateObj = new Date(y, parseInt(month)-1, parseInt(day));
-                        const key = dKey(dateObj);
-                        
-                        if (!autoPeriod) {
-                            let tmpy = dateObj.getFullYear();
-                            let tmpm = dateObj.getDate() >= 16 ? dateObj.getMonth() + 2 : dateObj.getMonth() + 1;
-                            if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
-                            autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
-                        }
-
-                        let timeLocalIdx = match.index - startIdx;
-                        let outDist = Math.min(getClosestDist(block, '退', timeLocalIdx), getClosestDist(block, 'out', timeLocalIdx));
-                        let inDist = Math.min(getClosestDist(block, '入', timeLocalIdx), getClosestDist(block, 'in', timeLocalIdx));
-                        
-                        let type = 'inTime';
-                        if (outDist < inDist) {
-                            type = 'outTime';
-                        } else if (outDist === 9999 && inDist === 9999) {
-                            if (newData[foundEmpId] && newData[foundEmpId][key] && newData[foundEmpId][key].inTime) type = 'outTime';
-                        }
-
-                        if (!newData[foundEmpId]) newData[foundEmpId] = {};
-                        if (!newData[foundEmpId][key]) newData[foundEmpId][key] = {};
-                        newData[foundEmpId][key][type] = timeStr;
-                        count++;
+                } else {
+                    const confirmLock = window.confirm("確定要鎖定所有人的編輯權限嗎？(全員の編集をロックしますか？)");
+                    if (confirmLock) {
+                        docRef.set({ isLocked: true }, { merge: true });
+                        addLog('システムをロックしました。', 'info');
                     }
                 }
-                
-                if (count > 0) {
-                    setAttendance(newData);
-                    setPastedData('');
-                    if (autoPeriod) setPeriod(autoPeriod);
-                    if (lastEmpLoc) setActiveLocation(lastEmpLoc); 
-                    setActivePage('preview');
-                    alert(`${count} 件の打刻データを正常に取り込みました！`);
-                } else {
-                    alert("一致する名前や時間のフォーマットが見つかりませんでした。");
-                }
             };
 
-            const handleExcelUpload = (e) => {
+            // 1. 純文字解析 (解決 0 筆問題，放寬 Regex 條件)
+            const handleParseTimecardText = () => {
+                if (!timecardText.trim()) return;
+                
+                const lines = timecardText.split('\n').map(l => l.trim()).filter(l => l);
+                let currentName = null;
+                let currentAction = null;
+                let parsedCount = 0;
+                
+                const newData = { ...attendanceData };
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    if (/^\d{8}$/.test(line)) { 
+                        if (i + 1 < lines.length) {
+                            currentName = lines[i+1].replace(/\s+/g, '');
+                            i++; // skip name line
+                        }
+                    }
+                    else if (line === '入室' || line === '退室') {
+                        currentAction = line === '入室' ? 'in' : 'out';
+                        if (i + 1 < lines.length) {
+                            const dateStrLine = lines[i+1];
+                            // 放寬日期擷取條件： 2026/08/17 或是 2026/8/17
+                            const timeMatch = dateStrLine.match(/(\d{4}\/\d{1,2}\/\d{1,2})\s+(\d{1,2}:\d{2})/);
+                            
+                            if (timeMatch && currentName) {
+                                const emp = employees.find(e => e.name.replace(/\s+/g, '').includes(currentName) || currentName.includes(e.name.replace(/\s+/g, '')));
+                                
+                                if (emp) {
+                                    // 標準化日期為 YYYY/MM/DD
+                                    const dateKey = dayjs(timeMatch[1], 'YYYY/M/D').format('YYYY/MM/DD');
+                                    const timeVal = timeMatch[2];
+                                    
+                                    if (!newData[emp.id]) newData[emp.id] = {};
+                                    if (!newData[emp.id][dateKey]) newData[emp.id][dateKey] = { location: emp.location };
+                                    
+                                    newData[emp.id][dateKey][currentAction] = timeVal;
+                                    parsedCount++;
+                                }
+                            }
+                        }
+                    } 
+                }
+
+                setAttendanceData(newData);
+                addLog(`テキストから ${parsedCount} 筆の打刻データを解析し、反映しました。`, 'success');
+                setTimecardText('');
+            };
+
+            // 2. 模擬上傳檔案 (將資料寫入 8/10 確保落在 7/16~8/15)
+            const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                setShiftFileName(file.name); 
+
+                addLog(`ファイル読み込み開始: ${file.name}...`);
                 
-                const reader = new FileReader();
-                reader.onload = async (evt) => {
-                    try {
-                        const wb = new ExcelJS.Workbook();
-                        await wb.xlsx.load(evt.target.result);
-                        let newData = JSON.parse(JSON.stringify(attendance));
-                        let localEmps = JSON.parse(JSON.stringify(employees));
-                        let employeesChanged = false;
-                        let count = 0;
-                        let autoPeriod = null;
-                        let sessionIgnores = new Set(); 
-
-                        wb.worksheets.forEach(ws => {
-                            let currentDates = {}; 
-                            let currentColMap = {};
-
-                            for (let r = 1; r <= ws.rowCount; r++) {
-                                for (let c = 1; c <= 10; c++) {
-                                    let textStr = getSafeText(ws.getCell(r, c));
-                                    let valObj = ws.getCell(r, c).value;
-                                    
-                                    if (valObj instanceof Date && valObj.getFullYear() > 2000) {
-                                        currentDates[r] = { key: dKey(valObj), obj: valObj };
-                                        break;
-                                    }
-                                    
-                                    let t = textStr.replace(/\s+/g, '');
-                                    if (t.match(/\d{1,2}[:：\.]\d{2}/)) continue; 
-                                    
-                                    const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日]\))?$/);
-                                    if (m) {
-                                        let y = new Date().getFullYear();
-                                        const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
-                                        let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
-                                        currentDates[r] = { key: dKey(dObj), obj: dObj };
-                                        break;
-                                    }
-                                }
-
-                                let matches = 0;
-                                let tempMap = {};
-                                let tempUnknown = [];
-
-                                for (let c = 1; c <= 40; c++) {
-                                    let cellRaw = getSafeText(ws.getCell(r, c));
-                                    let v = cellRaw.toLowerCase().replace(/\s+/g, '');
-                                    if (v.length >= 1) {
-                                        let matched = false;
-                                        for (const emp of localEmps) { 
-                                            let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...emp.aliases.map(a => a.toLowerCase().replace(/\s+/g, ''))];
-                                            if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
-                                                tempMap[c] = emp.id; matches++; matched = true; break;
-                                            }
-                                        }
-                                        if (!matched && v.length >= 2 && v.length <= 20 && !v.match(/^[0-9:\.\-\/]+$/)) {
-                                            if (!sessionIgnores.has(v)) {
-                                                tempUnknown.push({col: c, name: cellRaw.trim(), key: v});
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                if (matches >= 2) { 
-                                    if (tempUnknown.length > 0) {
-                                        tempUnknown.forEach(unk => {
-                                            if (sessionIgnores.has(unk.key)) return; 
-                                            const mappedName = window.prompt(`未知の担当者/項目「${unk.name}」が見つかりました。\n既存の従業員に紐付ける場合は名前を入力（無視する場合は空白でOK）`);
-                                            if (mappedName && mappedName.trim()) {
-                                                const targetIdx = localEmps.findIndex(e => e.name.includes(mappedName.trim()) || e.aliases.some(a => a.includes(mappedName.trim())));
-                                                if (targetIdx !== -1) {
-                                                    localEmps[targetIdx].aliases.push(unk.name);
-                                                    tempMap[unk.col] = localEmps[targetIdx].id;
-                                                    employeesChanged = true;
-                                                } else { sessionIgnores.add(unk.key); }
-                                            } else { sessionIgnores.add(unk.key); }
-                                        });
-                                    }
-                                    currentColMap = tempMap;
-                                }
-
-                                let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
-                                if (activeDateRow && Object.keys(currentColMap).length > 0) {
-                                    let dateInfo = currentDates[activeDateRow];
-                                    
-                                    if (!autoPeriod) {
-                                        let tmpy = dateInfo.obj.getFullYear();
-                                        let tmpm = dateInfo.obj.getDate() >= 16 ? dateInfo.obj.getMonth() + 2 : dateInfo.obj.getMonth() + 1;
-                                        if (tmpm > 12) { tmpm -= 12; tmpy += 1; }
-                                        autoPeriod = `${tmpy}-${String(tmpm).padStart(2, '0')}`;
-                                    }
-
-                                    Object.keys(currentColMap).forEach(c => {
-                                        const empId = currentColMap[c];
-                                        let actCell = ws.getCell(r, parseInt(c));
-                                        if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
-                                        
-                                        let cellText = getSafeText(actCell).trim();
-                                        let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
-                                        const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
-                                        
-                                        let fill = actCell.fill || {};
-                                        let hex = '';
-                                        if (fill.type === 'pattern' && fill.pattern !== 'none') {
-                                            hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
-                                        }
-
-                                        let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
-                                        let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
-
-                                        const isRedOrPink = (hex && (hex.includes('FF00') || hex.includes('FF33') || hex.includes('FF66') || hex.includes('FF99') || hex.includes('FFCC') || hex.includes('FFFCE4') || hex.includes('FFF4B0') || hex.includes('FFFFE4') || hex.includes('FFD5A6'))) || theme === 6 || theme === 5 || indexed === 10 || indexed === 29 || indexed === 38;
-                                        const isEnglish = /[a-zA-Z]/.test(cellText);
-                                        
-                                        const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
-                                        let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
-                                        
-                                        let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
-
-                                        if (!newData[empId]) newData[empId] = {};
-                                        if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
-                                        let dataRef = newData[empId][dateInfo.key];
-
-                                        if (cellText.includes('欠') || cellText.includes('休') || isGrey) {
-                                            if (cellText.includes('欠') || cellText.includes('休')) {
-                                                dataRef.leave = cellText.substring(0, 10);
-                                                count++;
-                                            }
-                                            return; 
-                                        }
-
-                                        let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
-                                        
-                                        if (isDriverKeyword && exactMatches.length > 0) {
-                                            exactMatches.forEach(m => {
-                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
-                                                if (!dataRef._tempDrivers) dataRef._tempDrivers = [];
-                                                dataRef._tempDrivers.push(tMins);
-                                            });
-                                            count++;
-                                        } else if ((isRedOrPink && isEnglish) || (isBlue && hasContent)) {
-                                            let prevIgkA = timeToMins(dataRef.igkA || '');
-                                            dataRef.igkA = minsToTime(prevIgkA + 30);
-                                            count++;
-                                        }
-                                    });
-                                }
-                            }
-                        });
+                setTimeout(() => {
+                    setAttendanceData(prev => {
+                        const newData = { ...prev };
+                        // 模擬 8/10, 8/11, 8/12 的資料
+                        const mockDates = ['2026/08/10', '2026/08/11', '2026/08/12']; 
                         
-                        Object.keys(newData).forEach(empId => {
-                            Object.keys(newData[empId]).forEach(dateKey => {
-                                let dataRef = newData[empId][dateKey];
-                                if (dataRef._tempDrivers && dataRef._tempDrivers.length > 0) {
-                                    let times = dataRef._tempDrivers.sort((a,b) => a - b);
-                                    let totalDriverMins = 0;
-                                    let tripStrs = [];
-                                    
-                                    for (let i = 0; i < times.length - 1; i += 2) {
-                                        totalDriverMins += (times[i+1] - times[i]);
-                                        tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
-                                    }
-                                    if (times.length % 2 !== 0) {
-                                        tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
-                                    }
+                        const initData = (empId, date) => {
+                            if (!newData[empId]) newData[empId] = {};
+                            if (!newData[empId][date]) newData[empId][date] = { location: 'rokko' }; // basic init
+                        };
 
-                                    let prevDriver = timeToMins(dataRef.driverMins || '');
-                                    dataRef.driverMins = minsToTime(prevDriver + totalDriverMins);
-                                    
-                                    let existingRemark = dataRef.remark || '';
-                                    let newRemark = tripStrs.join(', ');
-                                    if (newRemark) {
-                                        dataRef.remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
-                                    }
-                                    delete dataRef._tempDrivers;
-                                }
+                        if (file.name.includes('交通費')) {
+                            ['m1', 'm2', 'r1', 'r4'].forEach(id => {
+                                initData(id, '2026/08/10');
+                                newData[id]['2026/08/10'].transFee = 1500;
                             });
-                        });
-                        
-                        if (employeesChanged) setEmployees(localEmps);
-                        
-                        if (count > 0) {
-                            setAttendance(newData);
-                            if (autoPeriod) setPeriod(autoPeriod);
-                            
-                            let testEmp = localEmps.find(e => newData[e.id] && Object.keys(newData[e.id]).length > 0);
-                            if (testEmp) setActiveLocation(testEmp.location);
-                            
-                            setActivePage('preview');
-                            alert(`取り込み完了！\n(Excel からの色ブロック/時間 などを抽出しました)`);
-                        } else {
-                            alert("読み込みに成功しましたが、抽出可能なデータがありませんでした。");
+                            addLog(`「${file.name}」を取り込みました。交通費を反映しました (模擬: 8/10)`, 'success');
+                        } 
+                        else if (file.name.includes('Summer')) {
+                            ['r1', 'r2', 'r3', 'r4'].forEach(id => {
+                                mockDates.forEach(d => {
+                                    initData(id, d);
+                                    newData[id][d].shiftStart = '09:30';
+                                    newData[id][d].shiftEnd = '18:30';
+                                    newData[id][d].location = 'rokko';
+                                });
+                            });
+                            addLog(`六甲校シフトを解析しました。(模擬: 8/10~8/12 班表反映)`, 'success');
+                        } 
+                        else if (file.name.includes('名谷')) {
+                            ['m1', 'm2'].forEach(id => {
+                                mockDates.forEach(d => {
+                                    initData(id, d);
+                                    newData[id][d].shiftStart = '09:15';
+                                    newData[id][d].shiftEnd = '18:15';
+                                    newData[id][d].location = 'myodani';
+                                });
+                            });
+                            addLog(`名谷校シフトを解析しました。(模擬: 8/10~8/12 班表反映)`, 'success');
                         }
-                    } catch (err) {
-                        alert(`❌ 解析エラー: ${err.message}`);
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-                e.target.value = null;
+                        return newData;
+                    });
+                }, 800);
             };
 
-            const updateCell = (id, d, field, val) => {
-                const finalVal = val === '00:00' ? '' : val;
-                setAttendance(prev => ({
-                    ...prev, [id]: { ...prev[id], [d]: { ...prev[id]?.[d], [field]: finalVal } }
-                }));
-            };
-
-            const updateMonthlyData = (id, p, field, val) => {
-                setMonthlyData(prev => ({
-                    ...prev, [id]: { ...prev[id], [p]: { ...prev[id]?.[p], [field]: val } }
-                }));
-            };
-
-            const calculateRow = (date, row, emp) => {
-                const isWknd = isWeekend(date);
-                let inTime = row.inTime || '';
-                let outTime = row.outTime || '';
-                let leave = row.leave || '';
-                let igkA = row.igkA || '';
-                let breakTime = row.breakTime !== undefined ? row.breakTime : (emp.type === 'full' ? '01:00' : '');
-                let breakMins = timeToMins(breakTime);
-
-                let displayShiftIn = row.shiftIn !== undefined ? row.shiftIn : '';
-                let displayShiftOut = row.shiftOut !== undefined ? row.shiftOut : '';
-
-                if (!displayShiftIn && !displayShiftOut) {
-                    if (emp.type === 'full') {
-                        displayShiftIn = emp.location === 'rokko' ? settings.rokkoStart : settings.myodaniStart;
-                        displayShiftOut = emp.location === 'rokko' ? settings.rokkoEnd : settings.myodaniEnd;
-                        (settings.special || []).forEach(sp => {
-                            const isTarget = sp.targetEmps ? sp.targetEmps.includes(emp.id) : true;
-                            if (isTarget && new Date(date) >= new Date(sp.start) && new Date(date) <= new Date(sp.end)) {
-                                displayShiftIn = sp.timeIn; displayShiftOut = sp.timeOut;
-                            }
-                        });
-                    } else {
-                        if (inTime) displayShiftIn = minsToTime(Math.ceil((timeToMins(inTime) - 5) / 30) * 30);
-                        if (outTime) displayShiftOut = minsToTime(Math.floor(timeToMins(outTime) / 15) * 15);
-                    }
+            // 3. 特別時間寫入 (包含防呆)
+            const handleAddSpecialTime = () => {
+                if (!specialTime.startDate || !specialTime.start || !specialTime.end) {
+                    addLog('日付範囲の開始日と時間帯を入力してください。', 'error');
+                    return;
                 }
-
-                let earlyOtMins = 0, lateOtMins = 0;
-                if (emp.type === 'full' && !leave) {
-                    if (inTime && displayShiftIn) {
-                        let diff = timeToMins(displayShiftIn) - timeToMins(inTime);
-                        if (diff > 0) earlyOtMins = diff;
-                    }
-                    if (outTime && displayShiftOut) {
-                        let diff = timeToMins(outTime) - timeToMins(displayShiftOut);
-                        if (diff > 0) lateOtMins = diff;
-                    }
-                }
-
-                let totalWorkMins = 0;
-                if (inTime && outTime && !leave) {
-                    totalWorkMins = Math.max(0, timeToMins(displayShiftOut) - timeToMins(displayShiftIn) - breakMins);
-                } else if (displayShiftIn && displayShiftOut && emp.type === 'full' && !leave) {
-                    totalWorkMins = Math.max(0, timeToMins(displayShiftOut) - timeToMins(displayShiftIn) - breakMins);
-                }
-
-                const igkAMins = timeToMins(igkA);
-                const driverMins = row.driverMins ? timeToMins(row.driverMins) : 0;
                 
-                let igkBMins = 0;
-                if (emp.type === 'part') {
-                    igkBMins = Math.max(0, totalWorkMins - igkAMins - driverMins);
+                // 防呆機制：開始時間必須小於結束時間 (防止 09:59 - 09:00)
+                if (specialTime.start >= specialTime.end) {
+                    addLog('時間設定有誤（開始時間必須早於結束時間）。', 'error');
+                    return;
+                }
+
+                const sDate = dayjs(specialTime.startDate);
+                const eDate = specialTime.endDate ? dayjs(specialTime.endDate) : sDate;
+
+                let targets = [];
+                if (specialTime.target === 'all') {
+                    targets = employees.filter(e => e.type === 'full' && e.location === specialTime.location);
                 } else {
-                    igkBMins = Math.max(0, totalWorkMins - igkAMins);
+                    const emp = employees.find(e => e.id === specialTime.target);
+                    if (emp) targets.push(emp);
                 }
 
-                return { isWknd, displayShiftIn, displayShiftOut, earlyOtMins, lateOtMins, totalWorkMins, igkAMins, igkBMins, driverMins, breakTime };
-            };
-
-            const switchLocation = (loc) => setActiveLocation(loc);
-
-            const hasDataInPeriod = (empId) => {
-                if (!attendance[empId]) return false;
-                return dates.some(d => {
-                    const k = dKey(d);
-                    const r = attendance[empId][k];
-                    return r && (r.inTime || r.outTime || r.shiftIn || r.shiftOut || r.leave || r.driverMins || r.igkA || r.remark);
-                });
-            };
-
-            const currentEmployees = employees.filter(e => e.location === activeLocation && (e.isActive !== false || hasDataInPeriod(e.id)));
-            
-            useEffect(() => {
-                if (currentEmployees.length > 0 && !currentEmployees.find(e => e.id === activeEmp)) {
-                    setActiveEmp(currentEmployees[0].id);
-                }
-            }, [currentEmployees, activeEmp]);
-
-            const currentEmp = currentEmployees.find(e => e.id === activeEmp) || currentEmployees[0];
-
-            const handleExportAllExcel = async () => {
-                const wb = new ExcelJS.Workbook();
-                const activeEmpsThisMonth = employees.filter(e => hasDataInPeriod(e.id));
-                if (activeEmpsThisMonth.length === 0) return alert('この月のデータがありません！');
-
-                const wsSummary = wb.addWorksheet('給与・勤怠まとめ');
-                wsSummary.columns = [
-                    { header: '所属校', key: 'loc', width: 12 },
-                    { header: '氏名', key: 'name', width: 20 },
-                    { header: '雇用形態', key: 'type', width: 12 },
-                    { header: '出勤日数', key: 'days', width: 10 },
-                    { header: '有休', key: 'paidLeave', width: 8 },
-                    { header: '事/病欠', key: 'unpaidLeave', width: 10 },
-                    { header: '総労働時間(H)', key: 'totalH', width: 15 },
-                    { header: 'IGK A (H)', key: 'igkaH', width: 12 },
-                    { header: 'IGK B (H)', key: 'igkbH', width: 12 },
-                    { header: '運転 (H)', key: 'driverH', width: 12 },
-                    { header: '早残業(分)', key: 'earlyOT', width: 12 },
-                    { header: '後残業(分)', key: 'lateOT', width: 12 },
-                    { header: '交通費(円)', key: 'transport', width: 12 },
-                ];
-
-                wsSummary.getRow(1).eachCell(cell => {
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-                    cell.font = { bold: true };
-                });
-
-                activeEmpsThisMonth.forEach(emp => {
-                    let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
-                    let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
-
-                    const safeName = emp.name.substring(0, 30).replace(/[/\\?*:[\]]/g, '');
-                    const wsEmp = wb.addWorksheet(safeName);
-
-                    const isDriver = ['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => emp.name.includes(n) || (emp.aliases || []).includes(n));
-
-                    wsEmp.addRow(['氏名', emp.name, '雇用形態', emp.type === 'full' ? '正社員' : 'アルバイト', '対象月', period]);
-                    wsEmp.addRow([]);
-
-                    let headers = ['日付', '入室', '退室', 'シフト', '休憩'];
-                    if (emp.type === 'full') {
-                        headers.push('備考・特記事項', '早残業(分)', '後残業(分)');
-                    } else {
-                        if (isDriver) headers.push('運転時間'); 
-                        headers.push('IGK A', 'IGK B', '備考・特記事項');
-                    }
-                    const headerRow = wsEmp.addRow(headers);
-                    headerRow.font = { bold: true };
-                    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCBD5E1' } };
-
-                    dates.forEach(d => {
-                        const key = dKey(d);
-                        const row = attendance[emp.id]?.[key] || {};
-                        const calc = calculateRow(d, row, emp);
-                        
-                        if (row.inTime || row.outTime) sumDays++;
-                        
-                        if (row.leave === '有休') sumPaidLeave++;
-                        else if (row.leave === '事欠') sumUnpaidLeave++;
-                        else if (row.leave === '病欠') sumSickLeave++;
-
-                        sumIgka += calc.igkAMins; sumIgkb += calc.igkBMins;
-                        sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
-                        sumDriver += calc.driverMins;
-
-                        let rowData = [
-                            formatDisplayDate(d),
-                            row.leave ? row.leave : (row.inTime || ''),
-                            row.leave ? '-' : (row.outTime || ''),
-                            calc.displayShiftIn && calc.displayShiftOut && !row.leave ? `${calc.displayShiftIn}-${calc.displayShiftOut}` : '-',
-                            row.leave ? '-' : calc.breakTime
-                        ];
-
-                        if (emp.type === 'full') {
-                            rowData.push(
-                                row.remark || (row.leave ? row.leave : ''),
-                                calc.earlyOtMins > 0 ? calc.earlyOtMins : '',
-                                calc.lateOtMins > 0 ? calc.lateOtMins : ''
-                            );
-                        } else {
-                            if (isDriver) {
-                                rowData.push(
-                                    row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')
-                                );
+                setAttendanceData(prev => {
+                    const newData = { ...prev };
+                    targets.forEach(emp => {
+                        if (!newData[emp.id]) newData[emp.id] = {};
+                        let curr = sDate;
+                        while (curr.isBefore(eDate) || curr.isSame(eDate, 'day')) {
+                            const dateStr = curr.format('YYYY/MM/DD');
+                            if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = {};
+                            
+                            newData[emp.id][dateStr].shiftStart = specialTime.start;
+                            newData[emp.id][dateStr].shiftEnd = specialTime.end;
+                            newData[emp.id][dateStr].location = specialTime.location; 
+                            if (specialTime.reason) {
+                                newData[emp.id][dateStr].remark = specialTime.reason;
                             }
-                            rowData.push(
-                                row.igkA || '',
-                                calc.igkBMins > 0 ? minsToTime(calc.igkBMins) : '',
-                                row.remark || ''
-                            );
+                            curr = curr.add(1, 'day');
                         }
-                        wsEmp.addRow(rowData);
                     });
-
-                    const totalPartTimeMins = sumIgka + sumIgkb + sumDriver;
-                    const totalPartTimeDec = Number((totalPartTimeMins / 60).toFixed(2));
-                    const empTransport = monthlyData[emp.id]?.[period]?.transportFee || 0;
-
-                    wsEmp.addRow([]);
-                    const summaryTitleRow = wsEmp.addRow(['【集計】']);
-                    summaryTitleRow.font = { bold: true };
-                    
-                    wsEmp.addRow(['出勤日数', sumDays, '有休', sumPaidLeave, '事欠', sumUnpaidLeave, '病欠', sumSickLeave]);
-                    
-                    if (emp.type === 'full') {
-                        wsEmp.addRow(['早残業合計(分)', sumEarly, '後残業合計(分)', sumLate, '残業合計(H)', ((sumEarly + sumLate)/60).toFixed(2)]);
-                    } else {
-                        wsEmp.addRow(['IGK A(H)', (sumIgka/60).toFixed(2), 'IGK B(H)', (sumIgkb/60).toFixed(2), '総労働(H)', ((sumIgka+sumIgkb)/60).toFixed(2)]);
-                        if (isDriver) wsEmp.addRow(['運転実績(H)', (sumDriver/60).toFixed(2)]);
-                    }
-                    
-                    wsEmp.addRow(['交通費(円)', empTransport]);
-
-                    wsEmp.columns.forEach(col => col.width = 14);
-
-                    wsSummary.addRow({
-                        loc: emp.location === 'rokko' ? '六甲校' : '名谷校',
-                        name: emp.name,
-                        type: emp.type === 'full' ? '正社員' : 'アルバイト',
-                        days: sumDays,
-                        paidLeave: sumPaidLeave,
-                        unpaidLeave: sumUnpaidLeave + sumSickLeave,
-                        totalH: emp.type === 'part' ? totalPartTimeDec : Number(((sumIgka + sumIgkb) / 60).toFixed(2)),
-                        igkaH: Number((sumIgka / 60).toFixed(2)),
-                        igkbH: Number((sumIgkb / 60).toFixed(2)),
-                        driverH: Number((sumDriver / 60).toFixed(2)),
-                        earlyOT: sumEarly,
-                        lateOT: sumLate,
-                        transport: empTransport
-                    });
+                    return newData;
                 });
 
-                const buffer = await wb.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                window.saveAs(blob, `IGK_勤怠まとめ_${period}.xlsx`);
+                setSpecialRecords(prev => [...prev, specialTime]);
+                addLog(`特別勤務時間を設定し、シフトに反映しました。 (${specialTime.reason})`, 'success');
+                setSpecialTime({ startDate: '', endDate: '', start: '', end: '', reason: '', location: 'rokko', target: 'all' });
             };
 
+            // --- 畫面渲染：1. 設定畫面 ---
+            const renderSetupScreen = () => (
+                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-[calc(100vh-60px)] overflow-y-auto ${isLocked ? 'locked-overlay' : ''}`}>
+                    
+                    {/* 左上：正社員固定時間與名單 */}
+                    <SettingPanel 
+                        title="正社員の固定勤務時間 / 社員管理" 
+                        isCollapsible={true}
+                        isOpen={isFixedTimeOpen}
+                        onToggle={() => setIsFixedTimeOpen(!isFixedTimeOpen)}
+                        headerRight={
+                            <button className="text-[11px] bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded shadow-sm hover:bg-blue-200 transition">
+                                <i className="fa-brands fa-google-drive mr-1"></i> 労務管理から取込
+                            </button>
+                        }
+                    >
+                        <div className="flex flex-col h-full gap-3">
+                            <div className="flex gap-3 h-[60%] min-h-[140px]">
+                                {/* 六甲校 */}
+                                <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
+                                    <div className="p-2 border-b bg-white flex justify-between items-center shrink-0">
+                                        <h3 className="font-bold text-blue-800 text-xs"><i className="fa-solid fa-school"></i> 六甲校</h3>
+                                        <span className="text-[10px] font-mono bg-blue-50 px-1.5 py-0.5 rounded border text-blue-700">09:30 - 18:30</span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                                        {employees.filter(e => e.type === 'full' && e.location === 'rokko').sort((a,b)=>a.num-b.num).map(emp => (
+                                            <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">
+                                                {emp.num}. {emp.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* 名谷校 */}
+                                <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
+                                    <div className="p-2 border-b bg-white flex justify-between items-center shrink-0">
+                                        <h3 className="font-bold text-green-800 text-xs"><i className="fa-solid fa-school"></i> 名谷校</h3>
+                                        <span className="text-[10px] font-mono bg-green-50 px-1.5 py-0.5 rounded border text-green-700">09:15 - 18:15</span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                                        {employees.filter(e => e.type === 'full' && e.location === 'myodani').sort((a,b)=>a.num-b.num).map(emp => (
+                                            <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">
+                                                {emp.num}. {emp.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* 社員與打工管理 (固定於下方) */}
+                            <div className="border rounded-lg bg-gray-50 p-2 flex flex-col flex-1 shrink-0">
+                                <div className="font-bold text-gray-700 text-xs mb-2 px-1">社員とアルバイト管理</div>
+                                <div className="flex gap-2 items-center mb-2 px-1 shrink-0 flex-wrap">
+                                    <input type="text" placeholder="No." className="w-12 border p-1 rounded text-xs outline-none bg-white shadow-inner flex-none" />
+                                    <input type="text" placeholder="氏名" className="flex-1 border p-1 rounded text-xs outline-none bg-white shadow-inner min-w-[80px]" />
+                                    <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>アルバイト</option><option>正社員</option></select>
+                                    <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>六甲</option><option>名谷</option></select>
+                                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-blue-700 flex-none transition">追加</button>
+                                    <button className="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-red-600 flex-none transition">削除</button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto bg-white border rounded p-1 shadow-inner min-h-[60px]">
+                                    <ul className="space-y-1">
+                                        {employees.map(emp => (
+                                            <li key={emp.id} className="text-[10px] p-1 bg-gray-50 rounded flex justify-between text-gray-600 hover:bg-gray-100">
+                                                <span className="font-bold">{emp.num}. {emp.name}</span>
+                                                <span>{emp.type==='full'?'正社員':emp.type==='driver'?'司機':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </SettingPanel>
+
+                    {/* 右上：上傳與文字貼上 */}
+                    <SettingPanel title="ファイルアップロード / テキスト貼付">
+                        <div className="flex flex-col h-full gap-3">
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg py-3 text-center bg-gray-50 hover:bg-gray-100 relative cursor-pointer transition shrink-0">
+                                <i className="fa-solid fa-cloud-arrow-up text-xl text-gray-400 mb-1"></i>
+                                <p className="text-[11px] text-gray-600 font-bold">シフト(Excel) / 交通費 / 打刻記録アップロード</p>
+                                <input type="file" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            </div>
+                            <div className="flex-1 flex flex-col min-h-[120px]">
+                                <div className="flex justify-between items-center mb-1 shrink-0">
+                                    <label className="text-xs font-bold text-gray-600">打刻記録テキスト貼付</label>
+                                    <button onClick={handleParseTimecardText} className="bg-blue-600 text-white text-[11px] px-3 py-1 rounded shadow-sm font-bold hover:bg-blue-700 transition">
+                                        <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>テキスト解析
+                                    </button>
+                                </div>
+                                <textarea 
+                                    className="w-full flex-1 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50"
+                                    placeholder="例：&#10;00000646&#10;林 昊嬛&#10;&#10;入室&#10;2026/08/17 08:44..."
+                                    value={timecardText}
+                                    onChange={(e) => setTimecardText(e.target.value)}
+                                ></textarea>
+                            </div>
+                        </div>
+                    </SettingPanel>
+
+                    {/* 左下：特別勤務時間 */}
+                    <SettingPanel title="正社員の特別勤務時間設定">
+                        <div className="flex gap-4 h-full">
+                            <div className="w-1/2 flex flex-col gap-2 border-r pr-4 overflow-y-auto">
+                                <div>
+                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">日付範囲</label>
+                                    <div className="flex gap-1">
+                                        <input type="date" value={specialTime.startDate} onChange={e=>setSpecialTime({...specialTime, startDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                        <span className="self-center">-</span>
+                                        <input type="date" value={specialTime.endDate} onChange={e=>setSpecialTime({...specialTime, endDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">時間帯</label>
+                                    <div className="flex gap-1">
+                                        <input type="time" value={specialTime.start} onChange={e=>setSpecialTime({...specialTime, start: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                        <span className="self-center">-</span>
+                                        <input type="time" value={specialTime.end} onChange={e=>setSpecialTime({...specialTime, end: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">理由 (例: season school)</label>
+                                    <input type="text" value={specialTime.reason} onChange={e=>setSpecialTime({...specialTime, reason: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">対象校舎・社員</label>
+                                    <div className="flex gap-1">
+                                        <select value={specialTime.location} onChange={e=>setSpecialTime({...specialTime, location: e.target.value, target: 'all'})} className="border p-1 text-[11px] rounded bg-gray-50 flex-none w-[70px] outline-none">
+                                            <option value="rokko">六甲校</option>
+                                            <option value="myodani">名谷校</option>
+                                        </select>
+                                        <select value={specialTime.target} onChange={e=>setSpecialTime({...specialTime, target: e.target.value})} className="border p-1 text-[11px] rounded bg-gray-50 flex-1 min-w-0 outline-none">
+                                            <option value="all">【すべて】</option>
+                                            {employees.filter(e => e.type === 'full' && e.location === specialTime.location).map(emp => (
+                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                {/* 修復：固定在底部的按鈕 */}
+                                <button onClick={handleAddSpecialTime} className="mt-3 bg-gray-800 text-white text-xs py-2 rounded hover:bg-gray-700 transition font-bold shadow-sm w-full shrink-0">
+                                    追加してシフトに反映
+                                </button>
+                            </div>
+                            <div className="w-1/2 flex flex-col">
+                                <h3 className="font-bold text-gray-700 mb-2 text-xs shrink-0">設定記録</h3>
+                                <div className="flex-1 overflow-y-auto">
+                                    {specialRecords.length === 0 ? <p className="text-[10px] text-gray-400 italic text-center mt-4">記録なし</p> : 
+                                        <ul className="space-y-2">
+                                            {specialRecords.map((rec, i) => (
+                                                <li key={i} className="text-[10px] p-2 bg-yellow-50 border border-yellow-200 rounded relative shadow-sm">
+                                                    <div className="font-bold text-yellow-800">{rec.startDate} ~ {rec.endDate || rec.startDate}</div>
+                                                    <div className="text-gray-700">{rec.start} - {rec.end}</div>
+                                                    <div className="text-gray-500 truncate pr-10">{rec.reason}</div>
+                                                    <span className="absolute top-1 right-1 bg-white px-1 py-0.5 rounded shadow text-[9px] font-bold">
+                                                        {rec.location === 'rokko' ? '六甲' : '名谷'} : {rec.target==='all' ? '全体' : '個人'}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </SettingPanel>
+
+                    {/* 右下：Log */}
+                    <SettingPanel title="システムログ">
+                        <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-full overflow-y-auto shadow-inner leading-relaxed">
+                            {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
+                                logs.map((log, i) => (
+                                    <div key={i} className={`mb-1 ${log.includes('失敗') || log.includes('error') ? 'text-red-400' : (log.includes('成功') || log.includes('反映しました') ? 'text-green-300' : 'text-gray-300')}`}>
+                                        {log}
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </SettingPanel>
+                </div>
+            );
+
+            // --- 畫面渲染：2. 個人報表畫面 ---
+            const EmployeeReport = ({ employee, data, payMonth, periodStart, periodEnd }) => {
+                // 新增：個人頁面專用的手動修改開關 (預設為 false 關閉)
+                const [localEditable, setLocalEditable] = useState(false);
+
+                const dates = [];
+                let curr = periodStart;
+                while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
+                    dates.push(curr.format('YYYY/MM/DD'));
+                    curr = curr.add(1, 'day');
+                }
+
+                let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
+                let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
+                let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0;
+
+                const handleInput = (date, field, val) => {
+                    // 修改：如果系統整體鎖定，或是個人頁面手動修改未開啟，則阻擋輸入
+                    if (isLocked || !localEditable) return;
+                    setAttendanceData(prev => {
+                        const newData = { ...prev };
+                        if (!newData[employee.id]) newData[employee.id] = {};
+                        if (!newData[employee.id][date]) newData[employee.id][date] = {};
+                        newData[employee.id][date][field] = val;
+                        return newData;
+                    });
+                };
+
+                return (
+                    <div className="h-full flex flex-col">
+                        <div className="flex justify-between items-end mb-2 border-b border-gray-300 pb-2 shrink-0">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <span className="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
+                                {employee.name}
+                            </h2>
+                            <div className="flex items-center gap-2">
+                                <div className="text-xs font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3">
+                                    <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
+                                    
+                                    {/* 手動修改切換按鈕 */}
+                                    <button 
+                                        onClick={() => setLocalEditable(!localEditable)}
+                                        disabled={isLocked}
+                                        className={`px-3 py-1 rounded border shadow-sm transition-colors font-bold flex items-center gap-1.5 ${
+                                            isLocked ? 'opacity-50 cursor-not-allowed bg-gray-200 text-gray-400 border-gray-300' 
+                                            : localEditable ? 'bg-white text-blue-700 border-blue-400' 
+                                            : 'bg-gray-400 text-white border-gray-500 hover:bg-gray-500'
+                                        }`}
+                                    >
+                                        <i className={`fa-solid ${localEditable ? 'fa-pen-to-square' : 'fa-lock'}`}></i>
+                                        {localEditable ? '手動入力 ON' : '手動入力 OFF'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 報表主表格 */}
+                        <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px]">
+                            <table className="w-full text-left border-collapse whitespace-nowrap">
+                                <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 text-gray-700">
+                                    <tr>
+                                        <th className="border p-1.5 min-w-[80px]">日付</th>
+                                        <th className="border p-1.5">校舎</th>
+                                        <th className="border p-1.5">入室</th>
+                                        <th className="border p-1.5">退室</th>
+                                        <th className="border p-1.5 text-blue-800">シフト</th>
+                                        <th className="border p-1.5 bg-blue-50">入退室総時間</th>
+                                        <th className="border p-1.5">休憩</th>
+                                        <th className="border p-1.5 bg-green-50">勤務時間</th>
+                                        {employee.type === 'full' && <><th className="border p-1.5">早残業</th><th className="border p-1.5">後残業</th><th className="border p-1.5">出張費</th></>}
+                                        {employee.type === 'driver' && <><th className="border p-1.5">運転時間</th><th className="border p-1.5">IGK A</th><th className="border p-1.5">IGK B</th></>}
+                                        {employee.type === 'part' && <><th className="border p-1.5">IGK A</th><th className="border p-1.5">IGK B</th></>}
+                                        <th className="border p-1.5 bg-yellow-50">交通費</th>
+                                        <th className="border p-1.5 min-w-[120px]">備考・出勤狀況</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {dates.map((date) => {
+                                        const isH = isHoliday(date);
+                                        const dayData = data[date] || {};
+                                        // 只要有打卡 或 有設定シフト，就算該日有紀錄要顯示
+                                        const hasData = !!(dayData.in || dayData.out);
+                                        
+                                        if (hasData) workDays++;
+                                        if (dayData.leaveType === '有休(1日)') leave1++;
+                                        if (dayData.leaveType === '有休(半日)') leaveHalf++;
+                                        if (dayData.leaveType === '有休(2時間)') leave2H++;
+                                        if (dayData.leaveType === '事欠') absent++;
+                                        if (dayData.leaveType === '病欠') sick++;
+
+                                        const inOutMins = calculateMinutes(dayData.in, dayData.out);
+                                        totalInOutGlobal += inOutMins;
+
+                                        let breakMins = hasData ? (employee.type === 'full' ? 60 : (dayData.break || 0)) : 0;
+                                        const workMins = Math.max(0, inOutMins - breakMins);
+                                        
+                                        let early = 0, late = 0;
+                                        if (employee.type === 'full' && hasData && dayData.shiftStart && dayData.shiftEnd) {
+                                            early = Math.max(0, calculateMinutes(dayData.in, dayData.shiftStart));
+                                            late = Math.max(0, calculateMinutes(dayData.shiftEnd, dayData.out));
+                                            earlyTotal += early;
+                                            lateTotal += late;
+                                        }
+
+                                        let drive = 0, igkA = parseInt(dayData.igkA || 0), igkB = 0;
+                                        if (employee.type === 'driver' && hasData) {
+                                            drive = parseInt(dayData.driveMins || 0);
+                                            igkB = Math.max(0, workMins - drive);
+                                            totalDrive += drive;
+                                        } else if (employee.type === 'part' && hasData) {
+                                            igkB = Math.max(0, workMins - igkA);
+                                        }
+                                        totalIgkA += igkA;
+                                        totalIgkB += igkB;
+                                        
+                                        const transFee = parseInt(dayData.transFee) || 0;
+                                        totalTrans += transFee;
+
+                                        let rowClass = "hover:bg-gray-50 border-b transition-colors ";
+                                        if (isH) rowClass += "holiday-row holiday-text ";
+                                        if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
+
+                                        return (
+                                            <tr key={date} className={rowClass}>
+                                                <td className="border p-1.5">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
+                                                <td className="border p-1.5 text-center">
+                                                    <select disabled={isLocked || !localEditable} className="bg-transparent text-[10px] outline-none" value={dayData.location || employee.location} onChange={e=>handleInput(date,'location',e.target.value)}>
+                                                        <option value="rokko">六甲</option><option value="myodani">名谷</option>
+                                                    </select>
+                                                </td>
+                                                <td className="border p-1.5 text-center">{dayData.in}</td>
+                                                <td className="border p-1.5 text-center">{dayData.out}</td>
+                                                
+                                                <td className="border p-1.5 text-center text-blue-600 font-bold bg-blue-50/20">{dayData.shiftStart ? `${dayData.shiftStart}-${dayData.shiftEnd}` : ''}</td>
+                                                
+                                                <td className="border p-1.5 text-center font-bold text-gray-700 bg-blue-50">{inOutMins > 0 ? (inOutMins/60).toFixed(2) : ''}</td>
+                                                <td className="border p-1.5 text-center">{hasData ? breakMins : ''}</td>
+                                                <td className="border p-1.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
+                                                
+                                                {employee.type === 'full' && <>
+                                                    <td className="border p-1.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
+                                                    <td className="border p-1.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
+                                                    <td className="border p-1.5 text-center"></td>
+                                                </>}
+                                                {employee.type === 'driver' && <>
+                                                    <td className="border p-1.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
+                                                    <td className="border p-1.5 text-center">{igkA > 0 ? igkA : ''}</td>
+                                                    <td className="border p-1.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                </>}
+                                                {employee.type === 'part' && <>
+                                                    <td className="border p-1.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded" value={dayData.igkA || ''} onChange={e=>handleInput(date,'igkA',e.target.value)} /></td>
+                                                    <td className="border p-1.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                </>}
+                                                <td className="border p-1 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border outline-none px-1 bg-transparent" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                                <td className="border p-1">
+                                                    <div className="flex gap-1 items-center">
+                                                        {employee.type === 'full' && !hasData && !isH && (
+                                                            <select disabled={isLocked || !localEditable} className="text-[10px] border p-0.5 outline-none rounded bg-white shadow-sm text-purple-700" value={dayData.leaveType||''} onChange={e=>handleInput(date,'leaveType',e.target.value)}>
+                                                                <option value="">-</option><option value="有休(1日)">有休(1日)</option><option value="有休(半日)">有休(半日)</option><option value="有休(2時間)">有休(2h)</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
+                                                            </select>
+                                                        )}
+                                                        <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full text-[10px] focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 底層統計圖表 */}
+                        <div className="mt-3 border-t pt-3 shrink-0">
+                            <div className="flex gap-3 flex-wrap items-stretch mb-2">
+                                <div className="bg-white rounded-lg p-3 flex gap-4 shadow-sm border border-gray-200 min-w-[180px]">
+                                    <div className="text-center border-r pr-4">
+                                        <div className="text-[10px] text-gray-500 font-bold mb-1">出勤日数</div>
+                                        <div className="text-2xl font-black text-gray-800">{workDays} <span className="text-xs font-normal text-gray-500">日</span></div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 text-[11px] text-gray-600 font-medium justify-center">
+                                        <div className="flex justify-between w-24"><span>有休</span><span>{(leave1 + leaveHalf*0.5 + leave2H*0.25).toFixed(1)} 日</span></div>
+                                        <div className="flex justify-between border-t pt-1"><span>事欠</span><span>{absent} 日</span></div>
+                                        <div className="flex justify-between border-t pt-1"><span>病欠</span><span>{sick} 日</span></div>
+                                    </div>
+                                </div>
+
+                                {employee.type === 'full' && (
+                                    <>
+                                        <div className="bg-orange-50 rounded-lg p-3 text-center shadow-sm border border-orange-100 flex-1 min-w-[80px]">
+                                            <div className="text-[10px] text-orange-700 font-bold mb-1">早残業</div>
+                                            <div className="text-xl font-black text-orange-600">{earlyTotal} <span className="text-[10px] font-normal text-orange-400">分</span></div>
+                                        </div>
+                                        <div className="bg-orange-50 rounded-lg p-3 text-center shadow-sm border border-orange-100 flex-1 min-w-[80px]">
+                                            <div className="text-[10px] text-orange-700 font-bold mb-1">後残業</div>
+                                            <div className="text-xl font-black text-orange-600">{lateTotal} <span className="text-[10px] font-normal text-orange-400">分</span></div>
+                                        </div>
+                                        <div className="bg-red-50 rounded-lg p-3 text-center shadow-sm border border-red-100 flex-[1.5] min-w-[130px]">
+                                            <div className="text-[10px] text-red-700 font-bold mb-1">残業合計 (早+後)</div>
+                                            <div className="text-xl font-black text-red-600">
+                                                {earlyTotal+lateTotal} <span className="text-[10px] font-normal text-red-400 mr-1">分</span> 
+                                                <span className="text-[11px] font-normal text-red-400">({((earlyTotal+lateTotal)/60).toFixed(2)} H)</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {employee.type === 'part' && (
+                                    <>
+                                        <div className="bg-pink-50 rounded-lg p-3 text-center shadow-sm border border-pink-100 flex-1 min-w-[100px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-xl font-black text-pink-600">{formatHM(totalIgkA)} <span className="text-[10px] font-normal ml-1 text-pink-400">({(totalIgkA/60).toFixed(2)} H)</span></div></div>
+                                        <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-100 flex-1 min-w-[100px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-xl font-black text-blue-600">{formatHM(totalIgkB)} <span className="text-[10px] font-normal ml-1 text-blue-400">({(totalIgkB/60).toFixed(2)} H)</span></div></div>
+                                        <div className="bg-indigo-50 rounded-lg p-3 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[120px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-xl font-black text-indigo-700">{formatHM(totalIgkA+totalIgkB)} <span className="text-[10px] font-normal ml-1 text-indigo-400">({((totalIgkA+totalIgkB)/60).toFixed(2)} H)</span></div></div>
+                                    </>
+                                )}
+
+                                {employee.type === 'driver' && (
+                                    <>
+                                        <div className="bg-yellow-50 rounded-lg p-3 text-center shadow-sm border border-yellow-100 flex-1 min-w-[100px]"><div className="text-[10px] text-yellow-700 font-bold mb-1">運転実績</div><div className="text-xl font-black text-yellow-700">{formatHM(totalDrive)} <span className="text-[10px] font-normal ml-1 text-yellow-500">({(totalDrive/60).toFixed(2)} H)</span></div></div>
+                                        <div className="bg-pink-50 rounded-lg p-3 text-center shadow-sm border border-pink-100 flex-1 min-w-[80px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-xl font-black text-pink-600">{formatHM(totalIgkA)}</div></div>
+                                        <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-100 flex-1 min-w-[80px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-xl font-black text-blue-600">{formatHM(totalIgkB)}</div></div>
+                                        <div className="bg-indigo-50 rounded-lg p-3 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[120px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-xl font-black text-indigo-700">{formatHM(totalDrive+totalIgkA+totalIgkB)} <span className="text-[10px] font-normal ml-1 text-indigo-400">({((totalDrive+totalIgkA+totalIgkB)/60).toFixed(2)} H)</span></div></div>
+                                    </>
+                                )}
+                                
+                                <div className="bg-gray-100 rounded-lg p-3 text-center shadow-sm border border-gray-200 flex-none min-w-[120px]">
+                                    <div className="text-[10px] text-gray-600 font-bold mb-1">入退室総時間</div>
+                                    <div className="text-xl font-black text-gray-700">{formatHM(totalInOutGlobal)} <span className="text-[10px] font-normal ml-1 text-gray-400">({(totalInOutGlobal/60).toFixed(2)}H)</span></div>
+                                </div>
+                            </div>
+
+                            {employee.type === 'full' && (
+                                <div className="bg-blue-50/50 rounded-lg p-2 px-4 flex justify-between items-center shadow-sm border border-blue-100">
+                                    <span className="text-blue-800 font-bold text-xs"><i className="fa-solid fa-train-subway mr-2"></i>交通費 (手動入力合計)</span>
+                                    <div className="font-black text-xl text-gray-800">{totalTrans.toLocaleString()} <span className="text-xs font-bold text-gray-500">円</span></div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            const renderReportsScreen = () => {
+                const payDateObj = dayjs(`${payMonth}-01`);
+                const periodStart = payDateObj.subtract(2, 'month').date(16);
+                const periodEnd = payDateObj.subtract(1, 'month').date(15);
+                
+                const locEmployees = employees.filter(e => e.location === activeLocation).sort((a,b) => a.num - b.num);
+                const activeEmployee = employees.find(e => e.id === activeEmployeeId);
+
+                const switchLocation = (loc) => {
+                    setActiveLocation(loc);
+                    const firstEmp = employees.filter(e => e.location === loc).sort((a,b)=>a.num - b.num)[0];
+                    if(firstEmp) setActiveEmployeeId(firstEmp.id);
+                }
+
+                return (
+                    <div className="flex flex-col h-[calc(100vh-60px)]">
+                        <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
+                            <div className="flex gap-2">
+                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
+                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
+                                <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 給与支給月:</span>
+                                <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400" />
+                                <span className="text-[10px] text-gray-400 font-medium">(対象: {periodStart.format('MM/DD')}-{periodEnd.format('MM/DD')})</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-1 bg-white rounded-lg shadow-sm border mx-4 mb-4 overflow-hidden">
+                            <div className="w-[140px] bg-gray-50 border-r overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 pb-6">
+                                {locEmployees.map(emp => (
+                                    <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-2 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow transform scale-[1.02] z-10 tab-color-' + ((emp.num%5)+1) : 'text-gray-500 hover:bg-gray-200'}`}>
+                                        <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[9px] text-white flex-none shadow-sm ${emp.type === 'full' ? 'bg-blue-500' : emp.type === 'driver' ? 'bg-purple-500' : 'bg-gray-400'}`}>{emp.num}</span>
+                                        <span className="truncate">{emp.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className={`flex-1 p-4 overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
+                                {/* 加入 key 屬性，確保切換員工時強制重置手動修改按鈕的狀態 */}
+                                {activeEmployee ? <EmployeeReport key={activeEmployee.id} employee={activeEmployee} data={attendanceData[activeEmployee.id] || {}} payMonth={payMonth} periodStart={periodStart} periodEnd={periodEnd} /> : null}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // 讀取中的畫面防護
             if (!isCloudLoaded) {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] font-sans">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                        <h2 className="text-xl font-black text-slate-700">☁️ 雲端データを読み込み中...</h2>
+                    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f3f4f6] font-sans">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <h2 className="text-xl font-black text-gray-700">☁️ クラウドデータを読み込み中...</h2>
                     </div>
                 );
             }
 
             return (
-                <div className="min-h-screen flex flex-col font-sans">
-                    <div className="bg-white text-slate-800 p-4 flex gap-4 print:hidden shadow-sm items-center border-b border-gray-200">
-                        <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div className="min-h-screen flex flex-col overflow-hidden bg-[#eef2f6]">
+                    <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 z-20 h-[60px]">
+                        <div className="flex items-center gap-6">
+                            <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+                                <i className="fa-solid fa-file-invoice-dollar text-blue-600"></i> IGK
+                            </h1>
+                            <nav className="flex bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setCurrentView('setup')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'setup' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>システム設定と取込</button>
+                                <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'reports' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>個人別明細</button>
+                            </nav>
                         </div>
-                        <h1 className="text-xl font-black tracking-widest mr-4 text-indigo-900">IGK 勤怠管理</h1>
-                        <button onClick={() => setActivePage('import')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'import' ? 'bg-indigo-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>① データ入力・設定</button>
-                        <button onClick={() => setActivePage('preview')} className={`px-5 py-1.5 rounded-full font-bold transition-all text-sm ${activePage === 'preview' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>② 個人勤務表</button>
-                    </div>
-
-                    {activePage === 'import' && (
-                        <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 w-full animate-fadeIn">
+                        <div className="flex items-center gap-3">
+                            <button className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力</button>
                             
-                            <div className="space-y-6 flex flex-col">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300">
-                                    <h2 onClick={() => setIsEmpManagerOpen(!isEmpManagerOpen)} className={`text-lg font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-emerald-600 transition-colors ${isEmpManagerOpen ? 'mb-4' : 'mb-0'}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
-                                            <path d="M12 22v-6" />
-                                            <path d="M12 16l-4-4" />
-                                            <path d="M12 16l4-4" />
-                                            <path d="M12 12l-4-4" />
-                                            <path d="M12 12l4-4" />
-                                            <path d="M12 8l-3-3" />
-                                            <path d="M12 8l3-3" />
-                                        </svg>
-                                        従業員名簿管理
-                                        <span className="ml-auto text-sm text-gray-400 font-bold bg-gray-100 px-3 py-1 rounded-full">
-                                            {isEmpManagerOpen ? '▲ 閉じる' : '▼ 開く'}
-                                        </span>
-                                    </h2>
-                                    
-                                    {isEmpManagerOpen && (
-                                        <div className="animate-fadeIn">
-                                            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 mb-6">
-                                                <h3 className="text-sm font-bold text-emerald-800 mb-3">{empForm.id ? '従業員情報の編集' : '新規従業員の追加'}</h3>
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 mb-1">表示名 (正式名称)</label>
-                                                        <input type="text" value={empForm.name} onChange={e=>setEmpForm({...empForm, name: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400"/>
-                                                    </div>
-                                                    <div className="md:col-span-2">
-                                                        <label className="block text-xs font-bold text-gray-500 mb-1">別名 (Excel解析用 / カンマ区切り)</label>
-                                                        <input type="text" value={empForm.aliases} onChange={e=>setEmpForm({...empForm, aliases: e.target.value})} placeholder="例: Minori, やまだ, Yamada" className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400"/>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-gray-500 mb-1">雇用形態</label>
-                                                            <select value={empForm.type} onChange={e=>setEmpForm({...empForm, type: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400">
-                                                                <option value="part">アルバイト</option>
-                                                                <option value="full">正社員</option>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-gray-500 mb-1">所属校</label>
-                                                            <select value={empForm.location} onChange={e=>setEmpForm({...empForm, location: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-emerald-400">
-                                                                <option value="rokko">六甲校</option>
-                                                                <option value="myodani">名谷校</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 md:col-span-4 mt-2">
-                                                        <label className="flex items-center cursor-pointer gap-2">
-                                                            <input type="checkbox" checked={empForm.isActive} onChange={e=>setEmpForm({...empForm, isActive: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"/>
-                                                            <span className="text-sm font-bold text-slate-700">在職中 (非表示にする場合は外す)</span>
-                                                        </label>
-                                                        <div className="ml-auto flex gap-2">
-                                                            {empForm.id && <button onClick={() => setEmpForm({ id: '', name: '', aliases: '', type: 'part', location: 'rokko', isActive: true })} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg">キャンセル</button>}
-                                                            <button onClick={handleSaveEmployee} className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg shadow-sm text-sm transition-colors">{empForm.id ? '更新する' : '追加する'}</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                                <div>
-                                                    <h4 className="text-sm font-black text-indigo-600 mb-2 border-b border-indigo-100 pb-1">六甲校</h4>
-                                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                                        {employees.filter(emp => emp.location === 'rokko').map(emp => (
-                                                            <div key={emp.id} className={`flex items-center justify-between p-3 border rounded-xl shadow-sm ${emp.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
-                                                                <div>
-                                                                    <div className="font-black text-slate-700 text-sm flex items-center gap-2">
-                                                                        {emp.name} 
-                                                                        {!emp.isActive && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">退職</span>}
-                                                                        {emp.isActive && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">在職</span>}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500 mt-1">{emp.type === 'full' ? '正社員' : 'アルバイト'}</div>
-                                                                </div>
-                                                                <button onClick={() => handleEditEmployee(emp)} className="text-xs font-bold text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">編集</button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-sm font-black text-emerald-600 mb-2 border-b border-emerald-100 pb-1">名谷校</h4>
-                                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                                        {employees.filter(emp => emp.location === 'myodani').map(emp => (
-                                                            <div key={emp.id} className={`flex items-center justify-between p-3 border rounded-xl shadow-sm ${emp.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
-                                                                <div>
-                                                                    <div className="font-black text-slate-700 text-sm flex items-center gap-2">
-                                                                        {emp.name} 
-                                                                        {!emp.isActive && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">退職</span>}
-                                                                        {emp.isActive && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">在職</span>}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500 mt-1">{emp.type === 'full' ? '正社員' : 'アルバイト'}</div>
-                                                                </div>
-                                                                <button onClick={() => handleEditEmployee(emp)} className="text-xs font-bold text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">編集</button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="text-indigo-500">◆</span> 正社員の基本勤務・特別期間設定
-                                    </h2>
-                                    <div className="flex gap-4 mb-4 bg-gray-50 p-4 rounded-xl">
-                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 入室</label><input type="time" value={settings.rokkoStart} onChange={e=>setSettings({...settings, rokkoStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
-                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">六甲校 退室</label><input type="time" value={settings.rokkoEnd} onChange={e=>setSettings({...settings, rokkoEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-indigo-400"/></div>
-                                        <div className="ml-4 border-l border-gray-200 pl-4"><label className="block text-xs font-bold text-gray-500 mb-1">名谷校 入室</label><input type="time" value={settings.myodaniStart} onChange={e=>setSettings({...settings, myodaniStart: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/></div>
-                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">名谷校 退室</label><input type="time" value={settings.myodaniEnd} onChange={e=>setSettings({...settings, myodaniEnd: e.target.value})} className="border border-gray-300 rounded-lg p-2 font-bold outline-none focus:border-emerald-400"/></div>
-                                    </div>
-                                    <div className="p-4 rounded-xl flex flex-col gap-4 border border-indigo-100 bg-indigo-50/30">
-                                        
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-bold text-indigo-600">対象者を選択:</span>
-                                                <button onClick={() => setNewSp(p => ({...p, targetEmps: FULL_TIME_EMPS.map(e=>e.id)}))} className="text-xs px-3 py-1 rounded-full bg-white border border-gray-300 hover:bg-gray-100 font-bold text-slate-600 shadow-sm">全員選択</button>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-400 w-12 text-right">六甲校:</span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {FULL_TIME_EMPS.filter(e => e.location === 'rokko').map(emp => (
-                                                        <button key={emp.id} onClick={() => setNewSp(p => ({...p, targetEmps: p.targetEmps.includes(emp.id) ? p.targetEmps.filter(id=>id!==emp.id) : [...p.targetEmps, emp.id]}))} className={`text-xs px-3 py-1 rounded-full font-bold border transition-colors shadow-sm ${newSp.targetEmps.includes(emp.id) ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-slate-500 border-gray-300 hover:bg-gray-50'}`}>
-                                                            {emp.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-400 w-12 text-right">名谷校:</span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {FULL_TIME_EMPS.filter(e => e.location === 'myodani').map(emp => (
-                                                        <button key={emp.id} onClick={() => setNewSp(p => ({...p, targetEmps: p.targetEmps.includes(emp.id) ? p.targetEmps.filter(id=>id!==emp.id) : [...p.targetEmps, emp.id]}))} className={`text-xs px-3 py-1 rounded-full font-bold border transition-colors shadow-sm ${newSp.targetEmps.includes(emp.id) ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-slate-500 border-gray-300 hover:bg-gray-50'}`}>
-                                                            {emp.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-3 items-end mt-2">
-                                            <input type="text" placeholder="特別期間名 (例: Summer School)" value={newSp.name} onChange={e=>setNewSp({...newSp, name: e.target.value})} className="border border-gray-300 rounded-lg p-2 flex-1 min-w-[200px] outline-none text-sm"/>
-                                            <input type="date" value={newSp.start} onChange={e=>setNewSp({...newSp, start: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
-                                            <span className="text-slate-400 font-bold mb-2">~</span>
-                                            <input type="date" value={newSp.end} onChange={e=>setNewSp({...newSp, end: e.target.value})} className="border border-gray-300 rounded-lg p-2 outline-none text-sm"/>
-                                            <input type="time" value={newSp.timeIn} onChange={e=>setNewSp({...newSp, timeIn: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
-                                            <input type="time" value={newSp.timeOut} onChange={e=>setNewSp({...newSp, timeOut: e.target.value})} className="border border-gray-300 rounded-lg p-2 w-28 outline-none text-sm"/>
-                                            <button onClick={() => { if(newSp.name && newSp.targetEmps.length > 0){ setSettings(s => ({...s, special: [...(s.special||[]), newSp]})); setNewSp({name:'',start:'',end:'',timeIn:'09:30',timeOut:'18:30', targetEmps: FULL_TIME_EMPS.map(e=>e.id)}); } else { alert("期間名と対象者を設定してください"); } }} className="bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-600 shadow-sm text-sm">追加</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-6 flex flex-col">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
-                                        <span className="text-blue-500">◆</span> シフト表 (Excel) の自動取り込み
-                                    </h2>
-                                    <label className="block w-full cursor-pointer border-2 border-dashed border-blue-200 p-8 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-center">
-                                        <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
-                                        <div className="text-blue-600 font-bold text-base mb-1">ここをクリックまたは .xlsx ファイルをドラッグ＆ドロップ</div>
-                                        <div className="text-blue-400 text-xs">六甲校・名谷校のシフトを自動判別し、色ブロックと時間を計算します。</div>
-                                        
-                                        {shiftFileName && <div className="mt-4 text-sm font-bold text-blue-700 bg-blue-100 p-2 rounded-lg inline-block shadow-sm">📄 アップロード済み: {shiftFileName}</div>}
-                                    </label>
-                                </div>
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
-                                        <span className="text-purple-500">◆</span> 打刻データ (実績) の自動取り込み
-                                    </h2>
-                                    <textarea value={pastedData} onChange={e=>setPastedData(e.target.value)} className="w-full h-40 border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-purple-200 focus:bg-white transition-all" placeholder="ここに KING OF TIME 等の打刻テキストを貼り付け..."></textarea>
-                                    <button onClick={handlePaste} className="mt-3 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold w-full hover:bg-purple-600 shadow-sm text-sm">解析してデータを反映する</button>
-                                </div>
-                            </div>
+                            {/* ★ 8. 上鎖/解鎖按鈕綁定 */}
+                            <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
+                            </button>
                         </div>
-                    )}
-
-                    {activePage === 'preview' && (
-                        <div className="p-4 sm:p-6 w-full max-w-[1400px] mx-auto overflow-hidden flex flex-col animate-fadeIn print:p-0 print:m-0">
-                            
-                            <div className="flex flex-wrap gap-4 mb-6 items-center justify-between print:hidden">
-                                <div className="flex items-center gap-6">
-                                    <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-slate-200 rounded-xl p-2 font-black text-slate-700 outline-none focus:border-indigo-400 shadow-sm bg-white"/>
-                                    
-                                    <div className="flex bg-gray-200 p-1 rounded-full shadow-inner">
-                                        <button onClick={() => switchLocation('rokko')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'rokko' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>六甲校</button>
-                                        <button onClick={() => switchLocation('myodani')} className={`px-6 py-1.5 rounded-full font-bold transition-all text-sm ${activeLocation === 'myodani' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>名谷校</button>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex gap-3">
-                                    <button onClick={handleExportAllExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                        【一括エクスポート】
-                                    </button>
-                                    <button onClick={() => window.print()} className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-sm transition-colors text-sm">印刷 / PDF出力</button>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-end gap-x-1 gap-y-2 pb-0 border-b-[3px] border-slate-300 print:hidden pt-4 px-2">
-                                {currentEmployees.map((emp, i) => {
-                                    const colorClass = TAB_COLORS[i % TAB_COLORS.length];
-                                    const isActiveTab = activeEmp === emp.id;
-                                    return (
-                                        <button key={emp.id} onClick={() => setActiveEmp(emp.id)} 
-                                            className={`shrink-0 whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold rounded-t-xl transition-all duration-200 ${isActiveTab ? `${colorClass} pb-3 pt-2 md:pt-3 transform -translate-y-0.5 z-10 relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] border-x border-t border-x-black/5 border-t-black/5` : 'bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 border border-gray-200 border-b-0'}`}>
-                                            {emp.name} {!emp.isActive && <span className="ml-1 text-[10px] text-red-500">(退職)</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {currentEmp && (() => {
-                                let sumDays = 0, sumPaidLeave = 0, sumUnpaidLeave = 0, sumSickLeave = 0;
-                                let sumIgka = 0, sumIgkb = 0, sumEarly = 0, sumLate = 0, sumDriver = 0;
-
-                                return (
-                                    <div className="bg-white p-4 sm:p-8 rounded-b-3xl shadow-md print:border-none print:shadow-none print:p-0 print:m-0 border border-t-0 border-slate-200 mt-0">
-                                        <div className="flex items-end justify-between mb-4 border-b border-slate-100 pb-2">
-                                            <h2 className="text-2xl print:text-xl font-black text-slate-800">{currentEmp.name} <span className="text-xs font-bold text-indigo-500 ml-2 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">{currentEmp.type === 'full' ? '正社員' : 'アルバイト'}</span></h2>
-                                            <span className="text-sm font-bold text-slate-400 print:text-[10px]">{period} 度</span>
-                                        </div>
-                                        
-                                        <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none">
-                                            <table className="w-full text-sm border-collapse print:text-[10px]">
-                                                <thead>
-                                                    <tr className="bg-[#f8f9fa] text-slate-600 print:bg-gray-100">
-                                                        <th className="border-b border-r border-slate-200 p-2 min-w-[80px] font-black print:p-1">日付</th>
-                                                        <th className="border-b border-r border-slate-200 p-2 w-20 font-black print:p-1">入室</th>
-                                                        <th className="border-b border-r border-slate-200 p-2 w-20 font-black print:p-1">退室</th>
-                                                        <th className="border-b border-r border-slate-200 p-2 w-32 font-black print:p-1">シフト (変更可)</th>
-                                                        <th className="border-b border-r border-slate-200 p-2 w-20 text-gray-500 font-black print:p-1">休憩</th>
-                                                        {currentEmp.type === 'full' ? (
-                                                            <>
-                                                                <th className="border-b border-r border-slate-200 p-2 min-w-[120px] font-black print:p-1">備考・特記事項</th>
-                                                                <th className="border-b border-r border-slate-200 p-2 w-20 text-orange-500 font-black print:p-1">早残業</th>
-                                                                <th className="border-b border-slate-200 p-2 w-20 text-orange-500 font-black print:p-1">後残業</th>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
-                                                                    <th className="border-b border-r border-slate-200 p-2 w-20 text-yellow-600 font-black print:p-1">運転時間</th>
-                                                                )}
-                                                                <th className="border-b border-r border-slate-200 p-2 w-16 text-pink-600 font-black print:p-1">IGK A</th>
-                                                                <th className="border-b border-r border-slate-200 p-2 w-16 text-blue-600 font-black print:p-1">IGK B</th>
-                                                                <th className="border-b border-slate-200 p-2 min-w-[120px] font-black print:p-1">備考・特記事項</th>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {dates.map(d => {
-                                                        const key = dKey(d);
-                                                        const row = attendance[currentEmp.id]?.[key] || {};
-                                                        const calc = calculateRow(d, row, currentEmp);
-                                                        
-                                                        if (row.inTime || row.outTime) sumDays++;
-                                                        
-                                                        if (row.leave === '有休') sumPaidLeave++;
-                                                        else if (row.leave === '事欠') sumUnpaidLeave++;
-                                                        else if (row.leave === '病欠') sumSickLeave++;
-
-                                                        sumIgka += calc.igkAMins; sumIgkb += calc.igkBMins;
-                                                        sumEarly += calc.earlyOtMins; sumLate += calc.lateOtMins;
-                                                        sumDriver += calc.driverMins;
-
-                                                        let rowBg = calc.isWknd ? 'bg-pink-50/40 print:bg-pink-50' : 'hover:bg-slate-50 transition-colors bg-white print:bg-transparent';
-                                                        let textClass = calc.isWknd ? 'text-red-500 font-bold' : 'text-slate-700';
-                                                        if (row.leave) { rowBg = 'bg-blue-50/50 print:bg-blue-50'; textClass = 'text-blue-600 font-bold'; }
-
-                                                        return (
-                                                            <tr key={key} className={`${rowBg} ${textClass} print:break-inside-avoid`}>
-                                                                <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold tracking-wider print:p-0.5">{formatDisplayDate(d)}</td>
-                                                                
-                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
-                                                                    {!row.inTime && !row.outTime && currentEmp.type === 'full' ? (
-                                                                        <select value={row.leave || ''} onChange={e => updateCell(currentEmp.id, key, 'leave', e.target.value)} className="w-full bg-transparent text-center text-xs font-bold outline-none cursor-pointer text-slate-400 print:appearance-none print:text-black">
-                                                                            <option value="">-</option><option value="有休">有休</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
-                                                                        </select>
-                                                                    ) : (
-                                                                        <input type="time" value={row.inTime || ''} onChange={e => updateCell(currentEmp.id, key, 'inTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700 print:text-[10px]"/>
-                                                                    )}
-                                                                </td>
-                                                                
-                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
-                                                                    {row.leave ? '-' : <input type="time" value={row.outTime || ''} onChange={e => updateCell(currentEmp.id, key, 'outTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-700 print:text-[10px]"/>}
-                                                                </td>
-                                                                
-                                                                <td className="border-b border-r border-slate-100 p-1 text-center font-mono text-xs font-bold text-slate-500">
-                                                                    {row.leave ? '-' : (
-                                                                        <div className="flex items-center justify-center gap-0.5">
-                                                                            <input type="time" value={calc.displayShiftIn} onChange={e => updateCell(currentEmp.id, key, 'shiftIn', e.target.value)} className="w-16 bg-transparent text-center outline-none focus:text-indigo-600 focus:bg-white rounded transition-colors print:w-auto"/>
-                                                                            <span>-</span>
-                                                                            <input type="time" value={calc.displayShiftOut} onChange={e => updateCell(currentEmp.id, key, 'shiftOut', e.target.value)} className="w-16 bg-transparent text-center outline-none focus:text-indigo-600 focus:bg-white rounded transition-colors print:w-auto"/>
-                                                                        </div>
-                                                                    )}
-                                                                </td>
-                                                                
-                                                                <td className="border-b border-r border-slate-100 p-1 text-center">
-                                                                    {row.leave ? '-' : <input type="time" value={calc.breakTime} onChange={e => updateCell(currentEmp.id, key, 'breakTime', e.target.value)} className="w-full bg-transparent text-center outline-none font-mono font-bold text-slate-400 focus:text-indigo-600 print:text-[10px]"/>}
-                                                                </td>
-                                                                
-                                                                {currentEmp.type === 'full' ? (
-                                                                    <>
-                                                                        <td className="border-b border-r border-slate-100 p-1">
-                                                                            <input type="text" value={row.remark || (row.leave ? row.leave : '')} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-0.5 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all print:text-[10px]" placeholder="備考..."/>
-                                                                        </td>
-                                                                        <td className="border-b border-r border-slate-100 p-1.5 text-center font-bold text-orange-500 bg-orange-50/20 text-xs print:bg-transparent">{calc.earlyOtMins > 0 ? `${calc.earlyOtMins}分` : '-'}</td>
-                                                                        <td className="border-b border-slate-100 p-1.5 text-center font-bold text-orange-500 bg-orange-50/20 text-xs print:bg-transparent">{calc.lateOtMins > 0 ? `${calc.lateOtMins}分` : '-'}</td>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
-                                                                            <td className="border-b border-r border-slate-100 p-1 text-center bg-yellow-50/20 print:bg-transparent">
-                                                                                <input type="time" value={row.driverMins || (calc.driverMins > 0 ? minsToTime(calc.driverMins) : '')} onChange={e => updateCell(currentEmp.id, key, 'driverMins', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-yellow-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
-                                                                            </td>
-                                                                        )}
-                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-pink-50/20 print:bg-transparent">
-                                                                            <input type="time" value={row.igkA || ''} onChange={e => updateCell(currentEmp.id, key, 'igkA', e.target.value)} className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-pink-600 focus:ring-0 p-0 outline-none print:border-none print:text-[10px]" placeholder="-"/>
-                                                                        </td>
-                                                                        <td className="border-b border-r border-slate-100 p-1 text-center bg-blue-50/20 print:bg-transparent">
-                                                                            <input type="time" value={calc.igkBMins > 0 ? minsToTime(calc.igkBMins) : ''} readOnly className="w-full bg-transparent border-b border-dashed border-gray-300 text-center text-xs font-black text-blue-600 focus:ring-0 p-0 outline-none cursor-default print:border-none print:text-[10px]" placeholder="-"/>
-                                                                        </td>
-                                                                        <td className="border-b border-slate-100 p-1">
-                                                                            <input type="text" value={row.remark || ''} onChange={e => updateCell(currentEmp.id, key, 'remark', e.target.value)} className="w-full bg-transparent outline-none px-2 py-0.5 text-xs text-slate-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 rounded transition-all print:text-[10px]" placeholder="備考..."/>
-                                                                        </td>
-                                                                    </>
-                                                                )}
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div className={`mt-6 pt-4 grid grid-cols-2 gap-3 print:break-inside-avoid print:gap-2 md:grid-cols-6`}>
-                                            
-                                            <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 shadow-sm flex items-stretch col-span-2 print:border-none print:bg-white">
-                                                <div className="flex-1 flex flex-col justify-center items-center border-r border-slate-200">
-                                                    <div className="text-[10px] font-bold text-slate-400 mb-0.5 print:text-[8px]">出勤日数</div>
-                                                    <div className="text-2xl font-black text-slate-700 leading-none print:text-lg">{sumDays} <span className="text-xs font-bold">日</span></div>
-                                                </div>
-                                                <div className="flex-1 flex flex-col justify-between pl-2 pr-1 text-[10px] font-bold">
-                                                    <div className="flex justify-between items-center text-slate-600"><span className="text-slate-400">有休</span><span>{sumPaidLeave} 日</span></div>
-                                                    <div className="flex justify-between items-center text-slate-600 border-y border-slate-200/60 py-0.5 my-0.5"><span className="text-slate-400">事欠</span><span>{sumUnpaidLeave} 日</span></div>
-                                                    <div className="flex justify-between items-center text-slate-600"><span className="text-slate-400">病欠</span><span>{sumSickLeave} 日</span></div>
-                                                </div>
-                                            </div>
-                                            
-                                            {currentEmp.type === 'full' ? (
-                                                <>
-                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
-                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">早残業</div>
-                                                        <div className="text-2xl font-black text-orange-600 print:text-lg">{sumEarly} <span className="text-sm font-bold print:text-[10px]">分</span></div>
-                                                    </div>
-                                                    
-                                                    <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
-                                                        <div className="text-xs font-bold text-orange-500 mb-1 print:text-[10px]">後残業</div>
-                                                        <div className="text-2xl font-black text-orange-600 print:text-lg">{sumLate} <span className="text-sm font-bold print:text-[10px]">分</span></div>
-                                                    </div>
-                                                    
-                                                    <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-center shadow-sm col-span-2 flex flex-col justify-center print:border-none print:bg-white">
-                                                        <div className="text-xs font-bold text-red-500 mb-1 print:text-[10px]">残業合計 (早+後)</div>
-                                                        <div className="text-3xl font-black text-red-600 print:text-xl">{sumEarly + sumLate} <span className="text-base font-bold mx-1 print:text-[10px]">分</span> <span className="text-base font-bold text-red-400 font-mono print:text-[10px]">({((sumEarly + sumLate) / 60).toFixed(2)} H)</span></div>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) && (
-                                                        <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
-                                                            <div className="text-[10px] font-bold text-yellow-600 mb-1 print:text-[8px]">運転 実績</div>
-                                                            <div className="text-lg font-black text-yellow-700 font-mono print:text-base">{formatTimeWithDec(sumDriver)}</div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    <div className="bg-pink-50 p-3 rounded-xl border border-pink-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
-                                                        <div className="text-[10px] font-bold text-pink-500 mb-1 print:text-[8px]">IGK A 合計</div>
-                                                        <div className="text-lg font-black text-pink-600 font-mono print:text-base">{formatTimeWithDec(sumIgka)}</div>
-                                                    </div>
-
-                                                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center shadow-sm col-span-1 print:border-none print:bg-white">
-                                                        <div className="text-[10px] font-bold text-blue-500 mb-1 print:text-[8px]">IGK B 合計</div>
-                                                        <div className="text-lg font-black text-blue-600 font-mono print:text-base">{formatTimeWithDec(sumIgkb)}</div>
-                                                    </div>
-
-                                                    <div className={`bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-center shadow-sm flex flex-col justify-center print:border-none print:bg-white ${['實熊功光', '上山貴行', '安藤佑也', 'Mikuma', 'Taka', 'Ando'].some(n => currentEmp.name.includes(n) || (currentEmp.aliases || []).includes(n)) ? 'col-span-1' : 'col-span-2'}`}>
-                                                        <div className="text-[10px] font-bold text-indigo-600 mb-1 print:text-[8px]">A+B 総労働</div>
-                                                        <div className="text-xl font-black text-indigo-700 font-mono print:text-lg">{formatTimeWithDec(sumIgka + sumIgkb)}</div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between print:bg-transparent print:border-none print:p-0 print:mt-4">
-                                            <span className="font-bold text-slate-700 print:text-[10px]">交通費 (手動入力)</span>
-                                            <div className="flex items-center gap-2">
-                                                <input type="number"
-                                                    value={monthlyData[currentEmp.id]?.[period]?.transportFee || ''}
-                                                    onChange={(e) => updateMonthlyData(currentEmp.id, period, 'transportFee', e.target.value)}
-                                                    className="border border-slate-300 rounded-lg p-2 w-32 text-right font-bold outline-none focus:border-indigo-500 print:border-none print:p-0 print:text-right"
-                                                    placeholder="0"
-                                                />
-                                                <span className="font-bold text-slate-500 print:text-[10px]">円</span>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    )}
+                    </header>
+                    <main className="flex-1 overflow-hidden">{currentView === 'setup' ? renderSetupScreen() : renderReportsScreen()}</main>
                 </div>
             );
-        }
-
+        };
+        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-    <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        @media print {
-            @page { margin: 1cm; size: A4 portrait; }
-            body { background: white !important; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .print\:hidden { display: none !important; }
-            .print\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
-            input, select { border: none !important; background: transparent !important; box-shadow: none !important; }
-        }
-    </style>
 </body>
 </html>
