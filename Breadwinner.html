@@ -13,9 +13,13 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Day.js -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <!-- ExcelJS & FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- ★ 1. 加入 Firebase SDK -->
+    <!-- ★ Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -33,15 +37,17 @@
         .holiday-row { background-color: #fef2f2 !important; }
         .holiday-text { color: #b91c1c !important; font-weight: bold; }
         .absent-row { background-color: #faf5ff !important; }
-        /* 讓四個宮格在不同螢幕不超出邊界 */
-        .grid-panel { height: calc((100vh - 80px) / 2 - 12px); min-height: 320px; }
+        
+        /* 修復過度依賴 calc 的響應式問題 */
+        .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
+        .collapsed-panel { flex-grow: 0 !important; flex-shrink: 0; min-height: fit-content; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ 2. Firebase 初始化設定
+        // ★ Firebase 初始化設定
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -56,7 +62,6 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
-        // 使用 v2 避免與舊程式碼格式衝突
         const docRef = db.collection('igk_data').doc('v2'); 
 
         const { useState, useEffect } = React;
@@ -69,36 +74,36 @@
         ];
 
         const INITIAL_EMPLOYEES = [
-            { num: 1, id: 'm2', name: 'Linh', type: 'full', location: 'myodani' },
-            { num: 2, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko' },
-            { num: 3, id: 'r2', name: 'Ratu Yassmyn Khairussalima', type: 'full', location: 'rokko' },
-            { num: 4, id: 'm1', name: '加藤友梨', type: 'full', location: 'myodani' },
-            { num: 5, id: 'r3', name: 'Yoon Honey Aung', type: 'full', location: 'rokko' },
-            { num: 6, id: 'r4', name: '林昊嬛', type: 'full', location: 'rokko' },
-            { num: 7, id: 'r15', name: '金栄美', type: 'part', location: 'rokko' },
-            { num: 8, id: 'r11', name: '沼田真里子', type: 'part', location: 'rokko' },
-            { num: 9, id: 'r16', name: '角田紀子', type: 'part', location: 'rokko' },
-            { num: 10, id: 'r6', name: '上山貴行', type: 'driver', location: 'rokko' },
-            { num: 11, id: 'r5', name: '實熊功光', type: 'driver', location: 'rokko' },
-            { num: 12, id: 'r12', name: '安藤佑也', type: 'driver', location: 'rokko' },
-            { num: 13, id: 'r7', name: 'Fergus', type: 'part', location: 'rokko' },
-            { num: 14, id: 'r8', name: 'Sammy Abukmeil', type: 'part', location: 'rokko' },
-            { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko' },
-            { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko' },
-            { num: 20, id: 'r14', name: 'Nao', type: 'part', location: 'rokko' },
-            { num: 21, id: 'r13', name: 'Misato', type: 'part', location: 'rokko' },
-            { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani' },
-            { num: 31, id: 'm4', name: '馬場亜希', type: 'part', location: 'myodani' },
-            { num: 32, id: 'm5', name: '篠崎', type: 'part', location: 'myodani' },
-            { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani' },
-            { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani' },
-            { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani' },
-            { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani' },
-            { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani' },
-            { num: 39, id: 'm13', name: '中嶋莉真', type: 'part', location: 'myodani' },
-            { num: 40, id: 'm14', name: '顕谷ユタカ', type: 'part', location: 'myodani' },
-            { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani' },
-            { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani' },
+            { num: 1, id: 'm2', name: 'Linh', type: 'full', location: 'myodani', aliases: ['リン'] },
+            { num: 2, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko', aliases: ['Minori', '葛野 みのり', 'みのり'] },
+            { num: 3, id: 'r2', name: 'Ratu Yassmyn Khairussalima', type: 'full', location: 'rokko', aliases: ['Yassmyn', 'ヤスミン'] },
+            { num: 4, id: 'm1', name: '加藤友梨', type: 'full', location: 'myodani', aliases: ['加藤', 'かとう'] },
+            { num: 5, id: 'r3', name: 'Yoon Honey Aung', type: 'full', location: 'rokko', aliases: ['Yoon', 'ユン'] },
+            { num: 6, id: 'r4', name: '林昊嬛', type: 'full', location: 'rokko', aliases: ['Koukei', '林 昊嬛', '林'] },
+            { num: 7, id: 'r15', name: '金栄美', type: 'part', location: 'rokko', aliases: ['kim eimi', 'eimi', '金'] },
+            { num: 8, id: 'r11', name: '沼田真里子', type: 'part', location: 'rokko', aliases: ['Mariko', 'マリコ', 'まりこ'] },
+            { num: 9, id: 'r16', name: '角田紀子', type: 'part', location: 'rokko', aliases: ['角田', 'つのだ'] },
+            { num: 10, id: 'r6', name: '上山貴行', type: 'driver', location: 'rokko', aliases: ['Taka', '上山', 'たか'] },
+            { num: 11, id: 'r5', name: '實熊功光', type: 'driver', location: 'rokko', aliases: ['Mikuma', '実熊', 'みくま'] },
+            { num: 12, id: 'r12', name: '安藤佑也', type: 'driver', location: 'rokko', aliases: ['Ando', '安藤'] },
+            { num: 13, id: 'r7', name: 'Fergus', type: 'part', location: 'rokko', aliases: ['ファーガス'] },
+            { num: 14, id: 'r8', name: 'Sammy Abukmeil', type: 'part', location: 'rokko', aliases: ['Sammy', 'サミー'] },
+            { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko', aliases: ['キム', 'Kim', 'Nakyung'] },
+            { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko', aliases: ['Nathan', 'ネイサン'] },
+            { num: 20, id: 'r14', name: 'Nao', type: 'part', location: 'rokko', aliases: ['ナオ', 'なお'] },
+            { num: 21, id: 'r13', name: 'Misato', type: 'part', location: 'rokko', aliases: ['ミサト', 'みさと'] },
+            { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani', aliases: ['大津', 'おおつ'] },
+            { num: 31, id: 'm4', name: '馬場亜希', type: 'part', location: 'myodani', aliases: ['馬場', 'ばば'] },
+            { num: 32, id: 'm5', name: '篠崎', type: 'part', location: 'myodani', aliases: ['しのざき'] },
+            { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani', aliases: ['よしの'] },
+            { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani', aliases: ['もり'] },
+            { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani', aliases: ['ハムナ'] },
+            { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani', aliases: ['サディア'] },
+            { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani', aliases: ['モニカ'] },
+            { num: 39, id: 'm13', name: '中嶋莉真', type: 'part', location: 'myodani', aliases: ['中嶋', 'なかじま'] },
+            { num: 40, id: 'm14', name: '顕谷ユタカ', type: 'part', location: 'myodani', aliases: ['顕谷', 'あきたに'] },
+            { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] },
+            { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
         ];
 
         const isHoliday = (dateStr) => {
@@ -119,8 +124,30 @@
             return `${h}:${m}`;
         };
 
+        const timeToMins = (t) => {
+            if (!t || typeof t !== 'string') return 0;
+            const [h, m] = t.split(':').map(Number);
+            return (h * 60) + (isNaN(m) ? 0 : m);
+        };
+        const minsToTime = (m) => {
+            if (m === null || m === undefined || isNaN(m) || m <= 0) return '';
+            return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+        };
+
+        const getSafeText = (cell) => {
+            if (!cell) return '';
+            try { if (cell.text !== undefined && cell.text !== null) return String(cell.text); } catch(e) {}
+            if (cell.value === null || cell.value === undefined) return '';
+            if (typeof cell.value === 'string') return cell.value;
+            if (typeof cell.value === 'number') return String(cell.value);
+            if (cell.value instanceof Date) return ''; 
+            if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
+            if (cell.value.result !== undefined && cell.value.result !== null) return String(cell.value.result);
+            try { return String(cell.value); } catch(e) { return ''; }
+        };
+
         const SettingPanel = ({ title, children, className = '', headerRight, isCollapsible, isOpen, onToggle }) => (
-            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col ${isCollapsible && !isOpen ? 'h-auto min-h-0' : 'grid-panel'} ${className}`}>
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 setting-panel-wrapper transition-all duration-300 ${isCollapsible && !isOpen ? 'collapsed-panel' : 'flex-1'} ${className}`}>
                 <div 
                     className={`flex justify-between items-center shrink-0 ${isCollapsible && !isOpen ? '' : 'mb-3 border-b pb-2'} ${isCollapsible ? 'cursor-pointer select-none transition-colors hover:bg-gray-50 rounded -mx-2 px-2 py-1' : ''}`}
                     onClick={isCollapsible ? onToggle : undefined}
@@ -132,7 +159,7 @@
                     <div onClick={e => e.stopPropagation()}>{headerRight}</div>
                 </div>
                 {(!isCollapsible || isOpen) && (
-                    <div className="flex-1 overflow-hidden flex flex-col">
+                    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                         {children}
                     </div>
                 )}
@@ -140,13 +167,13 @@
         );
 
         const App = () => {
-            // ★ 3. 雲端讀取狀態與解鎖密碼
+            // 雲端讀取狀態與解鎖密碼
             const [isCloudLoaded, setIsCloudLoaded] = useState(false);
-            const ADMIN_PASSWORD = "8888"; // ← 請在這裡修改你的專屬密碼
+            const ADMIN_PASSWORD = "8888";
 
             const [currentView, setCurrentView] = useState('setup');
             const [isLocked, setIsLocked] = useState(false);
-            const [isFixedTimeOpen, setIsFixedTimeOpen] = useState(false);
+            const [isFixedTimeOpen, setIsFixedTimeOpen] = useState(false); // 預設摺疊，更適應螢幕
             const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
             const [logs, setLogs] = useState([]);
             const [attendanceData, setAttendanceData] = useState({});
@@ -165,7 +192,7 @@
                 setLogs(prev => [`[${dayjs().format('HH:mm:ss')}] ${msg}`, ...prev]);
             };
 
-            // ★ 4. Firebase 初始資料讀取
+            // Firebase 初始資料讀取
             useEffect(() => {
                 docRef.get().then((doc) => {
                     if (doc.exists) {
@@ -182,7 +209,7 @@
                 });
             }, []);
 
-            // ★ 5. 即時監聽「鎖定狀態」
+            // 即時監聽「鎖定狀態」
             useEffect(() => {
                 if (!isCloudLoaded) return;
                 const unsubscribe = docRef.onSnapshot((doc) => {
@@ -194,7 +221,7 @@
                 return () => unsubscribe();
             }, [isCloudLoaded]);
 
-            // ★ 6. 資料變更時自動儲存至雲端
+            // 資料變更時自動儲存至雲端
             useEffect(() => {
                 if (!isCloudLoaded) return;
                 const timer = setTimeout(() => {
@@ -208,7 +235,6 @@
                 return () => clearTimeout(timer);
             }, [employees, attendanceData, specialRecords, isCloudLoaded]);
 
-            // ★ 7. 密碼鎖定/解鎖邏輯
             const handleToggleLock = () => {
                 if (isLocked) {
                     const pwd = window.prompt("請輸入管理員密碼以開放編輯 (パスワードを入力):");
@@ -227,7 +253,7 @@
                 }
             };
 
-            // 1. 純文字解析 (解決 0 筆問題，放寬 Regex 條件)
+            // 1. 純文字解析
             const handleParseTimecardText = () => {
                 if (!timecardText.trim()) return;
                 
@@ -244,21 +270,22 @@
                     if (/^\d{8}$/.test(line)) { 
                         if (i + 1 < lines.length) {
                             currentName = lines[i+1].replace(/\s+/g, '');
-                            i++; // skip name line
+                            i++;
                         }
                     }
                     else if (line === '入室' || line === '退室') {
                         currentAction = line === '入室' ? 'in' : 'out';
                         if (i + 1 < lines.length) {
                             const dateStrLine = lines[i+1];
-                            // 放寬日期擷取條件： 2026/08/17 或是 2026/8/17
                             const timeMatch = dateStrLine.match(/(\d{4}\/\d{1,2}\/\d{1,2})\s+(\d{1,2}:\d{2})/);
                             
                             if (timeMatch && currentName) {
-                                const emp = employees.find(e => e.name.replace(/\s+/g, '').includes(currentName) || currentName.includes(e.name.replace(/\s+/g, '')));
+                                const emp = employees.find(e => {
+                                    const matchNames = [e.name.replace(/\s+/g, ''), ...(e.aliases || []).map(a => a.replace(/\s+/g, ''))];
+                                    return matchNames.some(n => n.includes(currentName) || currentName.includes(n));
+                                });
                                 
                                 if (emp) {
-                                    // 標準化日期為 YYYY/MM/DD
                                     const dateKey = dayjs(timeMatch[1], 'YYYY/M/D').format('YYYY/MM/DD');
                                     const timeVal = timeMatch[2];
                                     
@@ -278,66 +305,183 @@
                 setTimecardText('');
             };
 
-            // 2. 模擬上傳檔案 (將資料寫入 8/10 確保落在 7/16~8/15)
+            // 2. 真實讀取 Excel 檔案並解析 (取代模擬資料)
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                addLog(`ファイル読み込み開始: ${file.name}...`);
-                
-                setTimeout(() => {
-                    setAttendanceData(prev => {
-                        const newData = { ...prev };
-                        // 模擬 8/10, 8/11, 8/12 的資料
-                        const mockDates = ['2026/08/10', '2026/08/11', '2026/08/12']; 
-                        
-                        const initData = (empId, date) => {
-                            if (!newData[empId]) newData[empId] = {};
-                            if (!newData[empId][date]) newData[empId][date] = { location: 'rokko' }; // basic init
-                        };
+                if (!file.name.endsWith('.xlsx')) {
+                    addLog('Excel(.xlsx)ファイルを選択してください。', 'error');
+                    return;
+                }
 
-                        if (file.name.includes('交通費')) {
-                            ['m1', 'm2', 'r1', 'r4'].forEach(id => {
-                                initData(id, '2026/08/10');
-                                newData[id]['2026/08/10'].transFee = 1500;
+                addLog(`Excelファイル解析中: ${file.name}...`);
+                
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        const wb = new ExcelJS.Workbook();
+                        await wb.xlsx.load(evt.target.result);
+                        let newData = JSON.parse(JSON.stringify(attendanceData));
+                        let localEmps = JSON.parse(JSON.stringify(employees));
+                        let count = 0;
+
+                        wb.worksheets.forEach(ws => {
+                            let currentDates = {}; 
+                            let currentColMap = {};
+
+                            for (let r = 1; r <= ws.rowCount; r++) {
+                                for (let c = 1; c <= 10; c++) {
+                                    let textStr = getSafeText(ws.getCell(r, c));
+                                    let valObj = ws.getCell(r, c).value;
+                                    
+                                    if (valObj instanceof Date && valObj.getFullYear() > 2000) {
+                                        currentDates[r] = { key: dayjs(valObj).format('YYYY/MM/DD'), obj: valObj };
+                                        break;
+                                    }
+                                    
+                                    let t = textStr.replace(/\s+/g, '');
+                                    if (t.match(/\d{1,2}[:：\.]\d{2}/)) continue; 
+                                    
+                                    const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日]\))?$/);
+                                    if (m) {
+                                        let y = new Date().getFullYear();
+                                        const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
+                                        let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
+                                        currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
+                                        break;
+                                    }
+                                }
+
+                                let matches = 0;
+                                let tempMap = {};
+
+                                for (let c = 1; c <= 40; c++) {
+                                    let cellRaw = getSafeText(ws.getCell(r, c));
+                                    let v = cellRaw.toLowerCase().replace(/\s+/g, '');
+                                    if (v.length >= 1) {
+                                        for (const emp of localEmps) { 
+                                            let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/\s+/g, ''))];
+                                            if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
+                                                tempMap[c] = emp.id; matches++; break;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                if (matches >= 2) { 
+                                    currentColMap = tempMap;
+                                }
+
+                                let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
+                                if (activeDateRow && Object.keys(currentColMap).length > 0) {
+                                    let dateInfo = currentDates[activeDateRow];
+                                    
+                                    Object.keys(currentColMap).forEach(c => {
+                                        const empId = currentColMap[c];
+                                        let actCell = ws.getCell(r, parseInt(c));
+                                        if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
+                                        
+                                        let cellText = getSafeText(actCell).trim();
+                                        let hasContent = /[a-zA-Z0-9\u3040-\u30FF\u4E00-\u9FFF]/.test(cellText);
+                                        const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
+                                        
+                                        let fill = actCell.fill || {};
+                                        let hex = '';
+                                        if (fill.type === 'pattern' && fill.pattern !== 'none') {
+                                            hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
+                                            if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+                                        }
+
+                                        let theme = fill.fgColor?.theme ?? fill.bgColor?.theme ?? -1;
+                                        let indexed = fill.fgColor?.indexed ?? fill.bgColor?.indexed ?? -1;
+
+                                        const isRedOrPink = (hex && (hex.includes('FF00') || hex.includes('FF33') || hex.includes('FF66') || hex.includes('FF99') || hex.includes('FFCC') || hex.includes('FFFCE4') || hex.includes('FFF4B0') || hex.includes('FFFFE4') || hex.includes('FFD5A6'))) || theme === 6 || theme === 5 || indexed === 10 || indexed === 29 || indexed === 38;
+                                        const isEnglish = /[a-zA-Z]/.test(cellText);
+                                        
+                                        const blueHexes = ['B4C6E7', 'D9E1F2', '8EA9DB', '2F75B5', '9BC2E6', 'DDEBF7', '0070C0', '002060', '00B0F0', 'AADC', 'E1F2', 'CCFF', '3366FF', '0000FF'];
+                                        let isBlue = (hex && blueHexes.some(b => hex.includes(b))) || theme === 4 || theme === 8 || indexed === 4 || indexed === 12 || indexed === 20 || indexed === 37;
+                                        let isGrey = (hex && (hex.includes('A6A6') || hex.includes('D9D9') || hex.includes('BFBF') || hex.includes('8080') || hex.includes('AEAAAA'))) || theme === 3 || indexed === 15 || indexed === 22 || indexed === 23;
+
+                                        if (!newData[empId]) newData[empId] = {};
+                                        if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = {};
+                                        let dataRef = newData[empId][dateInfo.key];
+
+                                        if (cellText.includes('欠') || cellText.includes('休') || isGrey) {
+                                            if (cellText.includes('欠') || cellText.includes('休')) {
+                                                dataRef.leaveType = cellText.substring(0, 10);
+                                                count++;
+                                            }
+                                            return; 
+                                        }
+
+                                        let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
+                                        
+                                        if (isDriverKeyword && exactMatches.length > 0) {
+                                            exactMatches.forEach(m => {
+                                                let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                if (!dataRef._tempDrivers) dataRef._tempDrivers = [];
+                                                dataRef._tempDrivers.push(tMins);
+                                            });
+                                            count++;
+                                        } else if ((isRedOrPink && isEnglish) || (isBlue && hasContent)) {
+                                            let prevIgkA = parseInt(dataRef.igkA || 0);
+                                            dataRef.igkA = prevIgkA + 30; // 分鐘計算
+                                            count++;
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                        
+                        Object.keys(newData).forEach(empId => {
+                            Object.keys(newData[empId]).forEach(dateKey => {
+                                let dataRef = newData[empId][dateKey];
+                                if (dataRef._tempDrivers && dataRef._tempDrivers.length > 0) {
+                                    let times = dataRef._tempDrivers.sort((a,b) => a - b);
+                                    let totalDriverMins = 0;
+                                    let tripStrs = [];
+                                    
+                                    for (let i = 0; i < times.length - 1; i += 2) {
+                                        totalDriverMins += (times[i+1] - times[i]);
+                                        tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
+                                    }
+                                    if (times.length % 2 !== 0) {
+                                        tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                                    }
+
+                                    let prevDriver = parseInt(dataRef.driveMins || 0);
+                                    dataRef.driveMins = prevDriver + totalDriverMins;
+                                    
+                                    let existingRemark = dataRef.remark || '';
+                                    let newRemark = tripStrs.join(', ');
+                                    if (newRemark) {
+                                        dataRef.remark = existingRemark ? (existingRemark + ' / ' + newRemark) : newRemark;
+                                    }
+                                    delete dataRef._tempDrivers;
+                                }
                             });
-                            addLog(`「${file.name}」を取り込みました。交通費を反映しました (模擬: 8/10)`, 'success');
-                        } 
-                        else if (file.name.includes('Summer')) {
-                            ['r1', 'r2', 'r3', 'r4'].forEach(id => {
-                                mockDates.forEach(d => {
-                                    initData(id, d);
-                                    newData[id][d].shiftStart = '09:30';
-                                    newData[id][d].shiftEnd = '18:30';
-                                    newData[id][d].location = 'rokko';
-                                });
-                            });
-                            addLog(`六甲校シフトを解析しました。(模擬: 8/10~8/12 班表反映)`, 'success');
-                        } 
-                        else if (file.name.includes('名谷')) {
-                            ['m1', 'm2'].forEach(id => {
-                                mockDates.forEach(d => {
-                                    initData(id, d);
-                                    newData[id][d].shiftStart = '09:15';
-                                    newData[id][d].shiftEnd = '18:15';
-                                    newData[id][d].location = 'myodani';
-                                });
-                            });
-                            addLog(`名谷校シフトを解析しました。(模擬: 8/10~8/12 班表反映)`, 'success');
+                        });
+                        
+                        if (count > 0) {
+                            setAttendanceData(newData);
+                            addLog(`Excelから色・時間を抽出し、${count}件のシフト/勤務データを反映しました。`, 'success');
+                        } else {
+                            addLog(`Excelファイルは読み込まれましたが、抽出可能なデータがありませんでした。`, 'info');
                         }
-                        return newData;
-                    });
-                }, 800);
+                    } catch (err) {
+                        addLog(`解析エラー: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = null;
             };
 
-            // 3. 特別時間寫入 (包含防呆)
             const handleAddSpecialTime = () => {
                 if (!specialTime.startDate || !specialTime.start || !specialTime.end) {
                     addLog('日付範囲の開始日と時間帯を入力してください。', 'error');
                     return;
                 }
-                
-                // 防呆機制：開始時間必須小於結束時間 (防止 09:59 - 09:00)
                 if (specialTime.start >= specialTime.end) {
                     addLog('時間設定有誤（開始時間必須早於結束時間）。', 'error');
                     return;
@@ -382,186 +526,186 @@
 
             // --- 畫面渲染：1. 設定畫面 ---
             const renderSetupScreen = () => (
-                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-[calc(100vh-60px)] overflow-y-auto ${isLocked ? 'locked-overlay' : ''}`}>
+                <div className={`flex flex-col lg:flex-row gap-4 p-4 h-[calc(100vh-60px)] overflow-y-auto ${isLocked ? 'locked-overlay' : ''}`}>
                     
-                    {/* 左上：正社員固定時間與名單 */}
-                    <SettingPanel 
-                        title="正社員の固定勤務時間 / 社員管理" 
-                        isCollapsible={true}
-                        isOpen={isFixedTimeOpen}
-                        onToggle={() => setIsFixedTimeOpen(!isFixedTimeOpen)}
-                        headerRight={
-                            <button className="text-[11px] bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded shadow-sm hover:bg-blue-200 transition">
-                                <i className="fa-brands fa-google-drive mr-1"></i> 労務管理から取込
-                            </button>
-                        }
-                    >
-                        <div className="flex flex-col h-full gap-3">
-                            <div className="flex gap-3 h-[60%] min-h-[140px]">
-                                {/* 六甲校 */}
-                                <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
-                                    <div className="p-2 border-b bg-white flex justify-between items-center shrink-0">
-                                        <h3 className="font-bold text-blue-800 text-xs"><i className="fa-solid fa-school"></i> 六甲校</h3>
-                                        <span className="text-[10px] font-mono bg-blue-50 px-1.5 py-0.5 rounded border text-blue-700">09:30 - 18:30</span>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
-                                        {employees.filter(e => e.type === 'full' && e.location === 'rokko').sort((a,b)=>a.num-b.num).map(emp => (
-                                            <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">
-                                                {emp.num}. {emp.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                {/* 名谷校 */}
-                                <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
-                                    <div className="p-2 border-b bg-white flex justify-between items-center shrink-0">
-                                        <h3 className="font-bold text-green-800 text-xs"><i className="fa-solid fa-school"></i> 名谷校</h3>
-                                        <span className="text-[10px] font-mono bg-green-50 px-1.5 py-0.5 rounded border text-green-700">09:15 - 18:15</span>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
-                                        {employees.filter(e => e.type === 'full' && e.location === 'myodani').sort((a,b)=>a.num-b.num).map(emp => (
-                                            <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">
-                                                {emp.num}. {emp.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* 社員與打工管理 (固定於下方) */}
-                            <div className="border rounded-lg bg-gray-50 p-2 flex flex-col flex-1 shrink-0">
-                                <div className="font-bold text-gray-700 text-xs mb-2 px-1">社員とアルバイト管理</div>
-                                <div className="flex gap-2 items-center mb-2 px-1 shrink-0 flex-wrap">
-                                    <input type="text" placeholder="No." className="w-12 border p-1 rounded text-xs outline-none bg-white shadow-inner flex-none" />
-                                    <input type="text" placeholder="氏名" className="flex-1 border p-1 rounded text-xs outline-none bg-white shadow-inner min-w-[80px]" />
-                                    <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>アルバイト</option><option>正社員</option></select>
-                                    <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>六甲</option><option>名谷</option></select>
-                                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-blue-700 flex-none transition">追加</button>
-                                    <button className="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-red-600 flex-none transition">削除</button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto bg-white border rounded p-1 shadow-inner min-h-[60px]">
-                                    <ul className="space-y-1">
-                                        {employees.map(emp => (
-                                            <li key={emp.id} className="text-[10px] p-1 bg-gray-50 rounded flex justify-between text-gray-600 hover:bg-gray-100">
-                                                <span className="font-bold">{emp.num}. {emp.name}</span>
-                                                <span>{emp.type==='full'?'正社員':emp.type==='driver'?'司機':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </SettingPanel>
-
-                    {/* 右上：上傳與文字貼上 */}
-                    <SettingPanel title="ファイルアップロード / テキスト貼付">
-                        <div className="flex flex-col h-full gap-3">
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg py-3 text-center bg-gray-50 hover:bg-gray-100 relative cursor-pointer transition shrink-0">
-                                <i className="fa-solid fa-cloud-arrow-up text-xl text-gray-400 mb-1"></i>
-                                <p className="text-[11px] text-gray-600 font-bold">シフト(Excel) / 交通費 / 打刻記録アップロード</p>
-                                <input type="file" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                            </div>
-                            <div className="flex-1 flex flex-col min-h-[120px]">
-                                <div className="flex justify-between items-center mb-1 shrink-0">
-                                    <label className="text-xs font-bold text-gray-600">打刻記録テキスト貼付</label>
-                                    <button onClick={handleParseTimecardText} className="bg-blue-600 text-white text-[11px] px-3 py-1 rounded shadow-sm font-bold hover:bg-blue-700 transition">
-                                        <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>テキスト解析
-                                    </button>
-                                </div>
-                                <textarea 
-                                    className="w-full flex-1 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50"
-                                    placeholder="例：&#10;00000646&#10;林 昊嬛&#10;&#10;入室&#10;2026/08/17 08:44..."
-                                    value={timecardText}
-                                    onChange={(e) => setTimecardText(e.target.value)}
-                                ></textarea>
-                            </div>
-                        </div>
-                    </SettingPanel>
-
-                    {/* 左下：特別勤務時間 */}
-                    <SettingPanel title="正社員の特別勤務時間設定">
-                        <div className="flex gap-4 h-full">
-                            <div className="w-1/2 flex flex-col gap-2 border-r pr-4 overflow-y-auto">
-                                <div>
-                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">日付範囲</label>
-                                    <div className="flex gap-1">
-                                        <input type="date" value={specialTime.startDate} onChange={e=>setSpecialTime({...specialTime, startDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
-                                        <span className="self-center">-</span>
-                                        <input type="date" value={specialTime.endDate} onChange={e=>setSpecialTime({...specialTime, endDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">時間帯</label>
-                                    <div className="flex gap-1">
-                                        <input type="time" value={specialTime.start} onChange={e=>setSpecialTime({...specialTime, start: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
-                                        <span className="self-center">-</span>
-                                        <input type="time" value={specialTime.end} onChange={e=>setSpecialTime({...specialTime, end: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">理由 (例: season school)</label>
-                                    <input type="text" value={specialTime.reason} onChange={e=>setSpecialTime({...specialTime, reason: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-[11px] text-gray-500 font-bold block mb-1">対象校舎・社員</label>
-                                    <div className="flex gap-1">
-                                        <select value={specialTime.location} onChange={e=>setSpecialTime({...specialTime, location: e.target.value, target: 'all'})} className="border p-1 text-[11px] rounded bg-gray-50 flex-none w-[70px] outline-none">
-                                            <option value="rokko">六甲校</option>
-                                            <option value="myodani">名谷校</option>
-                                        </select>
-                                        <select value={specialTime.target} onChange={e=>setSpecialTime({...specialTime, target: e.target.value})} className="border p-1 text-[11px] rounded bg-gray-50 flex-1 min-w-0 outline-none">
-                                            <option value="all">【すべて】</option>
-                                            {employees.filter(e => e.type === 'full' && e.location === specialTime.location).map(emp => (
-                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    {/* 左半部：人事管理與特別時間 */}
+                    <div className="flex flex-col gap-4 w-full lg:w-1/2 min-h-0">
+                        {/* 正社員固定時間與名單 (支援摺疊) */}
+                        <SettingPanel 
+                            title="正社員の固定勤務時間 / 社員管理" 
+                            isCollapsible={true}
+                            isOpen={isFixedTimeOpen}
+                            onToggle={() => setIsFixedTimeOpen(!isFixedTimeOpen)}
+                            headerRight={
+                                <button className="text-[11px] bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded shadow-sm hover:bg-blue-200 transition">
+                                    <i className="fa-brands fa-google-drive mr-1"></i> 労務管理から取込
+                                </button>
+                            }
+                        >
+                            <div className="flex flex-col h-full gap-3 min-h-0">
+                                <div className="flex gap-3 h-[40%] min-h-[100px] shrink-0">
+                                    {/* 六甲校 */}
+                                    <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
+                                        <div className="p-1.5 border-b bg-white flex justify-between items-center shrink-0">
+                                            <h3 className="font-bold text-blue-800 text-xs"><i className="fa-solid fa-school"></i> 六甲校</h3>
+                                            <span className="text-[10px] font-mono bg-blue-50 px-1.5 py-0.5 rounded border text-blue-700">09:30 - 18:30</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                                            {employees.filter(e => e.type === 'full' && e.location === 'rokko').sort((a,b)=>a.num-b.num).map(emp => (
+                                                <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">{emp.num}. {emp.name}</div>
                                             ))}
-                                        </select>
+                                        </div>
+                                    </div>
+                                    {/* 名谷校 */}
+                                    <div className="bg-gray-50 rounded-lg border flex-1 flex flex-col overflow-hidden">
+                                        <div className="p-1.5 border-b bg-white flex justify-between items-center shrink-0">
+                                            <h3 className="font-bold text-green-800 text-xs"><i className="fa-solid fa-school"></i> 名谷校</h3>
+                                            <span className="text-[10px] font-mono bg-green-50 px-1.5 py-0.5 rounded border text-green-700">09:15 - 18:15</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                                            {employees.filter(e => e.type === 'full' && e.location === 'myodani').sort((a,b)=>a.num-b.num).map(emp => (
+                                                <div key={emp.id} className="text-[11px] p-1.5 bg-white border rounded shadow-sm text-gray-700 font-medium">{emp.num}. {emp.name}</div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                                {/* 修復：固定在底部的按鈕 */}
+                                
+                                {/* 社員與打工管理 (修復溢出重疊問題) */}
+                                <div className="border rounded-lg bg-gray-50 p-2 flex flex-col flex-1 shrink-0 min-h-0">
+                                    <div className="font-bold text-gray-700 text-xs mb-2 px-1 shrink-0">社員とアルバイト管理</div>
+                                    <div className="flex gap-2 items-center mb-2 px-1 flex-wrap shrink-0">
+                                        <input type="text" placeholder="No." className="w-12 border p-1 rounded text-xs outline-none bg-white shadow-inner flex-none" />
+                                        <input type="text" placeholder="氏名" className="flex-1 border p-1 rounded text-xs outline-none bg-white shadow-inner min-w-[80px]" />
+                                        <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>アルバイト</option><option>正社員</option></select>
+                                        <select className="border p-1 rounded text-xs outline-none bg-white shadow-sm flex-none"><option>六甲</option><option>名谷</option></select>
+                                        <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-blue-700 flex-none transition">追加</button>
+                                        <button className="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-red-600 flex-none transition">削除</button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto bg-white border rounded p-1 shadow-inner min-h-[60px]">
+                                        <ul className="space-y-1">
+                                            {employees.map(emp => (
+                                                <li key={emp.id} className="text-[10px] p-1 bg-gray-50 rounded flex justify-between text-gray-600 hover:bg-gray-100">
+                                                    <span className="font-bold">{emp.num}. {emp.name}</span>
+                                                    <span>{emp.type==='full'?'正社員':emp.type==='driver'?'司機':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </SettingPanel>
+
+                        {/* 特別勤務時間 */}
+                        <SettingPanel title="正社員の特別勤務時間設定">
+                            <div className="flex flex-col h-full min-h-0">
+                                <div className="flex gap-4 flex-1 min-h-0">
+                                    <div className="w-1/2 flex flex-col gap-2 border-r pr-4 overflow-y-auto">
+                                        <div>
+                                            <label className="text-[11px] text-gray-500 font-bold block mb-1">日付範囲</label>
+                                            <div className="flex gap-1">
+                                                <input type="date" value={specialTime.startDate} onChange={e=>setSpecialTime({...specialTime, startDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                                <span className="self-center">-</span>
+                                                <input type="date" value={specialTime.endDate} onChange={e=>setSpecialTime({...specialTime, endDate: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-gray-500 font-bold block mb-1">時間帯</label>
+                                            <div className="flex gap-1">
+                                                <input type="time" value={specialTime.start} onChange={e=>setSpecialTime({...specialTime, start: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                                <span className="self-center">-</span>
+                                                <input type="time" value={specialTime.end} onChange={e=>setSpecialTime({...specialTime, end: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-gray-500 font-bold block mb-1">理由 (例: season school)</label>
+                                            <input type="text" value={specialTime.reason} onChange={e=>setSpecialTime({...specialTime, reason: e.target.value})} className="border p-1 text-[11px] rounded w-full bg-gray-50 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-gray-500 font-bold block mb-1">対象校舎・社員</label>
+                                            <div className="flex gap-1">
+                                                <select value={specialTime.location} onChange={e=>setSpecialTime({...specialTime, location: e.target.value, target: 'all'})} className="border p-1 text-[11px] rounded bg-gray-50 flex-none w-[70px] outline-none">
+                                                    <option value="rokko">六甲校</option>
+                                                    <option value="myodani">名谷校</option>
+                                                </select>
+                                                <select value={specialTime.target} onChange={e=>setSpecialTime({...specialTime, target: e.target.value})} className="border p-1 text-[11px] rounded bg-gray-50 flex-1 min-w-0 outline-none">
+                                                    <option value="all">【すべて】</option>
+                                                    {employees.filter(e => e.type === 'full' && e.location === specialTime.location).map(emp => (
+                                                        <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="w-1/2 flex flex-col overflow-hidden">
+                                        <h3 className="font-bold text-gray-700 mb-2 text-xs shrink-0">設定記録</h3>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                            {specialRecords.length === 0 ? <p className="text-[10px] text-gray-400 italic text-center mt-4">記録なし</p> : 
+                                                <ul className="space-y-2">
+                                                    {specialRecords.map((rec, i) => (
+                                                        <li key={i} className="text-[10px] p-2 bg-yellow-50 border border-yellow-200 rounded relative shadow-sm">
+                                                            <div className="font-bold text-yellow-800">{rec.startDate} ~ {rec.endDate || rec.startDate}</div>
+                                                            <div className="text-gray-700">{rec.start} - {rec.end}</div>
+                                                            <div className="text-gray-500 truncate pr-10">{rec.reason}</div>
+                                                            <span className="absolute top-1 right-1 bg-white px-1 py-0.5 rounded shadow text-[9px] font-bold">
+                                                                {rec.location === 'rokko' ? '六甲' : '名谷'} : {rec.target==='all' ? '全体' : '個人'}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                                 <button onClick={handleAddSpecialTime} className="mt-3 bg-gray-800 text-white text-xs py-2 rounded hover:bg-gray-700 transition font-bold shadow-sm w-full shrink-0">
                                     追加してシフトに反映
                                 </button>
                             </div>
-                            <div className="w-1/2 flex flex-col">
-                                <h3 className="font-bold text-gray-700 mb-2 text-xs shrink-0">設定記録</h3>
-                                <div className="flex-1 overflow-y-auto">
-                                    {specialRecords.length === 0 ? <p className="text-[10px] text-gray-400 italic text-center mt-4">記録なし</p> : 
-                                        <ul className="space-y-2">
-                                            {specialRecords.map((rec, i) => (
-                                                <li key={i} className="text-[10px] p-2 bg-yellow-50 border border-yellow-200 rounded relative shadow-sm">
-                                                    <div className="font-bold text-yellow-800">{rec.startDate} ~ {rec.endDate || rec.startDate}</div>
-                                                    <div className="text-gray-700">{rec.start} - {rec.end}</div>
-                                                    <div className="text-gray-500 truncate pr-10">{rec.reason}</div>
-                                                    <span className="absolute top-1 right-1 bg-white px-1 py-0.5 rounded shadow text-[9px] font-bold">
-                                                        {rec.location === 'rokko' ? '六甲' : '名谷'} : {rec.target==='all' ? '全体' : '個人'}
-                                                    </span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    }
+                        </SettingPanel>
+                    </div>
+
+                    {/* 右半部：上傳與 Logs */}
+                    <div className="flex flex-col gap-4 w-full lg:w-1/2 min-h-0">
+                        <SettingPanel title="ファイルアップロード / テキスト貼付">
+                            <div className="flex flex-col h-full gap-3 min-h-0">
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg py-3 text-center bg-gray-50 hover:bg-gray-100 relative cursor-pointer transition shrink-0">
+                                    <i className="fa-solid fa-cloud-arrow-up text-xl text-gray-400 mb-1"></i>
+                                    <p className="text-[11px] text-gray-600 font-bold">シフト(Excel) / 交通費 / 打刻記録アップロード</p>
+                                    <input type="file" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                </div>
+                                <div className="flex-1 flex flex-col min-h-[120px]">
+                                    <div className="flex justify-between items-center mb-1 shrink-0">
+                                        <label className="text-xs font-bold text-gray-600">打刻記録テキスト貼付</label>
+                                        <button onClick={handleParseTimecardText} className="bg-blue-600 text-white text-[11px] px-3 py-1 rounded shadow-sm font-bold hover:bg-blue-700 transition">
+                                            <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>テキスト解析
+                                        </button>
+                                    </div>
+                                    <textarea 
+                                        className="w-full flex-1 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50"
+                                        placeholder="例：&#10;00000646&#10;林 昊嬛&#10;&#10;入室&#10;2026/08/17 08:44..."
+                                        value={timecardText}
+                                        onChange={(e) => setTimecardText(e.target.value)}
+                                    ></textarea>
                                 </div>
                             </div>
-                        </div>
-                    </SettingPanel>
+                        </SettingPanel>
 
-                    {/* 右下：Log */}
-                    <SettingPanel title="システムログ">
-                        <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-full overflow-y-auto shadow-inner leading-relaxed">
-                            {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
-                                logs.map((log, i) => (
-                                    <div key={i} className={`mb-1 ${log.includes('失敗') || log.includes('error') ? 'text-red-400' : (log.includes('成功') || log.includes('反映しました') ? 'text-green-300' : 'text-gray-300')}`}>
-                                        {log}
-                                    </div>
-                                ))
-                            }
-                        </div>
-                    </SettingPanel>
+                        <SettingPanel title="システムログ">
+                            <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-full overflow-y-auto shadow-inner leading-relaxed">
+                                {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
+                                    logs.map((log, i) => (
+                                        <div key={i} className={`mb-1 ${log.includes('失敗') || log.includes('error') ? 'text-red-400' : (log.includes('成功') || log.includes('反映しました') ? 'text-green-300' : 'text-gray-300')}`}>
+                                            {log}
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        </SettingPanel>
+                    </div>
                 </div>
             );
 
             // --- 畫面渲染：2. 個人報表畫面 ---
             const EmployeeReport = ({ employee, data, payMonth, periodStart, periodEnd }) => {
-                // 新增：個人頁面專用的手動修改開關 (預設為 false 關閉)
                 const [localEditable, setLocalEditable] = useState(false);
 
                 const dates = [];
@@ -576,7 +720,6 @@
                 let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0;
 
                 const handleInput = (date, field, val) => {
-                    // 修改：如果系統整體鎖定，或是個人頁面手動修改未開啟，則阻擋輸入
                     if (isLocked || !localEditable) return;
                     setAttendanceData(prev => {
                         const newData = { ...prev };
@@ -595,10 +738,8 @@
                                 {employee.name}
                             </h2>
                             <div className="flex items-center gap-2">
-                                <div className="text-xs font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3">
+                                <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3">
                                     <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
-                                    
-                                    {/* 手動修改切換按鈕 */}
                                     <button 
                                         onClick={() => setLocalEditable(!localEditable)}
                                         disabled={isLocked}
@@ -615,31 +756,30 @@
                             </div>
                         </div>
 
-                        {/* 報表主表格 */}
-                        <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px]">
+                        {/* 報表主表格：縮小間距，讓畫面呈現更多資料 */}
+                        <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px] custom-scrollbar">
                             <table className="w-full text-left border-collapse whitespace-nowrap">
                                 <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 text-gray-700">
                                     <tr>
-                                        <th className="border p-1.5 min-w-[80px]">日付</th>
-                                        <th className="border p-1.5">校舎</th>
-                                        <th className="border p-1.5">入室</th>
-                                        <th className="border p-1.5">退室</th>
-                                        <th className="border p-1.5 text-blue-800">シフト</th>
-                                        <th className="border p-1.5 bg-blue-50">入退室総時間</th>
-                                        <th className="border p-1.5">休憩</th>
-                                        <th className="border p-1.5 bg-green-50">勤務時間</th>
-                                        {employee.type === 'full' && <><th className="border p-1.5">早残業</th><th className="border p-1.5">後残業</th><th className="border p-1.5">出張費</th></>}
-                                        {employee.type === 'driver' && <><th className="border p-1.5">運転時間</th><th className="border p-1.5">IGK A</th><th className="border p-1.5">IGK B</th></>}
-                                        {employee.type === 'part' && <><th className="border p-1.5">IGK A</th><th className="border p-1.5">IGK B</th></>}
-                                        <th className="border p-1.5 bg-yellow-50">交通費</th>
-                                        <th className="border p-1.5 min-w-[120px]">備考・出勤狀況</th>
+                                        <th className="border p-1 min-w-[70px]">日付</th>
+                                        <th className="border p-1">校舎</th>
+                                        <th className="border p-1">入室</th>
+                                        <th className="border p-1">退室</th>
+                                        <th className="border p-1 text-blue-800">シフト</th>
+                                        <th className="border p-1 bg-blue-50">入退室時間</th>
+                                        <th className="border p-1">休憩</th>
+                                        <th className="border p-1 bg-green-50">勤務時間</th>
+                                        {employee.type === 'full' && <><th className="border p-1">早残業</th><th className="border p-1">後残業</th><th className="border p-1">出張費</th></>}
+                                        {employee.type === 'driver' && <><th className="border p-1">運転時間</th><th className="border p-1">IGK A</th><th className="border p-1">IGK B</th></>}
+                                        {employee.type === 'part' && <><th className="border p-1">IGK A</th><th className="border p-1">IGK B</th></>}
+                                        <th className="border p-1 bg-yellow-50">交通費</th>
+                                        <th className="border p-1 min-w-[120px]">備考・出勤狀況</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {dates.map((date) => {
                                         const isH = isHoliday(date);
                                         const dayData = data[date] || {};
-                                        // 只要有打卡 或 有設定シフト，就算該日有紀錄要顯示
                                         const hasData = !!(dayData.in || dayData.out);
                                         
                                         if (hasData) workDays++;
@@ -683,44 +823,44 @@
 
                                         return (
                                             <tr key={date} className={rowClass}>
-                                                <td className="border p-1.5">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
-                                                <td className="border p-1.5 text-center">
-                                                    <select disabled={isLocked || !localEditable} className="bg-transparent text-[10px] outline-none" value={dayData.location || employee.location} onChange={e=>handleInput(date,'location',e.target.value)}>
+                                                <td className="border p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
+                                                <td className="border p-0.5 text-center">
+                                                    <select disabled={isLocked || !localEditable} className="bg-transparent outline-none w-full text-center" value={dayData.location || employee.location} onChange={e=>handleInput(date,'location',e.target.value)}>
                                                         <option value="rokko">六甲</option><option value="myodani">名谷</option>
                                                     </select>
                                                 </td>
-                                                <td className="border p-1.5 text-center">{dayData.in}</td>
-                                                <td className="border p-1.5 text-center">{dayData.out}</td>
+                                                <td className="border p-0.5 text-center">{dayData.in}</td>
+                                                <td className="border p-0.5 text-center">{dayData.out}</td>
                                                 
-                                                <td className="border p-1.5 text-center text-blue-600 font-bold bg-blue-50/20">{dayData.shiftStart ? `${dayData.shiftStart}-${dayData.shiftEnd}` : ''}</td>
+                                                <td className="border p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">{dayData.shiftStart ? `${dayData.shiftStart}-${dayData.shiftEnd}` : ''}</td>
                                                 
-                                                <td className="border p-1.5 text-center font-bold text-gray-700 bg-blue-50">{inOutMins > 0 ? (inOutMins/60).toFixed(2) : ''}</td>
-                                                <td className="border p-1.5 text-center">{hasData ? breakMins : ''}</td>
-                                                <td className="border p-1.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
+                                                <td className="border p-0.5 text-center font-bold text-gray-700 bg-blue-50">{inOutMins > 0 ? (inOutMins/60).toFixed(2) : ''}</td>
+                                                <td className="border p-0.5 text-center">{hasData ? breakMins : ''}</td>
+                                                <td className="border p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
                                                 
                                                 {employee.type === 'full' && <>
-                                                    <td className="border p-1.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
-                                                    <td className="border p-1.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
-                                                    <td className="border p-1.5 text-center"></td>
+                                                    <td className="border p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
+                                                    <td className="border p-0.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
+                                                    <td className="border p-0.5 text-center"></td>
                                                 </>}
                                                 {employee.type === 'driver' && <>
-                                                    <td className="border p-1.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
-                                                    <td className="border p-1.5 text-center">{igkA > 0 ? igkA : ''}</td>
-                                                    <td className="border p-1.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                    <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
+                                                    <td className="border p-0.5 text-center">{igkA > 0 ? igkA : ''}</td>
+                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
                                                 </>}
                                                 {employee.type === 'part' && <>
-                                                    <td className="border p-1.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded" value={dayData.igkA || ''} onChange={e=>handleInput(date,'igkA',e.target.value)} /></td>
-                                                    <td className="border p-1.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                    <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkA || ''} onChange={e=>handleInput(date,'igkA',e.target.value)} /></td>
+                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
                                                 </>}
-                                                <td className="border p-1 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border outline-none px-1 bg-transparent" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
-                                                <td className="border p-1">
-                                                    <div className="flex gap-1 items-center">
+                                                <td className="border p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-1 py-1 bg-transparent" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                                <td className="border p-0.5">
+                                                    <div className="flex gap-1 items-center px-1">
                                                         {employee.type === 'full' && !hasData && !isH && (
                                                             <select disabled={isLocked || !localEditable} className="text-[10px] border p-0.5 outline-none rounded bg-white shadow-sm text-purple-700" value={dayData.leaveType||''} onChange={e=>handleInput(date,'leaveType',e.target.value)}>
                                                                 <option value="">-</option><option value="有休(1日)">有休(1日)</option><option value="有休(半日)">有休(半日)</option><option value="有休(2時間)">有休(2h)</option><option value="事欠">事欠</option><option value="病欠">病欠</option>
                                                             </select>
                                                         )}
-                                                        <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full text-[10px] focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
+                                                        <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                     </div>
                                                 </td>
                                             </tr>
@@ -731,35 +871,35 @@
                         </div>
 
                         {/* 底層統計圖表 */}
-                        <div className="mt-3 border-t pt-3 shrink-0">
-                            <div className="flex gap-3 flex-wrap items-stretch mb-2">
-                                <div className="bg-white rounded-lg p-3 flex gap-4 shadow-sm border border-gray-200 min-w-[180px]">
-                                    <div className="text-center border-r pr-4">
+                        <div className="mt-2 border-t pt-2 shrink-0">
+                            <div className="flex gap-2 flex-wrap items-stretch">
+                                <div className="bg-white rounded-lg p-2 flex gap-3 shadow-sm border border-gray-200 min-w-[160px]">
+                                    <div className="text-center border-r pr-3">
                                         <div className="text-[10px] text-gray-500 font-bold mb-1">出勤日数</div>
-                                        <div className="text-2xl font-black text-gray-800">{workDays} <span className="text-xs font-normal text-gray-500">日</span></div>
+                                        <div className="text-xl font-black text-gray-800">{workDays} <span className="text-[10px] font-normal text-gray-500">日</span></div>
                                     </div>
-                                    <div className="flex flex-col gap-1 text-[11px] text-gray-600 font-medium justify-center">
-                                        <div className="flex justify-between w-24"><span>有休</span><span>{(leave1 + leaveHalf*0.5 + leave2H*0.25).toFixed(1)} 日</span></div>
-                                        <div className="flex justify-between border-t pt-1"><span>事欠</span><span>{absent} 日</span></div>
-                                        <div className="flex justify-between border-t pt-1"><span>病欠</span><span>{sick} 日</span></div>
+                                    <div className="flex flex-col gap-0.5 text-[10px] text-gray-600 font-medium justify-center">
+                                        <div className="flex justify-between w-20"><span>有休</span><span>{(leave1 + leaveHalf*0.5 + leave2H*0.25).toFixed(1)} 日</span></div>
+                                        <div className="flex justify-between border-t pt-0.5"><span>事欠</span><span>{absent} 日</span></div>
+                                        <div className="flex justify-between border-t pt-0.5"><span>病欠</span><span>{sick} 日</span></div>
                                     </div>
                                 </div>
 
                                 {employee.type === 'full' && (
                                     <>
-                                        <div className="bg-orange-50 rounded-lg p-3 text-center shadow-sm border border-orange-100 flex-1 min-w-[80px]">
+                                        <div className="bg-orange-50 rounded-lg p-2 text-center shadow-sm border border-orange-100 flex-1 min-w-[70px]">
                                             <div className="text-[10px] text-orange-700 font-bold mb-1">早残業</div>
-                                            <div className="text-xl font-black text-orange-600">{earlyTotal} <span className="text-[10px] font-normal text-orange-400">分</span></div>
+                                            <div className="text-lg font-black text-orange-600">{earlyTotal} <span className="text-[9px] font-normal text-orange-400">分</span></div>
                                         </div>
-                                        <div className="bg-orange-50 rounded-lg p-3 text-center shadow-sm border border-orange-100 flex-1 min-w-[80px]">
+                                        <div className="bg-orange-50 rounded-lg p-2 text-center shadow-sm border border-orange-100 flex-1 min-w-[70px]">
                                             <div className="text-[10px] text-orange-700 font-bold mb-1">後残業</div>
-                                            <div className="text-xl font-black text-orange-600">{lateTotal} <span className="text-[10px] font-normal text-orange-400">分</span></div>
+                                            <div className="text-lg font-black text-orange-600">{lateTotal} <span className="text-[9px] font-normal text-orange-400">分</span></div>
                                         </div>
-                                        <div className="bg-red-50 rounded-lg p-3 text-center shadow-sm border border-red-100 flex-[1.5] min-w-[130px]">
+                                        <div className="bg-red-50 rounded-lg p-2 text-center shadow-sm border border-red-100 flex-[1.2] min-w-[110px]">
                                             <div className="text-[10px] text-red-700 font-bold mb-1">残業合計 (早+後)</div>
-                                            <div className="text-xl font-black text-red-600">
-                                                {earlyTotal+lateTotal} <span className="text-[10px] font-normal text-red-400 mr-1">分</span> 
-                                                <span className="text-[11px] font-normal text-red-400">({((earlyTotal+lateTotal)/60).toFixed(2)} H)</span>
+                                            <div className="text-lg font-black text-red-600">
+                                                {earlyTotal+lateTotal} <span className="text-[9px] font-normal text-red-400 mr-1">分</span> 
+                                                <span className="text-[10px] font-normal text-red-400">({((earlyTotal+lateTotal)/60).toFixed(2)}H)</span>
                                             </div>
                                         </div>
                                     </>
@@ -767,33 +907,39 @@
                                 
                                 {employee.type === 'part' && (
                                     <>
-                                        <div className="bg-pink-50 rounded-lg p-3 text-center shadow-sm border border-pink-100 flex-1 min-w-[100px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-xl font-black text-pink-600">{formatHM(totalIgkA)} <span className="text-[10px] font-normal ml-1 text-pink-400">({(totalIgkA/60).toFixed(2)} H)</span></div></div>
-                                        <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-100 flex-1 min-w-[100px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-xl font-black text-blue-600">{formatHM(totalIgkB)} <span className="text-[10px] font-normal ml-1 text-blue-400">({(totalIgkB/60).toFixed(2)} H)</span></div></div>
-                                        <div className="bg-indigo-50 rounded-lg p-3 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[120px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-xl font-black text-indigo-700">{formatHM(totalIgkA+totalIgkB)} <span className="text-[10px] font-normal ml-1 text-indigo-400">({((totalIgkA+totalIgkB)/60).toFixed(2)} H)</span></div></div>
+                                        <div className="bg-pink-50 rounded-lg p-2 text-center shadow-sm border border-pink-100 flex-1 min-w-[90px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-lg font-black text-pink-600">{formatHM(totalIgkA)} <span className="text-[9px] font-normal ml-1 text-pink-400">({(totalIgkA/60).toFixed(2)}H)</span></div></div>
+                                        <div className="bg-blue-50 rounded-lg p-2 text-center shadow-sm border border-blue-100 flex-1 min-w-[90px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-lg font-black text-blue-600">{formatHM(totalIgkB)} <span className="text-[9px] font-normal ml-1 text-blue-400">({(totalIgkB/60).toFixed(2)}H)</span></div></div>
+                                        <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[110px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-lg font-black text-indigo-700">{formatHM(totalIgkA+totalIgkB)} <span className="text-[9px] font-normal ml-1 text-indigo-400">({((totalIgkA+totalIgkB)/60).toFixed(2)}H)</span></div></div>
                                     </>
                                 )}
 
                                 {employee.type === 'driver' && (
                                     <>
-                                        <div className="bg-yellow-50 rounded-lg p-3 text-center shadow-sm border border-yellow-100 flex-1 min-w-[100px]"><div className="text-[10px] text-yellow-700 font-bold mb-1">運転実績</div><div className="text-xl font-black text-yellow-700">{formatHM(totalDrive)} <span className="text-[10px] font-normal ml-1 text-yellow-500">({(totalDrive/60).toFixed(2)} H)</span></div></div>
-                                        <div className="bg-pink-50 rounded-lg p-3 text-center shadow-sm border border-pink-100 flex-1 min-w-[80px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-xl font-black text-pink-600">{formatHM(totalIgkA)}</div></div>
-                                        <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-100 flex-1 min-w-[80px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-xl font-black text-blue-600">{formatHM(totalIgkB)}</div></div>
-                                        <div className="bg-indigo-50 rounded-lg p-3 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[120px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-xl font-black text-indigo-700">{formatHM(totalDrive+totalIgkA+totalIgkB)} <span className="text-[10px] font-normal ml-1 text-indigo-400">({((totalDrive+totalIgkA+totalIgkB)/60).toFixed(2)} H)</span></div></div>
+                                        <div className="bg-yellow-50 rounded-lg p-2 text-center shadow-sm border border-yellow-100 flex-1 min-w-[90px]"><div className="text-[10px] text-yellow-700 font-bold mb-1">運転実績</div><div className="text-lg font-black text-yellow-700">{formatHM(totalDrive)} <span className="text-[9px] font-normal ml-1 text-yellow-500">({(totalDrive/60).toFixed(2)}H)</span></div></div>
+                                        <div className="bg-pink-50 rounded-lg p-2 text-center shadow-sm border border-pink-100 flex-1 min-w-[70px]"><div className="text-[10px] text-pink-600 font-bold mb-1">IGK A 合計</div><div className="text-lg font-black text-pink-600">{formatHM(totalIgkA)}</div></div>
+                                        <div className="bg-blue-50 rounded-lg p-2 text-center shadow-sm border border-blue-100 flex-1 min-w-[70px]"><div className="text-[10px] text-blue-600 font-bold mb-1">IGK B 合計</div><div className="text-lg font-black text-blue-600">{formatHM(totalIgkB)}</div></div>
+                                        <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.2] min-w-[110px]"><div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div><div className="text-lg font-black text-indigo-700">{formatHM(totalDrive+totalIgkA+totalIgkB)} <span className="text-[9px] font-normal ml-1 text-indigo-400">({((totalDrive+totalIgkA+totalIgkB)/60).toFixed(2)}H)</span></div></div>
                                     </>
                                 )}
                                 
-                                <div className="bg-gray-100 rounded-lg p-3 text-center shadow-sm border border-gray-200 flex-none min-w-[120px]">
+                                <div className="bg-gray-100 rounded-lg p-2 text-center shadow-sm border border-gray-200 flex-none min-w-[110px]">
                                     <div className="text-[10px] text-gray-600 font-bold mb-1">入退室総時間</div>
-                                    <div className="text-xl font-black text-gray-700">{formatHM(totalInOutGlobal)} <span className="text-[10px] font-normal ml-1 text-gray-400">({(totalInOutGlobal/60).toFixed(2)}H)</span></div>
+                                    <div className="text-lg font-black text-gray-700">{formatHM(totalInOutGlobal)} <span className="text-[9px] font-normal ml-1 text-gray-400">({(totalInOutGlobal/60).toFixed(2)}H)</span></div>
                                 </div>
-                            </div>
 
-                            {employee.type === 'full' && (
-                                <div className="bg-blue-50/50 rounded-lg p-2 px-4 flex justify-between items-center shadow-sm border border-blue-100">
-                                    <span className="text-blue-800 font-bold text-xs"><i className="fa-solid fa-train-subway mr-2"></i>交通費 (手動入力合計)</span>
-                                    <div className="font-black text-xl text-gray-800">{totalTrans.toLocaleString()} <span className="text-xs font-bold text-gray-500">円</span></div>
-                                </div>
-                            )}
+                                {/* ★ 交通費放置於此 (依照Req 4 移動至入退室總時間右邊) */}
+                                {employee.type === 'full' ? (
+                                    <div className="bg-blue-50/50 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-blue-100 min-w-[120px]">
+                                        <div className="text-[10px] text-blue-800 font-bold mb-1"><i className="fa-solid fa-train-subway mr-1"></i>交通費 (手動入力)</div>
+                                        <div className="font-black text-lg text-gray-800">{totalTrans.toLocaleString()} <span className="text-[10px] font-bold text-gray-500">円</span></div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-yellow-50/50 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-yellow-200 min-w-[120px]">
+                                        <div className="text-[10px] text-yellow-800 font-bold mb-1"><i className="fa-solid fa-train-subway mr-1"></i>交通費合計</div>
+                                        <div className="font-black text-lg text-gray-800">{totalTrans.toLocaleString()} <span className="text-[10px] font-bold text-gray-500">円</span></div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 );
@@ -814,7 +960,7 @@
                 }
 
                 return (
-                    <div className="flex flex-col h-[calc(100vh-60px)]">
+                    <div className="flex flex-col h-[calc(100vh-60px)] min-h-0">
                         <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                             <div className="flex gap-2">
                                 <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
@@ -826,8 +972,8 @@
                                 <span className="text-[10px] text-gray-400 font-medium">(対象: {periodStart.format('MM/DD')}-{periodEnd.format('MM/DD')})</span>
                             </div>
                         </div>
-                        <div className="flex flex-1 bg-white rounded-lg shadow-sm border mx-4 mb-4 overflow-hidden">
-                            <div className="w-[140px] bg-gray-50 border-r overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 pb-6">
+                        <div className="flex flex-1 bg-white rounded-lg shadow-sm border mx-4 mb-3 overflow-hidden min-h-0">
+                            <div className="w-[140px] bg-gray-50 border-r overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4">
                                 {locEmployees.map(emp => (
                                     <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-2 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow transform scale-[1.02] z-10 tab-color-' + ((emp.num%5)+1) : 'text-gray-500 hover:bg-gray-200'}`}>
                                         <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[9px] text-white flex-none shadow-sm ${emp.type === 'full' ? 'bg-blue-500' : emp.type === 'driver' ? 'bg-purple-500' : 'bg-gray-400'}`}>{emp.num}</span>
@@ -835,8 +981,7 @@
                                     </button>
                                 ))}
                             </div>
-                            <div className={`flex-1 p-4 overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
-                                {/* 加入 key 屬性，確保切換員工時強制重置手動修改按鈕的狀態 */}
+                            <div className={`flex-1 p-3 overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
                                 {activeEmployee ? <EmployeeReport key={activeEmployee.id} employee={activeEmployee} data={attendanceData[activeEmployee.id] || {}} payMonth={payMonth} periodStart={periodStart} periodEnd={periodEnd} /> : null}
                             </div>
                         </div>
@@ -868,14 +1013,12 @@
                         </div>
                         <div className="flex items-center gap-3">
                             <button className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力</button>
-                            
-                            {/* ★ 8. 上鎖/解鎖按鈕綁定 */}
                             <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                 <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
                             </button>
                         </div>
                     </header>
-                    <main className="flex-1 overflow-hidden">{currentView === 'setup' ? renderSetupScreen() : renderReportsScreen()}</main>
+                    <main className="flex-1 overflow-hidden min-h-0">{currentView === 'setup' ? renderSetupScreen() : renderReportsScreen()}</main>
                 </div>
             );
         };
