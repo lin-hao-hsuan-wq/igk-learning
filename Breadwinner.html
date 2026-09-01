@@ -144,15 +144,21 @@
             return `${resH}:${resM}`;
         };
 
+        // ★ 深度安全提取：修復 Date 被解析成空值的問題
         const getSafeText = (cell) => {
             if (!cell) return '';
             try { if (cell.text !== undefined && cell.text !== null) return String(cell.text); } catch(e) {}
             if (cell.value === null || cell.value === undefined) return '';
             if (typeof cell.value === 'string') return cell.value;
             if (typeof cell.value === 'number') return String(cell.value);
-            if (cell.value instanceof Date) return ''; 
+            if (cell.value instanceof Date) {
+                return dayjs(cell.value).format('M/D'); 
+            }
             if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
-            if (cell.value.result !== undefined && cell.value.result !== null) return String(cell.value.result);
+            if (cell.value.result !== undefined && cell.value.result !== null) {
+                if (cell.value.result instanceof Date) return dayjs(cell.value.result).format('M/D');
+                return String(cell.value.result);
+            }
             try { return String(cell.value); } catch(e) { return ''; }
         };
 
@@ -334,7 +340,7 @@
 
                 addLog(`Excelファイル解析中: ${file.name}...`);
                 
-                // 擷取檔名的年份，以防跨年排班對錯日期
+                // 自動從檔名中獲取年份
                 let fileYear = new Date().getFullYear();
                 let fyMatch = file.name.match(/20\d{2}/);
                 if (fyMatch) fileYear = parseInt(fyMatch[0]);
@@ -396,18 +402,22 @@
 
                                 for (let r = 1; r <= ws.rowCount; r++) {
                                     for (let c = 1; c <= 10; c++) {
-                                        let textStr = getSafeText(ws.getCell(r, c));
-                                        let valObj = ws.getCell(r, c).value;
+                                        let actCell = ws.getCell(r, c);
+                                        let valObj = actCell.value;
                                         
-                                        if (valObj instanceof Date && valObj.getFullYear() > 2000) {
-                                            currentDates[r] = { key: dayjs(valObj).format('YYYY/MM/DD'), obj: valObj };
+                                        // 針對 Excel 原生 Date 物件的保護
+                                        if (valObj instanceof Date) {
+                                            let y = valObj.getFullYear() > 2000 ? valObj.getFullYear() : fileYear;
+                                            let dObj = new Date(y, valObj.getMonth(), valObj.getDate());
+                                            currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
                                             break;
                                         }
                                         
+                                        let textStr = getSafeText(actCell);
                                         let t = textStr.replace(/\s+/g, '');
                                         if (t.match(/\d{1,2}[:：\.]\d{2}/)) continue; 
                                         
-                                        const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日]\))?$/);
+                                        const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日A-Za-z]+\))?$/);
                                         if (m) {
                                             let y = fileYear;
                                             const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
@@ -459,13 +469,12 @@
 
                                             let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
 
-                                            // 檢查是否為員工姓名或標題，防止誤判
+                                            // 防止抓到標題
                                             let vLower = cellText.toLowerCase().replace(/\s+/g, '');
                                             let isHeader = localEmps.some(e => e.name.toLowerCase().replace(/\s+/g, '') === vLower || (e.aliases||[]).some(a => a.toLowerCase().replace(/\s+/g, '') === vLower));
 
-                                            // 如果有顏色，或是司機關鍵字，或是明顯的任務名稱 (Blue Room, Activity, TOE 等)
                                             let hasLetters = /[a-zA-Z\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(cellText);
-                                            let isShiftBlock = hex !== '' || isDriverKeyword || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday') && cellText.length > 2);
+                                            let isShiftBlock = hex !== '' || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday') && cellText.length > 2);
                                             
                                             if (!newData[empId]) newData[empId] = {};
                                             if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
@@ -475,20 +484,31 @@
                                                 dataRef.leaveType = cellText.substring(0, 10);
                                                 count++;
                                             } 
+                                            // 優先處理精確的時間範圍 (14:00-18:00)
                                             else if (exactMatches.length === 2 && !isDriverKeyword) {
                                                 let t1 = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
                                                 let t2 = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
                                                 dataRef.shiftStart = t1;
                                                 dataRef.shiftEnd = t2;
                                                 count++;
-                                            } 
+                                            }
+                                            // 司機的乘車降車確切時間 (11:35乗車)
+                                            else if (isDriverKeyword && exactMatches.length > 0) {
+                                                exactMatches.forEach(m => {
+                                                    let tMins = timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`);
+                                                    if (!dataRef._tempDrivers) dataRef._tempDrivers = [];
+                                                    dataRef._tempDrivers.push(tMins);
+                                                });
+                                                count++;
+                                            }
+                                            // 一般顏色區塊或任務
                                             else if (isShiftBlock) {
                                                 let cellA = ws.getCell(r, 1);
                                                 let timeValA = cellA.value;
                                                 if (timeValA && timeValA.result !== undefined) timeValA = timeValA.result;
 
                                                 let rowTimeStr = null;
-                                                // 強化 Excel 時間數值轉換 (解決 8:00 被解析為 0.33333 導致略過的問題)
+                                                // 強化 Excel 時間數值轉換
                                                 if (timeValA instanceof Date) {
                                                     rowTimeStr = `${String(timeValA.getHours()).padStart(2, '0')}:${String(timeValA.getMinutes()).padStart(2, '0')}`;
                                                 } else if (typeof timeValA === 'number') {
@@ -510,25 +530,33 @@
                                 }
                             });
                             
+                            // 收尾：將暫存的時間數組合併運算
                             Object.keys(newData).forEach(empId => {
                                 Object.keys(newData[empId]).forEach(dateKey => {
                                     let dataRef = newData[empId][dateKey];
                                     let emp = localEmps.find(e => e.id === empId);
 
+                                    // 計算司機差值
+                                    if (dataRef._tempDrivers && dataRef._tempDrivers.length > 0) {
+                                        let times = dataRef._tempDrivers.sort((a,b) => a - b);
+                                        let totalDriverMins = 0;
+                                        for (let i = 0; i < times.length - 1; i += 2) {
+                                            totalDriverMins += (times[i+1] - times[i]);
+                                        }
+                                        let prevDriver = parseInt(dataRef.driveMins || 0);
+                                        dataRef.driveMins = prevDriver + totalDriverMins;
+                                        delete dataRef._tempDrivers;
+                                        count++;
+                                    }
+
+                                    // 計算顏色方塊
                                     if (dataRef._tempBlocks && dataRef._tempBlocks.length > 0) {
                                         let times = dataRef._tempBlocks.sort((a,b) => a - b);
-                                        // 依照陣列長度 (每一格 30 分鐘) 推算時數
-                                        if (emp && emp.type === 'driver') {
-                                            let prevDriver = parseInt(dataRef.driveMins || 0);
-                                            dataRef.driveMins = prevDriver + (times.length * 30);
-                                            count++;
-                                        } 
-                                        else if (emp && emp.type === 'full') {
+                                        if (emp && emp.type === 'full') {
                                             if (!dataRef.shiftStart) dataRef.shiftStart = minsToTime(times[0]);
                                             if (!dataRef.shiftEnd) dataRef.shiftEnd = minsToTime(times[times.length - 1] + 30);
                                             count++;
-                                        } 
-                                        else {
+                                        } else {
                                             let prevIgkA = parseInt(dataRef.igkA || 0);
                                             dataRef.igkA = prevIgkA + (times.length * 30);
                                             count++;
