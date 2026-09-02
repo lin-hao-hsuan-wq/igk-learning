@@ -1,5 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, Download, Calendar, Plus, Trash2, Users, Truck, Clock, CheckSquare, Leaf, TreeDeciduous, CalendarDays, Settings } from 'lucide-react';
+=import React, { useState, useEffect } from "react";
+import {
+  Upload,
+  Download,
+  CalendarDays,
+  Plus,
+  Trash2,
+  Users,
+  Truck,
+  Clock,
+  CheckSquare,
+  Settings,
+  CheckCircle2,
+  FileSpreadsheet,
+  TreeDeciduous,
+} from "lucide-react";
 
 // --- 工具函式 ---
 const getDaysInMonth = (year, month) => {
@@ -8,7 +22,9 @@ const getDaysInMonth = (year, month) => {
   while (date.getMonth() === month - 1) {
     days.push({
       date: new Date(date),
-      dayStr: `${year}-${String(month).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+      dayStr: `${year}-${String(month).padStart(2, "0")}-${String(
+        date.getDate()
+      ).padStart(2, "0")}`,
       dayOfWeek: date.getDay(),
     });
     date.setDate(date.getDate() + 1);
@@ -16,61 +32,89 @@ const getDaysInMonth = (year, month) => {
   return days;
 };
 
-const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+// 產生完美日曆網格 (補齊月初空格，讓週一對齊第一格)
+const getCalendarGrid = (daysList) => {
+  if (daysList.length === 0) return [];
+  const firstDayOffset = (daysList[0].dayOfWeek + 6) % 7;
+  return Array(firstDayOffset).fill(null).concat(daysList);
+};
 
-// 初始員工名單 (依照您提供的清單，並刪除 r13, r14)
+const dayNames = ["一", "二", "三", "四", "五", "六", "日"];
+
+// 初始員工名單
 const initialEmployeesData = [
-  // 正社員 (Myodani)
-  { num: 1, id: 'm2', name: 'Linh', type: 'full', location: 'myodani', aliases: ['リン'] },
-  { num: 4, id: 'm1', name: '加藤友梨', type: 'full', location: 'myodani', aliases: ['加藤', 'かとう'] },
-  // 正社員 (Rokko)
-  { num: 2, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko', aliases: ['Minori', '葛野 みのり', 'みのり'] },
-  { num: 3, id: 'r2', name: 'Ratu Yassmyn Khairussalima', type: 'full', location: 'rokko', aliases: ['Yassmyn', 'ヤスミン'] },
-  { num: 5, id: 'r3', name: 'Yoon Honey Aung', type: 'full', location: 'rokko', aliases: ['Yoon', 'ユン'] },
-  { num: 6, id: 'r4', name: '林昊嬛', type: 'full', location: 'rokko', aliases: ['Koukei', '林 昊嬛', '林'] },
-  // 打工者 (Rokko)
-  { num: 7, id: 'r15', name: '金栄美', type: 'part', location: 'rokko', aliases: ['kim eimi', 'eimi', '金'] },
-  { num: 8, id: 'r11', name: '沼田真里子', type: 'part', location: 'rokko', aliases: ['Mariko', 'マリコ', 'まりこ'] },
-  { num: 9, id: 'r16', name: '角田紀子', type: 'part', location: 'rokko', aliases: ['角田', 'つのだ'] },
-  { num: 13, id: 'r7', name: 'Fergus', type: 'part', location: 'rokko', aliases: ['ファーガス'] },
-  { num: 14, id: 'r8', name: 'Sammy Abukmeil', type: 'part', location: 'rokko', aliases: ['Sammy', 'サミー'] },
-  { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko', aliases: ['キム', 'Kim', 'Nakyung'] },
-  { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko', aliases: ['Nathan', 'ネイサン'] },
-  // 司機 (Rokko)
-  { num: 10, id: 'r6', name: '上山貴行', type: 'driver', location: 'rokko', aliases: ['Taka', '上山', 'たか'] },
-  { num: 11, id: 'r5', name: '實熊功光', type: 'driver', location: 'rokko', aliases: ['Mikuma', '実熊', 'みくま'] },
-  { num: 12, id: 'r12', name: '安藤佑也', type: 'driver', location: 'rokko', aliases: ['Ando', '安藤'] },
-  // 打工者 (Myodani)
-  { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani', aliases: ['大津', 'おおつ'] },
-  { num: 31, id: 'm4', name: '馬場亜希', type: 'part', location: 'myodani', aliases: ['馬場', 'ばば'] },
-  { num: 32, id: 'm5', name: '篠崎', type: 'part', location: 'myodani', aliases: ['しのざき'] },
-  { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani', aliases: ['よしの'] },
-  { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani', aliases: ['もり'] },
-  { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani', aliases: ['ハムナ'] },
-  { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani', aliases: ['サディア'] },
-  { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani', aliases: ['モニカ'] },
-  { num: 39, id: 'm13', name: '中嶋莉真', type: 'part', location: 'myodani', aliases: ['中嶋', 'なかじま'] },
-  { num: 40, id: 'm14', name: '顕谷ユタカ', type: 'part', location: 'myodani', aliases: ['顕谷', 'あきたに'] },
-  { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] },
-  { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
-].map(emp => ({ ...emp, schedule: {} }));
+  { num: 1, id: "m2", name: "Linh", type: "full", location: "myodani", aliases: ["リン"] },
+  { num: 4, id: "m1", name: "加藤友梨", type: "full", location: "myodani", aliases: ["加藤", "かとう"] },
+  { num: 2, id: "r1", name: "葛野みのり", type: "full", location: "rokko", aliases: ["Minori", "葛野 みのり", "みのり"] },
+  { num: 3, id: "r2", name: "Ratu Yassmyn Khairussalima", type: "full", location: "rokko", aliases: ["Yassmyn", "ヤスミン"] },
+  { num: 5, id: "r3", name: "Yoon Honey Aung", type: "full", location: "rokko", aliases: ["Yoon", "ユン"] },
+  { num: 6, id: "r4", name: "林昊嬛", type: "full", location: "rokko", aliases: ["Koukei", "林 昊嬛", "林"] },
+  { num: 7, id: "r15", name: "金栄美", type: "part", location: "rokko", aliases: ["kim eimi", "eimi", "金"] },
+  { num: 8, id: "r11", name: "沼田真里子", type: "part", location: "rokko", aliases: ["Mariko", "マリコ", "まりこ"] },
+  { num: 9, id: "r16", name: "角田紀子", type: "part", location: "rokko", aliases: ["角田", "つのだ"] },
+  { num: 13, id: "r7", name: "Fergus", type: "part", location: "rokko", aliases: ["ファーガス"] },
+  { num: 14, id: "r8", name: "Sammy Abukmeil", type: "part", location: "rokko", aliases: ["Sammy", "サミー"] },
+  { num: 15, id: "r9", name: "Kim Nakyung", type: "part", location: "rokko", aliases: ["キム", "Kim", "Nakyung"] },
+  { num: 16, id: "r10", name: "Nathan Morrison", type: "part", location: "rokko", aliases: ["Nathan", "ネイサン"] },
+  { num: 10, id: "r6", name: "上山貴行", type: "driver", location: "rokko", aliases: ["Taka", "上山", "たか"] },
+  { num: 11, id: "r5", name: "實熊功光", type: "driver", location: "rokko", aliases: ["Mikuma", "実熊", "みくま"] },
+  { num: 12, id: "r12", name: "安藤佑也", type: "driver", location: "rokko", aliases: ["Ando", "安藤"] },
+  { num: 30, id: "m3", name: "大津真里", type: "part", location: "myodani", aliases: ["大津", "おおつ"] },
+  { num: 31, id: "m4", name: "馬場亜希", type: "part", location: "myodani", aliases: ["馬場", "ばば"] },
+  { num: 32, id: "m5", name: "篠崎", type: "part", location: "myodani", aliases: ["しのざき"] },
+  { num: 33, id: "m6", name: "吉野 真緒", type: "part", location: "myodani", aliases: ["よしの"] },
+  { num: 34, id: "m7", name: "森 佳織", type: "part", location: "myodani", aliases: ["もり"] },
+  { num: 35, id: "m9", name: "Hamna", type: "part", location: "myodani", aliases: ["ハムナ"] },
+  { num: 37, id: "m11", name: "Sadia", type: "part", location: "myodani", aliases: ["サディア"] },
+  { num: 38, id: "m12", name: "Monika", type: "part", location: "myodani", aliases: ["モニカ"] },
+  { num: 39, id: "m13", name: "中嶋莉真", type: "part", location: "myodani", aliases: ["中嶋", "なかじま"] },
+  { num: 40, id: "m14", name: "顕谷ユタカ", type: "part", location: "myodani", aliases: ["顕谷", "あきたに"] },
+  { num: 41, id: "m15", name: "Mozelle Bargamin", type: "part", location: "myodani", aliases: ["Mozelle", "モゼル"] },
+  { num: 43, id: "m_bjoerg", name: "Bjoerg Bendix", type: "part", location: "myodani", aliases: ["Bjoerg", "ビョルグ"] },
+].map((emp) => ({ ...emp, schedule: {} }));
 
 export default function App() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
-  const [activeTab, setActiveTab] = useState('full'); // full, part, driver
+  const [activeTab, setActiveTab] = useState("full");
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
-  
+
   const daysList = getDaysInMonth(currentYear, currentMonth);
+  const calendarGrid = getCalendarGrid(daysList);
 
-  const [employees, setEmployees] = useState(initialEmployeesData);
+  // 【新增】：初始化時檢查 Local Storage 是否有舊資料
+  const [employees, setEmployees] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedData = localStorage.getItem("schedule_app_data");
+        if (savedData) {
+          return JSON.parse(savedData);
+        }
+      } catch (error) {
+        console.error("讀取本地資料失敗", error);
+      }
+    }
+    return initialEmployeesData;
+  });
 
-  // 動態載入 XLSX 與 Japanese-Holidays
+  // 【新增】：只要 employees 狀態改變，就自動存入 Local Storage
+  useEffect(() => {
+    try {
+      localStorage.setItem("schedule_app_data", JSON.stringify(employees));
+    } catch (error) {
+      console.error("儲存本地資料失敗", error);
+    }
+  }, [employees]);
+
+  // 載入外部腳本 (Excel 與 日本國定假日)
   useEffect(() => {
     const loadScript = (src, globalVar) => {
       return new Promise((resolve) => {
-        if (window[globalVar]) { resolve(); return; }
-        const script = document.createElement('script');
+        if (window[globalVar]) {
+          resolve();
+          return;
+        }
+        const script = document.createElement("script");
         script.src = src;
         script.onload = () => resolve();
         document.body.appendChild(script);
@@ -78,163 +122,185 @@ export default function App() {
     };
 
     Promise.all([
-      loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "XLSX"),
-      loadScript("https://cdn.jsdelivr.net/npm/japanese-holidays/lib/japanese-holidays.min.js", "JapaneseHolidays")
+      loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
+        "XLSX"
+      ),
+      loadScript(
+        "https://cdn.jsdelivr.net/npm/japanese-holidays/lib/japanese-holidays.min.js",
+        "JapaneseHolidays"
+      ),
     ]).then(() => setScriptsLoaded(true));
   }, []);
 
-  // 判斷是否為紅字 (週末或國定假日)
   const isRedDay = (dateObj, dayOfWeek) => {
-    if (dayOfWeek === 0 || dayOfWeek === 6) return true; // 週末
-    if (window.JapaneseHolidays && window.JapaneseHolidays.isHoliday(dateObj)) return true; // 祝日
+    if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+    if (window.JapaneseHolidays && window.JapaneseHolidays.isHoliday(dateObj))
+      return true;
     return false;
   };
 
-  // 初始與切換月份時，為正社員預填班表 (排除紅字)
+  // 自動填寫正社員班表
   useEffect(() => {
-    if (!scriptsLoaded) return; // 確保假日套件已載入
-    
-    setEmployees(prev => prev.map(emp => {
-      if (emp.type === 'full') {
-        const newSchedule = { ...emp.schedule };
-        daysList.forEach(d => {
-          // 如果該天尚無設定，且不是紅字，填入預設時間
-          if (!newSchedule[d.dayStr] && !isRedDay(d.date, d.dayOfWeek)) {
-            newSchedule[d.dayStr] = {
-              shift: emp.location === 'rokko' ? '09:30-18:30' : '09:15-18:15',
-              igka: ''
-            };
+    if (!scriptsLoaded) return;
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.type === "full") {
+          const newSchedule = { ...emp.schedule };
+          let changed = false;
+          daysList.forEach((d) => {
+            if (!newSchedule[d.dayStr] && !isRedDay(d.date, d.dayOfWeek)) {
+              newSchedule[d.dayStr] = {
+                shift: emp.location === "rokko" ? "09:30-18:30" : "09:15-18:15",
+                igka: "",
+              };
+              changed = true;
+            }
+          });
+          if (changed) {
+            return { ...emp, schedule: newSchedule };
           }
-        });
-        return { ...emp, schedule: newSchedule };
-      }
-      return emp;
-    }));
+        }
+        return emp;
+      })
+    );
     // eslint-disable-next-line
   }, [currentYear, currentMonth, scriptsLoaded]);
 
+  // 功能函式
   const addEmployee = (type) => {
     const newId = Math.random().toString(36).substr(2, 9);
-    const maxNum = Math.max(...employees.map(e => e.num), 0) + 1; // 產生新的排序號碼
-    const newEmp = {
-      num: maxNum,
-      id: newId,
-      name: '新員工',
-      type: type,
-      location: 'rokko',
-      aliases: [],
-      schedule: {}
-    };
-    setEmployees([...employees, newEmp]);
+    const maxNum = Math.max(...employees.map((e) => e.num), 0) + 1;
+    setEmployees([
+      ...employees,
+      {
+        num: maxNum,
+        id: newId,
+        name: "新員工",
+        type,
+        location: "rokko",
+        aliases: [],
+        schedule: {},
+      },
+    ]);
   };
 
   const removeEmployee = (id) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+    if (window.confirm("確定要刪除這位員工嗎？")) {
+      setEmployees(employees.filter((emp) => emp.id !== id));
+    }
   };
 
-  const updateEmployeeName = (id, newName) => {
-    setEmployees(employees.map(emp => emp.id === id ? { ...emp, name: newName } : emp));
-  };
+  const updateEmployeeName = (id, newName) =>
+    setEmployees(
+      employees.map((emp) => (emp.id === id ? { ...emp, name: newName } : emp))
+    );
 
-  // --- 正社員特定邏輯 ---
   const changeFullTimeLocation = (id, location) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === id) {
-        const newSchedule = { ...emp.schedule };
-        Object.keys(newSchedule).forEach(dateStr => {
-          newSchedule[dateStr].shift = location === 'rokko' ? '09:30-18:30' : '09:15-18:15';
-        });
-        return { ...emp, location, schedule: newSchedule };
-      }
-      return emp;
-    }));
+    setEmployees(
+      employees.map((emp) => {
+        if (emp.id === id) {
+          const newSchedule = { ...emp.schedule };
+          Object.keys(newSchedule).forEach(
+            (dateStr) =>
+              (newSchedule[dateStr].shift =
+                location === "rokko" ? "09:30-18:30" : "09:15-18:15")
+          );
+          return { ...emp, location, schedule: newSchedule };
+        }
+        return emp;
+      })
+    );
   };
 
   const toggleFullTimeDay = (id, dateStr, location) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === id) {
-        const newSchedule = { ...emp.schedule };
-        if (newSchedule[dateStr]) {
-          delete newSchedule[dateStr]; // 取消
-        } else {
-          newSchedule[dateStr] = {
-            shift: location === 'rokko' ? '09:30-18:30' : '09:15-18:15',
-            igka: ''
-          };
+    setEmployees(
+      employees.map((emp) => {
+        if (emp.id === id) {
+          const newSchedule = { ...emp.schedule };
+          if (newSchedule[dateStr]) delete newSchedule[dateStr];
+          else
+            newSchedule[dateStr] = {
+              shift: location === "rokko" ? "09:30-18:30" : "09:15-18:15",
+              igka: "",
+            };
+          return { ...emp, schedule: newSchedule };
         }
-        return { ...emp, schedule: newSchedule };
-      }
-      return emp;
-    }));
+        return emp;
+      })
+    );
   };
 
-  // --- 手動更新單日時間 (打工者/司機) ---
   const updateDaySchedule = (empId, dateStr, field, value) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === empId) {
-        const newSchedule = { ...emp.schedule };
-        if (!newSchedule[dateStr]) newSchedule[dateStr] = { shift: '', igka: '' };
-        newSchedule[dateStr][field] = value;
-        return { ...emp, schedule: newSchedule };
-      }
-      return emp;
-    }));
+    setEmployees(
+      employees.map((emp) => {
+        if (emp.id === empId) {
+          const newSchedule = { ...emp.schedule };
+          if (!newSchedule[dateStr])
+            newSchedule[dateStr] = { shift: "", igka: "", imported: false };
+          newSchedule[dateStr][field] = value;
+          return { ...emp, schedule: newSchedule };
+        }
+        return emp;
+      })
+    );
   };
 
-  // --- Excel 匯出邏輯 ---
-  const exportToExcel = () => {
-    if (!window.XLSX) {
-      alert("Excel 模組尚未載入完成，請稍候再試。");
-      return;
+  // 一鍵清除所有資料恢復預設值
+  const clearAllData = () => {
+    if (window.confirm("警告：這將會清除您所有的排班紀錄並恢復預設人員，確定要執行嗎？")) {
+      localStorage.removeItem("schedule_app_data");
+      setEmployees(initialEmployeesData);
     }
+  };
 
+  const exportToExcel = () => {
+    if (!window.XLSX) return alert("Excel 模組載入中，請稍候再試。");
     const ws_data = [];
-    
-    // Row 1: B1開始橫向日期 (合併儲存格由後續處理)
-    const row1 = ['']; // A1
-    daysList.forEach(d => {
-      const dateText = `${d.date.getMonth() + 1}/${d.date.getDate()} (${dayNames[d.dayOfWeek]})`;
-      row1.push(dateText); // B1
-      row1.push('');       // C1 
+    const row1 = [""];
+    daysList.forEach((d) => {
+      row1.push(
+        `${d.date.getMonth() + 1}/${d.date.getDate()} (${
+          ["日", "一", "二", "三", "四", "五", "六"][d.dayOfWeek]
+        })`
+      );
+      row1.push("");
     });
     ws_data.push(row1);
 
-    // Row 2: B1下方分兩格 (班表 / IGKA)
-    const row2 = ['']; // A2
+    const row2 = [""];
     daysList.forEach(() => {
-      row2.push('班表時間');
-      row2.push('IGKA時間');
+      row2.push("班表時間");
+      row2.push("IGKA時間");
     });
     ws_data.push(row2);
 
-    // 依據 num 排序輸出，確保匯出時維持編號順序
     const sortedEmployees = [...employees].sort((a, b) => a.num - b.num);
-
-    // Row 3+: 人員與班表資料
-    sortedEmployees.forEach(emp => {
-      const row = [emp.name]; // 只印出代表名字 (A3...)
-      daysList.forEach(d => {
-        const dayData = emp.schedule[d.dayStr] || { shift: '', igka: '' };
-        // 正社員若不需要 IGKA 欄位內容，可在這裡防護，但因預設留空所以沒問題
-        row.push(dayData.shift || '');
-        row.push(dayData.igka || '');
+    sortedEmployees.forEach((emp) => {
+      const row = [emp.name];
+      daysList.forEach((d) => {
+        const dayData = emp.schedule[d.dayStr] || { shift: "", igka: "" };
+        row.push(dayData.shift || "");
+        row.push(dayData.igka || "");
       });
       ws_data.push(row);
     });
 
     const ws = window.XLSX.utils.aoa_to_sheet(ws_data);
+    if (!ws["!merges"]) ws["!merges"] = [];
+    daysList.forEach((_, index) =>
+      ws["!merges"].push({
+        s: { r: 0, c: 1 + index * 2 },
+        e: { r: 0, c: 2 + index * 2 },
+      })
+    );
 
-    // 設定日期列合併儲存格 (B1:C1, D1:E1 ...)
-    if (!ws['!merges']) ws['!merges'] = [];
-    daysList.forEach((_, index) => {
-      const colIndex = 1 + (index * 2); 
-      ws['!merges'].push({ s: { r: 0, c: colIndex }, e: { r: 0, c: colIndex + 1 } });
+    const wscols = [{ wch: 15 }];
+    daysList.forEach(() => {
+      wscols.push({ wch: 12 });
+      wscols.push({ wch: 12 });
     });
-
-    // 簡單美化
-    const wscols = [{ wch: 15 }]; // 人名欄寬
-    daysList.forEach(() => { wscols.push({ wch: 12 }); wscols.push({ wch: 12 }); });
-    ws['!cols'] = wscols;
+    ws["!cols"] = wscols;
 
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "班表");
@@ -242,76 +308,71 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1faee] font-sans text-stone-800 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Header - 森林風 */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white/90 backdrop-blur p-6 rounded-3xl shadow-sm border border-emerald-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-100 rounded-full blur-3xl -ml-10 -mt-10 opacity-60"></div>
-          
-          <div className="flex items-center gap-3 mb-4 md:mb-0 relative z-10">
-            <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
-              <TreeDeciduous className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold text-stone-700 tracking-wide">排班森林 <span className="text-emerald-500 font-medium">系統</span></h1>
+    <div className="min-h-screen bg-[#f1faee] font-sans text-stone-800 p-2 md:p-3">
+      <div className="w-full mx-auto max-w-[100%]">
+        <div className="flex justify-between items-center mb-3 bg-white/90 p-3 md:px-5 rounded-2xl shadow-sm border border-emerald-100">
+          <div className="flex items-center gap-2">
+            <TreeDeciduous className="w-6 h-6 text-emerald-500" />
+            <h1 className="text-xl font-bold text-stone-700">上班芬多精</h1>
           </div>
-          
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="flex items-center gap-2 bg-stone-50 px-4 py-2 rounded-2xl border border-stone-200">
-              <CalendarDays className="text-stone-400 w-5 h-5" />
-              <input 
-                type="month" 
-                value={`${currentYear}-${String(currentMonth).padStart(2, '0')}`}
+          <div className="flex items-center gap-2 md:gap-3">
+            <button 
+              onClick={clearAllData}
+              className="text-xs text-red-400 hover:bg-red-50 px-2 py-1 rounded-md transition-colors"
+            >
+              重置資料
+            </button>
+            <div className="flex items-center gap-1 bg-stone-50 px-2 py-1 rounded-xl border border-stone-200">
+              <CalendarDays className="text-stone-400 w-4 h-4" />
+              <input
+                type="month"
+                value={`${currentYear}-${String(currentMonth).padStart(2, "0")}`}
                 onChange={(e) => {
-                  if(!e.target.value) return;
-                  const [y, m] = e.target.value.split('-');
-                  setCurrentYear(parseInt(y));
-                  setCurrentMonth(parseInt(m));
+                  if (e.target.value) {
+                    const [y, m] = e.target.value.split("-");
+                    setCurrentYear(parseInt(y));
+                    setCurrentMonth(parseInt(m));
+                  }
                 }}
-                className="bg-transparent text-sm font-medium text-stone-700 focus:outline-none"
+                className="bg-transparent text-sm font-bold text-stone-700 focus:outline-none w-28"
               />
             </div>
-            <button 
+            <button
               onClick={exportToExcel}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm px-4 py-1.5 rounded-xl flex items-center gap-1 font-bold shadow-sm"
             >
-              <Download className="w-4 h-4" /> 匯出 Excel
+              <Download className="w-4 h-4" /> 匯出
             </button>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="bg-white/80 backdrop-blur rounded-3xl shadow-sm border border-emerald-100/60 overflow-hidden">
-          
-          {/* Tabs */}
-          <div className="flex border-b border-emerald-100/60">
+        <div className="bg-white/80 rounded-2xl shadow-sm border border-emerald-100/60 overflow-hidden">
+          <div className="flex border-b border-emerald-100/60 h-10">
             {[
-              { id: 'full', icon: Users, label: '正社員' },
-              { id: 'part', icon: Clock, label: '打工者' },
-              { id: 'driver', icon: Truck, label: '司機' }
-            ].map(tab => (
+              { id: "full", icon: Users, label: "正社員" },
+              { id: "part", icon: Clock, label: "打工者" },
+              { id: "driver", icon: Truck, label: "司機" },
+            ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors ${
-                  activeTab === tab.id 
-                    ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-500' 
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50/50'
+                className={`flex-1 flex items-center justify-center gap-1 text-sm font-bold transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-emerald-50 text-emerald-800 border-b-2 border-emerald-500"
+                    : "text-stone-500 hover:bg-stone-50"
                 }`}
               >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
+                <tab.icon className="w-4 h-4" /> {tab.label}
               </button>
             ))}
           </div>
-
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 'full' && (
-              <FullTimePanel 
-                employees={employees.filter(e => e.type === 'full')}
+          <div className="p-3">
+            {activeTab === "full" && (
+              <FullTimePanel
+                employees={employees.filter((e) => e.type === "full")}
+                calendarGrid={calendarGrid}
                 daysList={daysList}
-                addEmployee={() => addEmployee('full')}
+                addEmployee={() => addEmployee("full")}
                 removeEmployee={removeEmployee}
                 updateName={updateEmployeeName}
                 changeLocation={changeFullTimeLocation}
@@ -320,12 +381,11 @@ export default function App() {
                 setEmployees={setEmployees}
               />
             )}
-            
-            {activeTab === 'part' && (
-              <PartTimePanel 
-                employees={employees.filter(e => e.type === 'part')}
-                daysList={daysList}
-                addEmployee={() => addEmployee('part')}
+            {activeTab === "part" && (
+              <PartTimePanel
+                employees={employees.filter((e) => e.type === "part")}
+                calendarGrid={calendarGrid}
+                addEmployee={() => addEmployee("part")}
                 removeEmployee={removeEmployee}
                 updateName={updateEmployeeName}
                 updateDaySchedule={updateDaySchedule}
@@ -333,12 +393,12 @@ export default function App() {
                 isRedDay={isRedDay}
               />
             )}
-
-            {activeTab === 'driver' && (
-              <DriverPanel 
-                employees={employees.filter(e => e.type === 'driver')}
+            {activeTab === "driver" && (
+              <DriverPanel
+                employees={employees.filter((e) => e.type === "driver")}
+                calendarGrid={calendarGrid}
                 daysList={daysList}
-                addEmployee={() => addEmployee('driver')}
+                addEmployee={() => addEmployee("driver")}
                 removeEmployee={removeEmployee}
                 updateName={updateEmployeeName}
                 updateDaySchedule={updateDaySchedule}
@@ -354,429 +414,659 @@ export default function App() {
 }
 
 // ==========================================
-// 1. 正社員面板 (Full-time) - 包含特別時間設定
+// 1. 正社員面板
 // ==========================================
-function FullTimePanel({ employees, daysList, addEmployee, removeEmployee, updateName, changeLocation, toggleDay, isRedDay, setEmployees }) {
-  // 特別時間設定 State
-  const [specialStart, setSpecialStart] = useState('');
-  const [specialEnd, setSpecialEnd] = useState('');
-  const [specialShift, setSpecialShift] = useState('');
+function FullTimePanel({
+  employees,
+  calendarGrid,
+  daysList,
+  addEmployee,
+  removeEmployee,
+  updateName,
+  changeLocation,
+  toggleDay,
+  isRedDay,
+  setEmployees,
+}) {
+  const [specialStart, setSpecialStart] = useState("");
+  const [specialEnd, setSpecialEnd] = useState("");
+  const [specialShift, setSpecialShift] = useState("");
   const [selectedEmps, setSelectedEmps] = useState([]);
 
   const applySpecialTime = () => {
-    if (!specialStart || !specialEnd || !specialShift || selectedEmps.length === 0) {
-      return alert("請填寫完整日期區間、上班時間，並勾選要套用的正社員！");
-    }
-    const start = new Date(specialStart);
-    const end = new Date(specialEnd);
-    
-    if (start > end) return alert("開始日期不能晚於結束日期！");
-
-    setEmployees(prev => prev.map(emp => {
-      if (emp.type === 'full' && selectedEmps.includes(emp.id)) {
-        const newSchedule = { ...emp.schedule };
-        daysList.forEach(d => {
-          const currentDate = new Date(d.dayStr);
-          if (currentDate >= start && currentDate <= end) {
-            newSchedule[d.dayStr] = { shift: specialShift, igka: '' };
-          }
-        });
-        return { ...emp, schedule: newSchedule };
-      }
-      return emp;
-    }));
-    alert("特別時間設定已套用！");
+    if (
+      !specialStart ||
+      !specialEnd ||
+      !specialShift ||
+      selectedEmps.length === 0
+    )
+      return alert("請填寫完整資訊並勾選人員！");
+    const start = new Date(specialStart),
+      end = new Date(specialEnd);
+    if (start > end) return alert("日期錯誤！");
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.type === "full" && selectedEmps.includes(emp.id)) {
+          const newSchedule = { ...emp.schedule };
+          daysList.forEach((d) => {
+            const currentDate = new Date(d.dayStr);
+            if (currentDate >= start && currentDate <= end)
+              newSchedule[d.dayStr] = { shift: specialShift, igka: "" };
+          });
+          return { ...emp, schedule: newSchedule };
+        }
+        return emp;
+      })
+    );
+    alert("套用成功！");
   };
 
   return (
-    <div className="space-y-6">
-      
-      {/* 森林風 特別時間設定區塊 */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-3xl p-5 border border-emerald-100 shadow-sm relative overflow-hidden">
-        <Leaf className="absolute -bottom-4 -right-4 w-24 h-24 text-emerald-200/50 rotate-12" />
-        <div className="relative z-10">
-          <h3 className="font-bold text-emerald-800 mb-4 flex items-center gap-2">
-            <Settings className="w-5 h-5"/> 特別時間批次設定
-          </h3>
-          <div className="flex flex-col md:flex-row gap-5">
-            <div className="space-y-3 flex-1">
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-emerald-600 mb-1">開始日期</label>
-                  <input type="date" value={specialStart} onChange={e => setSpecialStart(e.target.value)} className="border border-emerald-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400 bg-white/80" />
-                </div>
-                <span className="text-emerald-300 mt-5">~</span>
-                <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-emerald-600 mb-1">結束日期</label>
-                  <input type="date" value={specialEnd} onChange={e => setSpecialEnd(e.target.value)} className="border border-emerald-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400 bg-white/80" />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-emerald-600 mb-1">上班時間</label>
-                  <input type="text" placeholder="例: 10:00-19:00" value={specialShift} onChange={e => setSpecialShift(e.target.value)} className="border border-emerald-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400 bg-white/80 w-36" />
-                </div>
-              </div>
-              <div className="bg-white/60 p-3 rounded-xl border border-emerald-100">
-                <label className="text-xs font-semibold text-emerald-600 mb-2 block">選擇套用人員</label>
-                <div className="flex flex-wrap gap-3">
-                  {employees.map(emp => (
-                    <label key={emp.id} className="flex items-center gap-1.5 cursor-pointer text-sm text-stone-700">
-                      <input 
-                        type="checkbox" 
-                        className="text-emerald-500 rounded focus:ring-emerald-400"
-                        checked={selectedEmps.includes(emp.id)}
-                        onChange={(e) => {
-                          if(e.target.checked) setSelectedEmps([...selectedEmps, emp.id]);
-                          else setSelectedEmps(selectedEmps.filter(id => id !== emp.id));
-                        }}
-                      />
-                      {emp.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-end">
-              <button onClick={applySpecialTime} className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-sm transition-colors h-fit">
-                套用特別時間
-              </button>
-            </div>
-          </div>
+    <div className="space-y-3">
+      <div className="bg-emerald-50/50 rounded-xl p-2 border border-emerald-100 flex flex-wrap items-center gap-3">
+        <span className="font-bold text-emerald-800 text-xs flex items-center gap-1">
+          <Settings className="w-3 h-3" /> 特別時間
+        </span>
+        <input
+          type="date"
+          value={specialStart}
+          onChange={(e) => setSpecialStart(e.target.value)}
+          className="text-[10px] p-1 border rounded w-24"
+        />
+        <span className="text-[10px] text-emerald-400">~</span>
+        <input
+          type="date"
+          value={specialEnd}
+          onChange={(e) => setSpecialEnd(e.target.value)}
+          className="text-[10px] p-1 border rounded w-24"
+        />
+        <input
+          type="text"
+          placeholder="班表(例:10:00-19:00)"
+          value={specialShift}
+          onChange={(e) => setSpecialShift(e.target.value)}
+          className="text-[10px] p-1 border rounded w-28"
+        />
+        <div className="flex items-center gap-2 border-l border-emerald-200 pl-2">
+          {employees.map((emp) => (
+            <label
+              key={emp.id}
+              className="text-[10px] flex items-center gap-0.5 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={selectedEmps.includes(emp.id)}
+                onChange={(e) => {
+                  if (e.target.checked)
+                    setSelectedEmps([...selectedEmps, emp.id]);
+                  else
+                    setSelectedEmps(selectedEmps.filter((id) => id !== emp.id));
+                }}
+                className="w-2.5 h-2.5"
+              />{" "}
+              {emp.name}
+            </label>
+          ))}
         </div>
-      </div>
-
-      {/* 員工列表 header */}
-      <div className="flex justify-between items-center mb-4 px-2">
-        <p className="text-sm text-stone-500">預設平日上班。國定假日與週末會顯示為紅字。點擊日期方塊可切換休假/上班。</p>
-        <button onClick={addEmployee} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl flex items-center gap-1 text-sm font-bold transition-colors">
-          <Plus className="w-4 h-4" /> 新增正社員
+        <button
+          onClick={applySpecialTime}
+          className="bg-teal-600 text-white text-[10px] px-2 py-1 rounded ml-auto"
+        >
+          套用
         </button>
       </div>
-
-      {/* 正社員卡片 */}
-      <div className="space-y-4">
-        {employees.map(emp => (
-          <div key={emp.id} className="border border-stone-200/60 rounded-3xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-4">
+      <div className="flex justify-between items-center px-1">
+        <p className="text-[10px] text-stone-500">
+          點擊數字切換班表/休假。紅色代表假日。
+        </p>
+        <button
+          onClick={addEmployee}
+          className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold"
+        >
+          <Plus className="w-3 h-3 inline" /> 新增
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+        {employees.map((emp) => (
+          <div
+            key={emp.id}
+            className="border border-stone-200 rounded-lg p-2 bg-white flex flex-col shadow-sm"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex flex-col gap-1 w-full pr-2">
                 <input
                   type="text"
                   value={emp.name}
                   onChange={(e) => updateName(emp.id, e.target.value)}
-                  className="border-stone-200 border rounded-xl px-3 py-1.5 font-bold text-stone-800 focus:ring-2 focus:ring-emerald-400 outline-none w-36"
+                  className="text-xs font-bold border-b border-stone-200 focus:border-emerald-400 outline-none w-full pb-0.5"
                   placeholder="姓名"
                 />
-                <select 
-                  value={emp.location} 
+                <select
+                  value={emp.location}
                   onChange={(e) => changeLocation(emp.id, e.target.value)}
-                  className="border-stone-200 border rounded-xl px-3 py-1.5 text-sm bg-stone-50 outline-none focus:ring-2 focus:ring-emerald-400 text-stone-600"
+                  className="text-[10px] bg-stone-50 border border-stone-200 rounded outline-none p-0.5"
                 >
-                  <option value="rokko">六甲校 (9:30-18:30)</option>
-                  <option value="myodani">名谷校 (9:15-18:15)</option>
+                  <option value="rokko">六甲(9:30-18:30)</option>
+                  <option value="myodani">名谷(9:15-18:15)</option>
                 </select>
               </div>
-              <button onClick={() => removeEmployee(emp.id)} className="text-red-400 hover:bg-red-50 p-2 rounded-xl transition-colors">
-                <Trash2 className="w-4 h-4" />
+              <button
+                onClick={() => removeEmployee(emp.id)}
+                className="text-red-400 hover:bg-red-50 p-1 rounded"
+              >
+                <Trash2 className="w-3 h-3" />
               </button>
             </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {daysList.map(d => {
+            <div className="grid grid-cols-7 gap-0.5 mt-auto">
+              {dayNames.map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-[9px] text-stone-400 font-bold mb-1"
+                >
+                  {day}
+                </div>
+              ))}
+              {calendarGrid.map((d, i) => {
+                if (!d) return <div key={`empty-${i}`}></div>;
                 const isWorking = !!emp.schedule[d.dayStr];
                 const redText = isRedDay(d.date, d.dayOfWeek);
-                
                 return (
                   <button
                     key={d.dayStr}
                     onClick={() => toggleDay(emp.id, d.dayStr, emp.location)}
-                    title={isWorking ? emp.schedule[d.dayStr].shift : '休假'}
-                    className={`w-11 h-11 rounded-2xl text-xs font-bold flex flex-col items-center justify-center transition-all ${
-                      isWorking 
-                        ? 'bg-emerald-500 text-white shadow-sm hover:bg-emerald-600' 
-                        : 'bg-stone-50 border border-stone-100 hover:bg-stone-100'
-                    } ${!isWorking && redText ? 'text-red-500' : (!isWorking ? 'text-stone-400' : '')}`}
+                    title={isWorking ? emp.schedule[d.dayStr].shift : "休假"}
+                    className={`h-6 rounded-sm text-[10px] font-bold transition-all ${
+                      isWorking
+                        ? "bg-emerald-500 text-white"
+                        : "bg-stone-50 border border-stone-100"
+                    } ${
+                      !isWorking && redText
+                        ? "text-red-500"
+                        : !isWorking
+                        ? "text-stone-400"
+                        : ""
+                    }`}
                   >
-                    <span className="text-sm leading-none mb-0.5">{d.date.getDate()}</span>
-                    <span className="text-[9px] leading-none opacity-80">{dayNames[d.dayOfWeek]}</span>
+                    {d.date.getDate()}
                   </button>
-                )
+                );
               })}
             </div>
           </div>
         ))}
-        {employees.length === 0 && <div className="text-center py-8 text-stone-400">尚無正社員資料</div>}
       </div>
     </div>
   );
 }
 
 // ==========================================
-// 2. 打工者面板 (Part-time)
+// 2. 打工者面板
 // ==========================================
-function PartTimePanel({ employees, daysList, addEmployee, removeEmployee, updateName, updateDaySchedule, setEmployees, isRedDay }) {
-  const [expandedId, setExpandedId] = useState(null);
-  
-  const [batchShift, setBatchShift] = useState('');
-  const [batchIgka, setBatchIgka] = useState('');
+function PartTimePanel({
+  employees,
+  calendarGrid,
+  addEmployee,
+  removeEmployee,
+  updateName,
+  updateDaySchedule,
+  setEmployees,
+  isRedDay,
+}) {
+  const [expandedIds, setExpandedIds] = useState([]); 
+  const [batchShift, setBatchShift] = useState("");
+  const [batchIgka, setBatchIgka] = useState("");
   const [selectedDays, setSelectedDays] = useState([]);
 
+  const toggleExpand = (id) => {
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]
+    );
+  };
+
   const applyBatch = (empId) => {
-    if (selectedDays.length === 0) return alert("請先勾選要套用的日期");
-    
-    setEmployees(prev => prev.map(emp => {
-      if (emp.id === empId) {
-        const newSchedule = { ...emp.schedule };
-        selectedDays.forEach(dateStr => {
-          newSchedule[dateStr] = { 
-            shift: batchShift || (newSchedule[dateStr]?.shift || ''), 
-            igka: batchIgka || (newSchedule[dateStr]?.igka || '') 
-          };
-        });
-        return { ...emp, schedule: newSchedule };
-      }
-      return emp;
-    }));
-    
-    setSelectedDays([]); 
+    if (selectedDays.length === 0) return alert("請先勾選日期");
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === empId) {
+          const newSchedule = { ...emp.schedule };
+          selectedDays.forEach(
+            (dateStr) =>
+              (newSchedule[dateStr] = {
+                shift: batchShift || newSchedule[dateStr]?.shift || "",
+                igka: batchIgka || newSchedule[dateStr]?.igka || "",
+              })
+          );
+          return { ...emp, schedule: newSchedule };
+        }
+        return emp;
+      })
+    );
+    setSelectedDays([]);
     alert("批次套用成功！");
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-4 px-2">
-        <p className="text-sm text-stone-500">展開卡片可設定單日時間或使用「批次複選設定」。週末與祝日會以紅字標示。</p>
-        <button onClick={addEmployee} className="bg-teal-100 hover:bg-teal-200 text-teal-800 px-4 py-2 rounded-xl flex items-center gap-1 text-sm font-bold transition-colors">
-          <Plus className="w-4 h-4" /> 新增打工者
+    <div className="space-y-3">
+      <div className="flex justify-between items-center px-1">
+        <p className="text-[10px] text-stone-500">
+          IGKA 欄位請輸入時數 (例: 1 或 2.5)。雙擊展開填寫區塊。
+        </p>
+        <button
+          onClick={addEmployee}
+          className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold"
+        >
+          <Plus className="w-3 h-3 inline" /> 新增
         </button>
       </div>
-
-      <div className="space-y-4">
-        {employees.map(emp => (
-          <div key={emp.id} className={`border rounded-3xl bg-white overflow-hidden shadow-sm transition-colors ${expandedId === emp.id ? 'border-teal-200' : 'border-stone-200/60'}`}>
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-stone-50/50" onClick={() => setExpandedId(expandedId === emp.id ? null : emp.id)}>
-              <div className="flex items-center gap-4" onClick={e => e.stopPropagation()}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+        {employees.map((emp) => (
+          <div
+            key={emp.id}
+            className={`border rounded-lg bg-white shadow-sm flex flex-col ${
+              expandedIds.includes(emp.id)
+                ? "border-teal-300"
+                : "border-stone-200"
+            }`}
+          >
+            <div
+              className="p-2 flex items-center justify-between cursor-pointer hover:bg-stone-50 rounded-t-lg select-none"
+              onDoubleClick={() => toggleExpand(emp.id)}
+            >
+              <div className="flex items-center gap-2 flex-1">
                 <input
                   type="text"
                   value={emp.name}
                   onChange={(e) => updateName(emp.id, e.target.value)}
-                  className="border-stone-200 border rounded-xl px-3 py-1.5 font-bold text-stone-800 focus:ring-2 focus:ring-teal-400 outline-none w-36 bg-transparent"
+                  className="text-sm font-bold border-b border-stone-200 focus:border-teal-400 outline-none w-32 pb-0.5 bg-transparent"
                   placeholder="姓名"
                 />
-                <span className="text-xs text-stone-400 font-medium bg-stone-100 px-2 py-1 rounded-lg">點擊展開</span>
+                <span className="text-[9px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded pointer-events-none">
+                  Wクリック
+                </span>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); removeEmployee(emp.id); }} className="text-red-400 hover:bg-red-50 p-2 rounded-xl transition-colors">
-                <Trash2 className="w-4 h-4" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeEmployee(emp.id);
+                }}
+                className="text-red-400 hover:bg-red-50 p-1 rounded"
+              >
+                <Trash2 className="w-3 h-3" />
               </button>
             </div>
-            
-            {expandedId === emp.id && (
-              <div className="p-5 bg-stone-50/30 border-t border-stone-100">
-                <div className="bg-teal-50/50 rounded-2xl p-4 mb-6 border border-teal-100">
-                  <h4 className="font-bold text-teal-800 mb-3 flex items-center gap-2"><CheckSquare className="w-4 h-4"/> 批次複選設定</h4>
-                  <div className="flex flex-wrap gap-4 items-end">
-                    <div>
-                      <label className="block text-xs font-semibold text-teal-700 mb-1">班表時間</label>
-                      <input type="text" placeholder="例: 10:00-15:00" value={batchShift} onChange={e => setBatchShift(e.target.value)} className="border-teal-200 rounded-xl px-3 py-1.5 text-sm w-36 outline-none focus:ring-2 focus:ring-teal-400" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-teal-700 mb-1">IGKA時間</label>
-                      <input type="text" placeholder="例: 10:00-12:00" value={batchIgka} onChange={e => setBatchIgka(e.target.value)} className="border-teal-200 rounded-xl px-3 py-1.5 text-sm w-36 outline-none focus:ring-2 focus:ring-teal-400" />
-                    </div>
-                    <button onClick={() => applyBatch(emp.id)} className="bg-teal-500 text-white px-4 py-1.5 rounded-xl text-sm font-medium hover:bg-teal-600 transition-colors shadow-sm">
-                      套用至勾選日期
+            {expandedIds.includes(emp.id) && (
+              <div className="p-2 bg-stone-50/50 border-t border-stone-100 flex-1">
+                <div className="flex items-center justify-between bg-teal-50/50 p-1.5 rounded-md mb-2 border border-teal-100">
+                  <span className="font-bold text-teal-800 text-[10px] flex items-center gap-1">
+                    <CheckSquare className="w-3 h-3" /> 複選設定
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="班表(例:10:00-15:00)"
+                      value={batchShift}
+                      onChange={(e) => setBatchShift(e.target.value)}
+                      className="border-teal-200 rounded px-1 py-0.5 text-[9px] w-24"
+                    />
+                    <input
+                      type="text"
+                      placeholder="IGKA(時數)"
+                      value={batchIgka}
+                      onChange={(e) => setBatchIgka(e.target.value)}
+                      className="border-teal-200 rounded px-1 py-0.5 text-[9px] w-16"
+                    />
+                    <button
+                      onClick={() => applyBatch(emp.id)}
+                      className="bg-teal-500 text-white px-2 py-0.5 rounded text-[9px]"
+                    >
+                      套用
                     </button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {daysList.map(d => {
+                <div className="grid grid-cols-7 gap-1">
+                  {dayNames.map((day) => (
+                    <div
+                      key={day}
+                      className="text-center text-[9px] text-stone-400 font-bold mb-0.5"
+                    >
+                      {day}
+                    </div>
+                  ))}
+                  {calendarGrid.map((d, i) => {
+                    if (!d) return <div key={`empty-${i}`}></div>;
                     const isChecked = selectedDays.includes(d.dayStr);
-                    const dayData = emp.schedule[d.dayStr] || { shift: '', igka: '' };
+                    const dayData = emp.schedule[d.dayStr] || {
+                      shift: "",
+                      igka: "",
+                    };
                     const redText = isRedDay(d.date, d.dayOfWeek);
-                    
                     return (
-                      <div key={d.dayStr} className={`border rounded-2xl p-3 flex flex-col gap-2 transition-colors bg-white ${isChecked ? 'border-teal-400 ring-1 ring-teal-400 shadow-sm' : 'border-stone-200/80 hover:border-teal-200'}`}>
-                        <div className="flex justify-between items-center">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={() => {
-                                if(isChecked) setSelectedDays(selectedDays.filter(day => day !== d.dayStr));
-                                else setSelectedDays([...selectedDays, d.dayStr]);
-                              }}
-                              className="w-4 h-4 text-teal-500 rounded focus:ring-teal-400 border-stone-300"
-                            />
-                            <span className={`text-sm font-bold ${redText ? 'text-red-500' : 'text-stone-700'}`}>
-                              {d.date.getDate()}日 ({dayNames[d.dayOfWeek]})
-                            </span>
-                          </label>
-                        </div>
-                        <div className="flex gap-2 mt-1">
-                          <input 
-                            type="text" 
-                            placeholder="班表" 
-                            value={dayData.shift} 
-                            onChange={(e) => updateDaySchedule(emp.id, d.dayStr, 'shift', e.target.value)}
-                            className="w-1/2 text-xs border border-stone-200 rounded-lg px-2 py-1.5 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
+                      <div
+                        key={d.dayStr}
+                        className={`border rounded p-1 flex flex-col gap-0.5 ${
+                          isChecked
+                            ? "border-teal-400 bg-teal-50/30"
+                            : "border-stone-200 bg-white"
+                        }`}
+                      >
+                        <label className="flex items-center gap-0.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked)
+                                setSelectedDays(
+                                  selectedDays.filter((day) => day !== d.dayStr)
+                                );
+                              else setSelectedDays([...selectedDays, d.dayStr]);
+                            }}
+                            className="w-2.5 h-2.5 text-teal-500"
                           />
-                          <input 
-                            type="text" 
-                            placeholder="IGKA" 
-                            value={dayData.igka} 
-                            onChange={(e) => updateDaySchedule(emp.id, d.dayStr, 'igka', e.target.value)}
-                            className="w-1/2 text-xs border border-stone-200 bg-stone-50 rounded-lg px-2 py-1.5 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
-                          />
-                        </div>
+                          <span
+                            className={`text-[10px] font-bold ${
+                              redText ? "text-red-500" : "text-stone-700"
+                            }`}
+                          >
+                            {d.date.getDate()}
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="班表"
+                          value={dayData.shift}
+                          onChange={(e) =>
+                            updateDaySchedule(
+                              emp.id,
+                              d.dayStr,
+                              "shift",
+                              e.target.value
+                            )
+                          }
+                          className="w-full text-[9px] border border-stone-200 rounded-sm p-0.5 text-center focus:border-teal-400 outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="IGKA"
+                          value={dayData.igka}
+                          onChange={(e) =>
+                            updateDaySchedule(
+                              emp.id,
+                              d.dayStr,
+                              "igka",
+                              e.target.value
+                            )
+                          }
+                          className="w-full text-[9px] border border-stone-200 bg-stone-50 rounded-sm p-0.5 text-center focus:border-teal-400 outline-none"
+                        />
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </div>
             )}
           </div>
         ))}
-        {employees.length === 0 && <div className="text-center py-8 text-stone-400">尚無打工者資料</div>}
       </div>
     </div>
   );
 }
 
 // ==========================================
-// 3. 司機面板 (Driver)
+// 3. 司機面板
 // ==========================================
-function DriverPanel({ employees, daysList, addEmployee, removeEmployee, updateName, updateDaySchedule, setEmployees, isRedDay }) {
-  const [expandedId, setExpandedId] = useState(null);
+function DriverPanel({
+  employees,
+  calendarGrid,
+  addEmployee,
+  removeEmployee,
+  updateName,
+  updateDaySchedule,
+  setEmployees,
+  isRedDay,
+}) {
+  const [expandedIds, setExpandedIds] = useState([]);
 
-  const handleFileUpload = (e, empId) => {
+  const toggleExpand = (id) => {
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]
+    );
+  };
+
+  const handleFileUpload = (e, targetEmpId = null) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target.result;
       const lines = text.split(/\r?\n/);
-      const parsedSchedule = {};
-      
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(',');
-        if (row.length >= 3) {
-          const date = row[0].trim();
-          const shift = row[1].trim();
-          const igka = row[2].trim();
-          if (date.length > 5) parsedSchedule[date] = { shift, igka };
-        }
-      }
-
-      setEmployees(prev => prev.map(emp => {
-        if (emp.id === empId) {
-          return { ...emp, schedule: { ...emp.schedule, ...parsedSchedule } };
-        }
-        return emp;
-      }));
-      alert("CSV 匯入成功！");
-      e.target.value = null; 
+      let totalImported = 0;
+      const updatedDriversStatus = {};
+      setEmployees((prev) =>
+        prev.map((emp) => {
+          if (emp.type !== "driver") return emp;
+          let isTargetDriver = targetEmpId ? emp.id === targetEmpId : true;
+          if (!isTargetDriver) return emp;
+          const newSchedule = { ...emp.schedule };
+          let empImportedCount = 0;
+          for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(",").map((s) => s.trim());
+            if (row.length < 2) continue;
+            let date = "",
+              shift = "",
+              igka = "";
+            if (row.length >= 4) {
+              const driverKey = row[0].toLowerCase();
+              if (
+                !(
+                  emp.name.toLowerCase().includes(driverKey) ||
+                  (emp.aliases &&
+                    emp.aliases.some((a) =>
+                      a.toLowerCase().includes(driverKey)
+                    ))
+                )
+              )
+                continue;
+              date = row[1];
+              shift = row[2];
+              igka = row[3];
+            } else {
+              date = row[0];
+              shift = row[1];
+              igka = row[2] || "";
+            }
+            if (date && date.length >= 5) {
+              newSchedule[date] = { shift, igka, imported: true };
+              empImportedCount++;
+              totalImported++;
+            }
+          }
+          if (empImportedCount > 0)
+            updatedDriversStatus[emp.name] = empImportedCount;
+          return {
+            ...emp,
+            schedule: newSchedule,
+            importedCount: (emp.importedCount || 0) + empImportedCount,
+          };
+        })
+      );
+      if (totalImported > 0) alert("CSV 匯入成功！");
+      else alert("無對應資料。");
+      e.target.value = null;
     };
     reader.readAsText(file);
   };
 
   const downloadSampleCSV = () => {
-    const header = "日期,班表時間,運轉時間(IGKA)\n";
-    const sampleDate = daysList[0]?.dayStr || "2026-10-01";
-    const row = `${sampleDate},08:00-17:00,09:00-16:00\n`;
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), header + row], { type: "text/csv;charset=utf-8;" }); 
+    const row1 = `上山,2026-10-01,08:00-17:00,7.5\n`;
+    const blob = new Blob(
+      [
+        new Uint8Array([0xef, 0xbb, 0xbf]),
+        "司機姓名,日期,班表時間,運轉時間(IGKA)\n" + row1,
+      ],
+      { type: "text/csv;charset=utf-8;" }
+    );
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "司機班表上傳範例.csv";
+    link.download = "司機班表範例.csv";
     link.click();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-4 px-2">
-        <p className="text-sm text-stone-500">司機也可上傳 CSV 批次匯入班表。</p>
-        <div className="flex gap-3">
-          <button onClick={downloadSampleCSV} className="text-emerald-600 hover:text-emerald-700 text-sm font-bold px-3 py-2 bg-emerald-50 rounded-xl">
-            下載 CSV 範例
-          </button>
-          <button onClick={addEmployee} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-1 text-sm font-bold shadow-sm">
-            <Plus className="w-4 h-4" /> 新增司機
+    <div className="space-y-3">
+      <div className="flex justify-between items-center px-1">
+        <div className="flex gap-2">
+          <button
+            onClick={downloadSampleCSV}
+            className="text-emerald-700 text-[10px] font-bold px-2 py-1 bg-emerald-50 rounded border border-emerald-100 flex items-center gap-1"
+          >
+            <FileSpreadsheet className="w-3 h-3" /> 範例
           </button>
         </div>
+        <button
+          onClick={addEmployee}
+          className="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold"
+        >
+          <Plus className="w-3 h-3 inline" /> 新增
+        </button>
       </div>
-
-      <div className="space-y-4">
-        {employees.map(emp => (
-          <div key={emp.id} className={`border rounded-3xl bg-white overflow-hidden shadow-sm transition-colors ${expandedId === emp.id ? 'border-emerald-300' : 'border-stone-200/60'}`}>
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-stone-50/50" onClick={() => setExpandedId(expandedId === emp.id ? null : emp.id)}>
-              <div className="flex items-center gap-4" onClick={e => e.stopPropagation()}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+        {employees.map((emp) => (
+          <div
+            key={emp.id}
+            className={`border rounded-lg bg-white shadow-sm flex flex-col ${
+              expandedIds.includes(emp.id)
+                ? "border-emerald-300"
+                : "border-stone-200"
+            }`}
+          >
+            <div
+              className="p-2 flex items-center justify-between cursor-pointer hover:bg-stone-50 rounded-t-lg select-none"
+              onDoubleClick={() => toggleExpand(emp.id)}
+            >
+              <div className="flex items-center gap-2 flex-1">
                 <input
                   type="text"
                   value={emp.name}
                   onChange={(e) => updateName(emp.id, e.target.value)}
-                  className="border-stone-200 border rounded-xl px-3 py-1.5 font-bold text-stone-800 focus:ring-2 focus:ring-emerald-400 outline-none w-36 bg-transparent"
+                  className="text-sm font-bold border-b border-stone-200 focus:border-emerald-400 outline-none w-24 pb-0.5 bg-transparent"
                   placeholder="姓名"
                 />
-                <span className="text-xs text-stone-400 font-medium bg-stone-100 px-2 py-1 rounded-lg">點擊展開</span>
+                {emp.importedCount > 0 && (
+                  <span className="bg-emerald-100 text-emerald-800 text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> {emp.importedCount}
+                  </span>
+                )}
+                <span className="text-[9px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded pointer-events-none">
+                  Wクリック
+                </span>
               </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="relative group" onClick={e => e.stopPropagation()}>
-                  <input 
-                    type="file" 
-                    accept=".csv" 
+              <div className="flex items-center gap-1">
+                <div
+                  className="relative group"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="file"
+                    accept=".csv"
                     onChange={(e) => handleFileUpload(e, emp.id)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                    title="上傳 CSV 班表"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  <button className="flex items-center gap-1 bg-stone-100 border border-stone-200 text-stone-600 group-hover:bg-stone-200 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors">
-                    <Upload className="w-4 h-4" /> 匯入
+                  <button className="flex items-center gap-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                    <Upload className="w-2.5 h-2.5" /> CSV
                   </button>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); removeEmployee(emp.id); }} className="text-red-400 hover:bg-red-50 p-2 rounded-xl transition-colors">
-                  <Trash2 className="w-4 h-4" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeEmployee(emp.id);
+                  }}
+                  className="text-red-400 p-1 rounded"
+                >
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </div>
-            
-            {expandedId === emp.id && (
-              <div className="p-5 bg-stone-50/30 border-t border-stone-100">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {daysList.map(d => {
-                    const dayData = emp.schedule[d.dayStr] || { shift: '', igka: '' };
+            {expandedIds.includes(emp.id) && (
+              <div className="p-2 bg-stone-50/50 border-t border-stone-100 flex-1">
+                <div className="grid grid-cols-7 gap-1">
+                  {dayNames.map((day) => (
+                    <div
+                      key={day}
+                      className="text-center text-[9px] text-stone-400 font-bold mb-0.5"
+                    >
+                      {day}
+                    </div>
+                  ))}
+                  {calendarGrid.map((d, i) => {
+                    if (!d) return <div key={`empty-${i}`}></div>;
+                    const dayData = emp.schedule[d.dayStr] || {
+                      shift: "",
+                      igka: "",
+                      imported: false,
+                    };
                     const redText = isRedDay(d.date, d.dayOfWeek);
-                    
                     return (
-                      <div key={d.dayStr} className="border border-stone-200/80 rounded-2xl p-3 flex flex-col gap-2 bg-white hover:border-emerald-200 transition-colors">
-                        <div className={`text-sm font-bold ${redText ? 'text-red-500' : 'text-stone-700'}`}>
-                          {d.date.getDate()}日 ({dayNames[d.dayOfWeek]})
+                      <div
+                        key={d.dayStr}
+                        className={`border rounded p-1 flex flex-col gap-0.5 ${
+                          dayData.imported
+                            ? "border-emerald-400 bg-emerald-50"
+                            : "border-stone-200 bg-white"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span
+                            className={`text-[10px] font-bold ${
+                              redText ? "text-red-500" : "text-stone-700"
+                            }`}
+                          >
+                            {d.date.getDate()}
+                          </span>
+                          {dayData.imported && (
+                            <span className="text-[8px] bg-emerald-600 text-white font-bold px-1 rounded flex items-center">
+                              ✓
+                            </span>
+                          )}
                         </div>
-                        <div className="flex gap-2 mt-1">
-                          <input 
-                            type="text" 
-                            placeholder="班表" 
-                            value={dayData.shift} 
-                            onChange={(e) => updateDaySchedule(emp.id, d.dayStr, 'shift', e.target.value)}
-                            className="w-1/2 text-xs border border-stone-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
-                          />
-                          <input 
-                            type="text" 
-                            placeholder="運轉" 
-                            value={dayData.igka} 
-                            onChange={(e) => updateDaySchedule(emp.id, d.dayStr, 'igka', e.target.value)}
-                            className="w-1/2 text-xs border border-emerald-100 bg-emerald-50 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-emerald-800"
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          placeholder="班表"
+                          value={dayData.shift}
+                          onChange={(e) =>
+                            updateDaySchedule(
+                              emp.id,
+                              d.dayStr,
+                              "shift",
+                              e.target.value
+                            )
+                          }
+                          className="w-full text-[9px] border border-stone-200 rounded-sm p-0.5 text-center focus:border-emerald-400 outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="IGKA(時數)"
+                          value={dayData.igka}
+                          onChange={(e) =>
+                            updateDaySchedule(
+                              emp.id,
+                              d.dayStr,
+                              "igka",
+                              e.target.value
+                            )
+                          }
+                          className="w-full text-[9px] border border-stone-200 bg-stone-50 rounded-sm p-0.5 text-center focus:border-emerald-400 outline-none"
+                        />
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </div>
             )}
           </div>
         ))}
-        {employees.length === 0 && <div className="text-center py-8 text-stone-400">尚無司機資料</div>}
       </div>
     </div>
   );
 }
+              
