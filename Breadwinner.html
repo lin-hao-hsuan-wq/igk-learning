@@ -346,14 +346,14 @@
                         let transCount = 0;
 
                         wb.worksheets.forEach(ws => {
-                            // ★ 修正核心：個別判定分頁屬性，防止全域誤判！
+                            // 判斷該分頁是否為交通費分頁，防呆分頁干擾
                             const isTransSheet = ws.name.includes('交通費');
 
                             if (isTransSheet) {
                                 for (let r = 2; r <= ws.rowCount; r++) { 
                                     const dateCell = ws.getCell(r, 1).value; 
                                     const nameRaw = getSafeText(ws.getCell(r, 2)); 
-                                    const nameCell = nameRaw.trim().toLowerCase().replace(/\s+/g, '');
+                                    const nameCell = nameRaw.trim().toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
                                     const amountCell = ws.getCell(r, 5).value; 
                                     
                                     if (!dateCell || !nameCell) continue; 
@@ -385,28 +385,33 @@
                                     }
                                 }
                             } else {
-                                // 這裡是排班表(Shift)邏輯
+                                // 班表解析邏輯
                                 let currentDates = {}; 
                                 let currentColMap = {};
 
                                 for (let r = 1; r <= ws.rowCount; r++) {
+                                    // 1. 在每列尋找日期
                                     for (let c = 1; c <= 10; c++) {
                                         let actCell = ws.getCell(r, c);
                                         let valObj = actCell.value;
                                         
-                                        if (valObj instanceof Date) {
-                                            let y = valObj.getFullYear() > 2000 ? valObj.getFullYear() : fileYear;
-                                            let dObj = new Date(y, valObj.getMonth(), valObj.getDate());
+                                        // 情況A: Excel 內部格式是純正 Date 物件
+                                        if (valObj instanceof Date && valObj.getFullYear() > 2000) {
+                                            let dObj = new Date(valObj.getFullYear(), valObj.getMonth(), valObj.getDate());
                                             currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
                                             break;
                                         }
                                         
+                                        // 情況B: 文字格式 (暴力清除所有空白字元)
                                         let textStr = getSafeText(actCell);
-                                        let t = textStr.replace(/\s+/g, '');
-                                        if (t.match(/\d{1,2}[:：\.]\d{2}/)) continue; 
+                                        let t = textStr.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
                                         
-                                        const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?(?:\([月火水木金土日A-Za-z]+\))?$/);
-                                        if (m) {
+                                        // 遇到時間格式 14:00 略過不判斷為日期
+                                        if (/^\d{1,2}[:：\.]\d{2}$/.test(t)) continue; 
+                                        
+                                        // 終極寬鬆的正規表達式 (無視括弧是全形還半形)
+                                        const m = t.match(/(?:(?:20)?\d{2}[/\-年])?(1[0-2]|0?[1-9])[/\-月](3[01]|[12][0-9]|0?[1-9])日?/);
+                                        if (m && !t.includes(':') && !t.includes('：') && !t.toLowerCase().includes('everyday')) {
                                             let y = fileYear;
                                             const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
                                             let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
@@ -415,12 +420,13 @@
                                         }
                                     }
 
+                                    // 2. 尋找這一列是否為標題（人名列）
                                     let matches = 0;
                                     let tempMap = {};
                                     for (let c = 1; c <= 40; c++) {
                                         let cellRaw = getSafeText(ws.getCell(r, c));
-                                        let v = cellRaw.toLowerCase().replace(/\s+/g, '');
-                                        if (v.length >= 1) {
+                                        let v = cellRaw.toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                                        if (v.length >= 2) {
                                             for (const emp of localEmps) { 
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/\s+/g, ''))];
                                                 if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
@@ -433,10 +439,28 @@
                                         currentColMap = tempMap;
                                     }
 
+                                    // 3. 處理排班內容 (若上方有日期且有匹配到人名欄位)
                                     let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
                                     if (activeDateRow && Object.keys(currentColMap).length > 0) {
                                         let dateInfo = currentDates[activeDateRow];
                                         
+                                        // 取得當前列的時間區段 (從第一欄獲取)
+                                        let cellA = ws.getCell(r, 1);
+                                        let timeValA = cellA.value;
+                                        if (timeValA && timeValA.result !== undefined) timeValA = timeValA.result;
+
+                                        let rowTimeStr = null;
+                                        if (timeValA instanceof Date) {
+                                            rowTimeStr = `${String(timeValA.getHours()).padStart(2, '0')}:${String(timeValA.getMinutes()).padStart(2, '0')}`;
+                                        } else if (typeof timeValA === 'number') {
+                                            let totalMins = Math.round(timeValA * 24 * 60);
+                                            rowTimeStr = `${String(Math.floor(totalMins / 60) % 24).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
+                                        } else {
+                                            let tText = getSafeText(cellA).trim();
+                                            let tm = tText.match(/(\d{1,2})[:：](\d{2})/);
+                                            if (tm) rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
+                                        }
+
                                         Object.keys(currentColMap).forEach(c => {
                                             const empId = currentColMap[c];
                                             const emp = localEmps.find(e => e.id === empId);
@@ -445,6 +469,8 @@
                                             if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                             
                                             let cellText = getSafeText(actCell).trim();
+                                            if (!cellText && !actCell.fill && (!actCell.style || !actCell.style.fill)) return; // 跳過全空格
+
                                             const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                             
                                             let fill = actCell.fill || (actCell.style && actCell.style.fill) || {};
@@ -455,12 +481,13 @@
                                             }
 
                                             let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
-
-                                            let vLower = cellText.toLowerCase().replace(/\s+/g, '');
+                                            
+                                            let vLower = cellText.toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
                                             let isHeader = localEmps.some(e => e.name.toLowerCase().replace(/\s+/g, '') === vLower || (e.aliases||[]).some(a => a.toLowerCase().replace(/\s+/g, '') === vLower));
 
+                                            // 若有字且不是姓名標題，或是有顏色背景
                                             let hasLetters = /[a-zA-Z\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(cellText);
-                                            let isShiftBlock = hex !== '' || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday') && cellText.length > 1);
+                                            let isShiftBlock = hex !== '' || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'));
                                             
                                             if (!newData[empId]) newData[empId] = {};
                                             if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
@@ -484,27 +511,9 @@
                                                     dataRef._tempDrivers.push(tMins);
                                                 });
                                             }
-                                            else if (isShiftBlock) {
-                                                let cellA = ws.getCell(r, 1);
-                                                let timeValA = cellA.value;
-                                                if (timeValA && timeValA.result !== undefined) timeValA = timeValA.result;
-
-                                                let rowTimeStr = null;
-                                                if (timeValA instanceof Date) {
-                                                    rowTimeStr = `${String(timeValA.getHours()).padStart(2, '0')}:${String(timeValA.getMinutes()).padStart(2, '0')}`;
-                                                } else if (typeof timeValA === 'number') {
-                                                    let totalMins = Math.round(timeValA * 24 * 60);
-                                                    rowTimeStr = `${String(Math.floor(totalMins / 60) % 24).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
-                                                } else {
-                                                    let tText = getSafeText(cellA).trim();
-                                                    let tm = tText.match(/(\d{1,2})[:：](\d{2})/);
-                                                    if (tm) rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
-                                                }
-                                                
-                                                if (rowTimeStr) {
-                                                    if (!dataRef._tempBlocks) dataRef._tempBlocks = [];
-                                                    dataRef._tempBlocks.push(timeToMins(rowTimeStr));
-                                                }
+                                            else if (isShiftBlock && rowTimeStr) {
+                                                if (!dataRef._tempBlocks) dataRef._tempBlocks = [];
+                                                dataRef._tempBlocks.push(timeToMins(rowTimeStr));
                                             }
                                         });
                                     }
@@ -512,6 +521,7 @@
                             }
                         });
                         
+                        // 總結暫存的時段區塊
                         Object.keys(newData).forEach(empId => {
                             Object.keys(newData[empId]).forEach(dateKey => {
                                 let dataRef = newData[empId][dateKey];
