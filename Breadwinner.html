@@ -346,14 +346,13 @@
                         let transCount = 0;
 
                         wb.worksheets.forEach(ws => {
-                            // 判斷該分頁是否為交通費分頁，防呆分頁干擾
                             const isTransSheet = ws.name.includes('交通費');
 
                             if (isTransSheet) {
                                 for (let r = 2; r <= ws.rowCount; r++) { 
                                     const dateCell = ws.getCell(r, 1).value; 
                                     const nameRaw = getSafeText(ws.getCell(r, 2)); 
-                                    const nameCell = nameRaw.trim().toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                                    const nameCell = nameRaw.trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, '');
                                     const amountCell = ws.getCell(r, 5).value; 
                                     
                                     if (!dateCell || !nameCell) continue; 
@@ -385,33 +384,37 @@
                                     }
                                 }
                             } else {
-                                // 班表解析邏輯
+                                // 排班表解析邏輯
                                 let currentDates = {}; 
                                 let currentColMap = {};
 
                                 for (let r = 1; r <= ws.rowCount; r++) {
-                                    // 1. 在每列尋找日期
+                                    // 1. 搜尋日期列
                                     for (let c = 1; c <= 10; c++) {
                                         let actCell = ws.getCell(r, c);
                                         let valObj = actCell.value;
                                         
-                                        // 情況A: Excel 內部格式是純正 Date 物件
-                                        if (valObj instanceof Date && valObj.getFullYear() > 2000) {
-                                            let dObj = new Date(valObj.getFullYear(), valObj.getMonth(), valObj.getDate());
-                                            currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
-                                            break;
+                                        // ★ 終極防呆: 若 Excel 時間被儲存為 1899 年的 Date，絕對不允許它偽裝成日期！
+                                        if (valObj instanceof Date) {
+                                            if (valObj.getFullYear() > 2000) {
+                                                let dObj = new Date(valObj.getFullYear(), valObj.getMonth(), valObj.getDate());
+                                                currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
+                                                break;
+                                            } else {
+                                                continue; // 是時間，跳過這格的日期解析
+                                            }
                                         }
                                         
-                                        // 情況B: 文字格式 (暴力清除所有空白字元)
                                         let textStr = getSafeText(actCell);
-                                        let t = textStr.replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                                        // 清除全/半形空白
+                                        let t = textStr.replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, '');
+                                        if (!t) continue;
+                                        if (t.match(/^\d{1,2}[:：\.]\d{2}$/)) continue; // 純時間絕對不是日期
                                         
-                                        // 遇到時間格式 14:00 略過不判斷為日期
-                                        if (/^\d{1,2}[:：\.]\d{2}$/.test(t)) continue; 
-                                        
-                                        // 終極寬鬆的正規表達式 (無視括弧是全形還半形)
-                                        const m = t.match(/(?:(?:20)?\d{2}[/\-年])?(1[0-2]|0?[1-9])[/\-月](3[01]|[12][0-9]|0?[1-9])日?/);
-                                        if (m && !t.includes(':') && !t.includes('：') && !t.toLowerCase().includes('everyday')) {
+                                        // 清除所有括號干擾（包含全形括號！）
+                                        let tClean = t.replace(/[()（）]/g, '');
+                                        const m = tClean.match(/^(?:(?:20)?\d{2}[\/\-年])?(1[0-2]|0?[1-9])[\/\-月](3[01]|[12][0-9]|0?[1-9])日?[月火水木金土日A-Za-z]*$/);
+                                        if (m && !t.toLowerCase().includes('everyday')) {
                                             let y = fileYear;
                                             const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
                                             let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
@@ -420,12 +423,12 @@
                                         }
                                     }
 
-                                    // 2. 尋找這一列是否為標題（人名列）
+                                    // 2. 搜尋人名列
                                     let matches = 0;
                                     let tempMap = {};
                                     for (let c = 1; c <= 40; c++) {
                                         let cellRaw = getSafeText(ws.getCell(r, c));
-                                        let v = cellRaw.toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                                        let v = cellRaw.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, '');
                                         if (v.length >= 2) {
                                             for (const emp of localEmps) { 
                                                 let s = [emp.name.toLowerCase().replace(/\s+/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/\s+/g, ''))];
@@ -439,12 +442,14 @@
                                         currentColMap = tempMap;
                                     }
 
-                                    // 3. 處理排班內容 (若上方有日期且有匹配到人名欄位)
-                                    let activeDateRow = Object.keys(currentDates).reverse().find(dr => r >= parseInt(dr));
+                                    // 3. 處理排班時數
+                                    // 確保取得最近的一個有效日期列
+                                    let sortedDateRows = Object.keys(currentDates).map(Number).sort((a,b) => b - a);
+                                    let activeDateRow = sortedDateRows.find(dr => r >= dr);
+                                    
                                     if (activeDateRow && Object.keys(currentColMap).length > 0) {
                                         let dateInfo = currentDates[activeDateRow];
                                         
-                                        // 取得當前列的時間區段 (從第一欄獲取)
                                         let cellA = ws.getCell(r, 1);
                                         let timeValA = cellA.value;
                                         if (timeValA && timeValA.result !== undefined) timeValA = timeValA.result;
@@ -457,7 +462,7 @@
                                             rowTimeStr = `${String(Math.floor(totalMins / 60) % 24).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
                                         } else {
                                             let tText = getSafeText(cellA).trim();
-                                            let tm = tText.match(/(\d{1,2})[:：](\d{2})/);
+                                            let tm = tText.match(/(\d{1,2})[:：\.](\d{2})/);
                                             if (tm) rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
                                         }
 
@@ -469,25 +474,29 @@
                                             if (actCell.isMerged) actCell = ws.getCell(actCell.master.address);
                                             
                                             let cellText = getSafeText(actCell).trim();
-                                            if (!cellText && !actCell.fill && (!actCell.style || !actCell.style.fill)) return; // 跳過全空格
-
-                                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                             
-                                            let fill = actCell.fill || (actCell.style && actCell.style.fill) || {};
-                                            let hex = '';
-                                            if (fill.type === 'pattern' && fill.pattern !== 'none') {
-                                                hex = (fill.fgColor?.argb || fill.bgColor?.argb || '').toUpperCase();
-                                                if (hex && ['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(hex)) hex = '';
+                                            // 解析背景顏色 (支援一般ARGB與Theme顏色)
+                                            let hasColor = false;
+                                            let fill = actCell.fill || (actCell.style && actCell.style.fill);
+                                            if (fill && fill.type === 'pattern' && fill.pattern !== 'none') {
+                                                let fg = fill.fgColor || {};
+                                                let bg = fill.bgColor || {};
+                                                if (fg.argb && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(fg.argb.toUpperCase())) hasColor = true;
+                                                if (bg.argb && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(bg.argb.toUpperCase())) hasColor = true;
+                                                if (fg.theme !== undefined || bg.theme !== undefined) hasColor = true;
                                             }
 
+                                            // 完全空白的格子直接跳過
+                                            if (!cellText && !hasColor) return;
+
+                                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
                                             let isDriverKeyword = cellText.includes('乗車') || cellText.includes('下車') || cellText.includes('降車') || cellText.includes('車') || cellText.includes('返却');
                                             
-                                            let vLower = cellText.toLowerCase().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                                            let vLower = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, '');
                                             let isHeader = localEmps.some(e => e.name.toLowerCase().replace(/\s+/g, '') === vLower || (e.aliases||[]).some(a => a.toLowerCase().replace(/\s+/g, '') === vLower));
 
-                                            // 若有字且不是姓名標題，或是有顏色背景
                                             let hasLetters = /[a-zA-Z\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(cellText);
-                                            let isShiftBlock = hex !== '' || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'));
+                                            let isShiftBlock = hasColor || (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'));
                                             
                                             if (!newData[empId]) newData[empId] = {};
                                             if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
