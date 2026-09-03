@@ -86,7 +86,6 @@
             { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani', aliases: ['よしの'] },
             { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani', aliases: ['もり', '森佳織'] },
             { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani', aliases: ['ハムナ'] },
-            // ★ 新增 36 號 Tafriheen Khanum (Nilima)
             { num: 36, id: 'm10', name: 'Tafriheen Khanum', type: 'part', location: 'myodani', aliases: ['Nilima', 'ニリマ', 'Tafriheen'] },
             { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani', aliases: ['サディア'] },
             { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani', aliases: ['モニカ'] },
@@ -235,6 +234,9 @@
                 setTimecardText('');
             };
 
+            // ==========================================
+            // ★ 萬用十字交叉解析引擎 
+            // ==========================================
             const processGridData = (grid2D, fileYear, isTransport, localEmps, newData, getFill = null) => {
                 let shiftCount = 0, transCount = 0;
 
@@ -242,13 +244,20 @@
                     grid2D.forEach((row, rIdx) => {
                         if (rIdx === 0) return; 
                         
-                        let dateCell = '', nameCell = '', amountCell = '';
-                        
-                        if (row.length > 15) {
-                            dateCell = getSafeText(row[1]); 
+                        let dateCell = '', nameCell = '', amountCell = '', driveMinsCell = '';
+                        let isTimesCar = false;
+
+                        // 判斷是否為 Times Car 的 CSV 格式 (透過欄位長度和特徵)
+                        if (row.length > 15 && getSafeText(row[0]).includes('利用料金')) {
+                            isTimesCar = true;
+                            dateCell = getSafeText(row[3]); // 利用開始日時
                             nameCell = getSafeText(row[7]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                            amountCell = getSafeText(row[14]); 
+                            amountCell = '0'; // ★ 請求金額不加入交通費
+                            driveMinsCell = getSafeText(row[8]); // 利用時間(分) -> 轉成駕駛時間
+                        } else if (row.length > 15) {
+                            return; // Times car 的其他無關行
                         } else {
+                            // 일반 Excel 交通費
                             dateCell = getSafeText(row[0]);
                             nameCell = getSafeText(row[1]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
                             amountCell = getSafeText(row[4]);
@@ -259,7 +268,11 @@
                         let dateStr = '';
                         const dMatch = dateCell.match(/(\d{4})[年\/\-](\d{1,2})[月\/\-](\d{1,2})/);
                         if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
-                        if (!dateStr || !(parseInt(amountCell) > 0)) return;
+                        if (!dateStr) return;
+
+                        const amount = parseInt(amountCell) || 0;
+                        const driveMins = parseInt(driveMinsCell) || 0;
+                        if (amount === 0 && driveMins === 0) return;
 
                         const emp = localEmps.find(e => {
                             let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
@@ -269,8 +282,15 @@
                         if (emp) {
                             if (!newData[emp.id]) newData[emp.id] = {};
                             if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
-                            newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + parseInt(amountCell);
-                            transCount++;
+                            
+                            if (amount > 0) {
+                                newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
+                                transCount++;
+                            }
+                            if (driveMins > 0) {
+                                newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMins;
+                                shiftCount++; // 將駕駛時間算入 shiftCount 觸發成功提示
+                            }
                         }
                     });
                     return { newData, shiftCount, transCount };
@@ -477,7 +497,7 @@
                             
                             if (shiftCount > 0 || transCount > 0) {
                                 setAttendanceData(newData);
-                                addLog(`[CSV] 解析完了: シフト ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
+                                addLog(`[CSV] 解析完了: 運転実績 ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
                             } else {
                                 addLog(`[CSV] 抽出可能なデータがありませんでした。`, 'info');
                             }
@@ -506,7 +526,6 @@
                         }
                         
                         addLog(`[PDF] テキスト抽出完了。PDFの構造上、手動入力をお勧めします。`, 'error');
-                        console.log(fullText); 
                     } catch (err) {
                         addLog(`[PDF] エラー: ${err.message}`, 'error');
                     }
@@ -566,7 +585,7 @@
                             <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
-                                        <div key={i} className={`mb-1 ${log.includes('失敗') || log.includes('エラー') || log.includes('error') ? 'text-red-400' : (log.includes('成功') || log.includes('反映') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
+                                        <div key={i} className={`mb-1 ${log.includes('エラー') ? 'text-red-400' : (log.includes('反映') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
                                     ))
                                 }
                             </div>
@@ -658,7 +677,7 @@
                                             shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                         }
                                         
-                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkA || dayData.transFee) workDays++;
+                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkA || dayData.transFee || dayData.driveMins) workDays++;
 
                                         const inOutMins = calculateMinutes(dayData.in, dayData.out);
                                         totalInOutGlobal += inOutMins;
