@@ -78,20 +78,8 @@
             { num: 14, id: 'r8', name: 'Sammy Abukmeil', type: 'part', location: 'rokko', aliases: ['Sammy', 'サミー'] },
             { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko', aliases: ['キム', 'Kim', 'Nakyung'] },
             { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko', aliases: ['Nathan', 'ネイサン'] },
-            { num: 20, id: 'r14', name: 'Nao', type: 'part', location: 'rokko', aliases: ['ナオ', 'なお'] },
-            { num: 21, id: 'r13', name: 'Misato', type: 'part', location: 'rokko', aliases: ['ミサト', 'みさと'] },
             { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani', aliases: ['大津', 'おおつ'] },
-            { num: 31, id: 'm4', name: '馬場亜希', type: 'part', location: 'myodani', aliases: ['馬場', 'ばば'] },
-            { num: 32, id: 'm5', name: '篠崎', type: 'part', location: 'myodani', aliases: ['しのざき'] },
-            { num: 33, id: 'm6', name: '吉野 真緒', type: 'part', location: 'myodani', aliases: ['よしの'] },
-            { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani', aliases: ['もり'] },
-            { num: 35, id: 'm9', name: 'Hamna', type: 'part', location: 'myodani', aliases: ['ハムナ'] },
-            { num: 37, id: 'm11', name: 'Sadia', type: 'part', location: 'myodani', aliases: ['サディア'] },
-            { num: 38, id: 'm12', name: 'Monika', type: 'part', location: 'myodani', aliases: ['モニカ'] },
-            { num: 39, id: 'm13', name: '中嶋莉真', type: 'part', location: 'myodani', aliases: ['中嶋', 'なかじま'] },
-            { num: 40, id: 'm14', name: '顕谷ユタカ', type: 'part', location: 'myodani', aliases: ['顕谷', 'あきたに'] },
-            { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] },
-            { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
+            { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] }
         ];
 
         const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
@@ -113,10 +101,10 @@
             if (val === null || val === undefined) return '';
             if (typeof val === 'string') return val;
             if (typeof val === 'number') return String(val);
-            if (val instanceof Date) return dayjs(val).format('YYYY/MM/DD HH:mm');
+            if (val instanceof Date) return dayjs(val).format('YYYY/MM/DD');
             if (val.richText) return val.richText.map(rt => rt.text).join('');
             if (val.result !== undefined && val.result !== null) {
-                if (val.result instanceof Date) return dayjs(val.result).format('YYYY/MM/DD HH:mm');
+                if (val.result instanceof Date) return dayjs(val.result).format('YYYY/MM/DD');
                 return String(val.result);
             }
             try { return String(val); } catch(e) { return ''; }
@@ -132,7 +120,6 @@
         );
 
         const App = () => {
-            // ★ 補回遺失的宣告
             const [isCloudLoaded, setIsCloudLoaded] = useState(false);
             const [isLocked, setIsLocked] = useState(false);
             const ADMIN_PASSWORD = "8888";
@@ -142,8 +129,6 @@
             const [logs, setLogs] = useState([]);
             const [attendanceData, setAttendanceData] = useState({});
             const [timecardText, setTimecardText] = useState('');
-            const [specialRecords, setSpecialRecords] = useState([]);
-
             const [payMonth, setPayMonth] = useState('2026-09');
             const [activeLocation, setActiveLocation] = useState('rokko');
             const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
@@ -156,7 +141,6 @@
                         const cloudData = doc.data();
                         if (cloudData.employees) setEmployees(cloudData.employees);
                         if (cloudData.attendanceData) setAttendanceData(cloudData.attendanceData);
-                        if (cloudData.specialRecords) setSpecialRecords(cloudData.specialRecords);
                         if (cloudData.isLocked !== undefined) setIsLocked(cloudData.isLocked);
                     }
                     setIsCloudLoaded(true);
@@ -172,10 +156,10 @@
             useEffect(() => {
                 if (!isCloudLoaded) return;
                 const timer = setTimeout(() => {
-                    docRef.set({ employees, attendanceData, specialRecords, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                    docRef.set({ employees, attendanceData, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
                 }, 1500);
                 return () => clearTimeout(timer);
-            }, [employees, attendanceData, specialRecords, isCloudLoaded]);
+            }, [employees, attendanceData, isCloudLoaded]);
 
             const handleToggleLock = () => {
                 if (isLocked) {
@@ -189,12 +173,10 @@
 
             const handleParseTimecardText = () => {
                 if (!timecardText.trim()) return;
-                
                 const cleanText = timecardText.replace(/[\u3000\u200B-\u200D\uFEFF]/g, ' '); 
                 const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l);
                 
-                let currentName = null;
-                let parsedCount = 0;
+                let currentName = null, parsedCount = 0;
                 const newData = { ...attendanceData };
 
                 for (let i = 0; i < lines.length; i++) {
@@ -236,6 +218,9 @@
                 setTimecardText('');
             };
 
+            // ==========================================
+            // ★ 萬用十字交叉解析引擎 (自動識別 X軸 與 Y軸)
+            // ==========================================
             const processGridData = (grid2D, fileYear, isTransport, localEmps, newData) => {
                 let shiftCount = 0, transCount = 0;
 
@@ -268,122 +253,111 @@
                             transCount++;
                         }
                     });
-                } else {
-                    let currentDates = {}; 
-                    let currentColMap = {};
+                    return { newData, shiftCount, transCount };
+                }
 
-                    grid2D.forEach((row, r) => {
-                        for (let c = 0; c < Math.min(row.length, 5); c++) {
-                            let t = getSafeText(row[c]).replace(/[\s\u3000\u200B-\u200D\uFEFF\n()（）]/g, '');
-                            if (!t || t.match(/^\d{1,2}[:：\.]\d{2}([:：\.]\d{2})?$/)) continue; 
-                            
+                // --- 班表解析 ---
+                let dateCols = {}; // c -> date
+                let dateRows = {}; // r -> date
+                let nameCols = {}; // c -> empId
+                let nameRows = {}; // r -> empId
+
+                // 1. 全域掃描：找出所有的日期與人名座標
+                grid2D.forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        let textStr = getSafeText(cell);
+                        if (!textStr) return;
+
+                        // 檢查是否為原生 Date
+                        if (cell instanceof Date && cell.getFullYear() > 2000) {
+                            let dKey = dayjs(cell).format('YYYY/MM/DD');
+                            dateCols[c] = dKey; dateRows[r] = dKey; return;
+                        }
+
+                        // 檢查是否為文字日期 (暴力清除干擾)
+                        let t = textStr.replace(/[\s\u3000\u200B-\u200D\uFEFF\n()（）]/g, '');
+                        if (t && !t.match(/^\d{1,2}[:：\.]\d{2}([:：\.]\d{2})?$/)) {
                             const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?([1-9]|1[0-2])[\/\-月]([1-9]|[12]\d|3[01])日?/);
                             if (m && !t.toLowerCase().includes('everyday')) {
                                 let y = fileYear;
                                 const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
                                 let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
-                                currentDates[r] = { key: dayjs(dObj).format('YYYY/MM/DD'), obj: dObj };
-                                break;
+                                let dKey = dayjs(dObj).format('YYYY/MM/DD');
+                                dateCols[c] = dKey; dateRows[r] = dKey; return;
                             }
                         }
 
-                        let matches = 0, tempMap = {};
-                        for (let c = 0; c < row.length; c++) {
-                            let v = getSafeText(row[c]).toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                            if (v.length >= 2) {
-                                for (const emp of localEmps) { 
-                                    let s = [emp.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
-                                    if (s.includes(v) || s.some(name => v.includes(name) && name.length >= 2)) {
-                                        tempMap[c] = emp.id; matches++; break;
-                                    }
+                        // 檢查是否為人名
+                        let vName = textStr.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                        if (vName.length >= 2) {
+                            for (const emp of localEmps) { 
+                                let s = [emp.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
+                                if (s.includes(vName) || s.some(name => vName.includes(name) && name.length >= 2)) {
+                                    nameCols[c] = emp.id; nameRows[r] = emp.id; break;
                                 }
                             }
-                        }
-                        if (matches >= 2) currentColMap = tempMap;
-
-                        let sortedDateRows = Object.keys(currentDates).map(Number).sort((a,b)=>b-a);
-                        let activeDateRow = sortedDateRows.find(dr => r >= dr);
-                        
-                        if (activeDateRow && Object.keys(currentColMap).length > 0) {
-                            let dateInfo = currentDates[activeDateRow];
-                            let rowTimeStr = null;
-                            
-                            for (let tc = 0; tc < Math.min(row.length, 5); tc++) {
-                                let tm = getSafeText(row[tc]).trim().match(/^(\d{1,2})[:：\.](\d{2})/);
-                                if (tm) {
-                                    rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
-                                    break;
-                                }
-                            }
-
-                            Object.keys(currentColMap).forEach(c => {
-                                const empId = currentColMap[c];
-                                const emp = localEmps.find(e => e.id === empId);
-                                let cellText = getSafeText(row[c]).trim();
-                                
-                                if (!cellText) return; 
-
-                                const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
-                                let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
-                                
-                                let cleanCellText = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                                let isHeader = localEmps.some(e => e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '') === cleanCellText || (e.aliases||[]).some(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '') === cleanCellText));
-                                let hasLetters = /[a-zA-Z\u3040-\u9FAF]/.test(cellText);
-                                let isShiftBlock = (hasLetters && !isHeader && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'));
-                                
-                                if (!newData[empId]) newData[empId] = {};
-                                if (!newData[empId][dateInfo.key]) newData[empId][dateInfo.key] = { location: emp ? emp.location : 'rokko' };
-                                let dataRef = newData[empId][dateInfo.key];
-
-                                if (cellText.includes('欠') || cellText.includes('休')) {
-                                    dataRef.leaveType = cellText.substring(0, 10);
-                                    shiftCount++;
-                                } else if (exactMatches.length === 2 && !isDriverKeyword) {
-                                    dataRef.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
-                                    dataRef.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
-                                    shiftCount++;
-                                } else if (isDriverKeyword && exactMatches.length > 0) {
-                                    if (!dataRef._tempDrivers) dataRef._tempDrivers = [];
-                                    exactMatches.forEach(m => dataRef._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
-                                } else if (isShiftBlock && rowTimeStr) {
-                                    if (!dataRef._tempBlocks) dataRef._tempBlocks = [];
-                                    dataRef._tempBlocks.push(timeToMins(rowTimeStr));
-                                }
-                            });
                         }
                     });
+                });
 
-                    Object.keys(newData).forEach(empId => {
-                        Object.keys(newData[empId]).forEach(dateKey => {
-                            let dataRef = newData[empId][dateKey];
-                            let emp = localEmps.find(e => e.id === empId);
+                // 自動判斷 X 軸與 Y 軸
+                let isDateRowHeader = Object.keys(dateCols).length > Object.keys(dateRows).length;
+                let isNameColHeader = Object.keys(nameRows).length > Object.keys(nameCols).length;
 
-                            if (dataRef._tempDrivers && dataRef._tempDrivers.length > 0) {
-                                let times = dataRef._tempDrivers.sort((a,b) => a - b);
-                                let totalDriverMins = 0;
-                                for (let i = 0; i < times.length - 1; i += 2) totalDriverMins += (times[i+1] - times[i]);
-                                if (times.length % 2 !== 0) totalDriverMins += 30; 
-                                dataRef.driveMins = (parseInt(dataRef.driveMins) || 0) + totalDriverMins;
-                                delete dataRef._tempDrivers;
+                // 2. 擷取十字交叉點的班表內容
+                grid2D.forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        let dateKey = isDateRowHeader ? dateCols[c] : dateRows[r];
+                        let empId = isNameColHeader ? nameRows[r] : nameCols[c];
+
+                        if (dateKey && empId) {
+                            let cellText = getSafeText(cell).trim();
+                            if (!cellText) return;
+
+                            // 排除標題列本身
+                            let vClean = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                            let isHeader = localEmps.some(e => e.id === empId && ([e.name.toLowerCase().replace(/\s+/g,''), ...(e.aliases||[]).map(a=>a.toLowerCase().replace(/\s+/g,''))].includes(vClean)));
+                            if (isHeader) return;
+                            if ((cellText.includes('/') || cellText.includes('月')) && cellText.length < 15) return;
+
+                            if (!newData[empId]) newData[empId] = {};
+                            if (!newData[empId][dateKey]) newData[empId][dateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
+                            let target = newData[empId][dateKey];
+
+                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
+                            let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
+
+                            if (cellText.includes('欠') || cellText.includes('休')) {
+                                target.leaveType = cellText.substring(0, 10);
                                 shiftCount++;
-                            }
-
-                            if (dataRef._tempBlocks && dataRef._tempBlocks.length > 0) {
-                                let times = dataRef._tempBlocks.sort((a,b) => a - b);
-                                if (emp && emp.type === 'driver') {
-                                    dataRef.igkA = (parseInt(dataRef.igkA) || 0) + (times.length * 30);
-                                } else if (emp && emp.type === 'full') {
-                                    if (!dataRef.shiftStart) dataRef.shiftStart = minsToTime(times[0]);
-                                    if (!dataRef.shiftEnd) dataRef.shiftEnd = minsToTime(times[times.length - 1] + 30);
-                                } else {
-                                    dataRef.igkA = (parseInt(dataRef.igkA) || 0) + (times.length * 30);
-                                }
+                            } else if (exactMatches.length === 2 && !isDriverKeyword) {
+                                target.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
+                                target.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
                                 shiftCount++;
-                                delete dataRef._tempBlocks;
+                            } else if (isDriverKeyword && exactMatches.length > 0) {
+                                if (!target._tempDrivers) target._tempDrivers = [];
+                                exactMatches.forEach(m => target._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
                             }
-                        });
+                        }
                     });
-                }
+                });
+
+                // 3. 司機時段總結
+                Object.keys(newData).forEach(empId => {
+                    Object.keys(newData[empId]).forEach(dateKey => {
+                        let target = newData[empId][dateKey];
+                        if (target._tempDrivers && target._tempDrivers.length > 0) {
+                            let times = target._tempDrivers.sort((a,b) => a - b);
+                            let totalDriverMins = 0;
+                            for (let i = 0; i < times.length - 1; i += 2) totalDriverMins += (times[i+1] - times[i]);
+                            if (times.length % 2 !== 0) totalDriverMins += 30; // 單數防呆
+                            target.driveMins = (parseInt(target.driveMins) || 0) + totalDriverMins;
+                            delete target._tempDrivers;
+                            shiftCount++;
+                        }
+                    });
+                });
+
                 return { newData, shiftCount, transCount };
             };
 
@@ -445,7 +419,7 @@
                             
                             if (shiftCount > 0 || transCount > 0) {
                                 setAttendanceData(newData);
-                                addLog(`[CSV] 解析完了: シフト ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。(※CSVは色を認識しません)`, 'success');
+                                addLog(`[CSV] 解析完了: シフト ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
                             } else {
                                 addLog(`[CSV] 抽出可能なデータがありませんでした。`, 'info');
                             }
@@ -472,9 +446,7 @@
                             const textContent = await page.getTextContent();
                             fullText += textContent.items.map(item => item.str).join(' ') + '\n';
                         }
-                        
                         addLog(`[PDF] テキスト抽出完了。PDFの構造上、手動入力をお勧めします。`, 'error');
-                        console.log(fullText); 
                     } catch (err) {
                         addLog(`[PDF] エラー: ${err.message}`, 'error');
                     }
@@ -491,7 +463,6 @@
                                 <div className="border-2 border-dashed border-green-300 rounded-lg py-5 text-center bg-green-50 hover:bg-green-100 relative cursor-pointer shadow-sm">
                                     <i className="fa-solid fa-file-excel text-3xl text-green-500 mb-2"></i>
                                     <p className="text-xs text-green-800 font-bold px-2">Excelシフト・交通費</p>
-                                    <p className="text-[10px] text-green-600 mt-1">※背景色と文字を解析します</p>
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
                             </SettingPanel>
@@ -501,7 +472,6 @@
                                 <div className="border-2 border-dashed border-blue-300 rounded-lg py-5 text-center bg-blue-50 hover:bg-blue-100 relative cursor-pointer shadow-sm">
                                     <i className="fa-solid fa-file-csv text-3xl text-blue-500 mb-2"></i>
                                     <p className="text-xs text-blue-800 font-bold px-2">CSVシフト・交通費</p>
-                                    <p className="text-[10px] text-blue-600 mt-1">※文字情報のみを解析します</p>
                                     <input type="file" accept=".csv" onChange={handleCsvUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
                             </SettingPanel>
@@ -511,7 +481,6 @@
                                 <div className="border-2 border-dashed border-red-300 rounded-lg py-5 text-center bg-red-50 hover:bg-red-100 relative cursor-pointer shadow-sm">
                                     <i className="fa-solid fa-file-pdf text-3xl text-red-500 mb-2"></i>
                                     <p className="text-xs text-red-800 font-bold px-2">PDFアップロード</p>
-                                    <p className="text-[10px] text-red-600 mt-1">※構造が崩れるため非推奨</p>
                                     <input type="file" accept=".pdf" onChange={handlePdfUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
                             </SettingPanel>
@@ -523,7 +492,7 @@
                             <div className="flex flex-col h-full">
                                 <textarea 
                                     className="w-full flex-1 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50 mb-2"
-                                    placeholder="Wagacoなどの打刻履歴をここに貼り付けてください。&#10;（空白や改行が乱れていても自動で補正して読み取ります）"
+                                    placeholder="Wagacoなどの打刻履歴をここに貼り付けてください。"
                                     value={timecardText}
                                     onChange={(e) => setTimecardText(e.target.value)}
                                 ></textarea>
@@ -572,7 +541,6 @@
                 };
 
                 let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
-                let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
                 let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
 
                 return (
@@ -774,11 +742,11 @@
                     <div className="flex flex-col h-[calc(100vh-60px)] min-h-0">
                         <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                             <div className="flex gap-2">
-                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校</button>
-                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校</button>
+                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
+                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
                             </div>
                             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
-                                <span className="text-gray-600 font-bold text-xs">支給月:</span>
+                                <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
                                 <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400" />
                             </div>
                         </div>
