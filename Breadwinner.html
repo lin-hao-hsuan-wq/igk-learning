@@ -14,7 +14,7 @@
     <!-- Day.js -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     
-    <!-- ★ 核心解析套件：ExcelJS, PapaParse(CSV), PDF.js(PDF) -->
+    <!-- ★ 核心解析套件 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -35,14 +35,12 @@
         .holiday-text { color: #b91c1c !important; font-weight: bold; }
         .absent-row { background-color: #faf5ff !important; }
         .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
-        .collapsed-panel { flex-grow: 0 !important; flex-shrink: 0; min-height: fit-content; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ Firebase 初始化設定
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -79,6 +77,7 @@
             { num: 15, id: 'r9', name: 'Kim Nakyung', type: 'part', location: 'rokko', aliases: ['キム', 'Kim', 'Nakyung'] },
             { num: 16, id: 'r10', name: 'Nathan Morrison', type: 'part', location: 'rokko', aliases: ['Nathan', 'ネイサン'] },
             { num: 30, id: 'm3', name: '大津真里', type: 'part', location: 'myodani', aliases: ['大津', 'おおつ'] },
+            { num: 34, id: 'm7', name: '森 佳織', type: 'part', location: 'myodani', aliases: ['もり', '森佳織'] },
             { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] }
         ];
 
@@ -161,14 +160,257 @@
                 return () => clearTimeout(timer);
             }, [employees, attendanceData, isCloudLoaded]);
 
-            const handleToggleLock = () => {
-                if (isLocked) {
-                    const pwd = window.prompt("パスワードを入力:");
-                    if (pwd === ADMIN_PASSWORD) { docRef.set({ isLocked: false }, { merge: true }); addLog('システムロックを解除しました。', 'success'); }
-                    else if (pwd !== null) alert("パスワードが違います");
-                } else {
-                    if (window.confirm("全員の編集をロックしますか？")) { docRef.set({ isLocked: true }, { merge: true }); addLog('システムをロックしました。', 'info'); }
+            // ==========================================
+            // ★ 萬用十字交叉解析引擎 (自動識別 X軸 與 Y軸，解決各種排版)
+            // ==========================================
+            const processGridData = (grid2D, fileYear, isTransport, localEmps, newData, getFill = null) => {
+                let shiftCount = 0, transCount = 0;
+
+                if (isTransport) {
+                    grid2D.forEach((row, rIdx) => {
+                        if (rIdx === 0) return; 
+                        const dateCell = getSafeText(row[0]);
+                        const nameCell = getSafeText(row[1]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                        const amountCell = getSafeText(row[4]); 
+                        
+                        if (!dateCell || !nameCell) return;
+                        let dateStr = '';
+                        const dMatch = dateCell.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+                        if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
+                        if (!dateStr || !(parseInt(amountCell) > 0)) return;
+
+                        const emp = localEmps.find(e => {
+                            let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
+                            return s.includes(nameCell) || s.some(n => nameCell.includes(n) && n.length >= 2);
+                        });
+
+                        if (emp) {
+                            if (!newData[emp.id]) newData[emp.id] = {};
+                            if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
+                            newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + parseInt(amountCell);
+                            transCount++;
+                        }
+                    });
+                    return { newData, shiftCount, transCount };
                 }
+
+                // --- 班表解析 ---
+                let dateCols = {}, dateRows = {}; 
+                let nameCols = {}, nameRows = {};
+
+                // 1. 無差別地毯式掃描全表：找出所有日期與人名的座標
+                grid2D.forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        let textStr = getSafeText(cell);
+                        if (!textStr) return;
+
+                        // 判斷日期
+                        let isDate = false;
+                        let dKey = null;
+                        if (cell instanceof Date && cell.getFullYear() > 2000) {
+                            dKey = dayjs(cell).format('YYYY/MM/DD');
+                            isDate = true;
+                        } else {
+                            let t = textStr.replace(/[\s\u3000\u200B-\u200D\uFEFF\n()（）]/g, '');
+                            if (t && !t.match(/^\d{1,2}[:：\.]\d{2}([:：\.]\d{2})?$/)) {
+                                const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?([1-9]|1[0-2])[\/\-月]([1-9]|[12]\d|3[01])日?/);
+                                if (m && !t.toLowerCase().includes('everyday')) {
+                                    let y = fileYear;
+                                    const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
+                                    let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
+                                    dKey = dayjs(dObj).format('YYYY/MM/DD');
+                                    isDate = true;
+                                }
+                            }
+                        }
+
+                        if (isDate && dKey) {
+                            dateCols[c] = dKey; dateRows[r] = dKey;
+                            return; 
+                        }
+
+                        // 判斷人名
+                        let vName = textStr.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                        if (vName.length >= 2) {
+                            for (const emp of localEmps) {
+                                let s = [emp.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
+                                if (s.includes(vName) || s.some(n => vName.includes(n) && n.length >= 2)) {
+                                    nameCols[c] = emp.id; nameRows[r] = emp.id;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // 2. 自動判斷排版方向：看哪一軸比較多，就是主軸
+                let isDateRowHeader = Object.keys(dateCols).length > Object.keys(dateRows).length;
+                let isNameColHeader = Object.keys(nameRows).length > Object.keys(nameCols).length;
+
+                // 3. 擷取十字交叉點的內容
+                grid2D.forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        let dateKey = isDateRowHeader ? dateCols[c] : dateRows[r];
+                        let empId = isNameColHeader ? nameRows[r] : nameCols[c];
+
+                        if (dateKey && empId) {
+                            let cellText = getSafeText(cell).trim();
+                            let hasColor = getFill ? getFill(r, c) : false;
+
+                            if (!cellText && !hasColor) return;
+
+                            // 排除標題列本身，防止它自己讀自己
+                            let vClean = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                            let isHeader = localEmps.some(e => e.id === empId && ([e.name.toLowerCase().replace(/[\s\u3000]/g,''), ...(e.aliases||[]).map(a=>a.toLowerCase().replace(/[\s\u3000]/g,''))].includes(vClean)));
+                            if (isHeader) return;
+                            if ((cellText.includes('/') || cellText.includes('月')) && cellText.length < 15) return;
+
+                            if (!newData[empId]) newData[empId] = {};
+                            if (!newData[empId][dateKey]) newData[empId][dateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
+                            let target = newData[empId][dateKey];
+
+                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
+                            let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
+
+                            if (cellText.includes('欠') || cellText.includes('休')) {
+                                target.leaveType = cellText.substring(0, 10);
+                                shiftCount++;
+                            } else if (exactMatches.length === 2 && !isDriverKeyword) {
+                                // 找到 "09:15-18:15" 這類絕對時間
+                                target.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
+                                target.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
+                                shiftCount++;
+                            } else if (isDriverKeyword && exactMatches.length > 0) {
+                                if (!target._tempDrivers) target._tempDrivers = [];
+                                exactMatches.forEach(m => target._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
+                            } else if (hasColor || (/[a-zA-Z\u3040-\u9FAF]/.test(cellText) && !cellText.includes('月') && !cellText.includes('日'))) {
+                                // 若只有色塊或單一任務字串 (舊排版模式)
+                                let timeVal = isDateRowHeader ? null : getSafeText(grid2D[r][0]).trim();
+                                let tm = timeVal ? timeVal.match(/^(\d{1,2})[:：\.](\d{2})/) : null;
+                                if (tm) {
+                                    let rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
+                                    if (!target._tempBlocks) target._tempBlocks = [];
+                                    target._tempBlocks.push(timeToMins(rowTimeStr));
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // 總結合併
+                Object.keys(newData).forEach(empId => {
+                    Object.keys(newData[empId]).forEach(dateKey => {
+                        let target = newData[empId][dateKey];
+                        let emp = localEmps.find(e => e.id === empId);
+
+                        if (target._tempDrivers && target._tempDrivers.length > 0) {
+                            let times = target._tempDrivers.sort((a,b) => a - b);
+                            let totalDriverMins = 0;
+                            for (let i = 0; i < times.length - 1; i += 2) totalDriverMins += (times[i+1] - times[i]);
+                            if (times.length % 2 !== 0) totalDriverMins += 30; // 單數防呆
+                            target.driveMins = (parseInt(target.driveMins) || 0) + totalDriverMins;
+                            delete target._tempDrivers;
+                            shiftCount++;
+                        }
+
+                        if (target._tempBlocks && target._tempBlocks.length > 0) {
+                            let times = target._tempBlocks.sort((a,b) => a - b);
+                            if (emp && emp.type === 'driver') {
+                                target.igkA = (parseInt(target.igkA) || 0) + (times.length * 30);
+                            } else if (emp && emp.type === 'full') {
+                                if (!target.shiftStart) target.shiftStart = minsToTime(times[0]);
+                                if (!target.shiftEnd) target.shiftEnd = minsToTime(times[times.length - 1] + 30);
+                            } else {
+                                target.igkA = (parseInt(target.igkA) || 0) + (times.length * 30);
+                            }
+                            shiftCount++;
+                            delete target._tempBlocks;
+                        }
+                    });
+                });
+
+                return { newData, shiftCount, transCount };
+            };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                addLog(`[Excel] 解析中: ${file.name}...`);
+                let fileYear = parseInt(payMonth.split('-')[0]) || new Date().getFullYear();
+                
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        const wb = new ExcelJS.Workbook();
+                        await wb.xlsx.load(evt.target.result);
+                        let globalNewData = JSON.parse(JSON.stringify(attendanceData));
+                        let localEmps = JSON.parse(JSON.stringify(employees));
+                        let totalShift = 0, totalTrans = 0;
+
+                        wb.worksheets.forEach(ws => {
+                            const isTransSheet = ws.name.includes('交通費');
+                            let grid2D = [];
+                            let fills = {}; // 保存顏色
+                            ws.eachRow((row, rowNumber) => {
+                                let rowData = [];
+                                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                    rowData[colNumber - 1] = cell.value;
+                                    let fill = cell.fill || (cell.style && cell.style.fill);
+                                    if (fill && fill.type === 'pattern' && fill.pattern !== 'none') {
+                                        let fg = fill.fgColor || {};
+                                        let bg = fill.bgColor || {};
+                                        let hasC = false;
+                                        if (fg.argb && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(fg.argb.toUpperCase())) hasC = true;
+                                        if (bg.argb && !['FFFFFFFF', '00000000', 'FF000000', '00FFFFFF'].includes(bg.argb.toUpperCase())) hasC = true;
+                                        if (fg.theme !== undefined || bg.theme !== undefined) hasC = true;
+                                        if (hasC) fills[`${rowNumber-1}-${colNumber-1}`] = true;
+                                    }
+                                });
+                                grid2D.push(rowData);
+                            });
+
+                            const getFill = (r, c) => fills[`${r}-${c}`] || false;
+                            const { newData, shiftCount, transCount } = processGridData(grid2D, fileYear, isTransSheet, localEmps, globalNewData, getFill);
+                            globalNewData = newData;
+                            totalShift += shiftCount;
+                            totalTrans += transCount;
+                        });
+
+                        if (totalShift > 0 || totalTrans > 0) {
+                            setAttendanceData(globalNewData);
+                            addLog(`[Excel] 解析完了: シフト ${totalShift} 件, 交通費 ${totalTrans} 件を反映しました。`, 'success');
+                        } else {
+                            addLog(`[Excel] 抽出可能なデータがありませんでした。`, 'info');
+                        }
+                    } catch (err) { addLog(`[Excel] エラー: ${err.message}`, 'error'); }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = null;
+            };
+
+            const handleCsvUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                addLog(`[CSV] 解析中: ${file.name}...`);
+                let fileYear = parseInt(payMonth.split('-')[0]) || new Date().getFullYear();
+
+                Papa.parse(file, {
+                    complete: function(results) {
+                        try {
+                            const isTransSheet = file.name.includes('交通費');
+                            const { newData, shiftCount, transCount } = processGridData(results.data, fileYear, isTransSheet, employees, attendanceData);
+                            
+                            if (shiftCount > 0 || transCount > 0) {
+                                setAttendanceData(newData);
+                                addLog(`[CSV] 解析完了: シフト ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。(※CSVは色認識なし)`, 'success');
+                            } else {
+                                addLog(`[CSV] 抽出可能なデータがありませんでした。`, 'info');
+                            }
+                        } catch (err) { addLog(`[CSV] エラー: ${err.message}`, 'error'); }
+                    },
+                    error: function(err) { addLog(`[CSV] エラー: ${err.message}`, 'error'); }
+                });
+                e.target.value = null;
             };
 
             const handleParseTimecardText = () => {
@@ -218,247 +460,10 @@
                 setTimecardText('');
             };
 
-            // ==========================================
-            // ★ 萬用十字交叉解析引擎 (自動識別 X軸 與 Y軸)
-            // ==========================================
-            const processGridData = (grid2D, fileYear, isTransport, localEmps, newData) => {
-                let shiftCount = 0, transCount = 0;
-
-                if (isTransport) {
-                    grid2D.forEach((row, rIdx) => {
-                        if (rIdx === 0) return; 
-                        const dateCell = getSafeText(row[0]);
-                        const nameCell = getSafeText(row[1]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                        const amountCell = getSafeText(row[4]); 
-                        
-                        if (!dateCell || !nameCell) return;
-                        
-                        let dateStr = '';
-                        const dMatch = dateCell.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-                        if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
-                        if (!dateStr) return;
-
-                        const amount = parseInt(amountCell) || 0;
-                        if (amount === 0) return;
-
-                        const emp = localEmps.find(e => {
-                            let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
-                            return s.includes(nameCell) || s.some(n => nameCell.includes(n) && n.length >= 2);
-                        });
-
-                        if (emp) {
-                            if (!newData[emp.id]) newData[emp.id] = {};
-                            if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
-                            newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
-                            transCount++;
-                        }
-                    });
-                    return { newData, shiftCount, transCount };
-                }
-
-                // --- 班表解析 ---
-                let dateCols = {}; // c -> date
-                let dateRows = {}; // r -> date
-                let nameCols = {}; // c -> empId
-                let nameRows = {}; // r -> empId
-
-                // 1. 全域掃描：找出所有的日期與人名座標
-                grid2D.forEach((row, r) => {
-                    row.forEach((cell, c) => {
-                        let textStr = getSafeText(cell);
-                        if (!textStr) return;
-
-                        // 檢查是否為原生 Date
-                        if (cell instanceof Date && cell.getFullYear() > 2000) {
-                            let dKey = dayjs(cell).format('YYYY/MM/DD');
-                            dateCols[c] = dKey; dateRows[r] = dKey; return;
-                        }
-
-                        // 檢查是否為文字日期 (暴力清除干擾)
-                        let t = textStr.replace(/[\s\u3000\u200B-\u200D\uFEFF\n()（）]/g, '');
-                        if (t && !t.match(/^\d{1,2}[:：\.]\d{2}([:：\.]\d{2})?$/)) {
-                            const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?([1-9]|1[0-2])[\/\-月]([1-9]|[12]\d|3[01])日?/);
-                            if (m && !t.toLowerCase().includes('everyday')) {
-                                let y = fileYear;
-                                const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
-                                let dObj = new Date(y, parseInt(m[1])-1, parseInt(m[2]));
-                                let dKey = dayjs(dObj).format('YYYY/MM/DD');
-                                dateCols[c] = dKey; dateRows[r] = dKey; return;
-                            }
-                        }
-
-                        // 檢查是否為人名
-                        let vName = textStr.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                        if (vName.length >= 2) {
-                            for (const emp of localEmps) { 
-                                let s = [emp.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(emp.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
-                                if (s.includes(vName) || s.some(name => vName.includes(name) && name.length >= 2)) {
-                                    nameCols[c] = emp.id; nameRows[r] = emp.id; break;
-                                }
-                            }
-                        }
-                    });
-                });
-
-                // 自動判斷 X 軸與 Y 軸
-                let isDateRowHeader = Object.keys(dateCols).length > Object.keys(dateRows).length;
-                let isNameColHeader = Object.keys(nameRows).length > Object.keys(nameCols).length;
-
-                // 2. 擷取十字交叉點的班表內容
-                grid2D.forEach((row, r) => {
-                    row.forEach((cell, c) => {
-                        let dateKey = isDateRowHeader ? dateCols[c] : dateRows[r];
-                        let empId = isNameColHeader ? nameRows[r] : nameCols[c];
-
-                        if (dateKey && empId) {
-                            let cellText = getSafeText(cell).trim();
-                            if (!cellText) return;
-
-                            // 排除標題列本身
-                            let vClean = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                            let isHeader = localEmps.some(e => e.id === empId && ([e.name.toLowerCase().replace(/\s+/g,''), ...(e.aliases||[]).map(a=>a.toLowerCase().replace(/\s+/g,''))].includes(vClean)));
-                            if (isHeader) return;
-                            if ((cellText.includes('/') || cellText.includes('月')) && cellText.length < 15) return;
-
-                            if (!newData[empId]) newData[empId] = {};
-                            if (!newData[empId][dateKey]) newData[empId][dateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
-                            let target = newData[empId][dateKey];
-
-                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
-                            let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
-
-                            if (cellText.includes('欠') || cellText.includes('休')) {
-                                target.leaveType = cellText.substring(0, 10);
-                                shiftCount++;
-                            } else if (exactMatches.length === 2 && !isDriverKeyword) {
-                                target.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
-                                target.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
-                                shiftCount++;
-                            } else if (isDriverKeyword && exactMatches.length > 0) {
-                                if (!target._tempDrivers) target._tempDrivers = [];
-                                exactMatches.forEach(m => target._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
-                            }
-                        }
-                    });
-                });
-
-                // 3. 司機時段總結
-                Object.keys(newData).forEach(empId => {
-                    Object.keys(newData[empId]).forEach(dateKey => {
-                        let target = newData[empId][dateKey];
-                        if (target._tempDrivers && target._tempDrivers.length > 0) {
-                            let times = target._tempDrivers.sort((a,b) => a - b);
-                            let totalDriverMins = 0;
-                            for (let i = 0; i < times.length - 1; i += 2) totalDriverMins += (times[i+1] - times[i]);
-                            if (times.length % 2 !== 0) totalDriverMins += 30; // 單數防呆
-                            target.driveMins = (parseInt(target.driveMins) || 0) + totalDriverMins;
-                            delete target._tempDrivers;
-                            shiftCount++;
-                        }
-                    });
-                });
-
-                return { newData, shiftCount, transCount };
-            };
-
-            const handleExcelUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                addLog(`[Excel] 解析中: ${file.name}...`);
-                let fileYear = parseInt(payMonth.split('-')[0]) || new Date().getFullYear();
-                
-                const reader = new FileReader();
-                reader.onload = async (evt) => {
-                    try {
-                        const wb = new ExcelJS.Workbook();
-                        await wb.xlsx.load(evt.target.result);
-                        let globalNewData = JSON.parse(JSON.stringify(attendanceData));
-                        let localEmps = JSON.parse(JSON.stringify(employees));
-                        let totalShift = 0, totalTrans = 0;
-
-                        wb.worksheets.forEach(ws => {
-                            const isTransSheet = ws.name.includes('交通費');
-                            let grid2D = [];
-                            ws.eachRow((row, rowNumber) => {
-                                let rowData = [];
-                                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                                    rowData[colNumber - 1] = cell.value;
-                                });
-                                grid2D.push(rowData);
-                            });
-
-                            const { newData, shiftCount, transCount } = processGridData(grid2D, fileYear, isTransSheet, localEmps, globalNewData);
-                            globalNewData = newData;
-                            totalShift += shiftCount;
-                            totalTrans += transCount;
-                        });
-
-                        if (totalShift > 0 || totalTrans > 0) {
-                            setAttendanceData(globalNewData);
-                            addLog(`[Excel] 解析完了: シフト ${totalShift} 件, 交通費 ${totalTrans} 件を反映しました。`, 'success');
-                        } else {
-                            addLog(`[Excel] 抽出可能なデータがありませんでした。`, 'info');
-                        }
-                    } catch (err) { addLog(`[Excel] エラー: ${err.message}`, 'error'); }
-                };
-                reader.readAsArrayBuffer(file);
-                e.target.value = null;
-            };
-
-            const handleCsvUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                addLog(`[CSV] 解析中: ${file.name}...`);
-                let fileYear = parseInt(payMonth.split('-')[0]) || new Date().getFullYear();
-
-                Papa.parse(file, {
-                    complete: function(results) {
-                        try {
-                            const isTransSheet = file.name.includes('交通費');
-                            const { newData, shiftCount, transCount } = processGridData(results.data, fileYear, isTransSheet, employees, attendanceData);
-                            
-                            if (shiftCount > 0 || transCount > 0) {
-                                setAttendanceData(newData);
-                                addLog(`[CSV] 解析完了: シフト ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
-                            } else {
-                                addLog(`[CSV] 抽出可能なデータがありませんでした。`, 'info');
-                            }
-                        } catch (err) { addLog(`[CSV] エラー: ${err.message}`, 'error'); }
-                    },
-                    error: function(err) { addLog(`[CSV] エラー: ${err.message}`, 'error'); }
-                });
-                e.target.value = null;
-            };
-
-            const handlePdfUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                addLog(`[PDF] 解析中: ${file.name}... (※PDF解析は文字のみ対象です)`, 'info');
-
-                const reader = new FileReader();
-                reader.onload = async function(evt) {
-                    try {
-                        const typedarray = new Uint8Array(evt.target.result);
-                        const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                        let fullText = '';
-                        for (let i = 1; i <= pdf.numPages; i++) {
-                            const page = await pdf.getPage(i);
-                            const textContent = await page.getTextContent();
-                            fullText += textContent.items.map(item => item.str).join(' ') + '\n';
-                        }
-                        addLog(`[PDF] テキスト抽出完了。PDFの構造上、手動入力をお勧めします。`, 'error');
-                    } catch (err) {
-                        addLog(`[PDF] エラー: ${err.message}`, 'error');
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-                e.target.value = null;
-            };
-
             const renderSetupScreen = () => (
                 <div className={`flex flex-col gap-4 p-4 h-[calc(100vh-60px)] overflow-y-auto ${isLocked ? 'locked-overlay' : ''}`}>
                     <div className="flex gap-4">
-                        <div className="w-1/3 flex flex-col gap-3">
+                        <div className="w-1/2 flex flex-col gap-3">
                             <SettingPanel title="1. Excel (.xlsx) 解析エリア">
                                 <div className="border-2 border-dashed border-green-300 rounded-lg py-5 text-center bg-green-50 hover:bg-green-100 relative cursor-pointer shadow-sm">
                                     <i className="fa-solid fa-file-excel text-3xl text-green-500 mb-2"></i>
@@ -467,21 +472,12 @@
                                 </div>
                             </SettingPanel>
                         </div>
-                        <div className="w-1/3 flex flex-col gap-3">
+                        <div className="w-1/2 flex flex-col gap-3">
                             <SettingPanel title="2. CSV (.csv) 解析エリア">
                                 <div className="border-2 border-dashed border-blue-300 rounded-lg py-5 text-center bg-blue-50 hover:bg-blue-100 relative cursor-pointer shadow-sm">
                                     <i className="fa-solid fa-file-csv text-3xl text-blue-500 mb-2"></i>
                                     <p className="text-xs text-blue-800 font-bold px-2">CSVシフト・交通費</p>
                                     <input type="file" accept=".csv" onChange={handleCsvUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                </div>
-                            </SettingPanel>
-                        </div>
-                        <div className="w-1/3 flex flex-col gap-3">
-                            <SettingPanel title="3. PDF (.pdf) 解析エリア">
-                                <div className="border-2 border-dashed border-red-300 rounded-lg py-5 text-center bg-red-50 hover:bg-red-100 relative cursor-pointer shadow-sm">
-                                    <i className="fa-solid fa-file-pdf text-3xl text-red-500 mb-2"></i>
-                                    <p className="text-xs text-red-800 font-bold px-2">PDFアップロード</p>
-                                    <input type="file" accept=".pdf" onChange={handlePdfUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
                             </SettingPanel>
                         </div>
@@ -506,7 +502,7 @@
                             <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
-                                        <div key={i} className={`mb-1 ${log.includes('エラー') || log.includes('非推奨') ? 'text-red-400' : (log.includes('完了') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
+                                        <div key={i} className={`mb-1 ${log.includes('エラー') ? 'text-red-400' : (log.includes('反映') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
                                     ))
                                 }
                             </div>
@@ -598,7 +594,7 @@
                                             shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                         }
                                         
-                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType)) workDays++;
+                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkA || dayData.transFee) workDays++;
 
                                         const inOutMins = calculateMinutes(dayData.in, dayData.out);
                                         totalInOutGlobal += inOutMins;
@@ -742,11 +738,11 @@
                     <div className="flex flex-col h-[calc(100vh-60px)] min-h-0">
                         <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                             <div className="flex gap-2">
-                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
-                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
+                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校</button>
+                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校</button>
                             </div>
                             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
-                                <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
+                                <span className="text-gray-600 font-bold text-xs">支給月:</span>
                                 <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400" />
                             </div>
                         </div>
@@ -774,7 +770,7 @@
                         <div className="flex items-center gap-6">
                             <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i className="fa-solid fa-file-invoice-dollar text-blue-600"></i> IGK - Shift Parser</h1>
                             <nav className="flex bg-gray-100 p-1 rounded-lg">
-                                <button onClick={() => setCurrentView('setup')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'setup' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>1. データ取込 (Excel/CSV/PDF)</button>
+                                <button onClick={() => setCurrentView('setup')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'setup' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>1. データ取込 (Excel/CSV)</button>
                                 <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'reports' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>2. 個人別明細・交通費</button>
                             </nav>
                         </div>
