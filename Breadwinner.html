@@ -14,7 +14,7 @@
     <!-- Day.js -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     
-    <!-- ★ 核心解析套件：ExcelJS, PapaParse(CSV), PDF.js(PDF) -->
+    <!-- ★ 核心解析套件 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -35,7 +35,6 @@
         .holiday-text { color: #b91c1c !important; font-weight: bold; }
         .absent-row { background-color: #faf5ff !important; }
         .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
-        .collapsed-panel { flex-grow: 0 !important; flex-shrink: 0; min-height: fit-content; }
     </style>
 </head>
 <body>
@@ -242,24 +241,20 @@
                         if (rIdx === 0) return; 
                         
                         let dateCell = '', nameCell = '', amountCell = '', driveMinsCell = '';
-                        let driveTimeStr = ''; // 用於存放「利用開始日時」至「利用終了日時」
+                        let driveTimeStr = ''; 
                         
                         if (row.length > 15 && getSafeText(row[0]).includes('利用料金')) {
                             dateCell = getSafeText(row[3]); 
                             nameCell = getSafeText(row[7]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                            amountCell = '0'; // 請求金額不列入交通費
-                            driveMinsCell = getSafeText(row[8]); // 利用時間(分) -> 轉成駕駛時間
+                            amountCell = '0'; // TimesCar 車費由公司負擔不納入員工交通費
+                            driveMinsCell = getSafeText(row[8]); 
 
-                            // ★ 擷取駕駛的起訖時間，準備放入備考
                             let startMatch = getSafeText(row[3]).match(/(\d{1,2}:\d{2})/);
                             let endMatch = getSafeText(row[4]).match(/(\d{1,2}:\d{2})/);
-                            if (startMatch && endMatch) {
-                                driveTimeStr = `${startMatch[1]}-${endMatch[1]}`;
-                            }
+                            if (startMatch && endMatch) driveTimeStr = `${startMatch[1]}-${endMatch[1]}`;
                         } else if (row.length > 15) {
                             return; 
                         } else {
-                            // 一般 Excel 的純交通費報表
                             dateCell = getSafeText(row[0]);
                             nameCell = getSafeText(row[1]).trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
                             amountCell = getSafeText(row[4]);
@@ -270,11 +265,7 @@
                         let dateStr = '';
                         const dMatch = dateCell.match(/(\d{4})[年\/\-](\d{1,2})[月\/\-](\d{1,2})/);
                         if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
-                        if (!dateStr) return;
-
-                        const amount = parseInt(amountCell) || 0;
-                        const driveMins = parseInt(driveMinsCell) || 0;
-                        if (amount === 0 && driveMins === 0) return;
+                        if (!dateStr || !(parseInt(amountCell) > 0 || parseInt(driveMinsCell) > 0)) return;
 
                         const emp = localEmps.find(e => {
                             let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
@@ -285,13 +276,15 @@
                             if (!newData[emp.id]) newData[emp.id] = {};
                             if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
                             
+                            const amount = parseInt(amountCell) || 0;
+                            const driveMins = parseInt(driveMinsCell) || 0;
+
                             if (amount > 0) {
                                 newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
                                 transCount++;
                             }
                             if (driveMins > 0) {
                                 newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMins;
-                                // ★ 將時間寫入備考
                                 if (driveTimeStr) {
                                     let existingRemark = newData[emp.id][dateStr].remark || '';
                                     newData[emp.id][dateStr].remark = existingRemark ? `${existingRemark} / ${driveTimeStr}` : driveTimeStr;
@@ -306,12 +299,15 @@
                 // --- 班表解析 ---
                 let dateCols = {}, dateRows = {}; 
                 let nameCols = {}, nameRows = {};
+                let igkaCols = {}, igkaRows = {};
 
+                // 1. 全場無差別掃描：尋找日期、人名、以及 IGKA 欄位座標
                 grid2D.forEach((row, r) => {
                     row.forEach((cell, c) => {
                         let textStr = getSafeText(cell);
                         if (!textStr) return;
 
+                        // 判斷日期 (解決時空錯置與 197筆空白的根源)
                         let isDate = false;
                         let dKey = null;
                         if (cell instanceof Date && cell.getFullYear() > 2000) {
@@ -320,7 +316,8 @@
                         } else {
                             let t = textStr.replace(/[\s\u3000\u200B-\u200D\uFEFF\n()（）]/g, '');
                             if (t && !t.match(/^\d{1,2}[:：\.]\d{2}([:：\.]\d{2})?$/)) {
-                                const m = t.match(/(?:(?:20)?\d{2}[\/\-年])?([1-9]|1[0-2])[\/\-月]([1-9]|[12]\d|3[01])日?/);
+                                // ★ 終極防呆：嚴格的首尾錨點，過濾中文字(一二三四五六日)，拒絕 09:15-18:15 的干擾
+                                const m = t.match(/^(?:(?:20)?\d{2}[\/\-年])?([1-9]|1[0-2])[\/\-月]([1-9]|[12]\d|3[01])日?[月火水木金土日一二三四五六A-Za-z]*$/);
                                 if (m && !t.toLowerCase().includes('everyday')) {
                                     let y = fileYear;
                                     const yMatch = t.match(/(20\d{2})/); if (yMatch) y = parseInt(yMatch[1]);
@@ -336,6 +333,14 @@
                             return; 
                         }
 
+                        // 判斷 IGKA 標題
+                        let cleanTitle = textStr.toUpperCase().replace(/[\s\u3000\n]/g, '');
+                        if (cleanTitle.includes('IGKA')) {
+                            igkaCols[c] = true; igkaRows[r] = true;
+                            return;
+                        }
+
+                        // 判斷人名
                         let vName = textStr.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
                         if (vName.length >= 2) {
                             for (const emp of localEmps) {
@@ -349,50 +354,82 @@
                     });
                 });
 
+                // 自動判斷 X 軸與 Y 軸
                 let isDateRowHeader = Object.keys(dateCols).length > Object.keys(dateRows).length;
                 let isNameColHeader = Object.keys(nameRows).length > Object.keys(nameCols).length;
 
+                // 配對 IGKA 欄位與對應的日期
+                let finalIgkaCols = {}, finalIgkaRows = {};
+                if (isDateRowHeader) {
+                    Object.keys(igkaCols).forEach(c => {
+                        let targetC = parseInt(c) - 1;
+                        while(targetC >= 0 && !dateCols[targetC]) targetC--;
+                        if (dateCols[targetC]) finalIgkaCols[c] = dateCols[targetC];
+                    });
+                } else {
+                    Object.keys(igkaRows).forEach(r => {
+                        let targetR = parseInt(r) - 1;
+                        while(targetR >= 0 && !dateRows[targetR]) targetR--;
+                        if (dateRows[targetR]) finalIgkaRows[r] = dateRows[targetR];
+                    });
+                }
+
+                // 2. 擷取十字交叉點的班表內容
                 grid2D.forEach((row, r) => {
                     row.forEach((cell, c) => {
                         let dateKey = isDateRowHeader ? dateCols[c] : dateRows[r];
+                        let igkaDateKey = isDateRowHeader ? finalIgkaCols[c] : finalIgkaRows[r];
                         let empId = isNameColHeader ? nameRows[r] : nameCols[c];
 
-                        if (dateKey && empId) {
+                        if (empId) {
                             let cellText = getSafeText(cell).trim();
-                            let hasColor = getFill ? getFill(r, c) : false;
+                            if (!cellText && !(getFill && getFill(r, c))) return;
 
-                            if (!cellText && !hasColor) return;
+                            // 處理 IGKA 的獨立時數 (讀取純數字，存為小時)
+                            if (igkaDateKey) {
+                                let valNum = parseFloat(cellText);
+                                if (!isNaN(valNum) && valNum > 0) {
+                                    if (!newData[empId]) newData[empId] = {};
+                                    if (!newData[empId][igkaDateKey]) newData[empId][igkaDateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
+                                    newData[empId][igkaDateKey].igkAHours = valNum; // ★ 小時直接存入
+                                    shiftCount++;
+                                }
+                                return; // IGKA 格子結束，不跑後續班表邏輯
+                            }
 
-                            let vClean = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
-                            let isHeader = localEmps.some(e => e.id === empId && ([e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g,''), ...(e.aliases||[]).map(a=>a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g,''))].some(n => n === vClean || (n.includes(vClean) && vClean.length >=2))));
-                            if (isHeader) return;
-                            
-                            if ((cellText.includes('/') || cellText.includes('月')) && cellText.length < 15) return;
+                            // 處理正常班表
+                            if (dateKey) {
+                                let vClean = cellText.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
+                                let isHeader = localEmps.some(e => e.id === empId && ([e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g,''), ...(e.aliases||[]).map(a=>a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g,''))].some(n => n === vClean || (n.includes(vClean) && vClean.length >=2))));
+                                if (isHeader) return;
+                                
+                                if ((cellText.includes('/') || cellText.includes('月')) && cellText.length < 15) return;
 
-                            if (!newData[empId]) newData[empId] = {};
-                            if (!newData[empId][dateKey]) newData[empId][dateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
-                            let target = newData[empId][dateKey];
+                                if (!newData[empId]) newData[empId] = {};
+                                if (!newData[empId][dateKey]) newData[empId][dateKey] = { location: localEmps.find(e=>e.id===empId)?.location };
+                                let target = newData[empId][dateKey];
 
-                            const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
-                            let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
+                                const exactMatches = [...cellText.matchAll(/([0-9]{1,2})[:：\.\-]([0-9]{2})/g)];
+                                let isDriverKeyword = ['乗車', '下車', '降車', '車', '返却'].some(k => cellText.includes(k));
 
-                            if (cellText.includes('欠') || cellText.includes('休')) {
-                                target.leaveType = cellText.substring(0, 10);
-                                shiftCount++;
-                            } else if (exactMatches.length === 2 && !isDriverKeyword) {
-                                target.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
-                                target.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
-                                shiftCount++;
-                            } else if (isDriverKeyword && exactMatches.length > 0) {
-                                if (!target._tempDrivers) target._tempDrivers = [];
-                                exactMatches.forEach(m => target._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
-                            } else if (hasColor || (/[a-zA-Z\u3040-\u9FAF]/.test(cellText) && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'))) {
-                                let timeVal = isDateRowHeader ? null : getSafeText(grid2D[r][0]).trim();
-                                let tm = timeVal ? timeVal.match(/^(\d{1,2})[:：\.](\d{2})/) : null;
-                                if (tm) {
-                                    let rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
-                                    if (!target._tempBlocks) target._tempBlocks = [];
-                                    target._tempBlocks.push(timeToMins(rowTimeStr));
+                                if (cellText.includes('欠') || cellText.includes('休')) {
+                                    target.leaveType = cellText.substring(0, 10);
+                                    shiftCount++;
+                                } else if (exactMatches.length === 2 && !isDriverKeyword) {
+                                    target.shiftStart = `${exactMatches[0][1].padStart(2, '0')}:${exactMatches[0][2]}`;
+                                    target.shiftEnd = `${exactMatches[1][1].padStart(2, '0')}:${exactMatches[1][2]}`;
+                                    shiftCount++;
+                                } else if (isDriverKeyword && exactMatches.length > 0) {
+                                    if (!target._tempDrivers) target._tempDrivers = [];
+                                    exactMatches.forEach(m => target._tempDrivers.push(timeToMins(`${m[1].padStart(2, '0')}:${m[2]}`)));
+                                } else if (getFill && getFill(r, c) || (/[a-zA-Z\u3040-\u9FAF]/.test(cellText) && !cellText.includes('月') && !cellText.includes('日') && !cellText.toLowerCase().includes('everyday'))) {
+                                    let timeVal = isDateRowHeader ? null : getSafeText(grid2D[r][0]).trim();
+                                    let tm = timeVal ? timeVal.match(/^(\d{1,2})[:：\.](\d{2})/) : null;
+                                    if (tm) {
+                                        let rowTimeStr = `${tm[1].padStart(2, '0')}:${tm[2]}`;
+                                        if (!target._tempBlocks) target._tempBlocks = [];
+                                        target._tempBlocks.push(timeToMins(rowTimeStr));
+                                    }
                                 }
                             }
                         }
@@ -404,7 +441,6 @@
                         let target = newData[empId][dateKey];
                         let emp = localEmps.find(e => e.id === empId);
 
-                        // ★ 在這裡也把 Excel 上的司機時段組合成字串，並寫入備考
                         if (target._tempDrivers && target._tempDrivers.length > 0) {
                             let times = target._tempDrivers.sort((a,b) => a - b);
                             let totalDriverMins = 0;
@@ -433,12 +469,12 @@
                         if (target._tempBlocks && target._tempBlocks.length > 0) {
                             let times = target._tempBlocks.sort((a,b) => a - b);
                             if (emp && emp.type === 'driver') {
-                                target.igkA = (parseInt(target.igkA) || 0) + (times.length * 30);
+                                target.igkAHours = (parseFloat(target.igkAHours) || 0) + (times.length * 0.5); // 將舊版方塊30分鐘換算成 0.5小時
                             } else if (emp && emp.type === 'full') {
                                 if (!target.shiftStart) target.shiftStart = minsToTime(times[0]);
                                 if (!target.shiftEnd) target.shiftEnd = minsToTime(times[times.length - 1] + 30);
                             } else {
-                                target.igkA = (parseInt(target.igkA) || 0) + (times.length * 30);
+                                target.igkAHours = (parseFloat(target.igkAHours) || 0) + (times.length * 0.5);
                             }
                             shiftCount++;
                             delete target._tempBlocks;
@@ -681,8 +717,8 @@
                                         <th className="border p-1 text-blue-800">シフト</th>
                                         <th className="border p-1 bg-green-50">勤務時間</th>
                                         {employee.type === 'full' && <><th className="border p-1">早残業</th><th className="border p-1">後残業</th></>}
-                                        {employee.type === 'driver' && <><th className="border p-1">運転時間</th><th className="border p-1">IGK A</th><th className="border p-1">IGK B</th></>}
-                                        {employee.type === 'part' && <><th className="border p-1">IGK A</th><th className="border p-1">IGK B</th></>}
+                                        {employee.type === 'driver' && <><th className="border p-1">運転時間</th><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
+                                        {employee.type === 'part' && <><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
                                         <th className="border p-1 bg-yellow-50 text-yellow-800">交通費</th>
                                         <th className="border p-1 min-w-[120px]">備考・出勤狀況</th>
                                     </tr>
@@ -700,13 +736,14 @@
                                             shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                         }
                                         
-                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkA || dayData.transFee || dayData.driveMins) workDays++;
+                                        if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkAHours || dayData.transFee || dayData.driveMins) workDays++;
 
                                         const inOutMins = calculateMinutes(dayData.in, dayData.out);
                                         totalInOutGlobal += inOutMins;
 
                                         let breakMins = hasData ? (employee.type === 'full' ? 60 : (dayData.break || 0)) : 0;
                                         const workMins = Math.max(0, inOutMins - breakMins);
+                                        const workHours = workMins / 60;
                                         totalWorkMinsGlobal += workMins;
                                         
                                         let early = 0, late = 0;
@@ -717,13 +754,13 @@
                                             lateTotal += late;
                                         }
 
-                                        let drive = 0, igkA = parseInt(dayData.igkA || 0), igkB = 0;
+                                        let drive = 0, igkA = parseFloat(dayData.igkAHours) || 0, igkB = 0;
                                         if (employee.type === 'driver' && hasData) {
-                                            drive = parseInt(dayData.driveMins || 0);
-                                            igkB = Math.max(0, workMins - drive);
+                                            drive = parseInt(dayData.driveMins) || 0;
+                                            igkB = Math.max(0, workHours - (drive / 60));
                                             totalDrive += drive;
                                         } else if (employee.type === 'part' && hasData) {
-                                            igkB = Math.max(0, workMins - igkA);
+                                            igkB = Math.max(0, workHours - igkA);
                                         }
                                         totalIgkA += igkA;
                                         totalIgkB += igkB;
@@ -735,7 +772,6 @@
                                         if (isH) rowClass += "holiday-row holiday-text ";
                                         if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
 
-                                        // ★ 結合 leaveType 和 remark 一起顯示
                                         let displayRemark = [dayData.leaveType, dayData.remark].filter(Boolean).join(' / ');
 
                                         return (
@@ -760,12 +796,12 @@
                                                 </>}
                                                 {employee.type === 'driver' && <>
                                                     <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
-                                                    <td className="border p-0.5 text-center">{igkA > 0 ? igkA : ''}</td>
-                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                    <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB.toFixed(2) : ''}</td>
                                                 </>}
                                                 {employee.type === 'part' && <>
-                                                    <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkA || ''} onChange={e=>handleInput(date,'igkA',e.target.value)} /></td>
-                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB : ''}</td>
+                                                    <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                    <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB.toFixed(2) : ''}</td>
                                                 </>}
                                                 <td className="border p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
                                                 <td className="border p-0.5">
@@ -802,9 +838,11 @@
                                 
                                 {employee.type === 'part' && (
                                     <>
-                                        <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1] min-w-[110px]">
+                                        <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px]">
                                             <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
-                                            <div className="text-lg font-black text-indigo-700">{formatHM(totalIgkA+totalIgkB)} <span className="text-[9px] font-normal ml-1 text-indigo-400">({((totalIgkA+totalIgkB)/60).toFixed(2)}H)</span></div>
+                                            <div className="text-lg font-black text-indigo-700 whitespace-nowrap">
+                                                {totalIgkA.toFixed(1).replace(/\.0$/, '')} + {totalIgkB.toFixed(1).replace(/\.0$/, '')} = {(totalIgkA+totalIgkB).toFixed(1).replace(/\.0$/, '')} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -814,6 +852,12 @@
                                         <div className="bg-yellow-50 rounded-lg p-2 text-center shadow-sm border border-yellow-100 flex-[1] min-w-[110px]">
                                             <div className="text-[10px] text-yellow-700 font-bold mb-1">運転実績</div>
                                             <div className="text-lg font-black text-yellow-700">{formatHM(totalDrive)} <span className="text-[9px] font-normal ml-1 text-yellow-500">({(totalDrive/60).toFixed(2)}H)</span></div>
+                                        </div>
+                                        <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px]">
+                                            <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
+                                            <div className="text-lg font-black text-indigo-700 whitespace-nowrap">
+                                                {totalIgkA.toFixed(1).replace(/\.0$/, '')} + {totalIgkB.toFixed(1).replace(/\.0$/, '')} = {(totalIgkA+totalIgkB).toFixed(1).replace(/\.0$/, '')} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -847,11 +891,11 @@
                     <div className="flex flex-col h-[calc(100vh-60px)] min-h-0">
                         <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                             <div className="flex gap-2">
-                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校</button>
-                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校</button>
+                                <button onClick={() => switchLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
+                                <button onClick={() => switchLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
                             </div>
                             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
-                                <span className="text-gray-600 font-bold text-xs">支給月:</span>
+                                <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
                                 <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400" />
                             </div>
                         </div>
