@@ -94,7 +94,16 @@
         ];
 
         const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
-        const calculateMinutes = (start, end) => start && end ? dayjs(`2000-01-01 ${end}`).diff(dayjs(`2000-01-01 ${start}`), 'minute') : 0;
+        
+        // ★ 強固的數學計算，支援跨夜防呆
+        const calculateMinutes = (start, end) => {
+            if (!start || !end) return 0;
+            let s = dayjs(`2000-01-01 ${start}`);
+            let e = dayjs(`2000-01-01 ${end}`);
+            if (e.isBefore(s)) e = e.add(1, 'day');
+            return e.diff(s, 'minute');
+        };
+
         const formatHM = (mins) => `${Math.floor(mins / 60).toString().padStart(2, '0')}:${(mins % 60).toString().padStart(2, '0')}`;
         const timeToMins = (t) => { if (!t) return 0; const [h, m] = t.split(':').map(Number); return (h * 60) + (isNaN(m) ? 0 : m); };
         const minsToTime = (m) => m > 0 ? `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` : '';
@@ -464,7 +473,6 @@
                 }
             };
 
-            // ★ 新增：一鍵清除當月污染資料功能
             const handleResetMonthData = () => {
                 if(window.confirm(`【警告】${payMonth} のシフト・交通費データを全てリセットしますか？\n(手動入力したデータも消えます)`)) {
                     const payDateObj = dayjs(`${payMonth}-01`);
@@ -478,7 +486,6 @@
                             while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
                                 const dateStr = curr.format('YYYY/MM/DD');
                                 if (newData[empId][dateStr]) {
-                                    // 保留打卡記錄，清除其他
                                     const { in: timeIn, out: timeOut } = newData[empId][dateStr];
                                     newData[empId][dateStr] = {};
                                     if (timeIn) newData[empId][dateStr].in = timeIn;
@@ -489,7 +496,6 @@
                         });
                         return newData;
                     });
-                    // 重置已上傳檔案紀錄，讓你可以重新上傳
                     setProcessedFiles([]);
                     addLog(`${payMonth} のデータをリセットしました。再度ファイルを取り込んでください。`, 'success');
                 }
@@ -586,12 +592,13 @@
                     grid2D.forEach((row, rIdx) => {
                         if (rIdx === 0) return; 
                         
-                        let dateCell = '', nameCell = '', amountCell = '0', driveMinsCell = '0';
+                        let dateCell = '', nameCell = '', amountCell = '0';
                         let driveTimeStr = ''; 
+                        let startMatch = null, endMatch = null;
                         
                         let r0 = getSafeText(row[0]);
                         if (row.length > 15 && r0.includes('利用料金')) {
-                            // ★ 預約ID 絕對防呆去重機制，防止司機時數重複累加
+                            // ★ 預約ID 去重
                             let resId = getSafeText(row[20]);
                             if (resId) {
                                 if (resIdsSet.has(resId)) return; 
@@ -600,9 +607,8 @@
                             
                             dateCell = getSafeText(row[3]); 
                             nameCell = getSafeText(row[7]);
-                            driveMinsCell = getSafeText(row[8]); 
-                            let startMatch = getSafeText(row[3]).match(/(\d{1,2}:\d{2})/);
-                            let endMatch = getSafeText(row[4]).match(/(\d{1,2}:\d{2})/);
+                            startMatch = getSafeText(row[3]).match(/(\d{1,2}:\d{2})/);
+                            endMatch = getSafeText(row[4]).match(/(\d{1,2}:\d{2})/);
                             if (startMatch && endMatch) driveTimeStr = `${startMatch[1]}-${endMatch[1]}`;
                         } else if (row.length <= 15 && r0.match(/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/)) {
                             dateCell = r0;
@@ -620,10 +626,11 @@
                         if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
                         if (!dateStr) return;
 
-                        // ★ 去除金額中的逗號，防止 1500 變成 1
+                        // ★ 去除逗號防呆
                         const amount = parseInt(amountCell.replace(/,/g, '')) || 0;
-                        const driveMins = parseInt(driveMinsCell) || 0;
-                        if (amount === 0 && driveMins === 0) return;
+                        const driveMinsCalc = (startMatch && endMatch) ? calculateMinutes(startMatch[1], endMatch[1]) : 0;
+
+                        if (amount === 0 && driveMinsCalc === 0) return;
 
                         const emp = localEmps.find(e => {
                             let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
@@ -638,8 +645,8 @@
                                 newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
                                 transCount++;
                             }
-                            if (driveMins > 0) {
-                                newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMins;
+                            if (driveMinsCalc > 0) {
+                                newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMinsCalc;
                                 if (driveTimeStr) {
                                     let existingRemark = newData[emp.id][dateStr].remark || '';
                                     if (!existingRemark.includes(driveTimeStr)) {
@@ -788,33 +795,29 @@
                         let target = newData[empId][dateKey];
                         let emp = localEmps.find(e => e.id === empId);
 
-                        // ★ 智慧防呆：如果已經有了 CSV 的駕駛時間，就不要再把 Excel 上打字相同的時間算進去！
                         if (target._tempDrivers && target._tempDrivers.length > 0) {
                             let times = target._tempDrivers.sort((a,b) => a - b);
-                            let newDriverMinsToAdd = 0;
-                            
+                            let totalDriverMins = 0;
+                            let tripStrs = [];
+
                             for (let i = 0; i < times.length - 1; i += 2) {
-                                let tStr = `${minsToTime(times[i])}-${minsToTime(times[i+1])}`;
-                                let tMins = times[i+1] - times[i];
-                                let existing = target.remark || '';
-                                if (!existing.includes(tStr)) {
-                                    newDriverMinsToAdd += tMins;
-                                    let combined = existing ? existing.split(' / ') : [];
-                                    combined.push(tStr);
-                                    target.remark = [...new Set(combined)].join(' / ');
-                                }
+                                totalDriverMins += (times[i+1] - times[i]);
+                                tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
                             }
                             if (times.length % 2 !== 0) {
-                                let tStr = `${minsToTime(times[times.length - 1])}-?`;
-                                let existing = target.remark || '';
-                                if (!existing.includes(tStr)) {
-                                    newDriverMinsToAdd += 30;
-                                    let combined = existing ? existing.split(' / ') : [];
-                                    combined.push(tStr);
-                                    target.remark = [...new Set(combined)].join(' / ');
+                                totalDriverMins += 30; 
+                                tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                            }
+                            target.driveMins = (parseInt(target.driveMins) || 0) + totalDriverMins;
+                            
+                            let tripRemark = tripStrs.join(', ');
+                            if (tripRemark) {
+                                let existingRemark = target.remark || '';
+                                if (!existingRemark.includes(tripRemark)) {
+                                    target.remark = existingRemark ? `${existingRemark} / ${tripRemark}` : tripRemark;
                                 }
                             }
-                            target.driveMins = (parseInt(target.driveMins) || 0) + newDriverMinsToAdd;
+
                             delete target._tempDrivers;
                             shiftCount++;
                         }
@@ -1018,7 +1021,7 @@
                                 <div className="bg-gray-900 font-mono text-[11px] p-3 rounded h-[120px] overflow-y-auto shadow-inner custom-scrollbar shrink-0">
                                     {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                         logs.map((log, i) => (
-                                            <div key={i} className={`mb-1 ${log.includes('エラー') || log.includes('非推奨') ? 'text-red-400' : (log.includes('反映') || log.includes('完了') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
+                                            <div key={i} className={`mb-1 ${log.includes('エラー') || log.includes('非推奨') ? 'text-red-400' : (log.includes('反映') || log.includes('完了') || log.includes('リセット') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
                                         ))
                                     }
                                 </div>
@@ -1080,7 +1083,6 @@
                                         <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
                                         <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400 mr-3" />
                                         
-                                        {/* ★ 一鍵重置按鈕 */}
                                         <button onClick={handleResetMonthData} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded text-[10px] font-bold transition shadow-sm">
                                             <i className="fa-solid fa-trash-arrow-up mr-1"></i>この月のデータをリセット
                                         </button>
