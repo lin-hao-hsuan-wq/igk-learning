@@ -41,6 +41,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -120,6 +121,12 @@
             try { return String(val); } catch(e) { return ''; }
         };
 
+        const formatAplusB = (num) => {
+            let n = parseFloat(num) || 0;
+            let s = n.toFixed(2).replace(/\.?0+$/, '');
+            return s === '' ? '0' : s;
+        };
+
         const SettingPanel = ({ title, children, className = '' }) => (
             <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 setting-panel-wrapper flex-1 ${className}`}>
                 <div className="mb-3 border-b pb-2 flex justify-between items-center shrink-0">
@@ -189,7 +196,7 @@
                                     <th className="border p-1">休憩</th>
                                     <th className="border p-1 bg-green-50">勤務時間</th>
                                     {employee.type === 'full' && <><th className="border p-1">早残業</th><th className="border p-1">後残業</th></>}
-                                    {employee.type === 'driver' && <><th className="border p-1">運転時間</th><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
+                                    {employee.type === 'driver' && <><th className="border p-1">運転時間(分)</th><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
                                     {employee.type === 'part' && <><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
                                     <th className="border p-1 bg-yellow-50 text-yellow-800">交通費</th>
                                     <th className="border p-1 min-w-[120px]">備考・出勤狀況</th>
@@ -232,12 +239,14 @@
                                         lateTotal += late;
                                     }
 
-                                    let drive = 0, igkA = parseFloat(dayData.igkAHours) || 0, igkB = 0;
-                                    if (employee.type === 'driver' && hasData) {
-                                        drive = parseInt(dayData.driveMins) || 0;
+                                    let drive = parseInt(dayData.driveMins) || 0;
+                                    let igkA = parseFloat(dayData.igkAHours) || 0;
+                                    let igkB = 0;
+
+                                    if (employee.type === 'driver') {
                                         igkB = Math.max(0, workHours - (drive / 60));
                                         totalDrive += drive;
-                                    } else if (employee.type === 'part' && hasData) {
+                                    } else if (employee.type === 'part') {
                                         igkB = Math.max(0, workHours - igkA);
                                     }
                                     totalIgkA += igkA;
@@ -275,13 +284,13 @@
                                                 <td className="border p-0.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
                                             </>}
                                             {employee.type === 'driver' && <>
-                                                <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
+                                                <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent text-purple-700 font-bold" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
                                                 <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB.toFixed(2) : ''}</td>
+                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
                                             {employee.type === 'part' && <>
                                                 <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? igkB.toFixed(2) : ''}</td>
+                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
                                             <td className="border p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
                                             <td className="border p-0.5">
@@ -321,7 +330,7 @@
                                     <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px]">
                                         <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
                                         <div className="text-lg font-black text-indigo-700 whitespace-nowrap">
-                                            {totalIgkA.toFixed(2).replace(/\.?0+$/, '')} + {totalIgkB.toFixed(2).replace(/\.?0+$/, '')} = {(totalIgkA+totalIgkB).toFixed(2).replace(/\.?0+$/, '')} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
+                                            {formatAplusB(totalIgkA)} + {formatAplusB(totalIgkB)} = {formatAplusB(totalIgkA+totalIgkB)} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
                                         </div>
                                     </div>
                                 </>
@@ -329,14 +338,14 @@
 
                             {employee.type === 'driver' && (
                                 <>
-                                    <div className="bg-yellow-50 rounded-lg p-2 text-center shadow-sm border border-yellow-100 flex-[1] min-w-[110px]">
-                                        <div className="text-[10px] text-yellow-700 font-bold mb-1">運転実績</div>
-                                        <div className="text-lg font-black text-yellow-700">{formatHM(totalDrive)} <span className="text-[9px] font-normal ml-1 text-yellow-500">({(totalDrive/60).toFixed(2)}H)</span></div>
+                                    <div className="bg-purple-50 rounded-lg p-2 text-center shadow-sm border border-purple-200 flex-[1] min-w-[110px]">
+                                        <div className="text-[10px] text-purple-700 font-bold mb-1">運転実績</div>
+                                        <div className="text-lg font-black text-purple-700">{formatHM(totalDrive)} <span className="text-[9px] font-normal ml-1 text-purple-500">({(totalDrive/60).toFixed(2)}H)</span></div>
                                     </div>
                                     <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px]">
                                         <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
                                         <div className="text-lg font-black text-indigo-700 whitespace-nowrap">
-                                            {totalIgkA.toFixed(2).replace(/\.?0+$/, '')} + {totalIgkB.toFixed(2).replace(/\.?0+$/, '')} = {(totalIgkA+totalIgkB).toFixed(2).replace(/\.?0+$/, '')} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
+                                            {formatAplusB(totalIgkA)} + {formatAplusB(totalIgkB)} = {formatAplusB(totalIgkA+totalIgkB)} <span className="text-[9px] font-normal ml-1 text-indigo-400">時間</span>
                                         </div>
                                     </div>
                                 </>
@@ -372,7 +381,6 @@
             const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
             const [processedFiles, setProcessedFiles] = useState([]);
 
-            // ★ 員工管理專用 State
             const [newEmpNum, setNewEmpNum] = useState('');
             const [newEmpName, setNewEmpName] = useState('');
             const [newEmpType, setNewEmpType] = useState('part');
@@ -390,6 +398,7 @@
                             setEmployees(INITIAL_EMPLOYEES);
                         }
                         if (cloudData.attendanceData) setAttendanceData(cloudData.attendanceData);
+                        if (cloudData.processedFiles) setProcessedFiles(cloudData.processedFiles);
                         if (cloudData.isLocked !== undefined) setIsLocked(cloudData.isLocked);
                     }
                     setIsCloudLoaded(true);
@@ -405,10 +414,10 @@
             useEffect(() => {
                 if (!isCloudLoaded) return;
                 const timer = setTimeout(() => {
-                    docRef.set({ employees, attendanceData, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                    docRef.set({ employees, attendanceData, processedFiles, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
                 }, 1500);
                 return () => clearTimeout(timer);
-            }, [employees, attendanceData, isCloudLoaded]);
+            }, [employees, attendanceData, processedFiles, isCloudLoaded]);
 
             const handleToggleLock = () => {
                 if (isLocked) {
@@ -430,7 +439,6 @@
                 });
             };
 
-            // ★ 員工追加與刪除實裝
             const handleAddEmployee = () => {
                 if(!newEmpNum || !newEmpName) return addLog('番号と氏名を入力してください。', 'error');
                 if(employees.some(e => e.num === parseInt(newEmpNum))) return addLog('この番号は既に存在します。', 'error');
@@ -456,9 +464,40 @@
                 }
             };
 
+            // ★ 新增：一鍵清除當月污染資料功能
+            const handleResetMonthData = () => {
+                if(window.confirm(`【警告】${payMonth} のシフト・交通費データを全てリセットしますか？\n(手動入力したデータも消えます)`)) {
+                    const payDateObj = dayjs(`${payMonth}-01`);
+                    const periodStart = payDateObj.subtract(1, 'month').date(16);
+                    const periodEnd = payDateObj.date(15);
+                    
+                    setAttendanceData(prev => {
+                        const newData = { ...prev };
+                        Object.keys(newData).forEach(empId => {
+                            let curr = periodStart;
+                            while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
+                                const dateStr = curr.format('YYYY/MM/DD');
+                                if (newData[empId][dateStr]) {
+                                    // 保留打卡記錄，清除其他
+                                    const { in: timeIn, out: timeOut } = newData[empId][dateStr];
+                                    newData[empId][dateStr] = {};
+                                    if (timeIn) newData[empId][dateStr].in = timeIn;
+                                    if (timeOut) newData[empId][dateStr].out = timeOut;
+                                }
+                                curr = curr.add(1, 'day');
+                            }
+                        });
+                        return newData;
+                    });
+                    // 重置已上傳檔案紀錄，讓你可以重新上傳
+                    setProcessedFiles([]);
+                    addLog(`${payMonth} のデータをリセットしました。再度ファイルを取り込んでください。`, 'success');
+                }
+            };
+
             const exportToCSV = () => {
                 let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-                csvContent += "対象月,社員No,氏名,日付,入室,退室,シフト,勤務時間(分),IGKA(H),運転時間(分),交通費,備考\n";
+                csvContent += "対象月,社員No,氏名,日付,入室,退室,休憩(分),シフト,勤務時間(分),IGKA(H),運転時間(分),交通費,備考\n";
                 
                 employees.sort((a,b)=>a.num - b.num).forEach(emp => {
                     const empData = attendanceData[emp.id] || {};
@@ -470,9 +509,12 @@
                         const dateStr = curr.format('YYYY/MM/DD');
                         const d = empData[dateStr] || {};
                         const shiftStr = d.shiftStart && d.shiftEnd ? `${d.shiftStart}-${d.shiftEnd}` : '';
-                        const workMins = calculateMinutes(d.in, d.out);
+                        const hasData = !!(d.in || d.out);
+                        const inOutMins = calculateMinutes(d.in, d.out);
+                        let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
+                        const workMins = Math.max(0, inOutMins - breakMins);
                         
-                        csvContent += `"${payMonth}","${emp.num}","${emp.name}","${dateStr}","${d.in||''}","${d.out||''}","${shiftStr}","${workMins>0?workMins:''}","${d.igkAHours||''}","${d.driveMins||''}","${d.transFee||''}","${d.remark||d.leaveType||''}"\n`;
+                        csvContent += `"${payMonth}","${emp.num}","${emp.name}","${dateStr}","${d.in||''}","${d.out||''}","${breakMins||''}","${shiftStr}","${workMins>0?workMins:''}","${d.igkAHours||''}","${d.driveMins||''}","${d.transFee||''}","${d.remark||d.leaveType||''}"\n`;
                         curr = curr.add(1, 'day');
                     }
                 });
@@ -537,7 +579,7 @@
                 setTimecardText('');
             };
 
-            const processGridData = (grid2D, fileYear, isTransport, localEmps, newData, getFill = null) => {
+            const processGridData = (grid2D, fileYear, isTransport, localEmps, newData, getFill = null, resIdsSet = new Set()) => {
                 let shiftCount = 0, transCount = 0;
 
                 if (isTransport) {
@@ -549,6 +591,13 @@
                         
                         let r0 = getSafeText(row[0]);
                         if (row.length > 15 && r0.includes('利用料金')) {
+                            // ★ 預約ID 絕對防呆去重機制，防止司機時數重複累加
+                            let resId = getSafeText(row[20]);
+                            if (resId) {
+                                if (resIdsSet.has(resId)) return; 
+                                resIdsSet.add(resId);
+                            }
+                            
                             dateCell = getSafeText(row[3]); 
                             nameCell = getSafeText(row[7]);
                             driveMinsCell = getSafeText(row[8]); 
@@ -569,7 +618,12 @@
                         let dateStr = '';
                         const dMatch = dateCell.match(/(\d{4})[年\/\-](\d{1,2})[月\/\-](\d{1,2})/);
                         if (dMatch) dateStr = dayjs(`${dMatch[1]}/${dMatch[2]}/${dMatch[3]}`).format('YYYY/MM/DD');
-                        if (!dateStr || !(parseInt(amountCell) > 0 || parseInt(driveMinsCell) > 0)) return;
+                        if (!dateStr) return;
+
+                        // ★ 去除金額中的逗號，防止 1500 變成 1
+                        const amount = parseInt(amountCell.replace(/,/g, '')) || 0;
+                        const driveMins = parseInt(driveMinsCell) || 0;
+                        if (amount === 0 && driveMins === 0) return;
 
                         const emp = localEmps.find(e => {
                             let s = [e.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''), ...(e.aliases||[]).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, ''))];
@@ -580,9 +634,6 @@
                             if (!newData[emp.id]) newData[emp.id] = {};
                             if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
                             
-                            const amount = parseInt(amountCell) || 0;
-                            const driveMins = parseInt(driveMinsCell) || 0;
-
                             if (amount > 0) {
                                 newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
                                 transCount++;
@@ -591,15 +642,18 @@
                                 newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMins;
                                 if (driveTimeStr) {
                                     let existingRemark = newData[emp.id][dateStr].remark || '';
-                                    newData[emp.id][dateStr].remark = existingRemark ? `${existingRemark} / ${driveTimeStr}` : driveTimeStr;
+                                    if (!existingRemark.includes(driveTimeStr)) {
+                                        newData[emp.id][dateStr].remark = existingRemark ? `${existingRemark} / ${driveTimeStr}` : driveTimeStr;
+                                    }
                                 }
                                 shiftCount++;
                             }
                         }
                     });
-                    return { newData, shiftCount, transCount };
+                    return { newData, shiftCount, transCount, resIdsSet };
                 }
 
+                // --- 班表解析 ---
                 let dateCols = {}, dateRows = {}; 
                 let nameCols = {}, nameRows = {};
                 let igkaCols = {}, igkaRows = {};
@@ -734,27 +788,33 @@
                         let target = newData[empId][dateKey];
                         let emp = localEmps.find(e => e.id === empId);
 
+                        // ★ 智慧防呆：如果已經有了 CSV 的駕駛時間，就不要再把 Excel 上打字相同的時間算進去！
                         if (target._tempDrivers && target._tempDrivers.length > 0) {
                             let times = target._tempDrivers.sort((a,b) => a - b);
-                            let totalDriverMins = 0;
-                            let tripStrs = [];
-
+                            let newDriverMinsToAdd = 0;
+                            
                             for (let i = 0; i < times.length - 1; i += 2) {
-                                totalDriverMins += (times[i+1] - times[i]);
-                                tripStrs.push(`${minsToTime(times[i])}-${minsToTime(times[i+1])}`);
+                                let tStr = `${minsToTime(times[i])}-${minsToTime(times[i+1])}`;
+                                let tMins = times[i+1] - times[i];
+                                let existing = target.remark || '';
+                                if (!existing.includes(tStr)) {
+                                    newDriverMinsToAdd += tMins;
+                                    let combined = existing ? existing.split(' / ') : [];
+                                    combined.push(tStr);
+                                    target.remark = [...new Set(combined)].join(' / ');
+                                }
                             }
                             if (times.length % 2 !== 0) {
-                                totalDriverMins += 30; 
-                                tripStrs.push(`${minsToTime(times[times.length - 1])}-?`);
+                                let tStr = `${minsToTime(times[times.length - 1])}-?`;
+                                let existing = target.remark || '';
+                                if (!existing.includes(tStr)) {
+                                    newDriverMinsToAdd += 30;
+                                    let combined = existing ? existing.split(' / ') : [];
+                                    combined.push(tStr);
+                                    target.remark = [...new Set(combined)].join(' / ');
+                                }
                             }
-                            target.driveMins = (parseInt(target.driveMins) || 0) + totalDriverMins;
-                            
-                            let tripRemark = tripStrs.join(', ');
-                            if (tripRemark) {
-                                let existingRemark = target.remark || '';
-                                target.remark = existingRemark ? `${existingRemark} / ${tripRemark}` : tripRemark;
-                            }
-
+                            target.driveMins = (parseInt(target.driveMins) || 0) + newDriverMinsToAdd;
                             delete target._tempDrivers;
                             shiftCount++;
                         }
@@ -775,7 +835,7 @@
                     });
                 });
 
-                return { newData, shiftCount, transCount };
+                return { newData, shiftCount, transCount, resIdsSet };
             };
 
             const handleExcelUpload = (e) => {
@@ -842,6 +902,8 @@
                 e.target.value = null;
             };
 
+            const [processedResIds, setProcessedResIds] = useState(new Set());
+
             const handleCsvUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -861,10 +923,11 @@
                     encoding: encoding,
                     complete: function(results) {
                         try {
-                            const { newData, shiftCount, transCount } = processGridData(results.data, fileYear, true, employees, attendanceData);
+                            const { newData, shiftCount, transCount, resIdsSet } = processGridData(results.data, fileYear, true, employees, attendanceData, null, new Set(processedResIds));
                             
                             if (shiftCount > 0 || transCount > 0) {
                                 setAttendanceData(newData);
+                                setProcessedResIds(resIdsSet);
                                 setProcessedFiles(prev => [...prev, file.name]);
                                 addLog(`[CSV] 解析完了: 運転実績 ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
                             } else {
@@ -1015,7 +1078,12 @@
                                     </div>
                                     <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
                                         <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
-                                        <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400" />
+                                        <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400 mr-3" />
+                                        
+                                        {/* ★ 一鍵重置按鈕 */}
+                                        <button onClick={handleResetMonthData} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded text-[10px] font-bold transition shadow-sm">
+                                            <i className="fa-solid fa-trash-arrow-up mr-1"></i>この月のデータをリセット
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="flex flex-1 bg-white rounded-lg shadow-sm border mx-4 mb-3 overflow-hidden min-h-0">
