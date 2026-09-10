@@ -117,6 +117,27 @@
             return `${Math.floor(roundedMins / 60).toString().padStart(2, '0')}:${(roundedMins % 60).toString().padStart(2, '0')}`;
         };
 
+        // ★ [新增] 司機專用：無條件進位到下一個30分或整點 (例: 08:12 -> 08:30)
+        const ceilTo30Mins = (t) => {
+            if (!t) return '';
+            const [h, m] = t.split(':').map(Number);
+            if (isNaN(h) || isNaN(m)) return t;
+            let totalMins = h * 60 + m;
+            let rem = totalMins % 30;
+            if (rem !== 0) totalMins += (30 - rem);
+            return `${Math.floor(totalMins / 60).toString().padStart(2, '0')}:${(totalMins % 60).toString().padStart(2, '0')}`;
+        };
+
+        // ★ [新增] 司機專用：打卡時間減5分鐘 (例: 18:35 -> 18:30)
+        const minus5Mins = (t) => {
+            if (!t) return '';
+            const [h, m] = t.split(':').map(Number);
+            if (isNaN(h) || isNaN(m)) return t;
+            let totalMins = h * 60 + m - 5;
+            if (totalMins < 0) totalMins = 0; // 防止負數
+            return `${Math.floor(totalMins / 60).toString().padStart(2, '0')}:${(totalMins % 60).toString().padStart(2, '0')}`;
+        };
+
         const getSafeText = (val) => {
             if (val === null || val === undefined) return '';
             if (typeof val === 'string') return val;
@@ -569,6 +590,7 @@
                     } 
                 }
 
+                // ★ 在這裡加入你的「司機」規則邏輯
                 Object.keys(newData).forEach(empId => {
                     const emp = employees.find(e => e.id === empId);
                     if (emp && emp.type === 'part') {
@@ -576,6 +598,13 @@
                             const d = newData[empId][dateKey];
                             if (d.in && !d.shiftStart) d.shiftStart = roundTo5Mins(d.in);
                             if (d.out && !d.shiftEnd) d.shiftEnd = roundTo5Mins(d.out);
+                        });
+                    } else if (emp && emp.type === 'driver') {
+                        // ★ 司機自動帶入班表邏輯：上班取後30/00分，下班取前5分鐘
+                        Object.keys(newData[empId]).forEach(dateKey => {
+                            const d = newData[empId][dateKey];
+                            if (d.in && !d.shiftStart) d.shiftStart = ceilTo30Mins(d.in);
+                            if (d.out && !d.shiftEnd) d.shiftEnd = minus5Mins(d.out);
                         });
                     }
                 });
