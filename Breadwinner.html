@@ -261,10 +261,23 @@
                                     const workHours = workMins / 60;
                                     totalWorkMinsGlobal += workMins;
                                     
+                                    // ★ 修復：正社員殘業計算（解決早退變成瘋狂加班的跨夜 Bug）
                                     let early = 0, late = 0;
                                     if (employee.type === 'full' && hasData && shiftStart && shiftEnd) {
-                                        early = Math.max(0, calculateMinutes(dayData.in, shiftStart));
-                                        late = Math.max(0, calculateMinutes(shiftEnd, dayData.out));
+                                        let sStart = dayjs(`2000-01-01 ${shiftStart}`);
+                                        let sEnd = dayjs(`2000-01-01 ${shiftEnd}`);
+                                        let aIn = dayData.in ? dayjs(`2000-01-01 ${dayData.in}`) : null;
+                                        let aOut = dayData.out ? dayjs(`2000-01-01 ${dayData.out}`) : null;
+
+                                        // 處理排班本身跨夜的情況
+                                        if (sEnd.isBefore(sStart)) sEnd = sEnd.add(1, 'day');
+                                        // 處理實際打卡跨夜的情況
+                                        if (aIn && aOut && aOut.isBefore(aIn)) aOut = aOut.add(1, 'day');
+
+                                        // 直接以標準時間軸相減，早退會變成負數被 Math.max(0, ...) 歸零
+                                        if (aIn) early = Math.max(0, sStart.diff(aIn, 'minute'));
+                                        if (aOut) late = Math.max(0, aOut.diff(sEnd, 'minute'));
+
                                         earlyTotal += early;
                                         lateTotal += late;
                                     }
@@ -273,7 +286,7 @@
                                     let igkA = parseFloat(dayData.igkAHours) || 0;
                                     let igkB = 0;
 
-                                    // ★ 司機和兼職都是： 實際工作時間 - IGKA
+                                    // ★ 修復：司機 IGKB 計算公式改為扣除 IGKA
                                     if (employee.type === 'driver') {
                                         igkB = Math.max(0, workHours - igkA); 
                                         totalDrive += drive;
@@ -296,14 +309,26 @@
                                         <tr key={date} className={rowClass}>
                                             <td className="border p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
                                             
-                                            {/* 入室 */}
+                                            {/* ★ 修復：入室（加上輸入框） */}
                                             <td className="border p-0.5 text-center">
-                                                <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
+                                                <input 
+                                                    disabled={isLocked || !localEditable} 
+                                                    className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
+                                                    value={dayData.in || ''} 
+                                                    placeholder="--:--"
+                                                    onChange={e => handleInput(date, 'in', e.target.value)} 
+                                                />
                                             </td>
 
-                                            {/* 退室 */}
+                                            {/* ★ 修復：退室（加上輸入框） */}
                                             <td className="border p-0.5 text-center">
-                                                <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
+                                                <input 
+                                                    disabled={isLocked || !localEditable} 
+                                                    className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
+                                                    value={dayData.out || ''} 
+                                                    placeholder="--:--"
+                                                    onChange={e => handleInput(date, 'out', e.target.value)} 
+                                                />
                                             </td>
                                             
                                             {/* シフト */}
