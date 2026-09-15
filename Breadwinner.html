@@ -197,8 +197,8 @@
             let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
 
             return (
-                <div className="h-full flex flex-col bg-white rounded-lg overflow-hidden border border-transparent">
-                    <div className="flex justify-between items-end mb-2 border-b border-gray-200 pb-2 shrink-0 px-3 pt-3">
+                <div className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <div className="shrink-0 flex justify-between items-end mb-2 border-b border-gray-200 pb-2 px-3 pt-3">
                         <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
                             <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
                             {employee.name}
@@ -359,7 +359,7 @@
                         </table>
                     </div>
 
-                    <div className="px-3 pb-3 shrink-0">
+                    <div className="shrink-0 px-3 pb-3">
                         <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2 mt-1">
                             <div className="bg-white rounded-lg p-2 flex gap-3 shadow-sm border border-gray-200 min-w-[120px] justify-center items-center">
                                 <div className="text-center">
@@ -448,7 +448,6 @@
             const [globalStaffIgka, setGlobalStaffIgka] = useState('');
             const [staffDays, setStaffDays] = useState({});
 
-            // ★ 名簿編輯 Modal 狀態
             const [showEmpModal, setShowEmpModal] = useState(false);
             const [newEmpNum, setNewEmpNum] = useState('');
             const [newEmpName, setNewEmpName] = useState('');
@@ -861,10 +860,10 @@
             };
 
             const renderSetupScreen = () => (
-                <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
+                <div className={`flex flex-col md:flex-row gap-4 p-4 flex-1 min-h-0 ${isLocked ? 'locked-overlay' : ''}`}>
                     
                     {/* 左半部：外部匯入與紀錄 */}
-                    <div className="w-[300px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
+                    <div className="w-full md:w-[300px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1 pb-4">
                         <SettingPanel title="Excel分析" className="shrink-0">
                             <div className="flex flex-col gap-2">
                                 <label className="border border-dashed border-gray-400 rounded p-4 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-bold text-gray-700 shadow-sm transition">
@@ -878,7 +877,7 @@
                             </div>
                         </SettingPanel>
 
-                        <SettingPanel title="分析記録" className="flex-1 min-h-[120px]">
+                        <SettingPanel title="分析記録" className="flex-1 min-h-[150px]">
                             <div className="bg-[#1e1e1e] font-mono text-[10px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar text-gray-300">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
@@ -971,7 +970,7 @@
                                         </div>
                                     </div>
 
-                                    {/* ★ 修復：打工者名單分為左右兩欄 (六甲校 / 名谷校) */}
+                                    {/* ★ 打工者區塊左右分欄 (六甲校 / 名谷校) */}
                                     <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
                                         <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
                                             <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
@@ -1066,8 +1065,74 @@
                             </div>
                         </SettingPanel>
                     </div>
+                </div>
+            );
 
-                    {/* ★ 名簿編輯 Modal 彈出視窗 */}
+            const renderReportsScreen = () => (
+                <div className="flex flex-col h-full w-full min-h-0">
+                    <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
+                        <div className="flex gap-2">
+                            <button onClick={() => setActiveLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
+                            <button onClick={() => setActiveLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
+                            <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
+                            <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400 mr-3" />
+                            <button onClick={handleResetMonthData} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded text-[10px] font-bold transition shadow-sm">
+                                <i className="fa-solid fa-trash-arrow-up mr-1"></i>この月のデータをリセット
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex flex-1 bg-white rounded-lg shadow-sm border border-gray-200 mx-4 mb-4 overflow-hidden min-h-0 relative -mt-[1px]">
+                        <div className="w-[160px] bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
+                            <div className="flex-1 overflow-y-auto pt-2 gap-1 flex flex-col custom-scrollbar pb-4 shadow-[inset_-2px_0_5px_rgba(0,0,0,0.02)]">
+                                {employees.filter(e => e.location === activeLocation).sort((a,b) => a.num - b.num).map(emp => (
+                                    <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-3 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600 border border-gray-200' : 'text-gray-500 hover:bg-gray-200 border border-transparent'}`}>
+                                        <span className="truncate">{emp.num}. {emp.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex-1 flex flex-col min-w-0 bg-gray-50/30 p-2 overflow-hidden">
+                            {employees.find(e => e.id === activeEmployeeId) ? 
+                                <EmployeeReport 
+                                    key={activeEmployeeId} 
+                                    employee={employees.find(e => e.id === activeEmployeeId)} 
+                                    data={attendanceData[activeEmployeeId] || {}} 
+                                    payMonth={payMonth} 
+                                    isLocked={isLocked}
+                                    onInput={handleInputUpdate}
+                                /> 
+                            : <div className="h-full flex items-center justify-center text-gray-400 font-bold">左側のリストから社員を選択してください。</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // ★ 最外層統一 return，解決畫面消失塌陷的問題
+            return (
+                <div className="h-screen w-full flex flex-col overflow-hidden bg-[#eef2f6]">
+                    <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px] z-20 relative">
+                        <div className="flex items-center gap-6">
+                            <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i className="fa-solid fa-file-invoice-dollar text-blue-600"></i> IGK - Shift Parser</h1>
+                            <nav className="flex bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setCurrentView('setup')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'setup' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>1. データ取込 (設定)</button>
+                                <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'reports' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>2. 個人別明細・交通費</button>
+                            </nav>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={exportToCSV} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力 (CSV)</button>
+                            <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 flex flex-col min-h-0 relative">
+                        {currentView === 'setup' && renderSetupScreen()}
+                        {currentView === 'reports' && renderReportsScreen()}
+                    </main>
+
                     {showEmpModal && (
                         <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
                             <div className="bg-white rounded-xl shadow-2xl w-[500px] flex flex-col max-h-[85vh] overflow-hidden">
@@ -1110,69 +1175,6 @@
                             </div>
                         </div>
                     )}
-                </div>
-            );
-
-            // ★ 修復重點：確保 <main> 內部在個人明細畫面時，使用明確的高度計算 (h-[calc(100vh-60px)])
-            return (
-                <div className="min-h-screen flex flex-col overflow-hidden bg-[#eef2f6]">
-                    <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px] z-20 relative">
-                        <div className="flex items-center gap-6">
-                            <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i className="fa-solid fa-file-invoice-dollar text-blue-600"></i> IGK - Shift Parser</h1>
-                            <nav className="flex bg-gray-100 p-1 rounded-lg">
-                                <button onClick={() => setCurrentView('setup')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'setup' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>1. データ取込 (設定)</button>
-                                <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${currentView === 'reports' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>2. 個人別明細・交通費</button>
-                            </nav>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={exportToCSV} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力 (CSV)</button>
-                            <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                                <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
-                            </button>
-                        </div>
-                    </header>
-
-                    <main className="flex-1 overflow-hidden relative">
-                        {currentView === 'setup' ? renderSetupScreen() : (
-                            <div className="flex flex-col h-[calc(100vh-60px)] w-full overflow-hidden">
-                                <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setActiveLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
-                                        <button onClick={() => setActiveLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
-                                        <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
-                                        <input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="border rounded bg-gray-50 px-1 text-xs outline-none font-bold focus:border-blue-400 mr-3" />
-                                        
-                                        <button onClick={handleResetMonthData} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded text-[10px] font-bold transition shadow-sm">
-                                            <i className="fa-solid fa-trash-arrow-up mr-1"></i>この月のデータをリセット
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex flex-1 bg-white rounded-lg shadow-sm border border-gray-200 mx-4 mb-3 overflow-hidden">
-                                    <div className="w-[160px] bg-gray-50 border-r border-gray-200 overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4 shadow-[inset_-2px_0_5px_rgba(0,0,0,0.02)]">
-                                        {employees.filter(e => e.location === activeLocation).sort((a,b) => a.num - b.num).map(emp => (
-                                            <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-3 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600 border border-gray-200' : 'text-gray-500 hover:bg-gray-200 border border-transparent'}`}>
-                                                <span className="truncate">{emp.num}. {emp.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="flex-1 overflow-hidden bg-gray-50/30 p-2">
-                                        {employees.find(e => e.id === activeEmployeeId) ? 
-                                            <EmployeeReport 
-                                                key={activeEmployeeId} 
-                                                employee={employees.find(e => e.id === activeEmployeeId)} 
-                                                data={attendanceData[activeEmployeeId] || {}} 
-                                                payMonth={payMonth} 
-                                                isLocked={isLocked}
-                                                onInput={handleInputUpdate}
-                                            /> 
-                                        : <div className="h-full flex items-center justify-center text-gray-400 font-bold">左側のリストから社員を選択してください。</div>}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </main>
                 </div>
             );
         };
