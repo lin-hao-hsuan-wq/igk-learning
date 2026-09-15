@@ -35,13 +35,13 @@
         .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
         .batch-input { width: 60px; text-align: center; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px; outline: none; }
         .batch-input:focus { border-color: #3b82f6; }
+        .day-checkbox:checked + span { background-color: #3b82f6; color: white; border-color: #2563eb; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -59,7 +59,6 @@
 
         const HOLIDAYS_2026 = ['2026/01/01', '2026/01/12', '2026/02/11', '2026/02/23', '2026/03/20', '2026/04/29', '2026/05/03', '2026/05/04', '2026/05/05', '2026/05/06', '2026/07/20', '2026/08/11', '2026/09/21', '2026/09/22', '2026/09/23', '2026/10/12', '2026/11/03', '2026/11/23'];
 
-        // ★ 已更新：刪除 14, 20, 21，新增 17(Gio), 18(Afrin), 19(Henry)
         const INITIAL_EMPLOYEES = [
             { num: 1, id: 'm2', name: 'Linh', type: 'full', location: 'myodani', aliases: ['リン'] },
             { num: 2, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko', aliases: ['Minori', '葛野 みのり', 'みのり'] },
@@ -94,8 +93,6 @@
             { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
         ];
 
-        const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
-        
         const calculateMinutes = (start, end) => {
             if (!start || !end) return 0;
             let s = dayjs(`2000-01-01 ${start}`);
@@ -155,10 +152,8 @@
             return s === '' ? '0' : s;
         };
 
-        // ★ 新增：從備註欄文字中自動提取時間區段並計算總分鐘數
         const calculateDriveMinsFromRemark = (remark) => {
             if (!remark) return 0;
-            // 支援的格式： 13:50-14:29 或 13:50~14:29，可多組
             const regex = /(\d{1,2}:\d{2})\s*[-~]\s*(\d{1,2}:\d{2})/g;
             let match;
             let total = 0;
@@ -169,9 +164,9 @@
         };
 
         const SettingPanel = ({ title, children, className = '' }) => (
-            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 setting-panel-wrapper flex-1 ${className}`}>
-                <div className="mb-3 border-b pb-2 flex justify-between items-center shrink-0">
-                    <h2 className="text-[15px] font-bold text-gray-800 flex items-center gap-2">{title}</h2>
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 setting-panel-wrapper flex flex-col ${className}`}>
+                <div className="mb-3 border-b pb-2 shrink-0">
+                    <h2 className="text-[15px] font-bold text-gray-800">{title}</h2>
                 </div>
                 <div className="flex-1 overflow-hidden flex flex-col min-h-0">{children}</div>
             </div>
@@ -272,7 +267,6 @@
                                     const workHours = workMins / 60;
                                     totalWorkMinsGlobal += workMins;
                                     
-                                    // 修正早退變加班的Bug
                                     let early = 0, late = 0;
                                     if (employee.type === 'full' && hasData && shiftStart && shiftEnd) {
                                         let sStart = dayjs(`2000-01-01 ${shiftStart}`);
@@ -440,18 +434,19 @@
             const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
             const [processedFiles, setProcessedFiles] = useState([]);
 
-            // 批次設定 State
             const [batchStart, setBatchStart] = useState('');
             const [batchEnd, setBatchEnd] = useState('');
             
-            // 正社員批次設定 State
             const [ftSelected, setFtSelected] = useState([]);
             const [ftShiftStart, setFtShiftStart] = useState('');
             const [ftShiftEnd, setFtShiftEnd] = useState('');
             const [ftReason, setFtReason] = useState('');
 
-            // 兼職/司機批次設定 State
-            const [staffBatch, setStaffBatch] = useState({});
+            // スタッフ 全域輸入與個人勾選狀態
+            const [globalStaffIn, setGlobalStaffIn] = useState('');
+            const [globalStaffOut, setGlobalStaffOut] = useState('');
+            const [globalStaffIgka, setGlobalStaffIgka] = useState('');
+            const [staffDays, setStaffDays] = useState({});
 
             const addLog = (msg, type = 'info') => setLogs(prev => [`[${dayjs().format('HH:mm:ss')}] ${msg}`, ...prev]);
 
@@ -486,7 +481,6 @@
                 return () => clearTimeout(timer);
             }, [employees, attendanceData, processedFiles, isCloudLoaded]);
 
-            // 自動設定期間
             useEffect(() => {
                 const d = dayjs(`${payMonth}-01`);
                 setBatchStart(d.subtract(1, 'month').date(16).format('YYYY-MM-DD'));
@@ -510,7 +504,6 @@
                     if (!newData[empId][date]) newData[empId][date] = {};
                     newData[empId][date][field] = val;
 
-                    // ★ 只要備註欄更新，自動解析文字並加總到駕駛時間
                     if (field === 'remark') {
                         const emp = employees.find(e => e.id === empId);
                         if (emp && (emp.type === 'driver' || emp.type === 'part')) {
@@ -549,7 +542,7 @@
                         return newData;
                     });
                     setProcessedFiles([]);
-                    addLog(`${payMonth} のデータをリセットしました。再度ファイルを取り込んでください。`, 'success');
+                    addLog(`${payMonth} のデータをリセットしました。`, 'success');
                 }
             };
 
@@ -584,10 +577,9 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                addLog('データをCSVで出力しました。', 'success');
+                addLog('CSVで出力しました。', 'success');
             };
 
-            // ★ Wagaco 解析：強制依照打卡時間產生班表
             const handleParseTimecardText = () => {
                 if (!timecardText.trim()) return;
                 const cleanText = timecardText.replace(/[\u3000\u200B-\u200D\uFEFF]/g, ' '); 
@@ -622,7 +614,6 @@
                     } 
                 }
 
-                // ★ 不管是不是手動設定過，只要有 Wagaco 的真實打卡時間，就自動覆蓋班表時間
                 Object.keys(newData).forEach(empId => {
                     const emp = employees.find(e => e.id === empId);
                     if (emp && emp.type === 'part') {
@@ -641,17 +632,14 @@
                 });
 
                 setAttendanceData(newData);
-                addLog(`打刻テキスト解析完了: ${parsedCount} 筆のデータを反映し、シフトを自動生成しました。`, 'success');
+                addLog(`打刻解析完了: ${parsedCount}件反映・シフト自動生成`, 'success');
                 setTimecardText('');
             };
 
-            // ★ 簡化後的 Excel/CSV 讀取，只專注於「交通費」與「駕駛紀錄」
             const processTransportAndDriverData = (grid2D, localEmps, newData, resIdsSet = new Set()) => {
                 let shiftCount = 0, transCount = 0;
-
                 grid2D.forEach((row, rIdx) => {
                     if (rIdx === 0) return; 
-                    
                     let dateCell = '', nameCell = '', amountCell = '0';
                     let driveTimeStr = ''; 
                     let startMatch = null, endMatch = null;
@@ -663,7 +651,6 @@
                             if (resIdsSet.has(resId)) return; 
                             resIdsSet.add(resId);
                         }
-                        
                         dateCell = getSafeText(row[3]); 
                         nameCell = getSafeText(row[7]);
                         startMatch = getSafeText(row[3]).match(/(\d{1,2}:\d{2})/);
@@ -673,9 +660,7 @@
                         dateCell = r0;
                         nameCell = getSafeText(row[1]);
                         amountCell = getSafeText(row[4]);
-                    } else {
-                        return;
-                    }
+                    } else return;
                     
                     if (!dateCell || !nameCell) return;
                     nameCell = nameCell.trim().toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF\n]/g, '');
@@ -715,33 +700,31 @@
                         }
                     }
                 });
-
                 return { newData, shiftCount, transCount, resIdsSet };
             };
 
             const handleExcelUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読み込まれています。`);
+                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読込済です`);
 
-                addLog(`[Excel] 解析中: ${file.name}... (交通費・運転実績のみ抽出)`);
+                addLog(`[Excel] 解析中: ${file.name}...`);
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                     try {
                         const wb = new ExcelJS.Workbook();
                         await wb.xlsx.load(evt.target.result);
                         let globalNewData = JSON.parse(JSON.stringify(attendanceData));
-                        let localEmps = JSON.parse(JSON.stringify(employees));
                         let totalShift = 0, totalTrans = 0;
 
                         wb.worksheets.forEach(ws => {
                             let grid2D = [];
-                            ws.eachRow((row, rowNumber) => {
+                            ws.eachRow((row) => {
                                 let rowData = [];
                                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => rowData[colNumber - 1] = cell.value);
                                 grid2D.push(rowData);
                             });
-                            const { newData, shiftCount, transCount } = processTransportAndDriverData(grid2D, localEmps, globalNewData);
+                            const { newData, shiftCount, transCount } = processTransportAndDriverData(grid2D, employees, globalNewData);
                             globalNewData = newData;
                             totalShift += shiftCount;
                             totalTrans += transCount;
@@ -750,10 +733,8 @@
                         if (totalShift > 0 || totalTrans > 0) {
                             setAttendanceData(globalNewData);
                             setProcessedFiles(prev => [...prev, file.name]);
-                            addLog(`[Excel] 完了: 運転実績 ${totalShift} 件, 交通費 ${totalTrans} 件を反映しました。`, 'success');
-                        } else {
-                            addLog(`[Excel] 抽出可能なデータがありませんでした。`, 'info');
-                        }
+                            addLog(`[Excel] 完了: 運転 ${totalShift}件, 交通費 ${totalTrans}件`, 'success');
+                        } else addLog(`[Excel] データなし`, 'info');
                     } catch (err) { addLog(`[Excel] エラー: ${err.message}`, 'error'); }
                 };
                 reader.readAsArrayBuffer(file);
@@ -764,7 +745,7 @@
             const handleCsvUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読み込まれています。`);
+                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読込済です`);
 
                 addLog(`[CSV] 解析中: ${file.name}...`);
                 let encoding = file.name.includes("details") ? "Shift-JIS" : "UTF-8";
@@ -778,17 +759,14 @@
                                 setAttendanceData(newData);
                                 setProcessedResIds(resIdsSet);
                                 setProcessedFiles(prev => [...prev, file.name]);
-                                addLog(`[CSV] 完了: 運転実績 ${shiftCount} 件, 交通費 ${transCount} 件を反映しました。`, 'success');
-                            } else {
-                                addLog(`[CSV] 抽出可能なデータがありませんでした。`, 'info');
-                            }
+                                addLog(`[CSV] 完了: 運転 ${shiftCount}件, 交通費 ${transCount}件`, 'success');
+                            } else addLog(`[CSV] データなし`, 'info');
                         } catch (err) { addLog(`[CSV] エラー: ${err.message}`, 'error'); }
                     }
                 });
                 e.target.value = null;
             };
 
-            // ★ 新增：正社員批次套用處理
             const handleApplyFullTimers = () => {
                 if (ftSelected.length === 0) return alert('社員を選択してください');
                 if (!batchStart || !batchEnd) return alert('期間を設定してください');
@@ -812,198 +790,224 @@
                     }
                     return next;
                 });
-                addLog('正社員のシフト/休暇を一括適用しました。', 'success');
+                addLog('正社員設定を一括適用しました。', 'success');
             };
 
-            // ★ 新增：スタッフ(兼職/司機) 批次套用處理
-            const handleStaffBatchChange = (empId, field, val) => {
-                setStaffBatch(prev => ({
-                    ...prev,
-                    [empId]: { ...(prev[empId] || { in: '', out: '', igka: '', days: {} }), [field]: val }
-                }));
-            };
             const handleStaffDayToggle = (empId, dayIdx) => {
-                setStaffBatch(prev => {
-                    const current = prev[empId] || { days: {} };
-                    return { ...prev, [empId]: { ...current, days: { ...current.days, [dayIdx]: !current.days[dayIdx] } } };
+                setStaffDays(prev => {
+                    const current = prev[empId] || {};
+                    return { ...prev, [empId]: { ...current, [dayIdx]: !current[dayIdx] } };
                 });
             };
-            const handleApplyStaff = (empId) => {
-                const config = staffBatch[empId];
-                if (!config || !Object.values(config.days).some(Boolean)) return alert('曜日を選択してください');
+
+            const handleApplyStaff = () => {
+                if (!batchStart || !batchEnd) return alert('期間を設定してください');
+                if (!globalStaffIn && !globalStaffOut && !globalStaffIgka) return alert('入室、退室、またはIGKAを入力してください');
                 
+                let appliedCount = 0;
                 setAttendanceData(prev => {
                     const next = { ...prev };
                     let curr = dayjs(batchStart);
                     const end = dayjs(batchEnd);
                     
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
-                        const dayOfWeek = curr.day(); // 0:Sun, 1:Mon, 2:Tue, 3:Wed, 4:Thu, 5:Fri, 6:Sat
-                        if (config.days[dayOfWeek]) {
-                            const dStr = curr.format('YYYY/MM/DD');
-                            if (!next[empId]) next[empId] = {};
-                            if (!next[empId][dStr]) next[empId][dStr] = {};
-                            
-                            if (config.in) next[empId][dStr].shiftStart = config.in;
-                            if (config.out) next[empId][dStr].shiftEnd = config.out;
-                            if (config.igka) next[empId][dStr].igkAHours = parseFloat(config.igka);
-                        }
+                        const dayOfWeek = curr.day(); // 0:Sun, 1:Mon ... 5:Fri
+                        
+                        Object.keys(staffDays).forEach(empId => {
+                            if (staffDays[empId][dayOfWeek]) {
+                                const dStr = curr.format('YYYY/MM/DD');
+                                if (!next[empId]) next[empId] = {};
+                                if (!next[empId][dStr]) next[empId][dStr] = {};
+                                
+                                if (globalStaffIn) next[empId][dStr].shiftStart = globalStaffIn;
+                                if (globalStaffOut) next[empId][dStr].shiftEnd = globalStaffOut;
+                                if (globalStaffIgka) next[empId][dStr].igkAHours = parseFloat(globalStaffIgka);
+                                appliedCount++;
+                            }
+                        });
                         curr = curr.add(1, 'day');
                     }
                     return next;
                 });
-                addLog(`${employees.find(e=>e.id===empId)?.name} のスケジュールを適用しました。`, 'success');
+                
+                if (appliedCount > 0) {
+                    addLog(`スタッフのシフトを適用しました。(${appliedCount}件)`, 'success');
+                } else {
+                    addLog(`適用対象がありません。曜日が選択されているか確認してください。`, 'error');
+                }
             };
 
             const renderSetupScreen = () => (
-                <div className={`flex flex-col gap-4 p-4 h-[calc(100vh-60px)] overflow-y-auto ${isLocked ? 'locked-overlay' : ''}`}>
-                    {/* 上半部：檔案上傳與文字解析 */}
-                    <div className="flex gap-4">
-                        <SettingPanel title="Excel / CSV (交通費・運転実績のみ)" className="w-1/3">
+                <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] ${isLocked ? 'locked-overlay' : ''}`}>
+                    
+                    {/* ★ 左半部：外部匯入與紀錄 (完美對齊手繪草圖左邊三個方塊) */}
+                    <div className="w-[320px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
+                        <SettingPanel title="Excel分析">
                             <div className="flex flex-col gap-2">
-                                <label className="border border-dashed border-green-400 rounded p-3 text-center bg-green-50 hover:bg-green-100 cursor-pointer text-xs font-bold text-green-700">
-                                    <i className="fa-solid fa-file-excel mr-2"></i>Excel 交通費
+                                <label className="border border-dashed border-gray-400 rounded p-4 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-bold text-gray-700 shadow-sm transition">
+                                    <i className="fa-solid fa-file-excel mr-2 text-green-600"></i>Excel 交通費
                                     <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="hidden" />
                                 </label>
-                                <label className="border border-dashed border-blue-400 rounded p-3 text-center bg-blue-50 hover:bg-blue-100 cursor-pointer text-xs font-bold text-blue-700">
-                                    <i className="fa-solid fa-file-csv mr-2"></i>CSV 交通費・明細
+                                <label className="border border-dashed border-gray-400 rounded p-4 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-bold text-gray-700 shadow-sm transition">
+                                    <i className="fa-solid fa-file-csv mr-2 text-blue-600"></i>CSV 交通費・明細
                                     <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
                                 </label>
                             </div>
                         </SettingPanel>
 
-                        <SettingPanel title="打刻テキスト貼付 (Wagaco)" className="w-1/3">
-                            <div className="flex flex-col h-full">
-                                <textarea 
-                                    className="w-full flex-1 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50 mb-2"
-                                    placeholder="Wagaco打刻履歴を貼付。打刻時間からシフトを自動生成します。"
-                                    value={timecardText}
-                                    onChange={(e) => setTimecardText(e.target.value)}
-                                ></textarea>
-                                <button onClick={handleParseTimecardText} className="bg-blue-600 text-white text-xs px-4 py-1.5 rounded shadow font-bold hover:bg-blue-700 transition">
-                                    <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>テキスト解析
-                                </button>
-                            </div>
-                        </SettingPanel>
-
-                        <SettingPanel title="システムログ" className="w-1/3">
-                            <div className="bg-gray-900 font-mono text-[10px] p-2 rounded h-full overflow-y-auto shadow-inner custom-scrollbar">
+                        <SettingPanel title="分析記録" className="flex-1 min-h-[150px]">
+                            <div className="bg-[#1e1e1e] font-mono text-[10px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar text-gray-300">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
-                                        <div key={i} className={`mb-1 ${log.includes('エラー') ? 'text-red-400' : (log.includes('完了') || log.includes('適用') ? 'text-green-300' : 'text-gray-300')}`}>{log}</div>
+                                        <div key={i} className={`mb-1.5 ${log.includes('エラー') ? 'text-red-400' : (log.includes('完了') || log.includes('適用') ? 'text-green-400 font-bold' : '')}`}>{log}</div>
                                     ))
                                 }
                             </div>
                         </SettingPanel>
+
+                        <SettingPanel title="Wagaco 打刻テキスト貼付">
+                            <div className="flex flex-col gap-2">
+                                <textarea 
+                                    className="w-full h-24 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50"
+                                    placeholder="打刻履歴を貼付。打刻時間からシフトを自動生成します。"
+                                    value={timecardText}
+                                    onChange={(e) => setTimecardText(e.target.value)}
+                                ></textarea>
+                                <button onClick={handleParseTimecardText} className="bg-blue-600 text-white text-xs px-4 py-2 rounded shadow font-bold hover:bg-blue-700 transition">
+                                    <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>テキスト解析
+                                </button>
+                            </div>
+                        </SettingPanel>
                     </div>
 
-                    {/* 下半部：一括設定區塊 */}
-                    <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間・シフト一括設定 (Excel分析の代替)</>}>
-                        <div className="flex flex-col gap-4">
-                            {/* 期間設定 */}
-                            <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-200">
-                                <span className="text-sm font-bold text-blue-800 ml-2">設定期間:</span>
-                                <input type="date" value={batchStart} onChange={e=>setBatchStart(e.target.value)} className="border rounded px-2 py-1 text-xs outline-none" />
-                                <span>〜</span>
-                                <input type="date" value={batchEnd} onChange={e=>setBatchEnd(e.target.value)} className="border rounded px-2 py-1 text-xs outline-none" />
-                            </div>
-
-                            <div className="flex gap-4 items-start">
-                                {/* 正社員區域 */}
-                                <div className="w-1/3 bg-gray-50 border rounded-lg p-3 shadow-sm">
-                                    <div className="font-bold text-gray-800 text-sm mb-3 border-b pb-1">正社員 設定</div>
-                                    
-                                    <div className="flex gap-2 mb-3">
-                                        <div className="flex-1">
-                                            <div className="text-[10px] text-gray-500 mb-1">六甲校</div>
-                                            <div className="flex flex-col gap-1">
-                                                {employees.filter(e => e.type === 'full' && e.location === 'rokko').map(emp => (
-                                                    <label key={emp.id} className="text-xs flex items-center gap-1 cursor-pointer">
-                                                        <input type="checkbox" checked={ftSelected.includes(emp.id)} onChange={(e) => {
-                                                            if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
-                                                            else setFtSelected(prev => prev.filter(id => id !== emp.id));
-                                                        }}/> {emp.name}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="text-[10px] text-gray-500 mb-1">名谷校</div>
-                                            <div className="flex flex-col gap-1">
-                                                {employees.filter(e => e.type === 'full' && e.location === 'myodani').map(emp => (
-                                                    <label key={emp.id} className="text-xs flex items-center gap-1 cursor-pointer">
-                                                        <input type="checkbox" checked={ftSelected.includes(emp.id)} onChange={(e) => {
-                                                            if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
-                                                            else setFtSelected(prev => prev.filter(id => id !== emp.id));
-                                                        }}/> {emp.name}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold w-12">シフト:</span>
-                                            <input type="text" placeholder="09:00" className="batch-input" value={ftShiftStart} onChange={e=>setFtShiftStart(e.target.value)} />
-                                            <span>-</span>
-                                            <input type="text" placeholder="18:00" className="batch-input" value={ftShiftEnd} onChange={e=>setFtShiftEnd(e.target.value)} />
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold w-12">原因:</span>
-                                            <input type="text" placeholder="有休 / 事欠 / 出張..." className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs outline-none" value={ftReason} onChange={e=>setFtReason(e.target.value)} />
-                                        </div>
-                                        <button onClick={handleApplyFullTimers} className="mt-2 w-full bg-blue-600 text-white text-xs font-bold py-1.5 rounded shadow hover:bg-blue-700">社員へ適用</button>
-                                    </div>
+                    {/* ★ 右半部：批次設定 (完美對齊手繪草圖右半部結構) */}
+                    <div className="flex-1 flex flex-col min-w-[700px]">
+                        <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="h-full overflow-y-auto">
+                            
+                            <div className="flex flex-col gap-6">
+                                {/* 期間設定 (頂部共用) */}
+                                <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm">
+                                    <span className="font-black text-blue-800 text-sm"><i className="fa-regular fa-clock mr-1"></i> 期間設定:</span>
+                                    <input type="date" value={batchStart} onChange={e=>setBatchStart(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
+                                    <span className="text-gray-500 font-bold">〜</span>
+                                    <input type="date" value={batchEnd} onChange={e=>setBatchEnd(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
                                 </div>
 
-                                {/* スタッフ區域 */}
-                                <div className="w-2/3 bg-gray-50 border rounded-lg p-3 shadow-sm h-[320px] flex flex-col">
-                                    <div className="font-bold text-gray-800 text-sm mb-2 border-b pb-1 shrink-0">スタッフ (兼職・司機) 設定</div>
-                                    <div className="overflow-y-auto flex-1 custom-scrollbar pr-1">
-                                        <table className="w-full text-left text-xs">
-                                            <thead className="bg-gray-200 sticky top-0 z-10">
-                                                <tr>
-                                                    <th className="p-1">人名</th>
-                                                    <th className="p-1 text-center">入室</th>
-                                                    <th className="p-1 text-center">退室</th>
-                                                    <th className="p-1 text-center">IGKA(H)</th>
-                                                    <th className="p-1 text-center min-w-[120px]">曜日選択 (月〜金)</th>
-                                                    <th className="p-1"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {employees.filter(e => e.type !== 'full').sort((a,b)=>a.num - b.num).map(emp => {
-                                                    const conf = staffBatch[emp.id] || { in: '', out: '', igka: '', days: {} };
-                                                    return (
-                                                        <tr key={emp.id} className="border-b hover:bg-gray-100">
-                                                            <td className="p-1 font-bold text-gray-600 truncate max-w-[80px]">{emp.name}</td>
-                                                            <td className="p-1 text-center"><input type="text" placeholder="10:00" className="batch-input w-11" value={conf.in} onChange={e=>handleStaffBatchChange(emp.id, 'in', e.target.value)} /></td>
-                                                            <td className="p-1 text-center"><input type="text" placeholder="18:00" className="batch-input w-11" value={conf.out} onChange={e=>handleStaffBatchChange(emp.id, 'out', e.target.value)} /></td>
-                                                            <td className="p-1 text-center"><input type="text" placeholder="0.5" className="batch-input w-10 border-blue-200" value={conf.igka} onChange={e=>handleStaffBatchChange(emp.id, 'igka', e.target.value)} /></td>
-                                                            <td className="p-1 text-center">
-                                                                <div className="flex gap-1 justify-center">
-                                                                    {[1,2,3,4,5].map(d => (
-                                                                        <label key={d} className={`w-5 h-5 flex items-center justify-center rounded cursor-pointer border text-[10px] font-bold ${conf.days[d] ? 'bg-blue-500 text-white border-blue-600' : 'bg-white text-gray-400'}`}>
-                                                                            <input type="checkbox" className="hidden" checked={!!conf.days[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
-                                                                            {['月','火','水','木','金'][d-1]}
+                                <div className="flex gap-6 h-full items-stretch">
+                                    {/* 正社員區域 */}
+                                    <div className="w-[30%] bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col">
+                                        <div className="font-black text-gray-800 text-sm mb-4 border-b-2 border-gray-200 pb-2">正社員 設定</div>
+                                        
+                                        <div className="flex gap-4 mb-4 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                                            <div className="flex-1">
+                                                <div className="text-[10px] text-blue-600 font-bold mb-2 bg-blue-50 px-2 py-1 rounded inline-block">六甲校</div>
+                                                <div className="flex flex-col gap-1.5">
+                                                    {employees.filter(e => e.type === 'full' && e.location === 'rokko').map(emp => (
+                                                        <label key={emp.id} className="text-xs flex items-center gap-2 cursor-pointer hover:bg-gray-200 p-1 rounded transition">
+                                                            <input type="checkbox" className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500" checked={ftSelected.includes(emp.id)} onChange={(e) => {
+                                                                if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
+                                                                else setFtSelected(prev => prev.filter(id => id !== emp.id));
+                                                            }}/> <span className="font-semibold text-gray-700">{emp.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 border-l border-gray-200 pl-4">
+                                                <div className="text-[10px] text-green-600 font-bold mb-2 bg-green-50 px-2 py-1 rounded inline-block">名谷校</div>
+                                                <div className="flex flex-col gap-1.5">
+                                                    {employees.filter(e => e.type === 'full' && e.location === 'myodani').map(emp => (
+                                                        <label key={emp.id} className="text-xs flex items-center gap-2 cursor-pointer hover:bg-gray-200 p-1 rounded transition">
+                                                            <input type="checkbox" className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500" checked={ftSelected.includes(emp.id)} onChange={(e) => {
+                                                                if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
+                                                                else setFtSelected(prev => prev.filter(id => id !== emp.id));
+                                                            }}/> <span className="font-semibold text-gray-700">{emp.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-3 shrink-0 bg-white p-3 rounded-lg border border-gray-200 shadow-inner mt-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[11px] font-bold text-gray-600 w-10">シフト</span>
+                                                <div className="flex items-center gap-1 flex-1">
+                                                    <input type="text" placeholder="09:00" className="w-full text-center border border-gray-300 rounded px-1 py-1 text-xs outline-none font-mono" value={ftShiftStart} onChange={e=>setFtShiftStart(e.target.value)} />
+                                                    <span className="text-gray-400">-</span>
+                                                    <input type="text" placeholder="18:00" className="w-full text-center border border-gray-300 rounded px-1 py-1 text-xs outline-none font-mono" value={ftShiftEnd} onChange={e=>setFtShiftEnd(e.target.value)} />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[11px] font-bold text-gray-600 w-10">原因</span>
+                                                <input type="text" placeholder="有休 / 事欠..." className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs outline-none" value={ftReason} onChange={e=>setFtReason(e.target.value)} />
+                                            </div>
+                                            <button onClick={handleApplyFullTimers} className="mt-1 w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-md shadow hover:bg-blue-700 transition">社員へ適用</button>
+                                        </div>
+                                    </div>
+
+                                    {/* スタッフ區域 */}
+                                    <div className="w-[70%] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                        <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
+                                            <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex gap-2 items-center">
+                                                    <div className="flex items-center bg-white border border-gray-300 rounded overflow-hidden shadow-inner">
+                                                        <span className="bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-600 border-r border-gray-300">入室</span>
+                                                        <input type="text" className="w-12 text-center text-xs font-mono outline-none py-1" value={globalStaffIn} onChange={e=>setGlobalStaffIn(e.target.value)} placeholder="10:00" />
+                                                    </div>
+                                                    <div className="flex items-center bg-white border border-gray-300 rounded overflow-hidden shadow-inner">
+                                                        <span className="bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-600 border-r border-gray-300">退室</span>
+                                                        <input type="text" className="w-12 text-center text-xs font-mono outline-none py-1" value={globalStaffOut} onChange={e=>setGlobalStaffOut(e.target.value)} placeholder="18:00" />
+                                                    </div>
+                                                    <div className="flex items-center bg-white border border-blue-300 rounded overflow-hidden shadow-inner ml-2">
+                                                        <span className="bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-800 border-r border-blue-200">IGKA</span>
+                                                        <input type="text" className="w-10 text-center text-xs font-mono outline-none py-1 text-blue-700 font-bold" value={globalStaffIgka} onChange={e=>setGlobalStaffIgka(e.target.value)} placeholder="0.5" />
+                                                    </div>
+                                                </div>
+                                                <button onClick={handleApplyStaff} className="bg-green-600 text-white text-xs font-bold px-5 py-1.5 rounded-md shadow-md hover:bg-green-700 transition flex items-center gap-1">
+                                                    <i className="fa-solid fa-check-double"></i> 適用
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-y-auto flex-1 custom-scrollbar">
+                                            <table className="w-full text-left text-xs border-collapse">
+                                                <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                                                    <tr>
+                                                        <th className="p-2 border-b border-gray-200 text-gray-600 font-bold w-[120px] pl-4">人名</th>
+                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">月</th>
+                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">火</th>
+                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">水</th>
+                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">木</th>
+                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold pr-4">金</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {employees.filter(e => e.type !== 'full').sort((a,b)=>a.num - b.num).map(emp => {
+                                                        const conf = staffDays[emp.id] || {};
+                                                        return (
+                                                            <tr key={emp.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                                                                <td className="p-2 pl-4 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
+                                                                {[1,2,3,4,5].map(d => (
+                                                                    <td key={d} className="p-1.5 text-center">
+                                                                        <label className="inline-flex cursor-pointer relative">
+                                                                            <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
+                                                                            <span className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold">
+                                                                                {['月','火','水','木','金'][d-1]}
+                                                                            </span>
                                                                         </label>
-                                                                    ))}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-1 text-center">
-                                                                <button onClick={()=>handleApplyStaff(emp.id)} className="bg-green-600 hover:bg-green-700 text-white text-[10px] px-2 py-1 rounded font-bold shadow">適用</button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                                                    </td>
+                                                                ))}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </SettingPanel>
+                        </SettingPanel>
+                    </div>
                 </div>
             );
 
