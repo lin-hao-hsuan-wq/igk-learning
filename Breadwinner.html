@@ -442,7 +442,6 @@
             const [ftShiftEnd, setFtShiftEnd] = useState('');
             const [ftReason, setFtReason] = useState('');
 
-            // スタッフ 全域輸入與個人勾選狀態
             const [globalStaffIn, setGlobalStaffIn] = useState('');
             const [globalStaffOut, setGlobalStaffOut] = useState('');
             const [globalStaffIgka, setGlobalStaffIgka] = useState('');
@@ -811,7 +810,7 @@
                     const end = dayjs(batchEnd);
                     
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
-                        const dayOfWeek = curr.day(); // 0:Sun, 1:Mon ... 5:Fri
+                        const dayOfWeek = curr.day(); 
                         
                         Object.keys(staffDays).forEach(empId => {
                             if (staffDays[empId][dayOfWeek]) {
@@ -837,10 +836,11 @@
                 }
             };
 
+            // ★ 修正：確保 flex 排版有正確的高度繼承 (flex-1 min-h-0) 讓捲軸出現
             const renderSetupScreen = () => (
-                <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] ${isLocked ? 'locked-overlay' : ''}`}>
+                <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
                     
-                    {/* ★ 左半部：外部匯入與紀錄 (完美對齊手繪草圖左邊三個方塊) */}
+                    {/* 左半部：外部匯入與紀錄 */}
                     <div className="w-[320px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
                         <SettingPanel title="Excel分析">
                             <div className="flex flex-col gap-2">
@@ -880,23 +880,23 @@
                         </SettingPanel>
                     </div>
 
-                    {/* ★ 右半部：批次設定 (完美對齊手繪草圖右半部結構) */}
-                    <div className="flex-1 flex flex-col min-w-[700px]">
-                        <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="h-full overflow-y-auto">
+                    {/* 右半部：批次設定 (加入 min-h-0 確保捲軸出現) */}
+                    <div className="flex-1 flex flex-col min-w-[700px] min-h-0">
+                        <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="flex-1 flex flex-col min-h-0">
                             
-                            <div className="flex flex-col gap-6">
+                            <div className="flex flex-col gap-4 flex-1 min-h-0">
                                 {/* 期間設定 (頂部共用) */}
-                                <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm">
+                                <div className="shrink-0 flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm">
                                     <span className="font-black text-blue-800 text-sm"><i className="fa-regular fa-clock mr-1"></i> 期間設定:</span>
                                     <input type="date" value={batchStart} onChange={e=>setBatchStart(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
                                     <span className="text-gray-500 font-bold">〜</span>
                                     <input type="date" value={batchEnd} onChange={e=>setBatchEnd(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
                                 </div>
 
-                                <div className="flex gap-6 h-full items-stretch">
+                                <div className="flex gap-6 flex-1 min-h-0 items-stretch">
                                     {/* 正社員區域 */}
-                                    <div className="w-[30%] bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col">
-                                        <div className="font-black text-gray-800 text-sm mb-4 border-b-2 border-gray-200 pb-2">正社員 設定</div>
+                                    <div className="w-[30%] bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col min-h-0">
+                                        <div className="font-black text-gray-800 text-sm mb-4 border-b-2 border-gray-200 pb-2 shrink-0">正社員 設定</div>
                                         
                                         <div className="flex gap-4 mb-4 flex-1 overflow-y-auto custom-scrollbar pr-1">
                                             <div className="flex-1">
@@ -944,8 +944,8 @@
                                         </div>
                                     </div>
 
-                                    {/* スタッフ區域 */}
-                                    <div className="w-[70%] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                    {/* スタッフ區域 (加入 min-h-0 確保內部捲軸正常) */}
+                                    <div className="w-[70%] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
                                         <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
                                             <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
                                             <div className="flex items-center gap-4">
