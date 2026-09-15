@@ -273,8 +273,9 @@
                                     let igkA = parseFloat(dayData.igkAHours) || 0;
                                     let igkB = 0;
 
+                                    // ★ 司機和兼職都是： 實際工作時間 - IGKA
                                     if (employee.type === 'driver') {
-                                        igkB = Math.max(0, workHours - (drive / 60));
+                                        igkB = Math.max(0, workHours - igkA); 
                                         totalDrive += drive;
                                     } else if (employee.type === 'part') {
                                         igkB = Math.max(0, workHours - igkA);
@@ -294,13 +295,18 @@
                                     return (
                                         <tr key={date} className={rowClass}>
                                             <td className="border p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
-                                           <td className="border p-0.5 text-center">
-    <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
-</td>
-<td className="border p-0.5 text-center">
-    <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
-</td>
                                             
+                                            {/* 入室 */}
+                                            <td className="border p-0.5 text-center">
+                                                <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
+                                            </td>
+
+                                            {/* 退室 */}
+                                            <td className="border p-0.5 text-center">
+                                                <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
+                                            </td>
+                                            
+                                            {/* シフト */}
                                             <td className="border p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">
                                                 <div className="flex justify-center items-center gap-0.5">
                                                     <input disabled={isLocked || !localEditable} className="w-11 text-center bg-transparent outline-none" value={shiftStart} onChange={e=>handleInput(date,'shiftStart',e.target.value)} />
@@ -309,24 +315,12 @@
                                                 </div>
                                             </td>
                                             
+                                            {/* 休憩 */}
                                             <td className="border p-0.5 text-center">
-    <input 
-        disabled={isLocked || !localEditable} 
-        className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
-        value={dayData.in || ''} 
-        placeholder="--:--"
-        onChange={e => handleInput(date, 'in', e.target.value)} 
-    />
-</td>
-<td className="border p-0.5 text-center">
-    <input 
-        disabled={isLocked || !localEditable} 
-        className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
-        value={dayData.out || ''} 
-        placeholder="--:--"
-        onChange={e => handleInput(date, 'out', e.target.value)} 
-    />
-</td>
+                                                <input disabled={isLocked || !localEditable} className="w-8 text-center bg-transparent outline-none" value={dayData.break || (hasData && employee.type==='full' ? '60' : '')} onChange={e=>handleInput(date,'break',e.target.value)} />
+                                            </td>
+
+                                            <td className="border p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
                                             
                                             {employee.type === 'full' && <>
                                                 <td className="border p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
