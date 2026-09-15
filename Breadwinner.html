@@ -294,8 +294,12 @@
                                     return (
                                         <tr key={date} className={rowClass}>
                                             <td className="border p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
-                                            <td className="border p-0.5 text-center">{dayData.in}</td>
-                                            <td className="border p-0.5 text-center">{dayData.out}</td>
+                                           <td className="border p-0.5 text-center">
+    <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
+</td>
+<td className="border p-0.5 text-center">
+    <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
+</td>
                                             
                                             <td className="border p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">
                                                 <div className="flex justify-center items-center gap-0.5">
