@@ -42,7 +42,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -197,7 +196,7 @@
             let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
 
             return (
-                <div className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                <div className="h-full flex flex-col bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                     <div className="shrink-0 flex justify-between items-end mb-2 border-b border-gray-200 pb-2 px-3 pt-3">
                         <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
                             <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
@@ -862,7 +861,6 @@
             const renderSetupScreen = () => (
                 <div className={`flex flex-col md:flex-row gap-4 p-4 flex-1 min-h-0 ${isLocked ? 'locked-overlay' : ''}`}>
                     
-                    {/* 左半部：外部匯入與紀錄 */}
                     <div className="w-full md:w-[300px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1 pb-4">
                         <SettingPanel title="Excel分析" className="shrink-0">
                             <div className="flex flex-col gap-2">
@@ -902,12 +900,10 @@
                         </SettingPanel>
                     </div>
 
-                    {/* 右半部：批次設定 */}
                     <div className="flex-1 flex flex-col min-w-[700px] min-h-0">
                         <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="flex-1 flex flex-col min-h-0">
                             
                             <div className="flex flex-col gap-4 flex-1 min-h-0">
-                                {/* 期間設定 (頂部共用) + 名單編輯按鈕 */}
                                 <div className="shrink-0 flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm relative">
                                     <span className="font-black text-blue-800 text-sm"><i className="fa-regular fa-clock mr-1"></i> 期間設定:</span>
                                     <input type="date" value={batchStart} onChange={e=>setBatchStart(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
@@ -920,7 +916,6 @@
                                 </div>
 
                                 <div className="flex gap-4 flex-1 min-h-0 items-stretch">
-                                    {/* 正社員區域 */}
                                     <div className="w-[280px] bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-sm flex flex-col min-h-0 shrink-0">
                                         <div className="font-black text-gray-800 text-sm mb-3 border-b-2 border-gray-200 pb-2 shrink-0">正社員 設定</div>
                                         
@@ -970,7 +965,6 @@
                                         </div>
                                     </div>
 
-                                    {/* ★ 打工者區塊左右分欄 (六甲校 / 名谷校) */}
                                     <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
                                         <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
                                             <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
@@ -996,7 +990,6 @@
                                         </div>
 
                                         <div className="flex flex-1 min-h-0">
-                                            {/* 六甲校 Staff 表格 */}
                                             <div className="flex-1 overflow-y-auto custom-scrollbar border-r border-gray-200 bg-white">
                                                 <table className="w-full text-left text-xs border-collapse">
                                                     <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
@@ -1028,7 +1021,6 @@
                                                 </table>
                                             </div>
 
-                                            {/* 名谷校 Staff 表格 */}
                                             <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
                                                 <table className="w-full text-left text-xs border-collapse">
                                                     <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
@@ -1109,7 +1101,6 @@
                 </div>
             );
 
-            // ★ 最外層統一 return，解決畫面消失塌陷的問題
             return (
                 <div className="h-screen w-full flex flex-col overflow-hidden bg-[#eef2f6]">
                     <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px] z-20 relative">
