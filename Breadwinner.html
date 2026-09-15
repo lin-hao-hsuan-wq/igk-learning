@@ -305,9 +305,24 @@
                                                 </div>
                                             </td>
                                             
-                                            <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-8 text-center bg-transparent outline-none" value={dayData.break || (hasData && employee.type==='full' ? '60' : '')} onChange={e=>handleInput(date,'break',e.target.value)} /></td>
-
-                                            <td className="border p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
+                                            <td className="border p-0.5 text-center">
+    <input 
+        disabled={isLocked || !localEditable} 
+        className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
+        value={dayData.in || ''} 
+        placeholder="--:--"
+        onChange={e => handleInput(date, 'in', e.target.value)} 
+    />
+</td>
+<td className="border p-0.5 text-center">
+    <input 
+        disabled={isLocked || !localEditable} 
+        className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" 
+        value={dayData.out || ''} 
+        placeholder="--:--"
+        onChange={e => handleInput(date, 'out', e.target.value)} 
+    />
+</td>
                                             
                                             {employee.type === 'full' && <>
                                                 <td className="border p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
