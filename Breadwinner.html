@@ -42,6 +42,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -196,14 +197,14 @@
             let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
 
             return (
-                <div className="h-full flex flex-col">
-                    <div className="flex justify-between items-end mb-2 border-b border-gray-300 pb-2 shrink-0">
+                <div className="h-full flex flex-col bg-white">
+                    <div className="flex justify-between items-end mb-2 border-b border-gray-300 pb-2 shrink-0 px-2 pt-2">
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <span className="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
                             {employee.name}
                         </h2>
                         <div className="flex items-center gap-2">
-                            <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3">
+                            <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3 border border-gray-200">
                                 <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
                                 <button 
                                     onClick={() => setLocalEditable(!localEditable)}
@@ -221,7 +222,7 @@
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px] custom-scrollbar">
+                    <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px] custom-scrollbar m-2">
                         <table className="w-full text-left border-collapse whitespace-nowrap">
                             <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 text-gray-700">
                                 <tr>
@@ -358,8 +359,8 @@
                         </table>
                     </div>
 
-                    <div className="mt-2 border-t pt-2 shrink-0">
-                        <div className="flex gap-2 flex-wrap items-stretch">
+                    <div className="px-2 pb-2 shrink-0">
+                        <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2">
                             <div className="bg-white rounded-lg p-2 flex gap-3 shadow-sm border border-gray-200 min-w-[120px] justify-center items-center">
                                 <div className="text-center">
                                     <div className="text-[10px] text-gray-500 font-bold mb-1">出勤日数</div>
@@ -447,6 +448,13 @@
             const [globalStaffIgka, setGlobalStaffIgka] = useState('');
             const [staffDays, setStaffDays] = useState({});
 
+            // ★ 名簿編輯 Modal 狀態
+            const [showEmpModal, setShowEmpModal] = useState(false);
+            const [newEmpNum, setNewEmpNum] = useState('');
+            const [newEmpName, setNewEmpName] = useState('');
+            const [newEmpType, setNewEmpType] = useState('part');
+            const [newEmpLoc, setNewEmpLoc] = useState('rokko');
+
             const addLog = (msg, type = 'info') => setLogs(prev => [`[${dayjs().format('HH:mm:ss')}] ${msg}`, ...prev]);
 
             useEffect(() => {
@@ -512,7 +520,6 @@
                             }
                         }
                     }
-
                     return newData;
                 });
             };
@@ -836,11 +843,27 @@
                 }
             };
 
-            // ★ 修正：確保 flex 排版有正確的高度繼承 (flex-1 min-h-0) 讓捲軸出現
+            const handleAddEmployee = () => {
+                if(!newEmpNum || !newEmpName) return alert('番号と氏名を入力してください。');
+                if(employees.some(e => e.num === parseInt(newEmpNum))) return alert('この番号は既に存在します。');
+                const newId = newEmpLoc === 'rokko' ? `r_new_${Date.now()}` : `m_new_${Date.now()}`;
+                const newEmp = { num: parseInt(newEmpNum), id: newId, name: newEmpName.trim(), type: newEmpType, location: newEmpLoc, aliases: [newEmpName.trim()] };
+                setEmployees(prev => [...prev, newEmp]);
+                setNewEmpNum(''); setNewEmpName('');
+                addLog(`従業員 ${newEmp.name} を追加しました。`, 'success');
+            };
+
+            const handleDeleteEmployee = (id, name) => {
+                if(window.confirm(`${name} を削除してもよろしいですか？`)) {
+                    setEmployees(prev => prev.filter(e => e.id !== id));
+                    addLog(`従業員 ${name} を削除しました。`, 'success');
+                }
+            };
+
             const renderSetupScreen = () => (
                 <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
                     
-                    {/* 左半部：外部匯入與紀錄 */}
+                    {/* ★ 左半部：外部匯入與紀錄 */}
                     <div className="w-[320px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
                         <SettingPanel title="Excel分析">
                             <div className="flex flex-col gap-2">
@@ -880,17 +903,21 @@
                         </SettingPanel>
                     </div>
 
-                    {/* 右半部：批次設定 (加入 min-h-0 確保捲軸出現) */}
+                    {/* ★ 右半部：批次設定 */}
                     <div className="flex-1 flex flex-col min-w-[700px] min-h-0">
                         <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="flex-1 flex flex-col min-h-0">
                             
                             <div className="flex flex-col gap-4 flex-1 min-h-0">
-                                {/* 期間設定 (頂部共用) */}
-                                <div className="shrink-0 flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm">
+                                {/* 期間設定 (頂部共用) + 名單編輯按鈕 */}
+                                <div className="shrink-0 flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 shadow-sm relative">
                                     <span className="font-black text-blue-800 text-sm"><i className="fa-regular fa-clock mr-1"></i> 期間設定:</span>
                                     <input type="date" value={batchStart} onChange={e=>setBatchStart(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
                                     <span className="text-gray-500 font-bold">〜</span>
                                     <input type="date" value={batchEnd} onChange={e=>setBatchEnd(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 font-mono" />
+                                    
+                                    <button onClick={() => setShowEmpModal(true)} className="ml-auto bg-gray-700 text-white text-xs font-bold px-4 py-1.5 rounded shadow hover:bg-gray-800 transition flex items-center gap-1">
+                                        <i className="fa-solid fa-users-gear"></i> 名簿編集
+                                    </button>
                                 </div>
 
                                 <div className="flex gap-6 flex-1 min-h-0 items-stretch">
@@ -944,7 +971,7 @@
                                         </div>
                                     </div>
 
-                                    {/* スタッフ區域 (加入 min-h-0 確保內部捲軸正常) */}
+                                    {/* スタッフ區域 */}
                                     <div className="w-[70%] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
                                         <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
                                             <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
@@ -973,7 +1000,7 @@
                                             <table className="w-full text-left text-xs border-collapse">
                                                 <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                                                     <tr>
-                                                        <th className="p-2 border-b border-gray-200 text-gray-600 font-bold w-[120px] pl-4">人名</th>
+                                                        <th className="p-2 border-b border-gray-200 text-gray-600 font-bold w-[130px] pl-4">人名</th>
                                                         <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">月</th>
                                                         <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">火</th>
                                                         <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">水</th>
@@ -982,10 +1009,36 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {employees.filter(e => e.type !== 'full').sort((a,b)=>a.num - b.num).map(emp => {
+                                                    {/* 六甲校 */}
+                                                    <tr className="bg-blue-100/40">
+                                                        <td colSpan="6" className="p-1 pl-4 font-black text-blue-800 text-[10px] border-y border-blue-200">■ 六甲校</td>
+                                                    </tr>
+                                                    {employees.filter(e => e.type !== 'full' && e.location === 'rokko').sort((a,b)=>a.num - b.num).map(emp => {
                                                         const conf = staffDays[emp.id] || {};
                                                         return (
                                                             <tr key={emp.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                                                                <td className="p-2 pl-4 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
+                                                                {[1,2,3,4,5].map(d => (
+                                                                    <td key={d} className="p-1.5 text-center">
+                                                                        <label className="inline-flex cursor-pointer relative">
+                                                                            <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
+                                                                            <span className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold">
+                                                                                {['月','火','水','木','金'][d-1]}
+                                                                            </span>
+                                                                        </label>
+                                                                    </td>
+                                                                ))}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    {/* 名谷校 */}
+                                                    <tr className="bg-green-100/40">
+                                                        <td colSpan="6" className="p-1 pl-4 font-black text-green-800 text-[10px] border-y border-green-200">■ 名谷校</td>
+                                                    </tr>
+                                                    {employees.filter(e => e.type !== 'full' && e.location === 'myodani').sort((a,b)=>a.num - b.num).map(emp => {
+                                                        const conf = staffDays[emp.id] || {};
+                                                        return (
+                                                            <tr key={emp.id} className="border-b border-gray-100 hover:bg-green-50/30 transition">
                                                                 <td className="p-2 pl-4 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
                                                                 {[1,2,3,4,5].map(d => (
                                                                     <td key={d} className="p-1.5 text-center">
@@ -1008,12 +1061,56 @@
                             </div>
                         </SettingPanel>
                     </div>
+
+                    {/* ★ 名簿編輯 Modal 彈出視窗 */}
+                    {showEmpModal && (
+                        <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+                            <div className="bg-white rounded-xl shadow-2xl w-[500px] flex flex-col max-h-[85vh] overflow-hidden">
+                                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                                    <h2 className="font-black text-gray-800 flex items-center gap-2"><i className="fa-solid fa-users-gear text-blue-600"></i> 社員・スタッフ名簿編集</h2>
+                                    <button onClick={() => setShowEmpModal(false)} className="text-gray-400 hover:text-red-500 transition"><i className="fa-solid fa-xmark fa-xl"></i></button>
+                                </div>
+                                <div className="p-4 border-b border-gray-200 bg-blue-50/30">
+                                    <div className="text-xs font-bold text-gray-600 mb-2">新規追加</div>
+                                    <div className="flex gap-2 items-center">
+                                        <input type="number" value={newEmpNum} onChange={e=>setNewEmpNum(e.target.value)} placeholder="No." className="w-16 border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400 font-mono" />
+                                        <input type="text" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)} placeholder="氏名 (Name)" className="flex-1 border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400" />
+                                        <select value={newEmpType} onChange={e=>setNewEmpType(e.target.value)} className="border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400">
+                                            <option value="part">アルバイト</option>
+                                            <option value="full">正社員</option>
+                                            <option value="driver">司機</option>
+                                        </select>
+                                        <select value={newEmpLoc} onChange={e=>setNewEmpLoc(e.target.value)} className="border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400">
+                                            <option value="rokko">六甲</option>
+                                            <option value="myodani">名谷</option>
+                                        </select>
+                                        <button onClick={handleAddEmployee} className="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow">追加</button>
+                                    </div>
+                                </div>
+                                <div className="p-2 flex-1 overflow-y-auto custom-scrollbar bg-gray-50">
+                                    <ul className="space-y-1">
+                                        {employees.sort((a,b)=>a.num - b.num).map(emp => (
+                                            <li key={emp.id} className="text-xs p-2.5 bg-white rounded-lg flex justify-between items-center text-gray-700 border border-gray-200 shadow-sm hover:border-blue-300 transition">
+                                                <span className="font-semibold"><span className="text-gray-400 w-6 inline-block text-right mr-2 font-mono">{emp.num}.</span>{emp.name}</span>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-gray-500 font-bold text-[10px] bg-gray-100 px-2 py-1 rounded">
+                                                        {emp.type==='full'?'正社員':emp.type==='driver'?'司機':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}
+                                                    </span>
+                                                    <button onClick={() => handleDeleteEmployee(emp.id, emp.name)} className="text-red-400 hover:text-red-600 transition"><i className="fa-solid fa-trash-can fa-lg"></i></button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
 
             return (
                 <div className="min-h-screen flex flex-col overflow-hidden bg-[#eef2f6]">
-                    <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px]">
+                    <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px] z-20 relative">
                         <div className="flex items-center gap-6">
                             <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i className="fa-solid fa-file-invoice-dollar text-blue-600"></i> IGK - Shift Parser</h1>
                             <nav className="flex bg-gray-100 p-1 rounded-lg">
@@ -1028,13 +1125,13 @@
                             </button>
                         </div>
                     </header>
-                    <main className="flex-1 overflow-hidden min-h-0">
+                    <main className="flex-1 overflow-hidden min-h-0 relative">
                         {currentView === 'setup' ? renderSetupScreen() : (
-                            <div className="flex flex-col h-[calc(100vh-60px)] min-h-0">
+                            <div className="flex flex-col h-full min-h-0">
                                 <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                                     <div className="flex gap-2">
-                                        <button onClick={() => setActiveLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
-                                        <button onClick={() => setActiveLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
+                                        <button onClick={() => setActiveLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
+                                        <button onClick={() => setActiveLocation('myodani')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'myodani' ? 'bg-white text-green-600 border-t-4 border-green-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>名谷校 (Myodani)</button>
                                     </div>
                                     <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 mb-0.5">
                                         <span className="text-gray-600 font-bold text-xs"><i className="fa-regular fa-calendar-check text-blue-500 mr-1"></i> 支給月:</span>
@@ -1045,15 +1142,15 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex flex-1 bg-white rounded-lg shadow-sm border mx-4 mb-3 overflow-hidden min-h-0">
-                                    <div className="w-[140px] bg-gray-50 border-r overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4">
+                                <div className="flex flex-1 bg-white rounded-lg shadow-sm border border-gray-200 mx-4 mb-3 overflow-hidden min-h-0 relative -mt-[1px]">
+                                    <div className="w-[140px] bg-gray-50 border-r border-gray-200 overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4 shadow-[inset_-2px_0_5px_rgba(0,0,0,0.02)]">
                                         {employees.filter(e => e.location === activeLocation).sort((a,b) => a.num - b.num).map(emp => (
-                                            <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-2 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:bg-gray-200'}`}>
+                                            <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-3 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600 border border-gray-200' : 'text-gray-500 hover:bg-gray-200 border border-transparent'}`}>
                                                 <span className="truncate">{emp.num}. {emp.name}</span>
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="flex-1 p-3 overflow-hidden">
+                                    <div className="flex-1 overflow-hidden bg-gray-50/30">
                                         {employees.find(e => e.id === activeEmployeeId) ? 
                                             <EmployeeReport 
                                                 key={activeEmployeeId} 
@@ -1063,7 +1160,7 @@
                                                 isLocked={isLocked}
                                                 onInput={handleInputUpdate}
                                             /> 
-                                        : null}
+                                        : <div className="h-full flex items-center justify-center text-gray-400 font-bold">左側のリストから社員を選択してください。</div>}
                                     </div>
                                 </div>
                             </div>
