@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK - Shift</title>
+    <title>IGK - Shift Parser Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -197,14 +197,14 @@
             let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
 
             return (
-                <div className="h-full flex flex-col bg-white">
-                    <div className="flex justify-between items-end mb-2 border-b border-gray-300 pb-2 shrink-0 px-2 pt-2">
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <span className="bg-gray-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
+                <div className="h-full flex flex-col bg-white rounded-lg overflow-hidden border border-transparent">
+                    <div className="flex justify-between items-end mb-2 border-b border-gray-200 pb-2 shrink-0 px-3 pt-3">
+                        <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                            <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow">{employee.num}</span>
                             {employee.name}
                         </h2>
                         <div className="flex items-center gap-2">
-                            <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-100 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3 border border-gray-200">
+                            <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-50 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3 border border-gray-200">
                                 <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
                                 <button 
                                     onClick={() => setLocalEditable(!localEditable)}
@@ -222,21 +222,21 @@
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-auto bg-white rounded shadow-sm border text-[11px] custom-scrollbar m-2">
-                        <table className="w-full text-left border-collapse whitespace-nowrap">
+                    <div className="flex-1 overflow-auto custom-scrollbar mx-2">
+                        <table className="w-full text-left border-collapse whitespace-nowrap text-[11px]">
                             <thead className="bg-gray-100 sticky top-0 shadow-sm z-10 text-gray-700">
                                 <tr>
-                                    <th className="border p-1 min-w-[70px]">日付</th>
-                                    <th className="border p-1">入室</th>
-                                    <th className="border p-1">退室</th>
-                                    <th className="border p-1 text-blue-800">シフト</th>
-                                    <th className="border p-1">休憩</th>
-                                    <th className="border p-1 bg-green-50">勤務時間</th>
-                                    {employee.type === 'full' && <><th className="border p-1">早残業</th><th className="border p-1">後残業</th></>}
-                                    {employee.type === 'driver' && <><th className="border p-1">運転時間(分)</th><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
-                                    {employee.type === 'part' && <><th className="border p-1">IGK A(H)</th><th className="border p-1">IGK B(H)</th></>}
-                                    <th className="border p-1 bg-yellow-50 text-yellow-800">交通費</th>
-                                    <th className="border p-1 min-w-[120px]">備考・出勤狀況</th>
+                                    <th className="border border-gray-200 p-1 min-w-[70px]">日付</th>
+                                    <th className="border border-gray-200 p-1">入室</th>
+                                    <th className="border border-gray-200 p-1">退室</th>
+                                    <th className="border border-gray-200 p-1 text-blue-800">シフト</th>
+                                    <th className="border border-gray-200 p-1">休憩</th>
+                                    <th className="border border-gray-200 p-1 bg-green-50">勤務時間</th>
+                                    {employee.type === 'full' && <><th className="border border-gray-200 p-1">早残業</th><th className="border border-gray-200 p-1">後残業</th></>}
+                                    {employee.type === 'driver' && <><th className="border border-gray-200 p-1">運転時間(分)</th><th className="border border-gray-200 p-1">IGK A(H)</th><th className="border border-gray-200 p-1">IGK B(H)</th></>}
+                                    {employee.type === 'part' && <><th className="border border-gray-200 p-1">IGK A(H)</th><th className="border border-gray-200 p-1">IGK B(H)</th></>}
+                                    <th className="border border-gray-200 p-1 bg-yellow-50 text-yellow-800">交通費</th>
+                                    <th className="border border-gray-200 p-1 min-w-[120px]">備考・出勤狀況</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -301,7 +301,7 @@
                                     const transFee = parseInt(dayData.transFee) || 0;
                                     totalTrans += transFee;
 
-                                    let rowClass = "hover:bg-gray-50 border-b transition-colors ";
+                                    let rowClass = "hover:bg-blue-50/30 border-b transition-colors ";
                                     if (isH) rowClass += "holiday-row holiday-text ";
                                     if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
 
@@ -309,17 +309,17 @@
 
                                     return (
                                         <tr key={date} className={rowClass}>
-                                            <td className="border p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
+                                            <td className="border border-gray-200 p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
                                             
-                                            <td className="border p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
                                             </td>
 
-                                            <td className="border p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
                                             </td>
                                             
-                                            <td className="border p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">
+                                            <td className="border border-gray-200 p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">
                                                 <div className="flex justify-center items-center gap-0.5">
                                                     <input disabled={isLocked || !localEditable} className="w-11 text-center bg-transparent outline-none" value={shiftStart} onChange={e=>handleInput(date,'shiftStart',e.target.value)} />
                                                     -
@@ -327,27 +327,27 @@
                                                 </div>
                                             </td>
                                             
-                                            <td className="border p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center">
                                                 <input disabled={isLocked || !localEditable} className="w-8 text-center bg-transparent outline-none" value={dayData.break || (hasData && employee.type==='full' ? '60' : '')} onChange={e=>handleInput(date,'break',e.target.value)} />
                                             </td>
 
-                                            <td className="border p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
+                                            <td className="border border-gray-200 p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
                                             
                                             {employee.type === 'full' && <>
-                                                <td className="border p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
-                                                <td className="border p-0.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
                                             </>}
                                             {employee.type === 'driver' && <>
-                                                <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent text-purple-700 font-bold" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
-                                                <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent text-purple-700 font-bold" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
                                             {employee.type === 'part' && <>
-                                                <td className="border p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
-                                            <td className="border p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
-                                            <td className="border p-0.5">
+                                            <td className="border border-gray-200 p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                            <td className="border border-gray-200 p-0.5">
                                                 <div className="flex gap-1 items-center px-1">
                                                     <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={displayRemark} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
@@ -359,8 +359,8 @@
                         </table>
                     </div>
 
-                    <div className="px-2 pb-2 shrink-0">
-                        <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2">
+                    <div className="px-3 pb-3 shrink-0">
+                        <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2 mt-1">
                             <div className="bg-white rounded-lg p-2 flex gap-3 shadow-sm border border-gray-200 min-w-[120px] justify-center items-center">
                                 <div className="text-center">
                                     <div className="text-[10px] text-gray-500 font-bold mb-1">出勤日数</div>
@@ -863,9 +863,9 @@
             const renderSetupScreen = () => (
                 <div className={`flex gap-4 p-4 h-[calc(100vh-60px)] overflow-hidden ${isLocked ? 'locked-overlay' : ''}`}>
                     
-                    {/* ★ 左半部：外部匯入與紀錄 */}
-                    <div className="w-[320px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
-                        <SettingPanel title="Excel分析">
+                    {/* 左半部：外部匯入與紀錄 */}
+                    <div className="w-[300px] flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar pr-1">
+                        <SettingPanel title="Excel分析" className="shrink-0">
                             <div className="flex flex-col gap-2">
                                 <label className="border border-dashed border-gray-400 rounded p-4 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer text-xs font-bold text-gray-700 shadow-sm transition">
                                     <i className="fa-solid fa-file-excel mr-2 text-green-600"></i>Excel 交通費
@@ -878,7 +878,7 @@
                             </div>
                         </SettingPanel>
 
-                        <SettingPanel title="分析記録" className="flex-1 min-h-[150px]">
+                        <SettingPanel title="分析記録" className="flex-1 min-h-[120px]">
                             <div className="bg-[#1e1e1e] font-mono text-[10px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar text-gray-300">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
@@ -888,7 +888,7 @@
                             </div>
                         </SettingPanel>
 
-                        <SettingPanel title="Wagaco 打刻テキスト貼付">
+                        <SettingPanel title="Wagaco 打刻テキスト貼付" className="shrink-0">
                             <div className="flex flex-col gap-2">
                                 <textarea 
                                     className="w-full h-24 border border-gray-300 rounded p-2 text-xs font-mono resize-none outline-none focus:border-blue-500 shadow-inner bg-gray-50"
@@ -903,7 +903,7 @@
                         </SettingPanel>
                     </div>
 
-                    {/* ★ 右半部：批次設定 */}
+                    {/* 右半部：批次設定 */}
                     <div className="flex-1 flex flex-col min-w-[700px] min-h-0">
                         <SettingPanel title={<><i className="fa-solid fa-calendar-days text-blue-600 mr-1"></i> 期間設定・一括適用</>} className="flex-1 flex flex-col min-h-0">
                             
@@ -920,43 +920,43 @@
                                     </button>
                                 </div>
 
-                                <div className="flex gap-6 flex-1 min-h-0 items-stretch">
+                                <div className="flex gap-4 flex-1 min-h-0 items-stretch">
                                     {/* 正社員區域 */}
-                                    <div className="w-[30%] bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col min-h-0">
-                                        <div className="font-black text-gray-800 text-sm mb-4 border-b-2 border-gray-200 pb-2 shrink-0">正社員 設定</div>
+                                    <div className="w-[280px] bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-sm flex flex-col min-h-0 shrink-0">
+                                        <div className="font-black text-gray-800 text-sm mb-3 border-b-2 border-gray-200 pb-2 shrink-0">正社員 設定</div>
                                         
-                                        <div className="flex gap-4 mb-4 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                                        <div className="flex gap-2 mb-2 flex-1 overflow-y-auto custom-scrollbar pr-1">
                                             <div className="flex-1">
-                                                <div className="text-[10px] text-blue-600 font-bold mb-2 bg-blue-50 px-2 py-1 rounded inline-block">六甲校</div>
+                                                <div className="text-[10px] text-blue-600 font-bold mb-2 bg-blue-50 px-1.5 py-1 rounded inline-block">六甲校</div>
                                                 <div className="flex flex-col gap-1.5">
                                                     {employees.filter(e => e.type === 'full' && e.location === 'rokko').map(emp => (
                                                         <label key={emp.id} className="text-xs flex items-center gap-2 cursor-pointer hover:bg-gray-200 p-1 rounded transition">
                                                             <input type="checkbox" className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500" checked={ftSelected.includes(emp.id)} onChange={(e) => {
                                                                 if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
                                                                 else setFtSelected(prev => prev.filter(id => id !== emp.id));
-                                                            }}/> <span className="font-semibold text-gray-700">{emp.name}</span>
+                                                            }}/> <span className="font-semibold text-gray-700 truncate">{emp.name}</span>
                                                         </label>
                                                     ))}
                                                 </div>
                                             </div>
-                                            <div className="flex-1 border-l border-gray-200 pl-4">
-                                                <div className="text-[10px] text-green-600 font-bold mb-2 bg-green-50 px-2 py-1 rounded inline-block">名谷校</div>
+                                            <div className="flex-1 border-l border-gray-200 pl-2">
+                                                <div className="text-[10px] text-green-600 font-bold mb-2 bg-green-50 px-1.5 py-1 rounded inline-block">名谷校</div>
                                                 <div className="flex flex-col gap-1.5">
                                                     {employees.filter(e => e.type === 'full' && e.location === 'myodani').map(emp => (
                                                         <label key={emp.id} className="text-xs flex items-center gap-2 cursor-pointer hover:bg-gray-200 p-1 rounded transition">
                                                             <input type="checkbox" className="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500" checked={ftSelected.includes(emp.id)} onChange={(e) => {
                                                                 if (e.target.checked) setFtSelected(prev => [...prev, emp.id]);
                                                                 else setFtSelected(prev => prev.filter(id => id !== emp.id));
-                                                            }}/> <span className="font-semibold text-gray-700">{emp.name}</span>
+                                                            }}/> <span className="font-semibold text-gray-700 truncate">{emp.name}</span>
                                                         </label>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-3 shrink-0 bg-white p-3 rounded-lg border border-gray-200 shadow-inner mt-2">
+                                        <div className="flex flex-col gap-2 shrink-0 bg-white p-3 rounded-lg border border-gray-200 shadow-inner mt-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-bold text-gray-600 w-10">シフト</span>
+                                                <span className="text-[11px] font-bold text-gray-600 w-8">シフト</span>
                                                 <div className="flex items-center gap-1 flex-1">
                                                     <input type="text" placeholder="09:00" className="w-full text-center border border-gray-300 rounded px-1 py-1 text-xs outline-none font-mono" value={ftShiftStart} onChange={e=>setFtShiftStart(e.target.value)} />
                                                     <span className="text-gray-400">-</span>
@@ -964,15 +964,15 @@
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-bold text-gray-600 w-10">原因</span>
+                                                <span className="text-[11px] font-bold text-gray-600 w-8">原因</span>
                                                 <input type="text" placeholder="有休 / 事欠..." className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs outline-none" value={ftReason} onChange={e=>setFtReason(e.target.value)} />
                                             </div>
                                             <button onClick={handleApplyFullTimers} className="mt-1 w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-md shadow hover:bg-blue-700 transition">社員へ適用</button>
                                         </div>
                                     </div>
 
-                                    {/* スタッフ區域 */}
-                                    <div className="w-[70%] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
+                                    {/* ★ 修復：打工者名單分為左右兩欄 (六甲校 / 名谷校) */}
+                                    <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
                                         <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 p-3 shrink-0">
                                             <div className="font-black text-gray-800 text-sm">スタッフ (兼職・司機) 設定</div>
                                             <div className="flex items-center gap-4">
@@ -996,65 +996,70 @@
                                             </div>
                                         </div>
 
-                                        <div className="overflow-y-auto flex-1 custom-scrollbar">
-                                            <table className="w-full text-left text-xs border-collapse">
-                                                <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
-                                                    <tr>
-                                                        <th className="p-2 border-b border-gray-200 text-gray-600 font-bold w-[130px] pl-4">人名</th>
-                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">月</th>
-                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">火</th>
-                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">水</th>
-                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">木</th>
-                                                        <th className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold pr-4">金</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {/* 六甲校 */}
-                                                    <tr className="bg-blue-100/40">
-                                                        <td colSpan="6" className="p-1 pl-4 font-black text-blue-800 text-[10px] border-y border-blue-200">■ 六甲校</td>
-                                                    </tr>
-                                                    {employees.filter(e => e.type !== 'full' && e.location === 'rokko').sort((a,b)=>a.num - b.num).map(emp => {
-                                                        const conf = staffDays[emp.id] || {};
-                                                        return (
-                                                            <tr key={emp.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
-                                                                <td className="p-2 pl-4 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
-                                                                {[1,2,3,4,5].map(d => (
-                                                                    <td key={d} className="p-1.5 text-center">
-                                                                        <label className="inline-flex cursor-pointer relative">
-                                                                            <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
-                                                                            <span className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold">
-                                                                                {['月','火','水','木','金'][d-1]}
-                                                                            </span>
-                                                                        </label>
-                                                                    </td>
-                                                                ))}
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                    {/* 名谷校 */}
-                                                    <tr className="bg-green-100/40">
-                                                        <td colSpan="6" className="p-1 pl-4 font-black text-green-800 text-[10px] border-y border-green-200">■ 名谷校</td>
-                                                    </tr>
-                                                    {employees.filter(e => e.type !== 'full' && e.location === 'myodani').sort((a,b)=>a.num - b.num).map(emp => {
-                                                        const conf = staffDays[emp.id] || {};
-                                                        return (
-                                                            <tr key={emp.id} className="border-b border-gray-100 hover:bg-green-50/30 transition">
-                                                                <td className="p-2 pl-4 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
-                                                                {[1,2,3,4,5].map(d => (
-                                                                    <td key={d} className="p-1.5 text-center">
-                                                                        <label className="inline-flex cursor-pointer relative">
-                                                                            <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
-                                                                            <span className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold">
-                                                                                {['月','火','水','木','金'][d-1]}
-                                                                            </span>
-                                                                        </label>
-                                                                    </td>
-                                                                ))}
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
+                                        <div className="flex flex-1 min-h-0">
+                                            {/* 六甲校 Staff 表格 */}
+                                            <div className="flex-1 overflow-y-auto custom-scrollbar border-r border-gray-200 bg-white">
+                                                <table className="w-full text-left text-xs border-collapse">
+                                                    <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                                                        <tr>
+                                                            <th className="p-2 border-b border-gray-200 text-blue-700 font-black w-[100px] pl-3 text-[10px]">■ 六甲校</th>
+                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">{d}</th>)}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {employees.filter(e => e.type !== 'full' && e.location === 'rokko').sort((a,b)=>a.num - b.num).map(emp => {
+                                                            const conf = staffDays[emp.id] || {};
+                                                            return (
+                                                                <tr key={emp.id} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
+                                                                    <td className="p-2 pl-3 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
+                                                                    {[1,2,3,4,5].map(d => (
+                                                                        <td key={d} className="p-1 text-center">
+                                                                            <label className="inline-flex cursor-pointer relative">
+                                                                                <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
+                                                                                <span className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold text-[10px]">
+                                                                                    {['月','火','水','木','金'][d-1]}
+                                                                                </span>
+                                                                            </label>
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* 名谷校 Staff 表格 */}
+                                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                                                <table className="w-full text-left text-xs border-collapse">
+                                                    <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                                                        <tr>
+                                                            <th className="p-2 border-b border-gray-200 text-green-700 font-black w-[100px] pl-3 text-[10px]">■ 名谷校</th>
+                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold">{d}</th>)}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {employees.filter(e => e.type !== 'full' && e.location === 'myodani').sort((a,b)=>a.num - b.num).map(emp => {
+                                                            const conf = staffDays[emp.id] || {};
+                                                            return (
+                                                                <tr key={emp.id} className="border-b border-gray-100 hover:bg-green-50/30 transition">
+                                                                    <td className="p-2 pl-3 font-bold text-gray-700 truncate">{emp.num}. {emp.name}</td>
+                                                                    {[1,2,3,4,5].map(d => (
+                                                                        <td key={d} className="p-1 text-center">
+                                                                            <label className="inline-flex cursor-pointer relative">
+                                                                                <input type="checkbox" className="peer sr-only day-checkbox" checked={!!conf[d]} onChange={()=>handleStaffDayToggle(emp.id, d)} />
+                                                                                <span className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 text-gray-400 bg-white hover:bg-gray-100 transition shadow-sm font-bold text-[10px]">
+                                                                                    {['月','火','水','木','金'][d-1]}
+                                                                                </span>
+                                                                            </label>
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1108,6 +1113,7 @@
                 </div>
             );
 
+            // ★ 修復重點：確保 <main> 內部在個人明細畫面時，使用明確的高度計算 (h-[calc(100vh-60px)])
             return (
                 <div className="min-h-screen flex flex-col overflow-hidden bg-[#eef2f6]">
                     <header className="bg-white shadow-sm border-b px-6 py-2 flex justify-between items-center shrink-0 h-[60px] z-20 relative">
@@ -1125,9 +1131,10 @@
                             </button>
                         </div>
                     </header>
-                    <main className="flex-1 overflow-hidden min-h-0 relative">
+
+                    <main className="flex-1 overflow-hidden relative">
                         {currentView === 'setup' ? renderSetupScreen() : (
-                            <div className="flex flex-col h-full min-h-0">
+                            <div className="flex flex-col h-[calc(100vh-60px)] w-full overflow-hidden">
                                 <div className="flex justify-between items-end mb-2 px-4 mt-2 shrink-0">
                                     <div className="flex gap-2">
                                         <button onClick={() => setActiveLocation('rokko')} className={`px-6 py-2 rounded-t-lg font-black text-sm transition ${activeLocation === 'rokko' ? 'bg-white text-blue-600 border-t-4 border-blue-600 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] z-10 relative' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>六甲校 (Rokko)</button>
@@ -1142,15 +1149,15 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex flex-1 bg-white rounded-lg shadow-sm border border-gray-200 mx-4 mb-3 overflow-hidden min-h-0 relative -mt-[1px]">
-                                    <div className="w-[140px] bg-gray-50 border-r border-gray-200 overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4 shadow-[inset_-2px_0_5px_rgba(0,0,0,0.02)]">
+                                <div className="flex flex-1 bg-white rounded-lg shadow-sm border border-gray-200 mx-4 mb-3 overflow-hidden">
+                                    <div className="w-[160px] bg-gray-50 border-r border-gray-200 overflow-y-auto pt-2 gap-1 flex flex-col shrink-0 custom-scrollbar pb-4 shadow-[inset_-2px_0_5px_rgba(0,0,0,0.02)]">
                                         {employees.filter(e => e.location === activeLocation).sort((a,b) => a.num - b.num).map(emp => (
                                             <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-3 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600 border border-gray-200' : 'text-gray-500 hover:bg-gray-200 border border-transparent'}`}>
                                                 <span className="truncate">{emp.num}. {emp.name}</span>
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="flex-1 overflow-hidden bg-gray-50/30">
+                                    <div className="flex-1 overflow-hidden bg-gray-50/30 p-2">
                                         {employees.find(e => e.id === activeEmployeeId) ? 
                                             <EmployeeReport 
                                                 key={activeEmployeeId} 
