@@ -307,8 +307,7 @@
                                     if (isH) rowClass += "holiday-row holiday-text ";
                                     if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
 
-                                    let displayRemark = [dayData.leaveType, dayData.remark].filter(Boolean).join(' / ');
-
+                                    // ★ 解決重點：分開顯示 leaveType 和可編輯的 remark
                                     return (
                                         <tr key={date} className={rowClass}>
                                             <td className="border border-gray-200 p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
@@ -349,9 +348,12 @@
                                                 <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
                                             <td className="border border-gray-200 p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                            
                                             <td className="border border-gray-200 p-0.5">
                                                 <div className="flex gap-1 items-center px-1">
-                                                    <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={displayRemark} onChange={e => handleInput(date, 'remark', e.target.value)} />
+                                                    {dayData.leaveType && <span className="shrink-0 bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] font-bold">{dayData.leaveType}</span>}
+                                                    {dayData.leaveType && <span className="text-gray-300">/</span>}
+                                                    <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
                                             </td>
                                         </tr>
@@ -553,7 +555,7 @@
                 }
             };
 
-            // ★ 強化版：完美重現網頁底色與計算數據，並新增月間統計區塊
+            // ★ 強化版 Excel 匯出
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -562,7 +564,6 @@
                         const safeName = `${emp.num}_${emp.name}`.replace(/[\\/?*[\]]/g, '').substring(0, 31);
                         const ws = wb.addWorksheet(safeName);
                         
-                        // ★ 調整為 16 個欄位，確保把網頁顯示的全部資訊 (包含早晚殘業、IGKB) 都匯出
                         ws.columns = [
                             { header: '対象月', width: 10 },
                             { header: '社員No', width: 8 },
@@ -591,7 +592,6 @@
                         const periodEnd = payDateObj.date(15);
                         let curr = periodStart;
                         
-                        // 計算變數
                         let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
                         let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
                         
@@ -671,15 +671,12 @@
                                 displayRemark
                             ]);
                             
-                            // ★ 顏色標記邏輯：依照網頁設定檔背景色
                             if (isH) {
-                                // 週末或假日為淺紅背景、深紅文字
                                 row.eachCell({ includeEmpty: true }, (cell) => {
                                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
                                     cell.font = { color: { argb: 'FFB91C1C' }, bold: true };
                                 });
                             } else if (!hasData && !isH && emp.type === 'full') {
-                                // 正社員平日未打卡為淺紫背景
                                 row.eachCell({ includeEmpty: true }, (cell) => {
                                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } };
                                 });
@@ -688,13 +685,11 @@
                             curr = curr.add(1, 'day');
                         }
                         
-                        // ★ 加入網頁下方的「月間集計」區塊
-                        ws.addRow([]); // 空一行
+                        ws.addRow([]);
                         const sumTitleRow = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', '【月間集計】', '']);
                         sumTitleRow.getCell(14).font = { bold: true, size: 12 };
                         
                         const addSum = (label, value) => {
-                            // 將 Label 放在第 14 欄，Value 放在第 15 欄位 (並延伸跨到 16)
                             const r = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', label, value]);
                             r.getCell(14).font = { bold: true };
                             r.getCell(14).alignment = { horizontal: 'right' };
@@ -715,7 +710,6 @@
                         
                         addSum('実働総時間:', `${formatHM(totalWorkMinsGlobal)} (${(totalWorkMinsGlobal/60).toFixed(2)}H)`);
                         
-                        // 交通費獨立顏色標示 (黃底棕字)
                         const feeRow = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', '交通費合計:', `${totalTrans.toLocaleString()} 円`]);
                         feeRow.getCell(14).font = { bold: true, color: { argb: 'FF92400E' } };
                         feeRow.getCell(14).alignment = { horizontal: 'right' };
@@ -1270,7 +1264,6 @@
                             </nav>
                         </div>
                         <div className="flex items-center gap-3">
-                            {/* ★ 按鈕修改：改為觸發 exportToExcel */}
                             <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力 (Excel)</button>
                             <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                 <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
