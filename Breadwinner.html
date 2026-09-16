@@ -254,7 +254,10 @@
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
                                     
-                                    if (hasData || (!isH && employee.type === 'full' && !dayData.leaveType) || shiftStart || dayData.igkAHours || dayData.transFee || dayData.driveMins) workDays++;
+                                    // ★ 修改重點 1：出勤日數嚴格依照「是否有打卡/時數紀錄」計算
+                                    if (hasData || parseFloat(dayData.igkAHours) > 0 || parseInt(dayData.driveMins) > 0) {
+                                        workDays++;
+                                    }
 
                                     if (dayData.leaveType === '有休(1日)') leave1++;
                                     if (dayData.leaveType === '有休(半日)') leaveHalf++;
@@ -307,7 +310,7 @@
                                     if (isH) rowClass += "holiday-row holiday-text ";
                                     if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
 
-                                    // ★ 解決重點：分開顯示 leaveType 和可編輯的 remark
+                                    // ★ 修改重點 2：已將 leaveType 與手動輸入的 remark 拆開，避免重複輸入字串的問題
                                     return (
                                         <tr key={date} className={rowClass}>
                                             <td className="border border-gray-200 p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
@@ -352,7 +355,7 @@
                                             <td className="border border-gray-200 p-0.5">
                                                 <div className="flex gap-1 items-center px-1">
                                                     {dayData.leaveType && <span className="shrink-0 bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] font-bold">{dayData.leaveType}</span>}
-                                                    {dayData.leaveType && <span className="text-gray-300">/</span>}
+                                                    {dayData.leaveType && dayData.remark && <span className="text-gray-300">/</span>}
                                                     <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
                                             </td>
@@ -608,7 +611,10 @@
                                 shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
                             }
                             
-                            if (hasData || (!isH && emp.type === 'full' && !d.leaveType) || shiftStart || d.igkAHours || d.transFee || d.driveMins) workDays++;
+                            // ★ 修改重點 1：出勤日數嚴格依照「是否有打卡/時數紀錄」計算
+                            if (hasData || parseFloat(d.igkAHours) > 0 || parseInt(d.driveMins) > 0) {
+                                workDays++;
+                            }
 
                             const inOutMins = calculateMinutes(d.in, d.out);
                             let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
@@ -934,6 +940,13 @@
                     
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                         const dStr = curr.format('YYYY/MM/DD');
+                        
+                        // ★ 修改重點 3：批次套用正社員設定時，遇到例假日/國定假日直接跳過
+                        if (isHoliday(dStr)) {
+                            curr = curr.add(1, 'day');
+                            continue;
+                        }
+                        
                         ftSelected.forEach(empId => {
                             if (!next[empId]) next[empId] = {};
                             if (!next[empId][dStr]) next[empId][dStr] = {};
@@ -946,7 +959,7 @@
                     }
                     return next;
                 });
-                addLog('正社員設定を一括適用しました。', 'success');
+                addLog('正社員設定を一括適用しました（休日はスキップしました）。', 'success');
             };
 
             const handleStaffDayToggle = (empId, dayIdx) => {
