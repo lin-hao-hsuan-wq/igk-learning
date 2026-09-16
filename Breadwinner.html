@@ -553,17 +553,18 @@
                 }
             };
 
-            // ★ 修改點：將原本的匯出 CSV 改為匯出 Excel (.xlsx)，並依照每位員工建立獨立的工作表
+            // ★ 強化的 Excel 匯出函式，加入與網頁 UI 完全一致的：
+            // 1. 計算邏輯 (包含出勤日數、交通費、A+B計算等)
+            // 2. 假日與缺席的自動底色標記 (淺紅 / 淺紫)
+            // 3. 在每位員工資料下方加上「總計」區塊
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
                     
                     employees.sort((a,b) => a.num - b.num).forEach(emp => {
-                        // 建立安全的工作表名稱 (Excel 工作表名稱長度限制 31，且不能有 /\?*[] 等特殊符號)
                         const safeName = `${emp.num}_${emp.name}`.replace(/[\\/?*[\]]/g, '').substring(0, 31);
                         const ws = wb.addWorksheet(safeName);
                         
-                        // 設定標題與欄位寬度，讓表格看起來更美觀
                         ws.columns = [
                             { header: '対象月', width: 10 },
                             { header: '社員No', width: 8 },
@@ -573,14 +574,15 @@
                             { header: '退室', width: 8 },
                             { header: '休憩(分)', width: 10 },
                             { header: 'シフト', width: 13 },
-                            { header: '勤務時間(分)', width: 13 },
+                            { header: '勤務時間(H)', width: 12 },
+                            { header: '早残業(分)', width: 10 },
+                            { header: '後残業(分)', width: 10 },
                             { header: 'IGKA(H)', width: 10 },
                             { header: '運転時間(分)', width: 13 },
-                            { header: '交通費', width: 10 },
-                            { header: '備考', width: 25 }
+                            { header: '交通費(円)', width: 11 },
+                            { header: '備考', width: 30 }
                         ];
                         
-                        // 讓標題列加粗並加上淺灰色背景
                         ws.getRow(1).font = { bold: true };
                         ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
 
@@ -590,37 +592,140 @@
                         const periodEnd = payDateObj.date(15);
                         let curr = periodStart;
                         
+                        // 計算變數
+                        let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
+                        let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
+                        
                         while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
                             const dateStr = curr.format('YYYY/MM/DD');
+                            const isH = isHoliday(dateStr);
                             const d = empData[dateStr] || {};
-                            const shiftStr = d.shiftStart && d.shiftEnd ? `${d.shiftStart}-${d.shiftEnd}` : '';
                             const hasData = !!(d.in || d.out);
+                            
+                            let shiftStart = d.shiftStart || '';
+                            let shiftEnd = d.shiftEnd || '';
+                            if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
+                                shiftStart = emp.location === 'rokko' ? '09:30' : '09:15';
+                                shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
+                            }
+                            
+                            if (hasData || (!isH && emp.type === 'full' && !d.leaveType) || shiftStart || d.igkAHours || d.transFee || d.driveMins) workDays++;
+
                             const inOutMins = calculateMinutes(d.in, d.out);
                             let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
                             const workMins = Math.max(0, inOutMins - breakMins);
+                            const workHours = workMins / 60;
+                            totalWorkMinsGlobal += workMins;
                             
-                            // 寫入每日資料
-                            ws.addRow([
+                            let early = 0, late = 0;
+                            if (emp.type === 'full' && hasData && shiftStart && shiftEnd) {
+                                let sStart = dayjs(`2000-01-01 ${shiftStart}`);
+                                let sEnd = dayjs(`2000-01-01 ${shiftEnd}`);
+                                let aIn = d.in ? dayjs(`2000-01-01 ${d.in}`) : null;
+                                let aOut = d.out ? dayjs(`2000-01-01 ${d.out}`) : null;
+
+                                if (sEnd.isBefore(sStart)) sEnd = sEnd.add(1, 'day');
+                                if (aIn && aOut && aOut.isBefore(aIn)) aOut = aOut.add(1, 'day');
+
+                                if (aIn) early = Math.max(0, sStart.diff(aIn, 'minute'));
+                                if (aOut) late = Math.max(0, aOut.diff(sEnd, 'minute'));
+
+                                earlyTotal += early;
+                                lateTotal += late;
+                            }
+                            
+                            let drive = parseInt(d.driveMins) || 0;
+                            let igkA = parseFloat(d.igkAHours) || 0;
+                            let igkB = 0;
+
+                            if (emp.type === 'driver') {
+                                igkB = Math.max(0, workHours - igkA); 
+                                totalDrive += drive;
+                            } else if (emp.type === 'part') {
+                                igkB = Math.max(0, workHours - igkA);
+                            }
+                            totalIgkA += igkA;
+                            totalIgkB += igkB;
+                            
+                            const transFee = parseInt(d.transFee) || 0;
+                            totalTrans += transFee;
+                            
+                            const shiftStr = shiftStart && shiftEnd ? `${shiftStart}-${shiftEnd}` : '';
+                            const displayRemark = [d.leaveType, d.remark].filter(Boolean).join(' / ');
+
+                            const row = ws.addRow([
                                 payMonth,
                                 emp.num,
                                 emp.name,
-                                dateStr,
+                                `${dayjs(dateStr).format('MM/DD')}(${['日','月','火','水','木','金','土'][dayjs(dateStr).day()]})`,
                                 d.in || '',
                                 d.out || '',
                                 breakMins || '',
                                 shiftStr,
-                                workMins > 0 ? workMins : '',
+                                workMins > 0 ? (workMins/60).toFixed(2) : '',
+                                early > 0 ? early : '',
+                                late > 0 ? late : '',
                                 d.igkAHours || '',
                                 d.driveMins || '',
-                                d.transFee || '',
-                                d.remark || d.leaveType || ''
+                                transFee || '',
+                                displayRemark
                             ]);
+                            
+                            // ★ 顏色標記邏輯
+                            if (isH) {
+                                // 假日或週末 -> 淺紅底、紅字
+                                row.eachCell({ includeEmpty: true }, (cell) => {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; 
+                                    cell.font = { color: { argb: 'FFB91C1C' }, bold: true }; 
+                                });
+                            } else if (!hasData && !isH && emp.type === 'full') {
+                                // 正社員未打卡 -> 淺紫底
+                                row.eachCell({ includeEmpty: true }, (cell) => {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } }; 
+                                });
+                            }
                             
                             curr = curr.add(1, 'day');
                         }
+                        
+                        // ★ 加入網頁下方統計卡片的總計資訊
+                        ws.addRow([]); // 空一行
+
+                        const summaryHeader = ws.addRow(Array(15).fill(''));
+                        summaryHeader.getCell(14).value = '【月間集計】';
+                        summaryHeader.getCell(14).font = { bold: true, size: 11, color: { argb: 'FF1F2937' } };
+                        
+                        const addSummaryRow = (label, value, bgColor = 'FFFFFFFF', textColor = 'FF000000') => {
+                            const rowData = Array(15).fill('');
+                            rowData[13] = label; // 放第14格 (交通費欄位)
+                            rowData[14] = value; // 放第15格 (備考欄位，空間夠寬)
+                            const r = ws.addRow(rowData);
+                            
+                            r.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+                            r.getCell(14).font = { bold: true, color: { argb: textColor } };
+                            r.getCell(14).alignment = { horizontal: 'right' };
+                            
+                            r.getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+                            r.getCell(15).font = { bold: true, color: { argb: textColor } };
+                            r.getCell(15).alignment = { horizontal: 'left' };
+                        };
+
+                        // 加入統計數字，顏色與網頁上各卡片的代表色系對齊
+                        addSummaryRow('出勤日数', `${workDays} 日`, 'FFF3F4F6', 'FF374151');
+                        if (emp.type === 'full') {
+                            addSummaryRow('残業合計 (早+後)', `${earlyTotal + lateTotal} 分`, 'FFFFEEF2', 'FFBE123C');
+                        }
+                        if (emp.type === 'part' || emp.type === 'driver') {
+                            addSummaryRow('A+B 総労働', `${formatAplusB(totalIgkA)} + ${formatAplusB(totalIgkB)} = ${formatAplusB(totalIgkA+totalIgkB)} 時間`, 'FFEEF2FF', 'FF4338CA');
+                        }
+                        if (emp.type === 'driver') {
+                            addSummaryRow('運転実績', `${formatHM(totalDrive)} (${(totalDrive/60).toFixed(2)}H)`, 'FFF5F3FF', 'FF6D28D9');
+                        }
+                        addSummaryRow('実働総時間', `${formatHM(totalWorkMinsGlobal)} (${(totalWorkMinsGlobal/60).toFixed(2)}H)`, 'FFF0FDF4', 'FF15803D');
+                        addSummaryRow('交通費合計', `${totalTrans.toLocaleString()} 円`, 'FFFFFBEB', 'FFB45309');
+
                     });
                     
-                    // 產生 Excel 檔案並觸發下載
                     const buffer = await wb.xlsx.writeBuffer();
                     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                     const url = window.URL.createObjectURL(blob);
@@ -632,7 +737,7 @@
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(url);
                     
-                    addLog('Excelで出力しました。（人名ごとにシート分割）', 'success');
+                    addLog('Excelで出力しました。（集計データと色付き）', 'success');
                 } catch (error) {
                     console.error("Excel出力エラー:", error);
                     addLog('Excel出力中にエラーが発生しました。', 'error');
