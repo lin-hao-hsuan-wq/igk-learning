@@ -553,10 +553,7 @@
                 }
             };
 
-            // ★ 強化的 Excel 匯出函式，加入與網頁 UI 完全一致的：
-            // 1. 計算邏輯 (包含出勤日數、交通費、A+B計算等)
-            // 2. 假日與缺席的自動底色標記 (淺紅 / 淺紫)
-            // 3. 在每位員工資料下方加上「總計」區塊
+            // ★ 強化版：完美重現網頁底色與計算數據，並新增月間統計區塊
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -565,10 +562,11 @@
                         const safeName = `${emp.num}_${emp.name}`.replace(/[\\/?*[\]]/g, '').substring(0, 31);
                         const ws = wb.addWorksheet(safeName);
                         
+                        // ★ 調整為 16 個欄位，確保把網頁顯示的全部資訊 (包含早晚殘業、IGKB) 都匯出
                         ws.columns = [
                             { header: '対象月', width: 10 },
                             { header: '社員No', width: 8 },
-                            { header: '氏名', width: 16 },
+                            { header: '氏名', width: 15 },
                             { header: '日付', width: 12 },
                             { header: '入室', width: 8 },
                             { header: '退室', width: 8 },
@@ -578,9 +576,10 @@
                             { header: '早残業(分)', width: 10 },
                             { header: '後残業(分)', width: 10 },
                             { header: 'IGKA(H)', width: 10 },
-                            { header: '運転時間(分)', width: 13 },
+                            { header: 'IGKB(H)', width: 10 },
+                            { header: '運転(分)', width: 10 },
                             { header: '交通費(円)', width: 11 },
-                            { header: '備考', width: 30 }
+                            { header: '備考', width: 35 }
                         ];
                         
                         ws.getRow(1).font = { bold: true };
@@ -649,7 +648,7 @@
                             
                             const transFee = parseInt(d.transFee) || 0;
                             totalTrans += transFee;
-                            
+
                             const shiftStr = shiftStart && shiftEnd ? `${shiftStart}-${shiftEnd}` : '';
                             const displayRemark = [d.leaveType, d.remark].filter(Boolean).join(' / ');
 
@@ -666,64 +665,63 @@
                                 early > 0 ? early : '',
                                 late > 0 ? late : '',
                                 d.igkAHours || '',
+                                igkB > 0 ? formatAplusB(igkB) : '',
                                 d.driveMins || '',
                                 transFee || '',
                                 displayRemark
                             ]);
                             
-                            // ★ 顏色標記邏輯
+                            // ★ 顏色標記邏輯：依照網頁設定檔背景色
                             if (isH) {
-                                // 假日或週末 -> 淺紅底、紅字
+                                // 週末或假日為淺紅背景、深紅文字
                                 row.eachCell({ includeEmpty: true }, (cell) => {
-                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; 
-                                    cell.font = { color: { argb: 'FFB91C1C' }, bold: true }; 
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+                                    cell.font = { color: { argb: 'FFB91C1C' }, bold: true };
                                 });
                             } else if (!hasData && !isH && emp.type === 'full') {
-                                // 正社員未打卡 -> 淺紫底
+                                // 正社員平日未打卡為淺紫背景
                                 row.eachCell({ includeEmpty: true }, (cell) => {
-                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } }; 
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } };
                                 });
                             }
                             
                             curr = curr.add(1, 'day');
                         }
                         
-                        // ★ 加入網頁下方統計卡片的總計資訊
+                        // ★ 加入網頁下方的「月間集計」區塊
                         ws.addRow([]); // 空一行
-
-                        const summaryHeader = ws.addRow(Array(15).fill(''));
-                        summaryHeader.getCell(14).value = '【月間集計】';
-                        summaryHeader.getCell(14).font = { bold: true, size: 11, color: { argb: 'FF1F2937' } };
+                        const sumTitleRow = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', '【月間集計】', '']);
+                        sumTitleRow.getCell(14).font = { bold: true, size: 12 };
                         
-                        const addSummaryRow = (label, value, bgColor = 'FFFFFFFF', textColor = 'FF000000') => {
-                            const rowData = Array(15).fill('');
-                            rowData[13] = label; // 放第14格 (交通費欄位)
-                            rowData[14] = value; // 放第15格 (備考欄位，空間夠寬)
-                            const r = ws.addRow(rowData);
-                            
-                            r.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
-                            r.getCell(14).font = { bold: true, color: { argb: textColor } };
+                        const addSum = (label, value) => {
+                            // 將 Label 放在第 14 欄，Value 放在第 15 欄位 (並延伸跨到 16)
+                            const r = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', label, value]);
+                            r.getCell(14).font = { bold: true };
                             r.getCell(14).alignment = { horizontal: 'right' };
-                            
-                            r.getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
-                            r.getCell(15).font = { bold: true, color: { argb: textColor } };
-                            r.getCell(15).alignment = { horizontal: 'left' };
+                            r.getCell(15).font = { bold: true };
                         };
-
-                        // 加入統計數字，顏色與網頁上各卡片的代表色系對齊
-                        addSummaryRow('出勤日数', `${workDays} 日`, 'FFF3F4F6', 'FF374151');
+                        
+                        addSum('出勤日数:', `${workDays} 日`);
+                        
                         if (emp.type === 'full') {
-                            addSummaryRow('残業合計 (早+後)', `${earlyTotal + lateTotal} 分`, 'FFFFEEF2', 'FFBE123C');
+                            addSum('残業合計(早+後):', `${earlyTotal + lateTotal} 分`);
                         }
                         if (emp.type === 'part' || emp.type === 'driver') {
-                            addSummaryRow('A+B 総労働', `${formatAplusB(totalIgkA)} + ${formatAplusB(totalIgkB)} = ${formatAplusB(totalIgkA+totalIgkB)} 時間`, 'FFEEF2FF', 'FF4338CA');
+                            addSum('A+B 総労働:', `${formatAplusB(totalIgkA)} + ${formatAplusB(totalIgkB)} = ${formatAplusB(totalIgkA+totalIgkB)} 時間`);
                         }
                         if (emp.type === 'driver') {
-                            addSummaryRow('運転実績', `${formatHM(totalDrive)} (${(totalDrive/60).toFixed(2)}H)`, 'FFF5F3FF', 'FF6D28D9');
+                            addSum('運転実績:', `${formatHM(totalDrive)} (${(totalDrive/60).toFixed(2)}H)`);
                         }
-                        addSummaryRow('実働総時間', `${formatHM(totalWorkMinsGlobal)} (${(totalWorkMinsGlobal/60).toFixed(2)}H)`, 'FFF0FDF4', 'FF15803D');
-                        addSummaryRow('交通費合計', `${totalTrans.toLocaleString()} 円`, 'FFFFFBEB', 'FFB45309');
-
+                        
+                        addSum('実働総時間:', `${formatHM(totalWorkMinsGlobal)} (${(totalWorkMinsGlobal/60).toFixed(2)}H)`);
+                        
+                        // 交通費獨立顏色標示 (黃底棕字)
+                        const feeRow = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', '', '交通費合計:', `${totalTrans.toLocaleString()} 円`]);
+                        feeRow.getCell(14).font = { bold: true, color: { argb: 'FF92400E' } };
+                        feeRow.getCell(14).alignment = { horizontal: 'right' };
+                        feeRow.getCell(15).font = { bold: true, color: { argb: 'FF92400E' } };
+                        feeRow.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                        feeRow.getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
                     });
                     
                     const buffer = await wb.xlsx.writeBuffer();
