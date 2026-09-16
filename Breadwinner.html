@@ -94,7 +94,6 @@
             { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
         ];
 
-        // ★ 剛剛不小心遺失的這行補回來了！用於判斷假日與週末
         const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
 
         const calculateMinutes = (start, end) => {
@@ -554,38 +553,90 @@
                 }
             };
 
-            const exportToCSV = () => {
-                let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-                csvContent += "対象月,社員No,氏名,日付,入室,退室,休憩(分),シフト,勤務時間(分),IGKA(H),運転時間(分),交通費,備考\n";
-                
-                employees.sort((a,b)=>a.num - b.num).forEach(emp => {
-                    const empData = attendanceData[emp.id] || {};
-                    const payDateObj = dayjs(`${payMonth}-01`);
-                    const periodStart = payDateObj.subtract(1, 'month').date(16);
-                    const periodEnd = payDateObj.date(15);
-                    let curr = periodStart;
-                    while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
-                        const dateStr = curr.format('YYYY/MM/DD');
-                        const d = empData[dateStr] || {};
-                        const shiftStr = d.shiftStart && d.shiftEnd ? `${d.shiftStart}-${d.shiftEnd}` : '';
-                        const hasData = !!(d.in || d.out);
-                        const inOutMins = calculateMinutes(d.in, d.out);
-                        let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
-                        const workMins = Math.max(0, inOutMins - breakMins);
+            // ★ 修改點：將原本的匯出 CSV 改為匯出 Excel (.xlsx)，並依照每位員工建立獨立的工作表
+            const exportToExcel = async () => {
+                try {
+                    const wb = new ExcelJS.Workbook();
+                    
+                    employees.sort((a,b) => a.num - b.num).forEach(emp => {
+                        // 建立安全的工作表名稱 (Excel 工作表名稱長度限制 31，且不能有 /\?*[] 等特殊符號)
+                        const safeName = `${emp.num}_${emp.name}`.replace(/[\\/?*[\]]/g, '').substring(0, 31);
+                        const ws = wb.addWorksheet(safeName);
                         
-                        csvContent += `"${payMonth}","${emp.num}","${emp.name}","${dateStr}","${d.in||''}","${d.out||''}","${breakMins||''}","${shiftStr}","${workMins>0?workMins:''}","${d.igkAHours||''}","${d.driveMins||''}","${d.transFee||''}","${d.remark||d.leaveType||''}"\n`;
-                        curr = curr.add(1, 'day');
-                    }
-                });
-                
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `IGK_Attendance_${payMonth}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                addLog('CSVで出力しました。', 'success');
+                        // 設定標題與欄位寬度，讓表格看起來更美觀
+                        ws.columns = [
+                            { header: '対象月', width: 10 },
+                            { header: '社員No', width: 8 },
+                            { header: '氏名', width: 16 },
+                            { header: '日付', width: 12 },
+                            { header: '入室', width: 8 },
+                            { header: '退室', width: 8 },
+                            { header: '休憩(分)', width: 10 },
+                            { header: 'シフト', width: 13 },
+                            { header: '勤務時間(分)', width: 13 },
+                            { header: 'IGKA(H)', width: 10 },
+                            { header: '運転時間(分)', width: 13 },
+                            { header: '交通費', width: 10 },
+                            { header: '備考', width: 25 }
+                        ];
+                        
+                        // 讓標題列加粗並加上淺灰色背景
+                        ws.getRow(1).font = { bold: true };
+                        ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+
+                        const empData = attendanceData[emp.id] || {};
+                        const payDateObj = dayjs(`${payMonth}-01`);
+                        const periodStart = payDateObj.subtract(1, 'month').date(16);
+                        const periodEnd = payDateObj.date(15);
+                        let curr = periodStart;
+                        
+                        while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
+                            const dateStr = curr.format('YYYY/MM/DD');
+                            const d = empData[dateStr] || {};
+                            const shiftStr = d.shiftStart && d.shiftEnd ? `${d.shiftStart}-${d.shiftEnd}` : '';
+                            const hasData = !!(d.in || d.out);
+                            const inOutMins = calculateMinutes(d.in, d.out);
+                            let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
+                            const workMins = Math.max(0, inOutMins - breakMins);
+                            
+                            // 寫入每日資料
+                            ws.addRow([
+                                payMonth,
+                                emp.num,
+                                emp.name,
+                                dateStr,
+                                d.in || '',
+                                d.out || '',
+                                breakMins || '',
+                                shiftStr,
+                                workMins > 0 ? workMins : '',
+                                d.igkAHours || '',
+                                d.driveMins || '',
+                                d.transFee || '',
+                                d.remark || d.leaveType || ''
+                            ]);
+                            
+                            curr = curr.add(1, 'day');
+                        }
+                    });
+                    
+                    // 產生 Excel 檔案並觸發下載
+                    const buffer = await wb.xlsx.writeBuffer();
+                    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `IGK_Attendance_${payMonth}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    
+                    addLog('Excelで出力しました。（人名ごとにシート分割）', 'success');
+                } catch (error) {
+                    console.error("Excel出力エラー:", error);
+                    addLog('Excel出力中にエラーが発生しました。', 'error');
+                }
             };
 
             const handleParseTimecardText = () => {
@@ -1116,7 +1167,8 @@
                             </nav>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button onClick={exportToCSV} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力 (CSV)</button>
+                            {/* ★ 按鈕修改：改為觸發 exportToExcel */}
+                            <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-green-700 transition"><i className="fa-solid fa-file-excel mr-1"></i> 出力 (Excel)</button>
                             <button onClick={handleToggleLock} className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow transition ${isLocked ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                 <i className={`fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'} mr-1`}></i> {isLocked ? 'ロック中 (編集不可)' : '編集可能'}
                             </button>
