@@ -42,6 +42,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -92,6 +93,9 @@
             { num: 41, id: 'm15', name: 'Mozelle Bargamin', type: 'part', location: 'myodani', aliases: ['Mozelle', 'モゼル'] },
             { num: 43, id: 'm_bjoerg', name: 'Bjoerg Bendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
         ];
+
+        // ★ 剛剛不小心遺失的這行補回來了！用於判斷假日與週末
+        const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
 
         const calculateMinutes = (start, end) => {
             if (!start || !end) return 0;
