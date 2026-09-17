@@ -32,6 +32,8 @@
         .holiday-row { background-color: #fef2f2 !important; }
         .holiday-text { color: #b91c1c !important; font-weight: bold; }
         .absent-row { background-color: #faf5ff !important; }
+        /* ★ 休暇・欠勤などの行を淡い青にするCSS */
+        .leave-row { background-color: #eff6ff !important; }
         .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
         .batch-input { width: 60px; text-align: center; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px; outline: none; }
         .batch-input:focus { border-color: #3b82f6; }
@@ -190,7 +192,6 @@
             }
 
             const handleInput = (date, field, val) => {
-                // 如果被鎖定或手動編輯沒開，直接返回不可修改
                 if (isLocked || !localEditable) return;
                 onInput(employee.id, date, field, val);
             };
@@ -246,24 +247,29 @@
                                 {dates.map((date) => {
                                     const isH = isHoliday(date);
                                     const dayData = data[date] || {};
-                                    const hasData = !!(dayData.in || dayData.out);
+                                    // !!(dayData.in && dayData.in.trim() !== '') ensures valid string check
+                                    const hasData = !!(dayData.in?.trim() || dayData.out?.trim()); 
                                     
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    if (isH && !hasData && !dayData.leaveType) {
+                                    // ★ 【重要】週末・休日で、打刻や休暇記録が一切ない場合、保存されたシフトがあっても強制的に空にする
+                                    if (isH && !hasData && !dayData.leaveType && !dayData.igkAHours && !dayData.driveMins) {
                                         shiftStart = '';
                                         shiftEnd = '';
                                     } 
+                                    // 平日の正社員デフォルトシフト
                                     else if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
                                     
+                                    // 出勤日数：打刻がある日、もしくは時給/運転の数字が入力されている日のみ
                                     if (hasData || parseFloat(dayData.igkAHours) > 0 || parseInt(dayData.driveMins) > 0) {
                                         workDays++;
                                     }
 
+                                    // 休暇集計
                                     if (dayData.leaveType === '有休(2時間)') leave2H++;
                                     if (dayData.leaveType === '有休(4時間)') leave4H++;
                                     if (dayData.leaveType === '有休(6時間)') leave6H++;
@@ -312,9 +318,11 @@
                                     const transFee = parseInt(dayData.transFee) || 0;
                                     totalTrans += transFee;
 
+                                    // ★ 色の処理（休日：淡赤、無断欠勤：淡紫、休暇・欠勤設定あり：淡青）
                                     let rowClass = "hover:bg-blue-50/30 border-b transition-colors ";
-                                    if (isH) rowClass += "holiday-row holiday-text ";
-                                    if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
+                                    if (dayData.leaveType) rowClass += "leave-row ";
+                                    else if (isH) rowClass += "holiday-row holiday-text ";
+                                    else if (!hasData && employee.type === 'full') rowClass += "absent-row ";
 
                                     return (
                                         <tr key={date} className={rowClass}>
@@ -375,7 +383,7 @@
                                             
                                             <td className="border border-gray-200 p-0.5 align-top pt-1">
                                                 <div className="flex gap-1 items-center px-1">
-                                                    {dayData.leaveType && <span className="shrink-0 bg-red-100 text-red-700 px-1 py-0.5 rounded text-[9px] font-bold shadow-sm">{dayData.leaveType.replace('時間', 'H')}</span>}
+                                                    {dayData.leaveType && <span className="shrink-0 bg-blue-100 text-blue-700 px-1 py-0.5 rounded text-[9px] font-bold shadow-sm">{dayData.leaveType.replace('時間', 'H')}</span>}
                                                     {dayData.leaveType && dayData.remark && <span className="text-gray-300">/</span>}
                                                     <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
@@ -563,12 +571,11 @@
             };
 
             const handleInputUpdate = (empId, date, field, val) => {
-                // ★ React 狀態深度拷貝修正
                 setAttendanceData(prev => {
                     const newData = { ...prev };
-                    newData[empId] = { ...newData[empId] }; // Deep copy emp
+                    newData[empId] = { ...newData[empId] }; 
                     if (!newData[empId][date]) newData[empId][date] = {};
-                    else newData[empId][date] = { ...newData[empId][date] }; // Deep copy date
+                    else newData[empId][date] = { ...newData[empId][date] }; 
 
                     newData[empId][date][field] = val;
 
@@ -613,6 +620,7 @@
                 }
             };
 
+            // ★ Excel出力機能の強化 (休暇の淡青色反映、休日のシフト空白徹底)
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -657,13 +665,13 @@
                             const dateStr = curr.format('YYYY/MM/DD');
                             const isH = isHoliday(dateStr);
                             const d = empData[dateStr] || {};
-                            const hasData = !!(d.in || d.out);
+                            const hasData = !!(d.in?.trim() || d.out?.trim()); 
                             
                             let shiftStart = d.shiftStart || '';
                             let shiftEnd = d.shiftEnd || '';
                             
-                            // ★ Excel出力時も週末・休日はデータがなければシフト空白にする
-                            if (isH && !hasData && !d.leaveType) {
+                            // ★ 週末・休日はデータがなければシフト空白にする
+                            if (isH && !hasData && !d.leaveType && !d.igkAHours && !d.driveMins) {
                                 shiftStart = '';
                                 shiftEnd = '';
                             } else if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
@@ -743,14 +751,19 @@
                                 displayRemark
                             ]);
                             
-                            if (isH) {
+                            // Excelの行の背景色を設定（休暇日は淡い青、休日は淡い赤、無断欠勤は淡い紫）
+                            if (d.leaveType) {
                                 row.eachCell({ includeEmpty: true }, (cell) => {
-                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } }; // bg-blue-50
+                                });
+                            } else if (isH) {
+                                row.eachCell({ includeEmpty: true }, (cell) => {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }; // bg-red-50
                                     cell.font = { color: { argb: 'FFB91C1C' }, bold: true };
                                 });
                             } else if (!hasData && !isH && emp.type === 'full') {
                                 row.eachCell({ includeEmpty: true }, (cell) => {
-                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } };
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } }; // bg-purple-50
                                 });
                             }
                             
@@ -1020,6 +1033,7 @@
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                         const dStr = curr.format('YYYY/MM/DD');
                         
+                        // ★ 週末・休日は一括適用の対象から除外（スキップ）する
                         if (isHoliday(dStr)) {
                             curr = curr.add(1, 'day');
                             continue;
