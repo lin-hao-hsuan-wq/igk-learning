@@ -30,12 +30,14 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         
-        /* ★ 新增的底色樣式 */
-        .holiday-row { background-color: #fef2f2 !important; } /* 淡紅色 */
-        .holiday-text { color: #b91c1c !important; font-weight: bold; }
+        /* ★ 底色邏輯：有休(淡藍) > 假日(淡紅) > 實際出勤(淡紫) */
         .leave-row { background-color: #eff6ff !important; } /* 淡藍色 */
+        .holiday-row { background-color: #fef2f2 !important; } /* 淡紅色 */
         .worked-row { background-color: #faf5ff !important; } /* 淡紫色 */
-
+        
+        .holiday-text { color: #b91c1c !important; font-weight: bold; }
+        .absent-row { background-color: #ffffff !important; }
+        
         .setting-panel-wrapper { display: flex; flex-direction: column; min-height: 0; }
         .batch-input { width: 60px; text-align: center; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px; outline: none; }
         .batch-input:focus { border-color: #3b82f6; }
@@ -46,7 +48,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // ★ Firebase 初始化
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
             authDomain: "igk-breadwinner.firebaseapp.com",
@@ -254,18 +255,18 @@
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    // 週末・休日はデフォルトのシフト時間を入れず空白にする
+                                    // 平日デフォルトシフト
                                     if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
                                     
-                                    // 出勤日数は「打刻がある日」か「勤務時間/運転時間が手入力されている日」のみカウント
                                     if (hasData || parseFloat(dayData.igkAHours) > 0 || parseInt(dayData.driveMins) > 0) {
                                         workDays++;
                                     }
 
-                                    // 休暇集計
+                                    const isLeave = dayData.leaveType && (dayData.leaveType.includes('休') || dayData.leaveType.includes('欠'));
+                                    
                                     if (dayData.leaveType === '有休(2時間)') leave2H++;
                                     if (dayData.leaveType === '有休(4時間)') leave4H++;
                                     if (dayData.leaveType === '有休(6時間)') leave6H++;
@@ -316,7 +317,7 @@
 
                                     // ★ 色の処理（有休：淡藍色 > 假日：淡紅色 > 有打卡：淡紫色）
                                     let rowClass = "hover:bg-gray-200 border-b transition-colors ";
-                                    if (dayData.leaveType) rowClass += "leave-row "; // 淡藍色
+                                    if (isLeave) rowClass += "leave-row "; // 淡藍色
                                     else if (isH) rowClass += "holiday-row holiday-text "; // 淡紅色
                                     else if (hasData) rowClass += "worked-row "; // 淡紫色
 
@@ -326,7 +327,7 @@
                                             
                                             <td className="border border-gray-200 p-0.5 text-center align-middle">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
-                                                {/* ★ 週末不給選單 (加上 !isH 條件) */}
+                                                {/* ★ 週末不給選單 */}
                                                 {employee.type === 'full' && !isH && (
                                                     <select 
                                                         disabled={isLocked || !localEditable}
@@ -746,8 +747,10 @@
                                 displayRemark
                             ]);
                             
+                            const isLeave = d.leaveType && (d.leaveType.includes('休') || d.leaveType.includes('欠'));
+                            
                             // Excel 背景色邏輯（優先權：有休 > 假日 > 實際出勤）
-                            if (d.leaveType) {
+                            if (isLeave) {
                                 row.eachCell({ includeEmpty: true }, (cell) => {
                                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } }; // 淡藍色
                                 });
@@ -1041,13 +1044,44 @@
                             
                             if (ftShiftStart) next[empId][dStr].shiftStart = ftShiftStart;
                             if (ftShiftEnd) next[empId][dStr].shiftEnd = ftShiftEnd;
-                            if (ftReason) next[empId][dStr].leaveType = ftReason;
+                            
+                            // ★【關鍵修正】批次套用的「原因」寫入 remark，而不是 leaveType
+                            if (ftReason) next[empId][dStr].remark = ftReason;
                         });
                         curr = curr.add(1, 'day');
                     }
                     return next;
                 });
                 addLog('正社員設定を一括適用しました（休日はスキップしました）。', 'success');
+            };
+
+            // ★ 新增功能：清除選擇區間內的設定（解決設定錯誤、不想整個月刪除的問題）
+            const handleClearFullTimers = () => {
+                if (ftSelected.length === 0) return alert('社員を選択してください');
+                if (!batchStart || !batchEnd) return alert('期間を設定してください');
+                if (!window.confirm(`選択した社員・期間（${batchStart} 〜 ${batchEnd}）のシフト・備考をクリアしますか？`)) return;
+
+                setAttendanceData(prev => {
+                    const next = { ...prev };
+                    let curr = dayjs(batchStart);
+                    const end = dayjs(batchEnd);
+                    
+                    while(curr.isBefore(end) || curr.isSame(end, 'day')) {
+                        const dStr = curr.format('YYYY/MM/DD');
+                        ftSelected.forEach(empId => {
+                            if (next[empId] && next[empId][dStr]) {
+                                // 將手動設定的部分清除
+                                next[empId][dStr].shiftStart = '';
+                                next[empId][dStr].shiftEnd = '';
+                                next[empId][dStr].remark = '';
+                                next[empId][dStr].leaveType = '';
+                            }
+                        });
+                        curr = curr.add(1, 'day');
+                    }
+                    return next;
+                });
+                addLog('指定した期間の設定をクリアしました。', 'success');
             };
 
             const handleStaffDayToggle = (empId, dayIdx) => {
@@ -1132,7 +1166,7 @@
                             <div className="bg-[#1e1e1e] font-mono text-[10px] p-3 rounded h-full overflow-y-auto shadow-inner custom-scrollbar text-gray-300">
                                 {logs.length === 0 ? <span className="text-gray-500">待命中...</span> : 
                                     logs.map((log, i) => (
-                                        <div key={i} className={`mb-1.5 ${log.includes('エラー') ? 'text-red-400' : (log.includes('完了') || log.includes('適用') ? 'text-green-400 font-bold' : '')}`}>{log}</div>
+                                        <div key={i} className={`mb-1.5 ${log.includes('エラー') ? 'text-red-400' : (log.includes('完了') || log.includes('適用') || log.includes('クリア') ? 'text-green-400 font-bold' : '')}`}>{log}</div>
                                     ))
                                 }
                             </div>
@@ -1212,9 +1246,13 @@
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-bold text-gray-600 w-8">原因</span>
-                                                <input type="text" placeholder="有休 / 事欠..." className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs outline-none" value={ftReason} onChange={e=>setFtReason(e.target.value)} />
+                                                <input type="text" placeholder="夏季特別..." className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs outline-none" value={ftReason} onChange={e=>setFtReason(e.target.value)} />
                                             </div>
-                                            <button onClick={handleApplyFullTimers} className="mt-1 w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-md shadow hover:bg-blue-700 transition">社員へ適用</button>
+                                            <div className="flex gap-2 mt-1">
+                                                <button onClick={handleApplyFullTimers} className="flex-1 bg-blue-600 text-white text-xs font-bold py-2 rounded-md shadow hover:bg-blue-700 transition">社員へ適用</button>
+                                                {/* ★ 救星：一鍵清除所選日期區間錯誤設定的按鈕 */}
+                                                <button onClick={handleClearFullTimers} className="bg-red-50 text-red-600 border border-red-200 text-xs font-bold px-3 py-2 rounded-md shadow hover:bg-red-100 transition" title="選択期間の設定をクリア"><i className="fa-solid fa-eraser"></i> クリア</button>
+                                            </div>
                                         </div>
                                     </div>
 
