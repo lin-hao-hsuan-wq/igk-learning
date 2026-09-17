@@ -190,15 +190,13 @@
             }
 
             const handleInput = (date, field, val) => {
+                // 如果被鎖定或手動編輯沒開，直接返回不可修改
                 if (isLocked || !localEditable) return;
                 onInput(employee.id, date, field, val);
             };
 
-            // ★ ここで定義した totalInOutGlobal が抜けていたためエラーになっていました。修正済みです！
             let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
             let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
-            
-            // ★ 休暇・欠勤カウント
             let leave2H = 0, leave4H = 0, leave6H = 0, leave8H = 0, sick = 0, absent = 0;
 
             return (
@@ -253,18 +251,19 @@
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする
-                                    if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
+                                    if (isH && !hasData && !dayData.leaveType) {
+                                        shiftStart = '';
+                                        shiftEnd = '';
+                                    } 
+                                    else if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
                                     
-                                    // ★ 出勤日数は「打刻がある日」か「勤務時間/運転時間が手入力されている日」のみカウント
                                     if (hasData || parseFloat(dayData.igkAHours) > 0 || parseInt(dayData.driveMins) > 0) {
                                         workDays++;
                                     }
 
-                                    // ★ 各種休暇・欠勤のカウント
                                     if (dayData.leaveType === '有休(2時間)') leave2H++;
                                     if (dayData.leaveType === '有休(4時間)') leave4H++;
                                     if (dayData.leaveType === '有休(6時間)') leave6H++;
@@ -273,7 +272,7 @@
                                     if (dayData.leaveType === '欠勤') absent++;
 
                                     const inOutMins = calculateMinutes(dayData.in, dayData.out);
-                                    totalInOutGlobal += inOutMins; // ★ ここでエラーになっていましたが変数定義追加により解決済み
+                                    totalInOutGlobal += inOutMins;
 
                                     let breakMins = hasData ? (employee.type === 'full' ? 60 : (dayData.break || 0)) : 0;
                                     const workMins = Math.max(0, inOutMins - breakMins);
@@ -323,11 +322,10 @@
                                             
                                             <td className="border border-gray-200 p-0.5 text-center align-middle">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
-                                                {/* ★ 入室のところで選択できる休暇のドロップダウン */}
                                                 {employee.type === 'full' && (
                                                     <select 
                                                         disabled={isLocked || !localEditable}
-                                                        className="block w-[58px] mx-auto mt-0.5 text-[9px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer shadow-sm"
+                                                        className="block w-[58px] mx-auto mt-0.5 text-[9px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                         value={dayData.leaveType || ''}
                                                         onChange={e => handleInput(date, 'leaveType', e.target.value)}
                                                     >
@@ -392,7 +390,6 @@
                     <div className="shrink-0 px-3 pb-3">
                         <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2 mt-1">
                             
-                            {/* ★ 出勤日数・休暇集計かご */}
                             <div className="bg-white rounded-lg p-2 flex flex-col shadow-sm border border-gray-200 min-w-[150px] flex-1">
                                 <div className="text-[10px] text-gray-500 font-bold mb-1 text-center border-b border-gray-100 pb-1">出勤・休暇状況</div>
                                 <div className="flex justify-between items-end px-1 mt-0.5">
@@ -566,10 +563,13 @@
             };
 
             const handleInputUpdate = (empId, date, field, val) => {
+                // ★ React 狀態深度拷貝修正
                 setAttendanceData(prev => {
                     const newData = { ...prev };
-                    if (!newData[empId]) newData[empId] = {};
+                    newData[empId] = { ...newData[empId] }; // Deep copy emp
                     if (!newData[empId][date]) newData[empId][date] = {};
+                    else newData[empId][date] = { ...newData[empId][date] }; // Deep copy date
+
                     newData[empId][date][field] = val;
 
                     if (field === 'remark') {
@@ -613,7 +613,6 @@
                 }
             };
 
-            // ★ Excel出力機能の強化 (休暇・欠勤の集計を追加)
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -663,18 +662,19 @@
                             let shiftStart = d.shiftStart || '';
                             let shiftEnd = d.shiftEnd || '';
                             
-                            // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする
-                            if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
+                            // ★ Excel出力時も週末・休日はデータがなければシフト空白にする
+                            if (isH && !hasData && !d.leaveType) {
+                                shiftStart = '';
+                                shiftEnd = '';
+                            } else if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
                                 shiftStart = emp.location === 'rokko' ? '09:30' : '09:15';
                                 shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
                             }
                             
-                            // ★ 出勤日数は「打刻がある日」か「勤務時間/運転時間が手入力されている日」のみカウント
                             if (hasData || parseFloat(d.igkAHours) > 0 || parseInt(d.driveMins) > 0) {
                                 workDays++;
                             }
 
-                            // 休暇カウント
                             if (d.leaveType === '有休(2時間)') leave2H++;
                             if (d.leaveType === '有休(4時間)') leave4H++;
                             if (d.leaveType === '有休(6時間)') leave6H++;
@@ -770,7 +770,6 @@
                         
                         addSum('実出勤日数:', `${workDays} 日`);
                         
-                        // ★ Excel出力への休暇集計反映
                         if (emp.type === 'full') {
                             if (leave8H || leave6H || leave4H || leave2H) {
                                 let yqStr = [
@@ -1021,7 +1020,6 @@
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                         const dStr = curr.format('YYYY/MM/DD');
                         
-                        // ★ 週末・休日は一括適用の対象から除外（スキップ）する
                         if (isHoliday(dStr)) {
                             curr = curr.add(1, 'day');
                             continue;
