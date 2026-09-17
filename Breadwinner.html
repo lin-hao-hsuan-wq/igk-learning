@@ -195,8 +195,10 @@
             };
 
             let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
-            let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
-            let leave1 = 0, leaveHalf = 0, leave2H = 0, absent = 0, sick = 0;
+            let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
+            
+            // ★ 休暇・欠勤カウント
+            let leave2H = 0, leave4H = 0, leave6H = 0, leave8H = 0, sick = 0, absent = 0;
 
             return (
                 <div className="h-full flex flex-col bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
@@ -249,21 +251,25 @@
                                     
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
+                                    
+                                    // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする (isH が true ならセットされない)
                                     if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
                                     
-                                    // ★ 修改重點 1：出勤日數嚴格依照「是否有打卡/時數紀錄」計算
+                                    // ★ 出勤日数は「打刻がある日」か「勤務時間/運転時間が手入力されている日」のみカウント
                                     if (hasData || parseFloat(dayData.igkAHours) > 0 || parseInt(dayData.driveMins) > 0) {
                                         workDays++;
                                     }
 
-                                    if (dayData.leaveType === '有休(1日)') leave1++;
-                                    if (dayData.leaveType === '有休(半日)') leaveHalf++;
+                                    // ★ 各種休暇・欠勤のカウント
                                     if (dayData.leaveType === '有休(2時間)') leave2H++;
-                                    if (dayData.leaveType === '事欠') absent++;
+                                    if (dayData.leaveType === '有休(4時間)') leave4H++;
+                                    if (dayData.leaveType === '有休(6時間)') leave6H++;
+                                    if (dayData.leaveType === '有休(8時間)') leave8H++;
                                     if (dayData.leaveType === '病欠') sick++;
+                                    if (dayData.leaveType === '欠勤') absent++;
 
                                     const inOutMins = calculateMinutes(dayData.in, dayData.out);
                                     totalInOutGlobal += inOutMins;
@@ -310,20 +316,36 @@
                                     if (isH) rowClass += "holiday-row holiday-text ";
                                     if (!hasData && !isH && employee.type === 'full') rowClass += "absent-row ";
 
-                                    // ★ 修改重點 2：已將 leaveType 與手動輸入的 remark 拆開，避免重複輸入字串的問題
                                     return (
                                         <tr key={date} className={rowClass}>
                                             <td className="border border-gray-200 p-0.5 text-center">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
                                             
-                                            <td className="border border-gray-200 p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center align-middle">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
+                                                {/* ★ 入室のところで選択できる休暇のドロップダウン */}
+                                                {employee.type === 'full' && (
+                                                    <select 
+                                                        disabled={isLocked || !localEditable}
+                                                        className="block w-[58px] mx-auto mt-0.5 text-[9px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer shadow-sm"
+                                                        value={dayData.leaveType || ''}
+                                                        onChange={e => handleInput(date, 'leaveType', e.target.value)}
+                                                    >
+                                                        <option value="">- - -</option>
+                                                        <option value="有休(2時間)">有休2H</option>
+                                                        <option value="有休(4時間)">有休4H</option>
+                                                        <option value="有休(6時間)">有休6H</option>
+                                                        <option value="有休(8時間)">有休8H</option>
+                                                        <option value="病欠">病欠</option>
+                                                        <option value="欠勤">欠勤</option>
+                                                    </select>
+                                                )}
                                             </td>
 
-                                            <td className="border border-gray-200 p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center align-top pt-1">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.out || ''} placeholder="--:--" onChange={e => handleInput(date, 'out', e.target.value)} />
                                             </td>
                                             
-                                            <td className="border border-gray-200 p-0.5 text-center text-blue-600 font-bold bg-blue-50/20">
+                                            <td className="border border-gray-200 p-0.5 text-center text-blue-600 font-bold bg-blue-50/20 align-top pt-1">
                                                 <div className="flex justify-center items-center gap-0.5">
                                                     <input disabled={isLocked || !localEditable} className="w-11 text-center bg-transparent outline-none" value={shiftStart} onChange={e=>handleInput(date,'shiftStart',e.target.value)} />
                                                     -
@@ -331,30 +353,30 @@
                                                 </div>
                                             </td>
                                             
-                                            <td className="border border-gray-200 p-0.5 text-center">
+                                            <td className="border border-gray-200 p-0.5 text-center align-top pt-1">
                                                 <input disabled={isLocked || !localEditable} className="w-8 text-center bg-transparent outline-none" value={dayData.break || (hasData && employee.type==='full' ? '60' : '')} onChange={e=>handleInput(date,'break',e.target.value)} />
                                             </td>
 
-                                            <td className="border border-gray-200 p-0.5 text-center font-bold text-green-700 bg-green-50">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
+                                            <td className="border border-gray-200 p-0.5 text-center font-bold text-green-700 bg-green-50 align-top pt-1">{workMins > 0 ? (workMins/60).toFixed(2) : ''}</td>
                                             
                                             {employee.type === 'full' && <>
-                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500">{early > 0 ? early : ''}</td>
-                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500">{late > 0 ? late : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500 align-top pt-1">{early > 0 ? early : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-right text-orange-500 align-top pt-1">{late > 0 ? late : ''}</td>
                                             </>}
                                             {employee.type === 'driver' && <>
-                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent text-purple-700 font-bold" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
-                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-center align-top pt-1"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent text-purple-700 font-bold" value={dayData.driveMins || ''} onChange={e=>handleInput(date,'driveMins',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center align-top pt-1"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600 align-top pt-1">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
                                             {employee.type === 'part' && <>
-                                                <td className="border border-gray-200 p-0.5 text-center"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
-                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
+                                                <td className="border border-gray-200 p-0.5 text-center align-top pt-1"><input disabled={isLocked || !localEditable} className="w-10 text-center border-none outline-none rounded bg-transparent" value={dayData.igkAHours || ''} onChange={e=>handleInput(date,'igkAHours',e.target.value)} /></td>
+                                                <td className="border border-gray-200 p-0.5 text-center font-bold text-blue-600 align-top pt-1">{igkB > 0 ? formatAplusB(igkB) : ''}</td>
                                             </>}
-                                            <td className="border border-gray-200 p-0 bg-yellow-50"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                            <td className="border border-gray-200 p-0 bg-yellow-50 align-top pt-1"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
                                             
-                                            <td className="border border-gray-200 p-0.5">
+                                            <td className="border border-gray-200 p-0.5 align-top pt-1">
                                                 <div className="flex gap-1 items-center px-1">
-                                                    {dayData.leaveType && <span className="shrink-0 bg-red-100 text-red-700 px-1 py-0.5 rounded text-[10px] font-bold">{dayData.leaveType}</span>}
+                                                    {dayData.leaveType && <span className="shrink-0 bg-red-100 text-red-700 px-1 py-0.5 rounded text-[9px] font-bold shadow-sm">{dayData.leaveType.replace('時間', 'H')}</span>}
                                                     {dayData.leaveType && dayData.remark && <span className="text-gray-300">/</span>}
                                                     <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
@@ -368,11 +390,43 @@
 
                     <div className="shrink-0 px-3 pb-3">
                         <div className="flex gap-2 flex-wrap items-stretch border-t border-gray-200 pt-2 mt-1">
-                            <div className="bg-white rounded-lg p-2 flex gap-3 shadow-sm border border-gray-200 min-w-[120px] justify-center items-center">
-                                <div className="text-center">
-                                    <div className="text-[10px] text-gray-500 font-bold mb-1">出勤日数</div>
-                                    <div className="text-xl font-black text-gray-800">{workDays} <span className="text-[10px] font-normal text-gray-500">日</span></div>
+                            
+                            {/* ★ 出勤日数・休暇集計かご */}
+                            <div className="bg-white rounded-lg p-2 flex flex-col shadow-sm border border-gray-200 min-w-[150px] flex-1">
+                                <div className="text-[10px] text-gray-500 font-bold mb-1 text-center border-b border-gray-100 pb-1">出勤・休暇状況</div>
+                                <div className="flex justify-between items-end px-1 mt-0.5">
+                                    <span className="text-[10px] text-gray-600 font-bold">実出勤:</span>
+                                    <span className="text-sm font-black text-gray-800">{workDays} <span className="text-[9px] font-normal text-gray-500">日</span></span>
                                 </div>
+                                {employee.type === 'full' && (
+                                    <>
+                                        {(leave8H > 0 || leave6H > 0 || leave4H > 0 || leave2H > 0) && (
+                                            <div className="flex justify-between items-end px-1 mt-0.5">
+                                                <span className="text-[9px] text-blue-600 font-bold">有休:</span>
+                                                <span className="text-[9px] font-bold text-blue-700 text-right leading-tight">
+                                                    {[
+                                                        leave8H ? `8H×${leave8H}` : '',
+                                                        leave6H ? `6H×${leave6H}` : '',
+                                                        leave4H ? `4H×${leave4H}` : '',
+                                                        leave2H ? `2H×${leave2H}` : ''
+                                                    ].filter(Boolean).join(', ')}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {sick > 0 && (
+                                            <div className="flex justify-between items-end px-1 mt-0.5">
+                                                <span className="text-[9px] text-red-500 font-bold">病欠:</span>
+                                                <span className="text-[10px] font-bold text-red-600">{sick} 日</span>
+                                            </div>
+                                        )}
+                                        {absent > 0 && (
+                                            <div className="flex justify-between items-end px-1 mt-0.5">
+                                                <span className="text-[9px] text-red-500 font-bold">欠勤:</span>
+                                                <span className="text-[10px] font-bold text-red-600">{absent} 日</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
 
                             {employee.type === 'full' && (
@@ -417,7 +471,7 @@
                                 <div className="text-lg font-black text-green-800">{formatHM(totalWorkMinsGlobal)} <span className="text-[9px] font-normal ml-1 text-green-600">({(totalWorkMinsGlobal/60).toFixed(2)}H)</span></div>
                             </div>
 
-                            <div className="bg-yellow-100/80 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-yellow-400 min-w-[140px] flex-[1]">
+                            <div className="bg-yellow-100/80 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-yellow-400 min-w-[140px] flex-[1.2]">
                                 <div className="text-[11px] text-yellow-900 font-bold mb-1"><i className="fa-solid fa-coins mr-1"></i>交通費合計</div>
                                 <div className="font-black text-xl text-gray-900">{totalTrans.toLocaleString()} <span className="text-[11px] font-bold text-gray-600">円</span></div>
                             </div>
@@ -558,7 +612,7 @@
                 }
             };
 
-            // ★ 強化版 Excel 匯出
+            // ★ Excel出力機能の強化 (休暇・欠勤の集計を追加)
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -597,6 +651,7 @@
                         
                         let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
                         let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
+                        let leave2H = 0, leave4H = 0, leave6H = 0, leave8H = 0, sick = 0, absent = 0;
                         
                         while (curr.isBefore(periodEnd) || curr.isSame(periodEnd, 'day')) {
                             const dateStr = curr.format('YYYY/MM/DD');
@@ -606,15 +661,25 @@
                             
                             let shiftStart = d.shiftStart || '';
                             let shiftEnd = d.shiftEnd || '';
+                            
+                            // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする
                             if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
                                 shiftStart = emp.location === 'rokko' ? '09:30' : '09:15';
                                 shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
                             }
                             
-                            // ★ 修改重點 1：出勤日數嚴格依照「是否有打卡/時數紀錄」計算
+                            // ★ 出勤日数は「打刻がある日」か「勤務時間/運転時間が手入力されている日」のみカウント
                             if (hasData || parseFloat(d.igkAHours) > 0 || parseInt(d.driveMins) > 0) {
                                 workDays++;
                             }
+
+                            // 休暇カウント
+                            if (d.leaveType === '有休(2時間)') leave2H++;
+                            if (d.leaveType === '有休(4時間)') leave4H++;
+                            if (d.leaveType === '有休(6時間)') leave6H++;
+                            if (d.leaveType === '有休(8時間)') leave8H++;
+                            if (d.leaveType === '病欠') sick++;
+                            if (d.leaveType === '欠勤') absent++;
 
                             const inOutMins = calculateMinutes(d.in, d.out);
                             let breakMins = hasData ? (emp.type === 'full' ? 60 : (d.break || 0)) : 0;
@@ -702,11 +767,25 @@
                             r.getCell(15).font = { bold: true };
                         };
                         
-                        addSum('出勤日数:', `${workDays} 日`);
+                        addSum('実出勤日数:', `${workDays} 日`);
                         
+                        // ★ Excel出力への休暇集計反映
                         if (emp.type === 'full') {
+                            if (leave8H || leave6H || leave4H || leave2H) {
+                                let yqStr = [
+                                    leave8H ? `8H×${leave8H}` : '',
+                                    leave6H ? `6H×${leave6H}` : '',
+                                    leave4H ? `4H×${leave4H}` : '',
+                                    leave2H ? `2H×${leave2H}` : ''
+                                ].filter(Boolean).join(', ');
+                                addSum('有休:', yqStr);
+                            }
+                            if (sick > 0) addSum('病欠:', `${sick} 日`);
+                            if (absent > 0) addSum('欠勤:', `${absent} 日`);
+
                             addSum('残業合計(早+後):', `${earlyTotal + lateTotal} 分`);
                         }
+
                         if (emp.type === 'part' || emp.type === 'driver') {
                             addSum('A+B 総労働:', `${formatAplusB(totalIgkA)} + ${formatAplusB(totalIgkB)} = ${formatAplusB(totalIgkA+totalIgkB)} 時間`);
                         }
@@ -941,7 +1020,7 @@
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                         const dStr = curr.format('YYYY/MM/DD');
                         
-                        // ★ 修改重點 3：批次套用正社員設定時，遇到例假日/國定假日直接跳過
+                        // ★ 週末・休日は一括適用の対象から除外（スキップ）する
                         if (isHoliday(dStr)) {
                             curr = curr.add(1, 'day');
                             continue;
