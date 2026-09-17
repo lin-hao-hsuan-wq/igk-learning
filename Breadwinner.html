@@ -194,8 +194,9 @@
                 onInput(employee.id, date, field, val);
             };
 
+            // ★ ここで定義した totalInOutGlobal が抜けていたためエラーになっていました。修正済みです！
             let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
-            let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
+            let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
             
             // ★ 休暇・欠勤カウント
             let leave2H = 0, leave4H = 0, leave6H = 0, leave8H = 0, sick = 0, absent = 0;
@@ -252,7 +253,7 @@
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする (isH が true ならセットされない)
+                                    // ★ 週末・休日はデフォルトのシフト時間を入れず空白にする
                                     if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
@@ -272,7 +273,7 @@
                                     if (dayData.leaveType === '欠勤') absent++;
 
                                     const inOutMins = calculateMinutes(dayData.in, dayData.out);
-                                    totalInOutGlobal += inOutMins;
+                                    totalInOutGlobal += inOutMins; // ★ ここでエラーになっていましたが変数定義追加により解決済み
 
                                     let breakMins = hasData ? (employee.type === 'full' ? 60 : (dayData.break || 0)) : 0;
                                     const workMins = Math.max(0, inOutMins - breakMins);
