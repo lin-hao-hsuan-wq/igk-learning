@@ -315,11 +315,11 @@
                                     const transFee = parseInt(dayData.transFee) || 0;
                                     totalTrans += transFee;
 
-                                    // ★ 色の処理（有休：淡藍色 > 假日：淡紅色 > 有打卡：淡紫色）
+                                    // ★ 色の処理
                                     let rowClass = "hover:bg-gray-200 border-b transition-colors ";
-                                    if (isLeave) rowClass += "leave-row "; // 淡藍色
-                                    else if (isH) rowClass += "holiday-row holiday-text "; // 淡紅色
-                                    else if (hasData) rowClass += "worked-row "; // 淡紫色
+                                    if (isLeave) rowClass += "leave-row "; 
+                                    else if (isH) rowClass += "holiday-row holiday-text "; 
+                                    else if (hasData) rowClass += "worked-row "; 
 
                                     return (
                                         <tr key={date} className={rowClass}>
@@ -327,7 +327,6 @@
                                             
                                             <td className="border border-gray-200 p-0.5 text-center align-middle">
                                                 <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 rounded" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
-                                                {/* ★ 週末不給選單 */}
                                                 {employee.type === 'full' && !isH && (
                                                     <select 
                                                         disabled={isLocked || !localEditable}
@@ -438,7 +437,6 @@
                                     <div className="bg-red-50 rounded-lg p-2 text-center shadow-sm border border-red-100 flex-[1] min-w-[140px]">
                                         <div className="text-[10px] text-red-700 font-bold mb-1">残業合計 (早+後)</div>
                                         <div className="text-lg font-black text-red-600">
-                                            {/* ★ 殘業加上小時單位的顯示 */}
                                             {earlyTotal+lateTotal} <span className="text-[9px] font-normal text-red-500 ml-1">分 ({((earlyTotal+lateTotal)/60).toFixed(2)}時)</span> 
                                         </div>
                                     </div>
@@ -619,7 +617,6 @@
                 }
             };
 
-            // ★ Excel匯出更新
             const exportToExcel = async () => {
                 try {
                     const wb = new ExcelJS.Workbook();
@@ -794,7 +791,6 @@
                             if (sick > 0) addSum('病欠:', `${sick} 日`);
                             if (absent > 0) addSum('欠勤:', `${absent} 日`);
 
-                            // ★ Excel 匯出也補上 (X.XX時)
                             addSum('残業合計(早+後):', `${earlyTotal + lateTotal} 分 (${((earlyTotal + lateTotal)/60).toFixed(2)}時)`);
                         }
 
@@ -889,7 +885,8 @@
                 setTimecardText('');
             };
 
-            const processTransportAndDriverData = (grid2D, localEmps, newData, resIdsSet = new Set()) => {
+            // ★ 修正：加入 sessionTracker 參數，用來確保同一次上傳時遇到相同的人與日期能「先清空舊數值再累加」
+            const processTransportAndDriverData = (grid2D, localEmps, newData, resIdsSet = new Set(), sessionTracker = { trans: new Set(), drive: new Set() }) => {
                 let shiftCount = 0, transCount = 0;
                 grid2D.forEach((row, rIdx) => {
                     if (rIdx === 0) return; 
@@ -937,11 +934,23 @@
                         if (!newData[emp.id]) newData[emp.id] = {};
                         if (!newData[emp.id][dateStr]) newData[emp.id][dateStr] = { location: emp.location };
                         
+                        let sessionKey = `${emp.id}_${dateStr}`; // ★ 辨識同一天上傳的唯一 Key
+
                         if (amount > 0) {
+                            // ★ 如果是本次上傳第一次處理到這筆資料，先清空舊的金額 (覆蓋舊版)
+                            if (!sessionTracker.trans.has(sessionKey)) {
+                                newData[emp.id][dateStr].transFee = 0;
+                                sessionTracker.trans.add(sessionKey);
+                            }
                             newData[emp.id][dateStr].transFee = (parseInt(newData[emp.id][dateStr].transFee) || 0) + amount;
                             transCount++;
                         }
                         if (driveMinsCalc > 0) {
+                            // ★ 駕駛時間也一樣，第一次遇到先清空舊的
+                            if (!sessionTracker.drive.has(sessionKey)) {
+                                newData[emp.id][dateStr].driveMins = 0;
+                                sessionTracker.drive.add(sessionKey);
+                            }
                             newData[emp.id][dateStr].driveMins = (parseInt(newData[emp.id][dateStr].driveMins) || 0) + driveMinsCalc;
                             if (driveTimeStr) {
                                 let existingRemark = newData[emp.id][dateStr].remark || '';
@@ -959,7 +968,8 @@
             const handleExcelUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読込済です`);
+                // 注意：如果檔案名稱一樣，依然會阻擋。您可以依需求決定是否拿掉這行判斷
+                if (processedFiles.includes(file.name)) return alert(`エラー: ${file.name} は既に読込済です`); 
 
                 addLog(`[Excel] 解析中: ${file.name}...`);
                 const reader = new FileReader();
@@ -969,6 +979,9 @@
                         await wb.xlsx.load(evt.target.result);
                         let globalNewData = JSON.parse(JSON.stringify(attendanceData));
                         let totalShift = 0, totalTrans = 0;
+                        
+                        // ★ 新增 tracker 傳遞給處理函數，確保同一檔案內的跨 sheet 可以被正確更新而不疊加
+                        let sessionTracker = { trans: new Set(), drive: new Set() };
 
                         wb.worksheets.forEach(ws => {
                             let grid2D = [];
@@ -977,7 +990,7 @@
                                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => rowData[colNumber - 1] = cell.value);
                                 grid2D.push(rowData);
                             });
-                            const { newData, shiftCount, transCount } = processTransportAndDriverData(grid2D, employees, globalNewData);
+                            const { newData, shiftCount, transCount } = processTransportAndDriverData(grid2D, employees, globalNewData, new Set(), sessionTracker);
                             globalNewData = newData;
                             totalShift += shiftCount;
                             totalTrans += transCount;
@@ -1007,7 +1020,12 @@
                     encoding: encoding,
                     complete: function(results) {
                         try {
-                            const { newData, shiftCount, transCount, resIdsSet } = processTransportAndDriverData(results.data, employees, attendanceData, new Set(processedResIds));
+                            // ★ 複製一份舊資料避免直接改動 React State，同時準備 Tracker
+                            let globalNewData = JSON.parse(JSON.stringify(attendanceData)); 
+                            let sessionTracker = { trans: new Set(), drive: new Set() }; 
+                            
+                            const { newData, shiftCount, transCount, resIdsSet } = processTransportAndDriverData(results.data, employees, globalNewData, new Set(processedResIds), sessionTracker);
+                            
                             if (shiftCount > 0 || transCount > 0) {
                                 setAttendanceData(newData);
                                 setProcessedResIds(resIdsSet);
@@ -1032,7 +1050,6 @@
                     while(curr.isBefore(end) || curr.isSame(end, 'day')) {
                         const dStr = curr.format('YYYY/MM/DD');
                         
-                        // ★ 週末・休日は一括適用の対象から除外（スキップ）する
                         if (isHoliday(dStr)) {
                             curr = curr.add(1, 'day');
                             continue;
@@ -1045,7 +1062,6 @@
                             if (ftShiftStart) next[empId][dStr].shiftStart = ftShiftStart;
                             if (ftShiftEnd) next[empId][dStr].shiftEnd = ftShiftEnd;
                             
-                            // ★【關鍵修正】批次套用的「原因」寫入 remark，而不是 leaveType
                             if (ftReason) next[empId][dStr].remark = ftReason;
                         });
                         curr = curr.add(1, 'day');
@@ -1055,7 +1071,6 @@
                 addLog('正社員設定を一括適用しました（休日はスキップしました）。', 'success');
             };
 
-            // ★ 新增功能：清除選擇區間內的設定（解決設定錯誤、不想整個月刪除的問題）
             const handleClearFullTimers = () => {
                 if (ftSelected.length === 0) return alert('社員を選択してください');
                 if (!batchStart || !batchEnd) return alert('期間を設定してください');
@@ -1070,7 +1085,6 @@
                         const dStr = curr.format('YYYY/MM/DD');
                         ftSelected.forEach(empId => {
                             if (next[empId] && next[empId][dStr]) {
-                                // 將手動設定的部分清除
                                 next[empId][dStr].shiftStart = '';
                                 next[empId][dStr].shiftEnd = '';
                                 next[empId][dStr].remark = '';
