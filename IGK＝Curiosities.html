@@ -1,3 +1,19 @@
+太棒了！很高興能幫上忙。
+
+針對您提到的兩個優化需求，我做了以下升級：
+
+1. **背景可愛點點風格滿版顯示**：
+我將原本擋住背景的白色容器，改成了「毛玻璃半透明效果（Frosted Glass）」。這樣點點背景不僅能在所有網頁中透出來，還能維持文字的清晰度，整體風格會變得非常精緻可愛！*(註：第三個外部 GAS 系統因為是嵌入的 Google 網頁，不受我們控制，所以那一頁的內部還是會維持原樣喔。)*
+2. **新增「⚙️ 名單設定」功能（支援一次性匯入與無縫升級）**：
+我在上方導覽列新增了一個**名單設定**的按鈕。點開後會有一個大型的文字輸入框，您只要用 `[G1]`、`[G2]` 當作標題，下方一行貼一個學生的名字即可！
+* **每年四月升級時**：您只要打開設定，把原本 `[G1]` 下面的名字全部剪下，貼到 `[G2]` 下面並儲存，一秒鐘就能完成全校升級！
+* **中途加入/退出時**：直接在名單裡加上新名字或刪除舊名字，按下儲存後，**「日常紀錄」和「月度統計」裡面的下拉選單會瞬間自動更新**。
+
+
+
+請將您的 `index.html` 更新為以下完整的最新程式碼：
+
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -27,30 +43,30 @@
             overflow: hidden;
             color: var(--text-main);
             background-color: var(--bg-color);
+            /* 強化版可愛點點背景 */
             background-image: 
-                radial-gradient(#ffd3b6 2px, transparent 2px),
-                radial-gradient(#ffaaa5 2px, transparent 2px);
-            background-size: 40px 40px;
-            background-position: 0 0, 20px 20px;
+                radial-gradient(#ffd3b6 3px, transparent 3px),
+                radial-gradient(#ffaaa5 3px, transparent 3px);
+            background-size: 50px 50px;
+            background-position: 0 0, 25px 25px;
         }
 
-        /* 登入畫面 */
+        /* 登入畫面 (加入毛玻璃效果) */
         #login-screen {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10000;
-            background-color: var(--bg-color);
-            background-image: radial-gradient(#ffd3b6 2px, transparent 2px), radial-gradient(#ffaaa5 2px, transparent 2px);
-            background-size: 40px 40px; background-position: 0 0, 20px 20px;
+            background-color: transparent;
         }
         .login-box {
-            background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 30px;
-            box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15); text-align: center;
+            background: rgba(255, 255, 255, 0.75); padding: 40px; border-radius: 30px;
+            box-shadow: 0 12px 40px rgba(255, 143, 179, 0.2); text-align: center;
             border: 4px dashed var(--border-color); width: 90%; max-width: 400px;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         }
         .login-box input {
             padding: 15px; font-size: 16px; margin-bottom: 20px; width: 100%;
             border: 3px solid #ffe4e1; border-radius: 15px; outline: none; text-align: center;
-            font-weight: bold;
+            font-weight: bold; background: rgba(255,255,255,0.9);
         }
         .login-box input:focus { border-color: var(--primary-color); }
         .login-btn {
@@ -66,12 +82,12 @@
         /* 導覽列 */
         .main-nav {
             display: flex; justify-content: center; gap: 15px; padding: 15px;
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(255, 143, 179, 0.1); flex-shrink: 0; z-index: 100;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(255, 143, 179, 0.15); flex-shrink: 0; z-index: 100;
         }
         .nav-btn {
             padding: 12px 25px; border-radius: 20px; border: 3px solid #ffaaa5;
-            background: white; color: #d9736c; font-weight: 800; cursor: pointer;
+            background: rgba(255,255,255,0.9); color: #d9736c; font-weight: 800; cursor: pointer;
             transition: all 0.3s; font-size: 16px; box-shadow: 0 4px 0 #ffe4e1;
         }
         .nav-btn:hover { background: #fff0f5; }
@@ -84,18 +100,20 @@
         /* 共用 Modal 背景 */
         .shared-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(92, 77, 83, 0.6); backdrop-filter: blur(4px);
+            background-color: rgba(92, 77, 83, 0.5); backdrop-filter: blur(5px);
             justify-content: center; align-items: center; z-index: 9999;
         }
 
         /* ================= 2. 日常紀錄 (KidsMemo) 專屬樣式 ================= */
+        /* 加入毛玻璃效果，讓點點背景透出來 */
         #tab-daily .t1-container {
             display: flex; flex-direction: column; width: 100%; max-width: 1200px;
-            height: calc(100vh - 120px); background: rgba(255, 255, 255, 0.92);
-            padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 3px solid #f8e1df;
+            height: calc(100vh - 120px); background: rgba(253, 250, 246, 0.85);
+            padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            border: 3px solid #f8e1df; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
         #tab-daily h2 { color: #d9736c; text-align: center; font-size: 24px; margin: 0 0 20px 0; border-bottom: 3px dotted #ffaaa5; padding-bottom: 15px; }
-        #tab-daily select, #tab-daily input[type="date"] { padding: 12px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 12px; outline: none; background-color: #fafafa; font-weight:bold; }
+        #tab-daily select, #tab-daily input[type="date"] { padding: 12px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 12px; outline: none; background-color: rgba(255,255,255,0.9); font-weight:bold; }
         #tab-daily select:focus, #tab-daily input[type="date"]:focus { border-color: #ffaaa5; }
         #tab-daily button.t1-btn { padding: 12px 24px; color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #tab-daily button.t1-btn:hover { transform: translateY(-2px); }
@@ -104,38 +122,44 @@
         #tab-daily .content-area { display: flex; gap: 30px; flex-grow: 1; overflow: hidden; }
         #tab-daily .column { flex: 1; display: flex; flex-direction: column; height: 100%; }
         #tab-daily .column label { font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #6d9fa2; }
-        #tab-daily textarea { flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 15px; resize: none; line-height: 1.6; outline: none; font-family: inherit; }
+        #tab-daily textarea { flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 15px; resize: none; line-height: 1.6; outline: none; font-family: inherit; background: rgba(255,255,255,0.9); }
         #tab-daily textarea:focus { border-color: #a8d8ea; }
         
         /* Tool 1 Modals */
-        #tab-daily .modal-content { background: #fff; padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; border: 4px dashed #a8d8ea; position: relative; }
+        #tab-daily .modal-content { background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; border: 4px dashed #a8d8ea; position: relative; }
         #tab-daily .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; font-weight: bold; }
         #tab-daily .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         #tab-daily .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; color: #d9736c; margin-bottom: 10px; }
         #tab-daily .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
         #tab-daily .day-cell { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; font-size: 18px; }
-        #tab-daily .day-no-record { background-color: #f0f0f0; color: #a0a0a0; }
+        #tab-daily .day-no-record { background-color: rgba(240,240,240,0.8); color: #a0a0a0; }
         #tab-daily .day-has-record { background-color: #ffaaa5; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(255, 170, 165, 0.4); transition: transform 0.2s; }
         #tab-daily .day-has-record:hover { transform: scale(1.1); }
-        #tab-daily .record-card { background: #fafafa; border-left: 6px solid #a8d8ea; padding: 15px; margin-bottom: 15px; border-radius: 10px; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        #tab-daily .record-card { background: rgba(250,250,250,0.9); border-left: 6px solid #a8d8ea; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #eee; border-left: 6px solid #a8d8ea; }
         
         /* ================= 3. 月度統計 (Month.test) 專屬樣式 ================= */
-        #tab-monthly .t2-container { max-width: 1200px; width: 100%; background: #ffffff; padding: 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15); border: 4px dashed var(--border-color); position: relative; overflow: hidden; }
+        /* 加入毛玻璃效果，讓點點背景透出來 */
+        #tab-monthly .t2-container { 
+            max-width: 1200px; width: 100%; background: rgba(255, 255, 255, 0.85); 
+            padding: 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15); 
+            border: 4px dashed var(--border-color); position: relative; overflow: hidden;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        }
         #tab-monthly h2 { font-size: 24px; font-weight: 800; color: var(--primary-color); margin: 40px 0 20px 0; display: flex; align-items: center; gap: 10px; }
-        #tab-monthly h2 span { font-size: 14px; color: #9e8e93; font-weight: 700; background: #fff0f5; padding: 4px 12px; border-radius: 12px; }
-        #tab-monthly select, #tab-monthly input { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 16px; font-size: 16px; font-family: inherit; font-weight: 700; color: var(--text-main); outline: none; transition: 0.2s; }
+        #tab-monthly h2 span { font-size: 14px; color: #9e8e93; font-weight: 700; background: rgba(255,240,245,0.8); padding: 4px 12px; border-radius: 12px; }
+        #tab-monthly select, #tab-monthly input { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 16px; font-size: 16px; font-family: inherit; font-weight: 700; color: var(--text-main); outline: none; transition: 0.2s; background: rgba(255,255,255,0.9); }
         #tab-monthly select:focus, #tab-monthly input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(255, 143, 179, 0.2); }
         #tab-monthly .t2-btn { padding: 12px 24px; border: none; border-radius: 20px; font-weight: 800; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-family: inherit; box-shadow: 0 5px 0 rgba(0,0,0,0.1); }
         #tab-monthly .t2-btn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0); }
-        #tab-monthly .form-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; background: #fffafa; padding: 30px; border-radius: 24px; margin-bottom: 30px; border: 3px solid var(--border-color); position: relative; z-index: 2; }
-        #tab-monthly table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        #tab-monthly .form-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; background: rgba(255, 250, 250, 0.8); padding: 30px; border-radius: 24px; margin-bottom: 30px; border: 3px solid var(--border-color); position: relative; z-index: 2; }
+        #tab-monthly table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(255,255,255,0.9); border-radius: 16px; }
         #tab-monthly th, #tab-monthly td { padding: 16px; text-align: center; border-bottom: 2px dashed var(--border-color); font-weight: 700;}
-        #tab-monthly th { background-color: #fff0f5; color: var(--text-main); }
+        #tab-monthly th { background-color: rgba(255, 240, 245, 0.9); color: var(--text-main); }
         #tab-monthly .charts-wrapper { display: flex; gap: 25px; margin-top: 20px; flex-wrap: wrap; }
-        #tab-monthly .chart-box { flex: 1; min-width: 400px; background: #fffafa; border: 3px solid var(--border-color); padding: 25px; border-radius: 24px; }
+        #tab-monthly .chart-box { flex: 1; min-width: 400px; background: rgba(255, 250, 250, 0.9); border: 3px solid var(--border-color); padding: 25px; border-radius: 24px; }
         
         /* Tool 2 Modals */
-        #tab-monthly .modal-content { background: white; padding: 35px; border-radius: 30px; width: 90%; max-width: 450px; border: 5px solid var(--border-color); position: relative; text-align: center; }
+        #tab-monthly .modal-content { background: rgba(255,255,255,0.95); padding: 35px; border-radius: 30px; width: 90%; max-width: 450px; border: 5px solid var(--border-color); position: relative; text-align: center; }
         #tab-monthly .close-modal { font-size: 28px; cursor: pointer; color: var(--primary-color); font-weight: bold; position: absolute; right: 20px; top: 15px; }
 
         /* 列印模式修正 */
@@ -164,9 +188,11 @@
     <div id="app-wrapper">
         <!-- 導覽列 -->
         <nav class="main-nav">
-            <button class="nav-btn active" onclick="switchTab('tab-daily', this)">🎨 Daily Record</button>
-            <button class="nav-btn" onclick="switchTab('tab-monthly', this)">📊 Monthly Stats</button>
-            <button class="nav-btn" onclick="switchTab('tab-gas', this)">🔗 External Tool</button>
+            <button class="nav-btn active" onclick="switchTab('tab-daily', this)">📝 Our kids</button>
+            <button class="nav-btn" onclick="switchTab('tab-monthly', this)">🖍️ For study</button>
+            <button class="nav-btn" onclick="switchTab('tab-gas', this)">✨ Whirlwind Group</button>
+            <!-- 🌟 新增的設定按鈕 -->
+            <button class="nav-btn" style="border-color: #a8d8ea; color: #6d9fa2;" onclick="openSettingsModal()">⚙️ 学生リスト</button>
         </nav>
 
         <!-- ================= [TAB 1] 日常紀錄 KidsMemo ================= -->
@@ -174,7 +200,6 @@
             <div class="t1-container">
                 <h2>🎨 Daily Record / 日常記録</h2>
                 <div class="top-controls">
-                    <!-- 這裡的選單會被 JS 動態填入 -->
                     <select id="student-name"></select>
                     <input type="date" id="record-date">
                     <div class="btn-group">
@@ -199,7 +224,7 @@
             <!-- T1 Modals -->
             <div id="calendar-modal" class="shared-modal">
                 <div class="modal-content">
-                    <span class="close-btn" onclick="closeModalT1('calendar-modal')">&times;</span>
+                    <span class="close-btn" onclick="closeSharedModal('calendar-modal')">&times;</span>
                     <div class="calendar-header">
                         <button class="t1-btn" style="background:#e0e0e0; color:#333;" onclick="changeMonth(-1)">&#9664; Prev</button>
                         <h3 id="calendar-month-year" style="color: #6d9fa2; margin:0;"></h3>
@@ -214,7 +239,7 @@
 
             <div id="records-modal" class="shared-modal">
                 <div class="modal-content">
-                    <span class="close-btn" onclick="closeModalT1('records-modal')">&times;</span>
+                    <span class="close-btn" onclick="closeSharedModal('records-modal')">&times;</span>
                     <h3 style="color:#d9736c; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;" id="records-date-title"></h3>
                     <div id="records-list-container" style="overflow-y: auto;"></div>
                 </div>
@@ -222,7 +247,7 @@
 
             <div id="student-modal" class="shared-modal">
                 <div class="modal-content">
-                    <span class="close-btn" onclick="closeModalT1('student-modal')">&times;</span>
+                    <span class="close-btn" onclick="closeSharedModal('student-modal')">&times;</span>
                     <h3 style="color:#6d9fa2; border-bottom: 2px dashed #b2dfdb; padding-bottom: 10px;">👤 Student History / 児童履歴記録</h3>
                     <select id="modal-student-select" style="margin-bottom:20px;" onchange="searchStudentHistory()"></select>
                     <div id="student-records-container" style="overflow-y: auto;"></div>
@@ -261,7 +286,7 @@
                     </div>
                 </div>
                 
-                <div style="background:white; border-radius:24px; border:3px solid var(--border-color); padding:10px; margin-bottom:30px;">
+                <div style="background: rgba(255,255,255,0.8); border-radius:24px; border:3px solid var(--border-color); padding:10px; margin-bottom:30px;">
                     <table id="dailySummaryTable">
                         <thead>
                             <tr><th>Date 📅</th><th>Participants 👥</th><th>Avg Score 📊</th><th>Personal Score 👤</th><th>Action ⚙️</th></tr>
@@ -285,7 +310,7 @@
             <!-- T2 Modals -->
             <div id="dataModal" class="shared-modal">
                 <div class="modal-content">
-                    <span class="close-modal" onclick="closeMonthlyModal('dataModal')">&times;</span>
+                    <span class="close-modal" onclick="closeSharedModal('dataModal')">&times;</span>
                     <h3 id="modalTitle" style="color:var(--primary-dark); margin-top:0;">📅 Manage Data</h3>
                     <div id="modalList" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
                 </div>
@@ -294,16 +319,31 @@
 
         <!-- ================= [TAB 3] 外部系統 GAS ================= -->
         <div id="tab-gas" class="tab-content" style="padding:0;">
+            <!-- 注意：外部網頁內部的背景無法透過這裡的 CSS 更改，會維持原本的樣子喔！ -->
             <iframe src="https://script.google.com/a/macros/unite-gr.com/s/AKfycbwN07gOKGhP92UJ82Ko1r9o2D3dXNxgo5KKM_jJgN_pp0au6pLnfP0m9noSViSdOPvB1w/exec" style="width:100%; height:100%; border:none; border-radius: 0 0 20px 20px;"></iframe>
+        </div>
+
+        <!-- ================= 🌟 [新功能] リスト登録 Modal ================= -->
+        <div id="settings-modal" class="shared-modal">
+            <div class="modal-content" style="background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; border: 4px dashed #a8d8ea; position: relative;">
+                <span class="close-btn" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa; font-weight:bold;" onclick="closeSharedModal('settings-modal')">&times;</span>
+                <h3 style="color:#6d9fa2; margin-top:0; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">⚙️ Student List </h3>
+                <p style="font-size: 13px; color: #777; margin-bottom: 10px; line-height: 1.5;">
+                    💡 <b>如何使用？</b><br>
+                    請用 <b>学級</b> 学級を選んでからコピーペーストbr>学級変わるとき、コピーしたら！
+                </p>
+                <textarea id="settings-students-text" style="width: 100%; height: 350px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 15px; font-size: 15px; resize: none; line-height: 1.5; outline: none;"></textarea>
+                <button class="t1-btn" style="background: #a8d8ea; color: #4a4a4a; margin-top: 15px; width: 100%; padding: 12px; border:none; border-radius:15px; font-weight:bold; cursor:pointer;" onclick="saveStudentSettings()">💾 Save & Update / 儲存並更新名單</button>
+            </div>
         </div>
 
     </div>
 
     <!-- ================= 4. 聯合 JavaScript 邏輯 ================= -->
     <script>
-        // --- A. 全域共用設定 (Shared Data) ---
-        // 這裡設定一次，就會自動套用到 Tab1 和 Tab2 的所有下拉選單
-        const SHARED_STUDENTS = {
+        // --- A. 學生名單管理系統 (Shared Data) ---
+        // 系統預設名單 (如果用戶還沒有設定過，會自動載入這份)
+        const DEFAULT_STUDENTS = {
             "G1": [
                 "石原 瑛茉 Emma Ishihara (G1)", "岩瀬 広真 Kouma Iwase (G1)", "鹿島 美咲 Misaki Kashima (G1)",
                 "金多 紗歩 Saho Kaneta (G1)", "川畑 遼真 Haruma Kawabata (G1)", "河村 泉 Izumi Kawamura (G1)",
@@ -319,11 +359,14 @@
                 "有吉 純麗 Sumire Ariyoshi (G2)", "澤村 奏汰 Kanata Sawamura (G2)", "橋本 珠季 Tamaki Hashimoto (G2)",
                 "足立 英大 Ayata Adachi (G2)", "坂井 緋夏 Hina Sakai (G2)", "永田 創次郎 Sohjiroh Nagata (G2)",
                 "藤原 匠 Takumi Fujiwara (G2)", "宮田 泰槙 Taishin Miyata (G2)", "糸賀 優士 Yushi Itoga (G2)",
-                "岩田 吏永 Rito Iwata (G2)", "田中 聡一 Soichi Tanaka (G2)", "畑 凜采 Risa Hata (G2)",
+                "田中 聡一 Soichi Tanaka (G2)", "畑 凜采 Risa Hata (G2)",
                 "山根 栞 Shiori Yamane (G2)", "剱物 右京 Ukyo Kenmotsu (G2)", "玉置 小晴 Koharu Tamaki (G2)"
             ],
             "G3": ["Aqeel (G3)", "Takuto (G3)", "Ryuya (G3)"]
         };
+
+        // 從本機記憶體讀取名單，保證重新整理後名單還在
+        let SHARED_STUDENTS = JSON.parse(localStorage.getItem('igk_students_list_v1')) || DEFAULT_STUDENTS;
 
         function initSharedStudents() {
             const t1Main = document.getElementById('student-name');
@@ -352,6 +395,45 @@
             }
         }
 
+        // 開啟設定畫面，並將資料轉成好編輯的純文字
+        function openSettingsModal() {
+            let textFormat = "";
+            for (let grade in SHARED_STUDENTS) {
+                textFormat += `[${grade}]\n`;
+                textFormat += SHARED_STUDENTS[grade].join('\n') + '\n\n';
+            }
+            document.getElementById('settings-students-text').value = textFormat.trim();
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        // 儲存文字框內的設定，轉換回系統格式
+        function saveStudentSettings() {
+            const text = document.getElementById('settings-students-text').value;
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            
+            let newStudents = {};
+            let currentGrade = "Uncategorized"; // 防呆機制：如果忘記寫年級
+
+            lines.forEach(line => {
+                if (line.startsWith('[') && line.endsWith(']')) {
+                    currentGrade = line.substring(1, line.length - 1);
+                    newStudents[currentGrade] = [];
+                } else {
+                    if (!newStudents[currentGrade]) newStudents[currentGrade] = [];
+                    newStudents[currentGrade].push(line);
+                }
+            });
+
+            SHARED_STUDENTS = newStudents;
+            localStorage.setItem('igk_students_list_v1', JSON.stringify(SHARED_STUDENTS));
+            
+            initSharedStudents(); // 更新所有的下拉選單
+            closeSharedModal('settings-modal');
+            alert("學生名單已成功更新！\nStudent list updated successfully!");
+        }
+
+        function closeSharedModal(id) { document.getElementById(id).style.display = 'none'; }
+
         // --- B. 系統控制邏輯 ---
         function checkPassword() {
             const pwd = document.getElementById('password-input').value;
@@ -373,7 +455,6 @@
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
 
-            // 確保切換到 Tab 2 時，圖表能正確取得寬度重新渲染
             if(tabId === 'tab-monthly') { setTimeout(updateCharts, 50); }
         }
 
@@ -419,7 +500,6 @@
 
         function openCalendarModal() { document.getElementById('calendar-modal').style.display = 'flex'; renderCalendar(); }
         function openStudentModal() { document.getElementById('student-modal').style.display = 'flex'; }
-        function closeModalT1(id) { document.getElementById(id).style.display = 'none'; }
         
         function changeMonth(step) { currentCalDate.setMonth(currentCalDate.getMonth() + step); renderCalendar(); }
         
@@ -506,7 +586,6 @@
             recordData[saveMonth][user][dateInput] = score;
             localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
             
-            // 如果選單裡沒有這個月，就加進去
             let ms = document.getElementById('monthSelect');
             if (!Array.from(ms.options).some(opt => opt.value === saveMonth)) {
                 ms.add(new Option(saveMonth, saveMonth));
@@ -582,7 +661,6 @@
                 renderSummaryTable(); updateCharts(); openManageModal(d);
             }
         }
-        function closeMonthlyModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function updateCharts() {
             const sm = document.getElementById('monthSelect').value;
@@ -629,3 +707,5 @@
     </script>
 </body>
 </html>
+
+```
