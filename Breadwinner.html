@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK - Shift</title>
+    <title>IGK - Shift </title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -236,7 +236,6 @@
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    // ★ 需求2: 正社員即使有休/欠勤，仍顯示班表
                                     if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
@@ -373,8 +372,6 @@
                                                 </td>
                                                 <td className="border border-gray-200 p-1 text-center font-bold text-blue-800 align-middle whitespace-normal">{igkB > 0 ? formatVerboseHours(igkB) : ''}</td>
                                             </>}
-                                            
-                                            {/* ★ 需求1: 縮小交通費輸入空間 w-[70px] */}
                                             <td className="border border-gray-200 p-0 bg-yellow-50 align-middle w-[70px]">
                                                 <input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-1 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} />
                                             </td>
@@ -547,14 +544,34 @@
                 docRef.get().then((doc) => {
                     if (doc.exists) {
                         const cloudData = doc.data();
-                        if (cloudData.employees && cloudData.employees.length >= INITIAL_EMPLOYEES.length) {
-                            setEmployees(cloudData.employees);
+                        
+                        if (cloudData.employees && cloudData.employees.length > 0) {
+                            // ★ 強制雲端名單與初始名單同步，解決舊資料名字過長或編號錯誤的問題
+                            let mergedEmps = cloudData.employees
+                                .filter(e => e.id.includes('_new_') || INITIAL_EMPLOYEES.some(i => i.id === e.id)) // 自動移除安藤等已刪除舊員工
+                                .map(e => {
+                                    const init = INITIAL_EMPLOYEES.find(i => i.id === e.id);
+                                    if(init) return { ...e, name: init.name, num: init.num }; // 強制覆蓋為最新名字
+                                    return e;
+                                });
+                            
+                            // 將尚未加進去的最新員工補進來
+                            INITIAL_EMPLOYEES.forEach(initEmp => {
+                                if (!mergedEmps.some(m => m.id === initEmp.id)) {
+                                    mergedEmps.push(initEmp);
+                                }
+                            });
+                            
+                            setEmployees(mergedEmps);
                         } else {
                             setEmployees(INITIAL_EMPLOYEES);
                         }
+                        
                         if (cloudData.attendanceData) setAttendanceData(cloudData.attendanceData);
                         if (cloudData.processedFiles) setProcessedFiles(cloudData.processedFiles);
                         if (cloudData.isLocked !== undefined) setIsLocked(cloudData.isLocked);
+                    } else {
+                        setEmployees(INITIAL_EMPLOYEES);
                     }
                     setIsCloudLoaded(true);
                 }).catch(err => { console.error("Firestore 讀取失敗:", err); setIsCloudLoaded(true); });
@@ -695,7 +712,6 @@
                             let shiftStart = d.shiftStart || '';
                             let shiftEnd = d.shiftEnd || '';
                             
-                            // ★ 需求2: Excel匯出中，正社員即使有休/欠勤，仍顯示班表
                             if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd) {
                                 shiftStart = emp.location === 'rokko' ? '09:30' : '09:15';
                                 shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
@@ -1311,8 +1327,8 @@
                                         </div>
                                     </div>
 
-                                    {/* アルバイト/運転手 設定區 */}
-                                    <div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col">
+                                    {/* 兼職 / 司機 設定區 */}
+                                    <div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
                                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50 border-b border-gray-200 p-3 gap-2">
                                             <div className="font-black text-gray-800 text-sm shrink-0">スタッフ (兼職・司機) 設定</div>
                                             <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
@@ -1335,12 +1351,12 @@
                                         </div>
 
                                         <div className="flex flex-col xl:flex-row p-2 gap-2 w-full min-w-0">
-                                            {/* 六甲校表格 */}
-                                            <div className="flex-1 min-w-0 overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
-                                                <table className="w-full text-left text-xs border-collapse">
+                                            {/* 六甲校表格 (table-fixed 強制鎖定寬度不產生捲軸) */}
+                                            <div className="flex-1 min-w-0 overflow-hidden border border-gray-200 rounded-lg">
+                                                <table className="w-full text-left text-xs border-collapse table-fixed">
                                                     <thead className="bg-gray-100 shadow-sm">
                                                         <tr>
-                                                            <th className="p-1.5 border-b border-gray-200 text-blue-700 font-black pl-2 text-[10px] min-w-[120px]">■ 六甲校</th>
+                                                            <th className="p-1.5 border-b border-gray-200 text-blue-700 font-black pl-2 text-[10px] w-auto">■ 六甲校</th>
                                                             {['月','火','水','木','金'].map(d=><th key={d} className="p-1 border-b border-gray-200 text-center text-gray-600 font-bold w-6">{d}</th>)}
                                                         </tr>
                                                     </thead>
@@ -1367,12 +1383,12 @@
                                                 </table>
                                             </div>
 
-                                            {/* 名谷校表格 */}
-                                            <div className="flex-1 min-w-0 overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
-                                                <table className="w-full text-left text-xs border-collapse">
+                                            {/* 名谷校表格 (table-fixed 強制鎖定寬度不產生捲軸) */}
+                                            <div className="flex-1 min-w-0 overflow-hidden border border-gray-200 rounded-lg">
+                                                <table className="w-full text-left text-xs border-collapse table-fixed">
                                                     <thead className="bg-gray-100 shadow-sm">
                                                         <tr>
-                                                            <th className="p-1.5 border-b border-gray-200 text-green-700 font-black pl-2 text-[10px] min-w-[120px]">■ 名谷校</th>
+                                                            <th className="p-1.5 border-b border-gray-200 text-green-700 font-black pl-2 text-[10px] w-auto">■ 名谷校</th>
                                                             {['月','火','水','木','金'].map(d=><th key={d} className="p-1 border-b border-gray-200 text-center text-gray-600 font-bold w-6">{d}</th>)}
                                                         </tr>
                                                     </thead>
@@ -1489,7 +1505,7 @@
                                         <select value={newEmpType} onChange={e=>setNewEmpType(e.target.value)} className="border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400">
                                             <option value="part">アルバイト</option>
                                             <option value="full">正社員</option>
-                                            <option value="driver">運転手</option>
+                                            <option value="driver">司機</option>
                                         </select>
                                         <select value={newEmpLoc} onChange={e=>setNewEmpLoc(e.target.value)} className="border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-blue-400">
                                             <option value="rokko">六甲</option>
@@ -1505,7 +1521,7 @@
                                                 <span className="font-semibold"><span className="text-gray-400 w-8 inline-block text-right mr-2 font-mono">{padNum(emp.num)}.</span>{emp.name}</span>
                                                 <div className="flex items-center gap-4">
                                                     <span className="text-gray-500 font-bold text-[10px] bg-gray-100 px-2 py-1 rounded">
-                                                        {emp.type==='full'?'正社員':emp.type==='driver'?'運転手':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}
+                                                        {emp.type==='full'?'正社員':emp.type==='driver'?'司機':'バイト'} / {emp.location==='rokko'?'六甲':'名谷'}
                                                     </span>
                                                     <button onClick={() => handleDeleteEmployee(emp.id, emp.name)} className="text-red-400 hover:text-red-600 transition"><i className="fa-solid fa-trash-can fa-lg"></i></button>
                                                 </div>
