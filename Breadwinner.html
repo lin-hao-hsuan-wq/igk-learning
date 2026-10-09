@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK - Shift v5</title>
+    <title>IGK - Shift</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -193,7 +193,7 @@
                         </h2>
                         <div className="flex items-center gap-2">
                             <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-50 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3 border border-gray-200">
-                                <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '運転手' : 'アルバイト'}</span>
+                                <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
                                 <button 
                                     onClick={() => setLocalEditable(!localEditable)}
                                     disabled={isLocked}
@@ -223,7 +223,7 @@
                                     {employee.type === 'full' && <><th className="border border-gray-200 p-1 text-center">早残業</th><th className="border border-gray-200 p-1 text-center">後残業</th></>}
                                     {employee.type === 'driver' && <><th className="border border-gray-200 p-1 text-center">運転時間(分)</th><th className="border border-gray-200 p-1 text-center">IGK A(H)</th><th className="border border-gray-200 p-1 text-center">IGK B(H)</th></>}
                                     {employee.type === 'part' && <><th className="border border-gray-200 p-1 text-center">IGK A(H)</th><th className="border border-gray-200 p-1 text-center">IGK B(H)</th></>}
-                                    <th className="border border-gray-200 p-1 bg-yellow-50 text-yellow-800 text-center">{feeLabel}</th>
+                                    <th className="border border-gray-200 p-1 bg-yellow-50 text-yellow-800 text-center w-[70px]">{feeLabel}</th>
                                     <th className="border border-gray-200 p-1 min-w-[120px]">備考・出勤狀況</th>
                                 </tr>
                             </thead>
@@ -236,7 +236,8 @@
                                     let shiftStart = dayData.shiftStart || '';
                                     let shiftEnd = dayData.shiftEnd || '';
                                     
-                                    if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd && !dayData.leaveType) {
+                                    // ★ 需求2: 正社員即使有休/欠勤，仍顯示班表
+                                    if (employee.type === 'full' && !isH && !shiftStart && !shiftEnd) {
                                         shiftStart = employee.location === 'rokko' ? '09:30' : '09:15';
                                         shiftEnd = employee.location === 'rokko' ? '18:30' : '18:15';
                                     }
@@ -372,7 +373,11 @@
                                                 </td>
                                                 <td className="border border-gray-200 p-1 text-center font-bold text-blue-800 align-middle whitespace-normal">{igkB > 0 ? formatVerboseHours(igkB) : ''}</td>
                                             </>}
-                                            <td className="border border-gray-200 p-0 bg-yellow-50 align-middle"><input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-2 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} /></td>
+                                            
+                                            {/* ★ 需求1: 縮小交通費輸入空間 w-[70px] */}
+                                            <td className="border border-gray-200 p-0 bg-yellow-50 align-middle w-[70px]">
+                                                <input disabled={isLocked || !localEditable} className="w-full text-right border-none outline-none px-1 py-1 bg-transparent font-bold text-yellow-800" value={dayData.transFee || ''} onChange={e=>handleInput(date,'transFee',e.target.value)} />
+                                            </td>
                                             
                                             <td className="border border-gray-200 p-1 align-middle">
                                                 <div className="flex flex-col gap-1 px-1">
@@ -690,7 +695,8 @@
                             let shiftStart = d.shiftStart || '';
                             let shiftEnd = d.shiftEnd || '';
                             
-                            if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd && !d.leaveType) {
+                            // ★ 需求2: Excel匯出中，正社員即使有休/欠勤，仍顯示班表
+                            if (emp.type === 'full' && !isH && !shiftStart && !shiftEnd) {
                                 shiftStart = emp.location === 'rokko' ? '09:30' : '09:15';
                                 shiftEnd = emp.location === 'rokko' ? '18:30' : '18:15';
                             }
@@ -1305,10 +1311,10 @@
                                         </div>
                                     </div>
 
-                                    {/* アルバイト / 運転手 設定區 */}
+                                    {/* アルバイト/運転手 設定區 */}
                                     <div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col">
                                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50 border-b border-gray-200 p-3 gap-2">
-                                            <div className="font-black text-gray-800 text-sm shrink-0">スタッフ (アルバイト・運転手) 設定</div>
+                                            <div className="font-black text-gray-800 text-sm shrink-0">スタッフ (兼職・司機) 設定</div>
                                             <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
                                                 <div className="flex items-center bg-white border border-gray-300 rounded overflow-hidden shadow-inner">
                                                     <span className="bg-gray-100 px-1.5 py-1 text-[10px] font-bold text-gray-600 border-r border-gray-300">入室</span>
