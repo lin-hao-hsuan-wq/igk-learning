@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGK - Shift Parser Pro v3</title>
+    <title>IGK - Shift Parser Pro v4</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -25,8 +25,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        /* 移除 overflow: hidden，讓整個 body 可以自然捲動 */
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overflow: auto; }
+        /* 防止左右捲動，允許上下捲動 */
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overflow-x: hidden; overflow-y: auto; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -38,7 +38,6 @@
         .holiday-text { color: #b91c1c !important; font-weight: bold; }
         .absent-row { background-color: #ffffff !important; }
         
-        /* 移除 height 限制，讓 panel 自動長高 */
         .setting-panel-wrapper { display: flex; flex-direction: column; }
         .batch-input { width: 60px; text-align: center; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px; outline: none; }
         .batch-input:focus { border-color: #3b82f6; }
@@ -66,11 +65,10 @@
 
         const HOLIDAYS_2026 = ['2026/01/01', '2026/01/12', '2026/02/11', '2026/02/23', '2026/03/20', '2026/04/29', '2026/05/03', '2026/05/04', '2026/05/05', '2026/05/06', '2026/07/20', '2026/08/11', '2026/09/21', '2026/09/22', '2026/09/23', '2026/10/12', '2026/11/03', '2026/11/23'];
 
-        // ★ 最新員工名單
         const INITIAL_EMPLOYEES = [
             { num: 6, id: 'm2', name: 'Tran ThiNhat Linh', type: 'full', location: 'myodani', aliases: ['Linh', 'リン'] },
             { num: 8, id: 'r1', name: '葛野みのり', type: 'full', location: 'rokko', aliases: ['Minori', '葛野 みのり', 'みのり'] },
-            { num: 9, id: 'r2', name: 'YassmynKhairussal', type: 'full', location: 'rokko', aliases: ['Yassmyn', 'ヤスミン'] },
+            { num: 9, id: 'r2', name: 'Ratu Yassmyn', type: 'full', location: 'rokko', aliases: ['Yassmyn', 'ヤスミン', 'YassmynKhairussal', 'Khairussalima'] },
             { num: 11, id: 'm1', name: '加藤友梨', type: 'full', location: 'myodani', aliases: ['加藤', 'かとう'] },
             { num: 12, id: 'r3', name: 'YoonHoneyAung', type: 'full', location: 'rokko', aliases: ['Yoon', 'ユン'] },
             { num: 13, id: 'r4', name: '林昊嬛', type: 'full', location: 'rokko', aliases: ['Koukei', '林 昊嬛', '林'] },
@@ -111,12 +109,14 @@
             return e.diff(s, 'minute');
         };
 
-        // ★ 報表格式： X時間Y分 (Z.ZZH)
+        // ★ 若為 0 小時，不顯示「0時間」
         const formatVerboseMins = (mins) => {
             if (!mins || isNaN(mins) || mins <= 0) return '';
             const h = Math.floor(mins / 60);
             const m = Math.round(mins % 60);
-            return `${h}時間${m}分 (${(mins / 60).toFixed(2)}H)`;
+            const hrsDecimal = (mins / 60).toFixed(2);
+            if (h === 0) return `${m}分 (${hrsDecimal}H)`;
+            return `${h}時間${m}分 (${hrsDecimal}H)`;
         };
 
         const formatVerboseHours = (hrs) => {
@@ -125,6 +125,7 @@
             const mins = Math.round(val * 60);
             const h = Math.floor(mins / 60);
             const m = mins % 60;
+            if (h === 0) return `${m}分 (${val.toFixed(2)}H)`;
             return `${h}時間${m}分 (${val.toFixed(2)}H)`;
         };
 
@@ -184,6 +185,8 @@
             let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
             let leave2H = 0, leave4H = 0, leave6H = 0, leave8H = 0, sick = 0, absent = 0;
 
+            const feeLabel = employee.type === 'full' ? '出張費' : '交通費';
+
             return (
                 <div className="flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm h-full max-h-full">
                     <div className="shrink-0 flex justify-between items-end mb-2 border-b border-gray-200 pb-2 px-3 pt-3">
@@ -223,7 +226,7 @@
                                     {employee.type === 'full' && <><th className="border border-gray-200 p-1 text-center">早残業</th><th className="border border-gray-200 p-1 text-center">後残業</th></>}
                                     {employee.type === 'driver' && <><th className="border border-gray-200 p-1 text-center">運転時間(分)</th><th className="border border-gray-200 p-1 text-center">IGK A(H)</th><th className="border border-gray-200 p-1 text-center">IGK B(H)</th></>}
                                     {employee.type === 'part' && <><th className="border border-gray-200 p-1 text-center">IGK A(H)</th><th className="border border-gray-200 p-1 text-center">IGK B(H)</th></>}
-                                    <th className="border border-gray-200 p-1 bg-yellow-50 text-yellow-800 text-center">交通費</th>
+                                    <th className="border border-gray-200 p-1 bg-yellow-50 text-yellow-800 text-center">{feeLabel}</th>
                                     <th className="border border-gray-200 p-1 min-w-[120px]">備考・出勤狀況</th>
                                 </tr>
                             </thead>
@@ -254,7 +257,6 @@
                                     if (dayData.leaveType && dayData.leaveType.includes('病欠')) sick++;
                                     if (dayData.leaveType && dayData.leaveType.includes('欠勤')) absent++;
 
-                                    // 計算打卡總時數 (1 + 2)
                                     const mins1 = calculateMinutes(dayData.in, dayData.out);
                                     const mins2 = calculateMinutes(dayData.in2, dayData.out2);
                                     const inOutMins = mins1 + mins2;
@@ -273,9 +275,7 @@
                                         let sStart = dayjs(`2000-01-01 ${shiftStart}`);
                                         let sEnd = dayjs(`2000-01-01 ${shiftEnd}`);
                                         
-                                        // 用於早殘的入室
                                         let aIn = dayData.in ? dayjs(`2000-01-01 ${dayData.in}`) : null;
-                                        // 用於晚殘的退室 (優先看 out2，否則 out)
                                         let latestOutTime = dayData.out2 || dayData.out;
                                         let aOut = latestOutTime ? dayjs(`2000-01-01 ${latestOutTime}`) : null;
 
@@ -323,7 +323,6 @@
                                         <tr key={date} className={rowClass}>
                                             <td className="border border-gray-200 p-1 text-center align-middle font-mono">{dayjs(date).format('MM/DD')}({['日','月','火','水','木','金','土'][dayjs(date).day()]})</td>
                                             
-                                            {/* 入室1 / 退室1 */}
                                             <td className="border border-gray-200 p-0.5 align-middle">
                                                 <div className="flex flex-col gap-1 items-center">
                                                     <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 border border-gray-200 rounded py-0.5" value={dayData.in || ''} placeholder="--:--" onChange={e => handleInput(date, 'in', e.target.value)} />
@@ -331,7 +330,6 @@
                                                 </div>
                                             </td>
                                             
-                                            {/* 入室2 / 退室2 */}
                                             <td className="border border-gray-200 p-0.5 align-middle">
                                                 <div className="flex flex-col gap-1 items-center">
                                                     <input disabled={isLocked || !localEditable} className="w-12 text-center bg-transparent outline-none focus:ring-1 focus:ring-blue-400 border border-gray-200 rounded py-0.5 text-gray-500" value={dayData.in2 || ''} placeholder="--:--" onChange={e => handleInput(date, 'in2', e.target.value)} />
@@ -458,7 +456,7 @@
                                     <div className="bg-red-50 rounded-lg p-2 text-center shadow-sm border border-red-100 flex-[1] min-w-[140px] flex items-center flex-col justify-center">
                                         <div className="text-[10px] text-red-700 font-bold mb-1">残業合計 (早+後)</div>
                                         <div className="text-sm font-black text-red-600">
-                                            {formatVerboseMins(earlyTotal+lateTotal) || '0時間0分 (0.00H)'} 
+                                            {formatVerboseMins(earlyTotal+lateTotal) || '0分 (0.00H)'} 
                                         </div>
                                     </div>
                                 </>
@@ -466,10 +464,11 @@
                             
                             {employee.type === 'part' && (
                                 <>
-                                    <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px] flex items-center flex-col justify-center">
+                                    <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[180px] flex items-center flex-col justify-center">
                                         <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
-                                        <div className="text-sm font-black text-indigo-800">
-                                            {formatVerboseHours(totalIgkA+totalIgkB) || '0時間0分 (0.00H)'}
+                                        <div className="text-xs font-black text-indigo-800 flex flex-col items-center leading-tight">
+                                            <span>{formatVerboseHours(totalIgkA) || '0分 (0.00H)'} <span className="text-indigo-400">+</span> {formatVerboseHours(totalIgkB) || '0分 (0.00H)'}</span>
+                                            <span className="text-[13px] mt-0.5"><span className="text-indigo-400">=</span> {formatVerboseHours(totalIgkA+totalIgkB) || '0分 (0.00H)'}</span>
                                         </div>
                                     </div>
                                 </>
@@ -479,12 +478,13 @@
                                 <>
                                     <div className="bg-purple-50 rounded-lg p-2 text-center shadow-sm border border-purple-200 flex-[1] min-w-[110px] flex items-center flex-col justify-center">
                                         <div className="text-[10px] text-purple-700 font-bold mb-1">運転実績</div>
-                                        <div className="text-sm font-black text-purple-800">{formatVerboseMins(totalDrive) || '0時間0分 (0.00H)'}</div>
+                                        <div className="text-sm font-black text-purple-800">{formatVerboseMins(totalDrive) || '0分 (0.00H)'}</div>
                                     </div>
-                                    <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[160px] flex items-center flex-col justify-center">
+                                    <div className="bg-indigo-50 rounded-lg p-2 text-center shadow-sm border border-indigo-100 flex-[1.5] min-w-[180px] flex items-center flex-col justify-center">
                                         <div className="text-[10px] text-indigo-700 font-bold mb-1">A+B 総労働</div>
-                                        <div className="text-sm font-black text-indigo-800">
-                                            {formatVerboseHours(totalIgkA+totalIgkB) || '0時間0分 (0.00H)'}
+                                        <div className="text-xs font-black text-indigo-800 flex flex-col items-center leading-tight">
+                                            <span>{formatVerboseHours(totalIgkA) || '0分 (0.00H)'} <span className="text-indigo-400">+</span> {formatVerboseHours(totalIgkB) || '0分 (0.00H)'}</span>
+                                            <span className="text-[13px] mt-0.5"><span className="text-indigo-400">=</span> {formatVerboseHours(totalIgkA+totalIgkB) || '0分 (0.00H)'}</span>
                                         </div>
                                     </div>
                                 </>
@@ -492,11 +492,11 @@
                             
                             <div className="bg-green-100 rounded-lg p-2 text-center shadow-sm border border-green-200 flex-[1] min-w-[110px] flex items-center flex-col justify-center">
                                 <div className="text-[10px] text-green-800 font-bold mb-1">実働総時間 (休憩引)</div>
-                                <div className="text-sm font-black text-green-900">{formatVerboseMins(totalWorkMinsGlobal) || '0時間0分 (0.00H)'}</div>
+                                <div className="text-sm font-black text-green-900">{formatVerboseMins(totalWorkMinsGlobal) || '0分 (0.00H)'}</div>
                             </div>
 
                             <div className="bg-yellow-100/80 rounded-lg p-2 flex flex-col justify-center items-center shadow-sm border border-yellow-400 min-w-[140px] flex-[1.2]">
-                                <div className="text-[11px] text-yellow-900 font-bold mb-1"><i className="fa-solid fa-coins mr-1"></i>交通費合計</div>
+                                <div className="text-[11px] text-yellow-900 font-bold mb-1"><i className="fa-solid fa-coins mr-1"></i>{employee.type === 'full' ? '出張費合計' : '交通費合計'}</div>
                                 <div className="font-black text-xl text-gray-900">{totalTrans.toLocaleString()} <span className="text-[11px] font-bold text-gray-600">円</span></div>
                             </div>
                         </div>
@@ -648,6 +648,8 @@
                         const safeName = `${padNum(emp.num)}_${emp.name}`.replace(/[\\/?*[\]]/g, '').substring(0, 31);
                         const ws = wb.addWorksheet(safeName);
                         
+                        const feeHeaderStr = emp.type === 'full' ? '出張費(円)' : '交通費(円)';
+                        
                         ws.columns = [
                             { header: '対象月', width: 10 },
                             { header: '社員No', width: 8 },
@@ -665,7 +667,7 @@
                             { header: 'IGKA', width: 18 },
                             { header: 'IGKB', width: 18 },
                             { header: '運転', width: 18 },
-                            { header: '交通費(円)', width: 11 },
+                            { header: feeHeaderStr, width: 11 },
                             { header: '備考', width: 45 }
                         ];
                         
@@ -835,20 +837,23 @@
                             if (sick > 0) addSum('病欠:', `${sick} 日`);
                             if (absent > 0) addSum('欠勤:', `${absent} 日`);
 
-                            addSum('残業合計(早+後):', formatVerboseMins(earlyTotal + lateTotal) || '0時間0分 (0.00H)');
+                            addSum('残業合計(早+後):', formatVerboseMins(earlyTotal + lateTotal) || '0分 (0.00H)');
                         }
 
                         if (emp.type === 'part' || emp.type === 'driver') {
-                            addSum('A+B 総労働:', formatVerboseHours(totalIgkA+totalIgkB) || '0時間0分 (0.00H)');
+                            const strA = formatVerboseHours(totalIgkA) || '0分 (0.00H)';
+                            const strB = formatVerboseHours(totalIgkB) || '0分 (0.00H)';
+                            const strTotal = formatVerboseHours(totalIgkA+totalIgkB) || '0分 (0.00H)';
+                            addSum('A+B 総労働:', `${strA} + ${strB} = ${strTotal}`);
                         }
                         if (emp.type === 'driver') {
-                            addSum('運転実績:', formatVerboseMins(totalDrive) || '0時間0分 (0.00H)');
+                            addSum('運転実績:', formatVerboseMins(totalDrive) || '0分 (0.00H)');
                         }
                         
-                        addSum('実働総時間:', formatVerboseMins(totalWorkMinsGlobal) || '0時間0分 (0.00H)');
+                        addSum('実働総時間:', formatVerboseMins(totalWorkMinsGlobal) || '0分 (0.00H)');
                         
                         const feeRow = ws.addRow([]);
-                        feeRow.getCell(16).value = '交通費合計:';
+                        feeRow.getCell(16).value = emp.type === 'full' ? '出張費合計:' : '交通費合計:';
                         feeRow.getCell(17).value = `${totalTrans.toLocaleString()} 円`;
                         feeRow.getCell(16).font = { bold: true, color: { argb: 'FF92400E' } };
                         feeRow.getCell(16).alignment = { horizontal: 'right' };
@@ -902,7 +907,6 @@
                                     if (!newData[emp.id]) newData[emp.id] = {};
                                     if (!newData[emp.id][dateKey]) newData[emp.id][dateKey] = { location: emp.location };
                                     
-                                    // 支援一天兩次打卡 (in2, out2)
                                     if (!newData[emp.id][dateKey][action]) {
                                         newData[emp.id][dateKey][action] = timeMatch[2];
                                     } else if (!newData[emp.id][dateKey][action + '2']) {
@@ -914,8 +918,6 @@
                         }
                     } 
                 }
-
-                // ★ 這裡已經完全移除自動修改班表 (shiftStart, shiftEnd) 的邏輯，保持空值讓實際時間去算
 
                 setAttendanceData(newData);
                 addLog(`打刻解析完了: ${parsedCount}件反映 (複数回打刻対応)`, 'success');
@@ -1191,8 +1193,8 @@
             };
 
             const renderSetupScreen = () => (
-                <div className={`p-4 mx-auto w-full max-w-7xl ${isLocked ? 'locked-overlay' : ''}`}>
-                    <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 items-start">
+                <div className={`p-4 w-full ${isLocked ? 'locked-overlay' : ''}`}>
+                    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
                         {/* 左側：工具區 */}
                         <div className="flex flex-col gap-4">
                             <SettingPanel title="Excel分析">
@@ -1329,14 +1331,14 @@
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col md:flex-row p-2 gap-4 overflow-x-auto w-full">
+                                        <div className="flex flex-col xl:flex-row p-2 gap-4 w-full">
                                             {/* 六甲校表格 */}
-                                            <div className="flex-1 w-full md:w-1/2 overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
-                                                <table className="w-full text-left text-xs border-collapse min-w-[300px]">
+                                            <div className="flex-1 w-full overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
+                                                <table className="w-full text-left text-xs border-collapse">
                                                     <thead className="bg-gray-100 shadow-sm">
                                                         <tr>
-                                                            <th className="p-2 border-b border-gray-200 text-blue-700 font-black pl-3 text-[10px]">■ 六甲校</th>
-                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold w-7">{d}</th>)}
+                                                            <th className="p-2 border-b border-gray-200 text-blue-700 font-black pl-3 text-[10px] min-w-[120px]">■ 六甲校</th>
+                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold w-8">{d}</th>)}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1363,12 +1365,12 @@
                                             </div>
 
                                             {/* 名谷校表格 */}
-                                            <div className="flex-1 w-full md:w-1/2 overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
-                                                <table className="w-full text-left text-xs border-collapse min-w-[300px]">
+                                            <div className="flex-1 w-full overflow-x-auto custom-scrollbar border border-gray-200 rounded-lg">
+                                                <table className="w-full text-left text-xs border-collapse">
                                                     <thead className="bg-gray-100 shadow-sm">
                                                         <tr>
-                                                            <th className="p-2 border-b border-gray-200 text-green-700 font-black pl-3 text-[10px]">■ 名谷校</th>
-                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold w-7">{d}</th>)}
+                                                            <th className="p-2 border-b border-gray-200 text-green-700 font-black pl-3 text-[10px] min-w-[120px]">■ 名谷校</th>
+                                                            {['月','火','水','木','金'].map(d=><th key={d} className="p-2 border-b border-gray-200 text-center text-gray-600 font-bold w-8">{d}</th>)}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
