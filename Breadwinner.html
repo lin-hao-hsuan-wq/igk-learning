@@ -159,16 +159,18 @@
             </div>
         );
         
-        // ★ 輔助函數：用來產生休假字串 (例如 "2H ＊ 4 日(計8H)")
+        // ★ 輔助函數：用來產生休假字串 (更清爽的格式)
         const buildLeaveStr = (leaveObj, label) => {
+            let totalH = (leaveObj.h8 * 8) + (leaveObj.h6 * 6) + (leaveObj.h4 * 4) + (leaveObj.h2 * 2);
+            if (totalH === 0) return null;
+
             const parts = [];
-            if (leaveObj.h8 > 0) parts.push(`8H(1日)＊${leaveObj.h8}日(計${8 * leaveObj.h8}H)`);
-            if (leaveObj.h6 > 0) parts.push(`6H＊${leaveObj.h6}日(計${6 * leaveObj.h6}H)`);
-            if (leaveObj.h4 > 0) parts.push(`4H＊${leaveObj.h4}日(計${4 * leaveObj.h4}H)`);
-            if (leaveObj.h2 > 0) parts.push(`2H＊${leaveObj.h2}日(計${2 * leaveObj.h2}H)`);
+            if (leaveObj.h8 > 0) parts.push(`${leaveObj.h8}日`);
+            if (leaveObj.h6 > 0) parts.push(`6H×${leaveObj.h6}回`);
+            if (leaveObj.h4 > 0) parts.push(`4H×${leaveObj.h4}回`);
+            if (leaveObj.h2 > 0) parts.push(`2H×${leaveObj.h2}回`);
             
-            if (parts.length === 0) return null;
-            return { label, str: parts.join(', ') };
+            return { label, str: `${parts.join(' + ')} (計${totalH}H)` };
         };
 
         const EmployeeReport = ({ employee, data, payMonth, isLocked, onInput }) => {
@@ -193,7 +195,6 @@
             let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
             let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalInOutGlobal = 0, totalWorkMinsGlobal = 0;
             
-            // ★ 修改：更精細的休假時數計算
             let leave = { h2: 0, h4: 0, h6: 0, h8: 0 };
             let sick = { h2: 0, h4: 0, h6: 0, h8: 0 };
             let absent = { h2: 0, h4: 0, h6: 0, h8: 0 };
@@ -263,7 +264,6 @@
 
                                     const isLeave = dayData.leaveType && (dayData.leaveType.includes('休') || dayData.leaveType.includes('欠'));
                                     
-                                    // ★ 修改：統計休假時數
                                     if (dayData.leaveType === '有休(2時間)') leave.h2++;
                                     if (dayData.leaveType === '有休(4時間)') leave.h4++;
                                     if (dayData.leaveType === '有休(6時間)') leave.h6++;
@@ -305,16 +305,28 @@
                                         if (aIn && aOut && aOut.isBefore(aIn)) aOut = aOut.add(1, 'day');
 
                                         let adjustedSStart = sStart.clone();
+                                        let adjustedSEnd = sEnd.clone();
+
                                         if (leaveHrs > 0) {
-                                            if (leaveHrs === 2) {
-                                                adjustedSStart = adjustedSStart.add(2, 'hour');
-                                            } else if (leaveHrs >= 4) {
-                                                adjustedSStart = adjustedSStart.add(leaveHrs + 1, 'hour');
+                                            // 引くべき分数（2時間=120分、4時間以上=休憩込みで+1時間）
+                                            let minsToAdjust = 0;
+                                            if (leaveHrs === 2) minsToAdjust = 120;
+                                            else if (leaveHrs >= 4) minsToAdjust = (leaveHrs + 1) * 60;
+
+                                            // 実際の出社・退社時刻から、遅刻時間と早退時間を計算
+                                            let delayIn = aIn ? Math.max(0, aIn.diff(sStart, 'minute')) : 0;
+                                            let earlyOut = aOut ? Math.max(0, sEnd.diff(aOut, 'minute')) : 0;
+
+                                            // 早退時間の方が長い場合は「午後休」、そうでない場合は「午前休」と判定
+                                            if (earlyOut > delayIn) {
+                                                adjustedSEnd = adjustedSEnd.subtract(minsToAdjust, 'minute');
+                                            } else {
+                                                adjustedSStart = adjustedSStart.add(minsToAdjust, 'minute');
                                             }
                                         }
 
                                         if (aIn) early = Math.max(0, adjustedSStart.diff(aIn, 'minute'));
-                                        if (aOut) late = Math.max(0, aOut.diff(sEnd, 'minute'));
+                                        if (aOut) late = Math.max(0, aOut.diff(adjustedSEnd, 'minute'));
 
                                         earlyTotal += early;
                                         lateTotal += late;
@@ -446,7 +458,6 @@
                                 </div>
                                 {employee.type === 'full' && (
                                     <>
-                                        {/* ★ 修改：產生排版好的休假字串 */}
                                         {[
                                             buildLeaveStr(leave, '有休'),
                                             buildLeaveStr(sick, '病欠'),
@@ -713,7 +724,6 @@
                         let workDays = 0, earlyTotal = 0, lateTotal = 0, totalTrans = 0;
                         let totalIgkA = 0, totalIgkB = 0, totalDrive = 0, totalWorkMinsGlobal = 0;
                         
-                        // ★ Excel 匯出也同步使用更精細的休假統計
                         let leave = { h2: 0, h4: 0, h6: 0, h8: 0 };
                         let sick = { h2: 0, h4: 0, h6: 0, h8: 0 };
                         let absent = { h2: 0, h4: 0, h6: 0, h8: 0 };
@@ -736,7 +746,6 @@
                                 workDays++;
                             }
 
-                            // ★ Excel 統計
                             if (d.leaveType === '有休(2時間)') leave.h2++;
                             if (d.leaveType === '有休(4時間)') leave.h4++;
                             if (d.leaveType === '有休(6時間)') leave.h6++;
@@ -776,16 +785,25 @@
                                 if (aIn && aOut && aOut.isBefore(aIn)) aOut = aOut.add(1, 'day');
 
                                 let adjustedSStart = sStart.clone();
+                                let adjustedSEnd = sEnd.clone();
+
                                 if (leaveHrs > 0) {
-                                    if (leaveHrs === 2) {
-                                        adjustedSStart = adjustedSStart.add(2, 'hour');
-                                    } else if (leaveHrs >= 4) {
-                                        adjustedSStart = adjustedSStart.add(leaveHrs + 1, 'hour');
+                                    let minsToAdjust = 0;
+                                    if (leaveHrs === 2) minsToAdjust = 120;
+                                    else if (leaveHrs >= 4) minsToAdjust = (leaveHrs + 1) * 60;
+
+                                    let delayIn = aIn ? Math.max(0, aIn.diff(sStart, 'minute')) : 0;
+                                    let earlyOut = aOut ? Math.max(0, sEnd.diff(aOut, 'minute')) : 0;
+
+                                    if (earlyOut > delayIn) {
+                                        adjustedSEnd = adjustedSEnd.subtract(minsToAdjust, 'minute');
+                                    } else {
+                                        adjustedSStart = adjustedSStart.add(minsToAdjust, 'minute');
                                     }
                                 }
 
                                 if (aIn) early = Math.max(0, adjustedSStart.diff(aIn, 'minute'));
-                                if (aOut) late = Math.max(0, aOut.diff(sEnd, 'minute'));
+                                if (aOut) late = Math.max(0, aOut.diff(adjustedSEnd, 'minute'));
 
                                 earlyTotal += early;
                                 lateTotal += late;
@@ -868,7 +886,6 @@
                         addSum('実出勤日数:', `${workDays} 日`);
                         
                         if (emp.type === 'full') {
-                            // ★ Excel 匯出也同步使用 buildLeaveStr 輔助函數產生格式化的字串
                             const yqObj = buildLeaveStr(leave, '有休');
                             if(yqObj) addSum('有休:', yqObj.str);
                             
