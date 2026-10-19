@@ -18,6 +18,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
+    <!-- ★ PDF 解析套件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- ★ Firebase SDK -->
@@ -159,7 +165,6 @@
             </div>
         );
         
-        // ★ 輔助函數：用來產生休假字串 (更清爽的格式)
         const buildLeaveStr = (leaveObj, label) => {
             let totalH = (leaveObj.h8 * 8) + (leaveObj.h6 * 6) + (leaveObj.h4 * 4) + (leaveObj.h2 * 2);
             if (totalH === 0) return null;
@@ -173,7 +178,7 @@
             return { label, str: `${parts.join(' + ')} (計${totalH}H)` };
         };
 
-        const EmployeeReport = ({ employee, data, payMonth, isLocked, onInput }) => {
+        const EmployeeReport = ({ employee, data, payMonth, isLocked, onInput, pdfAttachments }) => {
             const [localEditable, setLocalEditable] = useState(false);
             const payDateObj = dayjs(`${payMonth}-01`);
             
@@ -204,10 +209,22 @@
             return (
                 <div className="flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm h-full max-h-full min-w-0">
                     <div className="shrink-0 flex justify-between items-end mb-2 border-b border-gray-200 pb-2 px-3 pt-3">
-                        <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
-                            <span className="bg-blue-600 text-white px-2 py-0.5 rounded-md shadow text-sm font-mono">{padNum(employee.num)}</span>
-                            {employee.name}
-                        </h2>
+                        <div>
+                            <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded-md shadow text-sm font-mono">{padNum(employee.num)}</span>
+                                {employee.name}
+                            </h2>
+                            {/* ★ PDF 提示區域 */}
+                            {pdfAttachments && pdfAttachments.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                    {pdfAttachments.map((pdf, idx) => (
+                                        <span key={idx} className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded border border-green-200 flex items-center shadow-sm">
+                                            <i className="fa-solid fa-paperclip mr-1"></i> {pdf.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <div className="text-[11px] font-bold text-gray-600 tracking-wide bg-gray-50 pl-3 pr-1 py-1 rounded shadow-sm flex items-center gap-3 border border-gray-200">
                                 <span>対象月: {payMonth.replace('-', '')} | 雇用形態: {employee.type === 'full' ? '正社員' : employee.type === 'driver' ? '司機' : 'アルバイト'}</span>
@@ -308,16 +325,13 @@
                                         let adjustedSEnd = sEnd.clone();
 
                                         if (leaveHrs > 0) {
-                                            // 引くべき分数（2時間=120分、4時間以上=休憩込みで+1時間）
                                             let minsToAdjust = 0;
                                             if (leaveHrs === 2) minsToAdjust = 120;
                                             else if (leaveHrs >= 4) minsToAdjust = (leaveHrs + 1) * 60;
 
-                                            // 実際の出社・退社時刻から、遅刻時間と早退時間を計算
                                             let delayIn = aIn ? Math.max(0, aIn.diff(sStart, 'minute')) : 0;
                                             let earlyOut = aOut ? Math.max(0, sEnd.diff(aOut, 'minute')) : 0;
 
-                                            // 早退時間の方が長い場合は「午後休」、そうでない場合は「午前休」と判定
                                             if (earlyOut > delayIn) {
                                                 adjustedSEnd = adjustedSEnd.subtract(minsToAdjust, 'minute');
                                             } else {
@@ -543,6 +557,12 @@
             const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
             const [processedFiles, setProcessedFiles] = useState([]);
 
+            // ★ PDF 暫存狀態
+            const [matchedPdfs, setMatchedPdfs] = useState({}); // { empId: [{ id, name, dataUrl, width, height }] }
+            const [unmatchedPdfs, setUnmatchedPdfs] = useState([]); // [{ id, name, dataUrl, width, height }]
+            const [isProcessingPdf, setIsProcessingPdf] = useState(false);
+            const [pdfProcessStatus, setPdfProcessStatus] = useState('');
+
             const [batchStart, setBatchStart] = useState('');
             const [batchEnd, setBatchEnd] = useState('');
             
@@ -677,8 +697,102 @@
                         return newData;
                     });
                     setProcessedFiles([]);
+                    setMatchedPdfs({});   // ★ 同時清空暫存的 PDF
+                    setUnmatchedPdfs([]); // ★ 同時清空暫存的 PDF
                     addLog(`${payMonth} のデータをリセットしました。`, 'success');
                 }
+            };
+
+            // ★ 新增 PDF 批次上傳與轉圖邏輯
+            const handlePdfUpload = async (e) => {
+                const files = Array.from(e.target.files);
+                if (!files.length) return;
+                setIsProcessingPdf(true);
+
+                let newMatched = { ...matchedPdfs };
+                let newUnmatched = [...unmatchedPdfs];
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    setPdfProcessStatus(`${i + 1} / ${files.length} 解析中 (${file.name})...`);
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        const page = await pdf.getPage(1); // 預設只取第一頁
+                        const viewport = page.getViewport({ scale: 1.5 }); // 放大1.5倍確保清晰度
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        const pdfObj = {
+                            id: 'pdf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                            name: file.name,
+                            dataUrl,
+                            width: canvas.width,
+                            height: canvas.height
+                        };
+
+                        // 嘗試配對人名 (無分大小寫與空白)
+                        const normalizedName = file.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, '');
+                        const matchedEmp = employees.find(emp => {
+                            const s = [
+                                emp.name.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, ''),
+                                ...(emp.aliases || []).map(a => a.toLowerCase().replace(/[\s\u3000\u200B-\u200D\uFEFF]/g, ''))
+                            ];
+                            return s.some(n => normalizedName.includes(n));
+                        });
+
+                        if (matchedEmp) {
+                            if (!newMatched[matchedEmp.id]) newMatched[matchedEmp.id] = [];
+                            newMatched[matchedEmp.id].push(pdfObj);
+                            addLog(`[PDF] ${file.name} -> ${matchedEmp.name} に自動紐付けました`, 'success');
+                        } else {
+                            newUnmatched.push(pdfObj);
+                            addLog(`[PDF] ${file.name} の対象者が見つかりません`, 'error');
+                        }
+
+                    } catch (err) {
+                        addLog(`[PDF] ${file.name} の処理に失敗しました: ${err.message}`, 'error');
+                    }
+                }
+
+                setMatchedPdfs(newMatched);
+                setUnmatchedPdfs(newUnmatched);
+                setIsProcessingPdf(false);
+                setPdfProcessStatus('');
+                e.target.value = null; 
+            };
+
+            // ★ 手動指派 PDF
+            const handleAssignPdf = (pdfId, empId) => {
+                if (!empId) return;
+                const pdf = unmatchedPdfs.find(p => p.id === pdfId);
+                if (!pdf) return;
+
+                setUnmatchedPdfs(prev => prev.filter(p => p.id !== pdfId));
+                setMatchedPdfs(prev => {
+                    const next = { ...prev };
+                    if (!next[empId]) next[empId] = [];
+                    next[empId].push(pdf);
+                    return next;
+                });
+                const empName = employees.find(e => e.id === empId)?.name;
+                addLog(`[PDF] ${pdf.name} を ${empName} に手動紐付けしました`, 'success');
+            };
+
+            // ★ 取消配對或刪除
+            const handleRemoveMatchedPdf = (empId, pdfId) => {
+                setMatchedPdfs(prev => {
+                    const next = { ...prev };
+                    if (next[empId]) {
+                        next[empId] = next[empId].filter(p => p.id !== pdfId);
+                    }
+                    return next;
+                });
             };
 
             const exportToExcel = async () => {
@@ -918,6 +1032,30 @@
                         feeRow.getCell(17).font = { bold: true, color: { argb: 'FF92400E' } };
                         feeRow.getCell(16).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
                         feeRow.getCell(17).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+
+                        // ★ 寫入 PDF 圖片到 Excel 右側 (T欄 / 第 19 欄)
+                        if (matchedPdfs[emp.id] && matchedPdfs[emp.id].length > 0) {
+                            let currentImageRowOffset = 1; // 從第 2 列開始擺放
+                            matchedPdfs[emp.id].forEach(imgObj => {
+                                const imageId = wb.addImage({
+                                    base64: imgObj.dataUrl,
+                                    extension: 'jpeg',
+                                });
+                                // 預設寬度縮放至 500px，高度依比例縮放
+                                const targetWidth = 500;
+                                const ratio = targetWidth / imgObj.width;
+                                const targetHeight = imgObj.height * ratio;
+
+                                ws.addImage(imageId, {
+                                    tl: { col: 19, row: currentImageRowOffset }, // T欄
+                                    ext: { width: Math.round(targetWidth), height: Math.round(targetHeight) }
+                                });
+
+                                // 計算這個圖片佔用了幾個 Excel 欄高 (約20px為一列)，並留下2列空白給下一張圖
+                                const rowsTaken = Math.ceil(targetHeight / 20);
+                                currentImageRowOffset += rowsTaken + 2; 
+                            });
+                        }
                     });
                     
                     const buffer = await wb.xlsx.writeBuffer();
@@ -1268,6 +1406,64 @@
                                 </div>
                             </SettingPanel>
 
+                            {/* ★ PDF 批次上傳區 */}
+                            <SettingPanel title="PDF 有休申請單 上傳">
+                                <div className="flex flex-col gap-2">
+                                    <label className={`border border-dashed border-purple-400 rounded p-4 text-center ${isProcessingPdf ? 'bg-purple-100 cursor-wait' : 'bg-purple-50 hover:bg-purple-100 cursor-pointer'} text-xs font-bold text-purple-800 shadow-sm transition`}>
+                                        <i className="fa-solid fa-file-pdf mr-2 text-purple-600"></i>複数PDFファイル選択
+                                        <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} className="hidden" disabled={isProcessingPdf} />
+                                    </label>
+                                    {isProcessingPdf && <div className="text-xs text-center text-purple-600 font-bold">{pdfProcessStatus}</div>}
+                                    
+                                    {/* 顯示未配對名單 */}
+                                    {unmatchedPdfs.length > 0 && (
+                                        <div className="mt-2 bg-red-50 p-2 rounded border border-red-200">
+                                            <div className="text-[10px] font-bold text-red-600 mb-1">未配對ファイル ({unmatchedPdfs.length}件)</div>
+                                            <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar">
+                                                {unmatchedPdfs.map(pdf => (
+                                                    <div key={pdf.id} className="text-[10px] bg-white p-1 rounded shadow-sm border border-red-100 flex flex-col gap-1">
+                                                        <span className="truncate text-gray-700" title={pdf.name}>{pdf.name}</span>
+                                                        <div className="flex items-center gap-1">
+                                                            <select className="flex-1 border rounded px-1 py-0.5 outline-none" defaultValue="" onChange={(e) => handleAssignPdf(pdf.id, e.target.value)}>
+                                                                <option value="" disabled>社員を選択...</option>
+                                                                {employees.sort((a,b)=>a.num-b.num).map(emp => (
+                                                                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <button onClick={() => setUnmatchedPdfs(prev => prev.filter(p=>p.id!==pdf.id))} className="text-gray-400 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 顯示已配對名單的摘要 */}
+                                    {Object.keys(matchedPdfs).length > 0 && (
+                                        <div className="mt-2 bg-green-50 p-2 rounded border border-green-200">
+                                            <div className="text-[10px] font-bold text-green-700 mb-1">配對完了</div>
+                                            <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto custom-scrollbar">
+                                                {Object.entries(matchedPdfs).map(([empId, pdfs]) => {
+                                                    const emp = employees.find(e => e.id === empId);
+                                                    if (!emp || pdfs.length === 0) return null;
+                                                    return (
+                                                        <div key={empId} className="text-[10px] bg-white p-1 rounded shadow-sm border border-green-100">
+                                                            <div className="font-bold text-gray-800">{emp.name} <span className="text-green-600">({pdfs.length}件)</span></div>
+                                                            {pdfs.map(p => (
+                                                                <div key={p.id} className="text-gray-500 truncate flex justify-between items-center pl-2">
+                                                                    - {p.name}
+                                                                    <button onClick={() => handleRemoveMatchedPdf(empId, p.id)} className="text-gray-400 hover:text-red-500 ml-1"><i className="fa-solid fa-xmark"></i></button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </SettingPanel>
+
                             <SettingPanel title="Wagaco 打刻テキスト貼付">
                                 <div className="flex flex-col gap-2">
                                     <textarea 
@@ -1486,6 +1682,8 @@
                                     <button key={emp.id} onClick={() => setActiveEmployeeId(emp.id)} className={`text-left px-3 py-2 mx-2 rounded-lg text-xs font-bold flex items-center gap-2 truncate transition ${activeEmployeeId === emp.id ? 'bg-white shadow text-blue-600 border border-gray-200' : 'text-gray-500 hover:bg-gray-200 border border-transparent'}`}>
                                         <span className="truncate font-mono">{padNum(emp.num)}.</span>
                                         <span className="truncate">{emp.name}</span>
+                                        {/* 在側邊欄也加上提示小圓點 */}
+                                        {matchedPdfs[emp.id] && matchedPdfs[emp.id].length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-500 ml-auto"></span>}
                                     </button>
                                 ))}
                             </div>
@@ -1499,6 +1697,7 @@
                                     payMonth={payMonth} 
                                     isLocked={isLocked}
                                     onInput={handleInputUpdate}
+                                    pdfAttachments={matchedPdfs[activeEmployeeId] || []} // ★ 傳入該員工的 PDF
                                 /> 
                             : <div className="h-full flex items-center justify-center text-gray-400 font-bold">左側のリストから社員を選択してください。</div>}
                         </div>
