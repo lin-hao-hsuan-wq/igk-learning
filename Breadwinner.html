@@ -1037,8 +1037,12 @@
                         if (matchedPdfs[emp.id] && matchedPdfs[emp.id].length > 0) {
                             let currentImageRowOffset = 1; // 從第 2 列開始擺放
                             matchedPdfs[emp.id].forEach(imgObj => {
+                                
+                                // 🚀 修正核心：切除 data:image/jpeg;base64, 前綴，只保留後面的純編碼
+                                const pureBase64 = imgObj.dataUrl.split(',')[1];
+                                
                                 const imageId = wb.addImage({
-                                    base64: imgObj.dataUrl,
+                                    base64: pureBase64,
                                     extension: 'jpeg',
                                 });
                                 // 預設寬度縮放至 500px，高度依比例縮放
