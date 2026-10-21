@@ -1,0 +1,584 @@
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { 
+  Plus, 
+  Settings, 
+  Users, 
+  EyeOff, 
+  Eye, 
+  Trash2, 
+  Save, 
+  X, 
+  Edit3,
+  Check
+} from 'lucide-react';
+
+// --- STYLES ---
+// Injecting keyframes for the +1 floating animation and viewport meta for mobile/tablet
+const meta = document.createElement('meta');
+meta.name = "viewport";
+meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+document.head.appendChild(meta);
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@600;800&display=swap');
+  
+  @keyframes floatUpFade {
+    0% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    50% { transform: translateY(-30px) scale(1.3) rotate(10deg); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.5) rotate(-10deg); }
+  }
+  .animate-float {
+    animation: floatUpFade 0.8s ease-out forwards;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .font-crayon {
+    font-family: 'Caveat', 'Comic Sans MS', 'Chalkboard SE', cursive;
+  }
+  .font-ui {
+    font-family: 'Nunito', sans-serif;
+  }
+  .crayon-border {
+    border-width: 4px;
+    border-style: solid;
+    border-radius: 255px 25px 225px 25px/25px 225px 25px 255px;
+  }
+  .crayon-shadow {
+    box-shadow: 5px 5px 0px rgba(0,0,0,0.1);
+  }
+  .crayon-shadow-hover:hover {
+    box-shadow: 7px 7px 0px rgba(0,0,0,0.15);
+    transform: translateY(-2px) rotate(1deg);
+  }
+  .crayon-shadow:active, .crayon-shadow-hover:active {
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+    transform: translateY(2px) !important;
+  }
+  .paper-bg {
+    background-color: #fdfbf7;
+    background-image: radial-gradient(#e0dcd3 2px, transparent 2px);
+    background-size: 30px 30px;
+  }
+`;
+document.head.appendChild(styleSheet);
+
+// Playful color palettes for student cards
+const cardColors = [
+  'bg-red-50 text-red-700 border-red-400',
+  'bg-orange-50 text-orange-700 border-orange-400',
+  'bg-amber-50 text-amber-700 border-amber-400',
+  'bg-green-50 text-green-700 border-green-400',
+  'bg-emerald-50 text-emerald-700 border-emerald-400',
+  'bg-teal-50 text-teal-700 border-teal-400',
+  'bg-cyan-50 text-cyan-700 border-cyan-400',
+  'bg-blue-50 text-blue-700 border-blue-400',
+  'bg-indigo-50 text-indigo-700 border-indigo-400',
+  'bg-violet-50 text-violet-700 border-violet-400',
+  'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-400',
+  'bg-pink-50 text-pink-700 border-pink-400',
+];
+
+const getCardColor = (name) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return cardColors[Math.abs(hash) % cardColors.length];
+};
+
+// --- COMPONENTS ---
+
+// 1. Student Card Component
+const StudentCard = ({ student, onAddPoint, isEditMode, onUpdate, onHide, onDelete }) => {
+  const [clicks, setClicks] = useState([]);
+  const [isEditingData, setIsEditingData] = useState(false);
+  const [editName, setEditName] = useState(student.name);
+  const [editScore, setEditScore] = useState(student.score);
+  
+  const cardRef = useRef(null);
+
+  const handleTap = (e) => {
+    if (isEditMode) return; // Disable point adding in edit mode
+
+    // Calculate relative tap/click position for the animation
+    const rect = cardRef.current.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const newClick = { id: Date.now(), x, y };
+    setClicks((prev) => [...prev, newClick]);
+    
+    // Add point
+    onAddPoint(student.id);
+
+    // Remove animation element after it completes
+    setTimeout(() => {
+      setClicks((prev) => prev.filter((c) => c.id !== newClick.id));
+    }, 800);
+  };
+
+  const handleSaveEdit = () => {
+    onUpdate(student.id, { name: editName, score: Number(editScore) });
+    setIsEditingData(false);
+  };
+
+  const colorClass = getCardColor(student.name);
+
+  return (
+    <div 
+      ref={cardRef}
+      onPointerDown={handleTap}
+      className={`
+        relative overflow-hidden p-3 sm:p-4 select-none touch-manipulation
+        transition-all duration-200 flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px] h-full
+        crayon-border crayon-shadow font-crayon
+        ${colorClass}
+        ${!isEditMode ? 'cursor-pointer crayon-shadow-hover' : ''}
+        ${isEditMode ? 'border-dashed border-gray-400 opacity-90' : ''}
+      `}
+    >
+      {/* Floating +1 Animations */}
+      {clicks.map((click) => (
+        <div
+          key={click.id}
+          className="absolute text-4xl font-black text-pink-500 drop-shadow-md animate-float pointer-events-none z-10"
+          style={{ left: click.x - 20, top: click.y - 20 }}
+        >
+          +1
+        </div>
+      ))}
+
+      {isEditingData ? (
+        <div className="flex flex-col items-center w-full space-y-2 z-20 font-ui">
+          <input 
+            type="text" 
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="w-full text-center font-bold text-lg rounded-xl px-2 py-1 border-2 border-slate-300 bg-white text-gray-800"
+          />
+          <div className="flex items-center space-x-2 w-full">
+            <span className="text-sm font-bold">Score:</span>
+            <input 
+              type="number" 
+              value={editScore}
+              onChange={(e) => setEditScore(e.target.value)}
+              className="w-full text-center font-bold rounded-xl px-2 py-1 border-2 border-slate-300 bg-white text-gray-800"
+            />
+          </div>
+          <button 
+            onClick={handleSaveEdit}
+            className="bg-green-500 text-white rounded-full p-2 hover:bg-green-600 transition"
+          >
+            <Check size={16} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-wide text-center mb-1 drop-shadow-sm truncate w-full">
+            {student.name}
+          </h3>
+          <div className="text-4xl sm:text-5xl md:text-6xl font-black drop-shadow-sm mt-1 sm:mt-2">
+            {student.score}
+          </div>
+        </>
+      )}
+
+      {/* Edit Mode Overlay Controls */}
+      {isEditMode && !isEditingData && (
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center gap-3 z-20">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setIsEditingData(true); }}
+            className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 shadow-md"
+            title="Edit"
+          >
+            <Edit3 size={18} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onHide(student.id); }}
+            className="bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 shadow-md"
+            title="Hide (Absent)"
+          >
+            <EyeOff size={18} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(student); }}
+            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md"
+            title="Delete"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 2. Main App Component
+export default function App() {
+  // State
+  const [students, setStudents] = useState([]);
+  const [activeGrades, setActiveGrades] = useState([]); // Changed to array for multi-select
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showHiddenModal, setShowHiddenModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null); // Custom confirm modal state
+  const [batchGrade, setBatchGrade] = useState('');
+  const [batchNames, setBatchNames] = useState('');
+  
+  // Load from LocalStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('classroom_points_data');
+    if (saved) {
+      try {
+        setStudents(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse local storage data", e);
+      }
+    }
+  }, []);
+
+  // Save to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('classroom_points_data', JSON.stringify(students));
+  }, [students]);
+
+  // Derived State
+  const grades = useMemo(() => {
+    return [...new Set(students.map(s => s.grade).filter(Boolean))].sort();
+  }, [students]);
+
+  const visibleStudents = students.filter(s => 
+    !s.isHidden && (activeGrades.length === 0 || activeGrades.includes(s.grade))
+  );
+  const hiddenStudents = students.filter(s => s.isHidden);
+
+  // Auto-remove active grades that have been completely deleted
+  useEffect(() => {
+    setActiveGrades(prev => {
+      const validGrades = prev.filter(g => grades.includes(g));
+      if (validGrades.length === prev.length) return prev; // Bail out if no change
+      return validGrades;
+    });
+  }, [grades]);
+
+  // Actions
+  const toggleGrade = (grade) => {
+    if (grade === 'All') {
+      setActiveGrades([]);
+    } else {
+      setActiveGrades(prev => 
+        prev.includes(grade) 
+          ? prev.filter(g => g !== grade) 
+          : [...prev, grade]
+      );
+    }
+  };
+
+  const handleAddPoint = useCallback((id) => {
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, score: s.score + 1 } : s));
+  }, []);
+
+  const handleUpdateStudent = (id, updates) => {
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
+  const handleHideStudent = (id) => {
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, isHidden: true } : s));
+  };
+
+  const handleUnhideStudent = (id) => {
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, isHidden: false } : s));
+  };
+
+  const handleDeleteStudent = (student) => {
+    setStudentToDelete(student); // Open custom confirm modal instead of window.confirm
+  };
+
+  const confirmDelete = () => {
+    if (studentToDelete) {
+      setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+      setStudentToDelete(null);
+    }
+  };
+
+  const handleBatchAdd = (e) => {
+    e.preventDefault();
+    if (!batchGrade.trim() || !batchNames.trim()) return;
+
+    // Split by comma or newline
+    const names = batchNames.split(/[\n,]+/).map(n => n.trim()).filter(Boolean);
+    
+    const newStudents = names.map(name => ({
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random(),
+      name,
+      score: 0,
+      grade: batchGrade.trim(),
+      isHidden: false
+    }));
+
+    setStudents(prev => [...prev, ...newStudents]);
+    setBatchNames('');
+    setShowBatchModal(false);
+    setActiveGrades([batchGrade.trim()]); // Switch to the newly added grade view
+  };
+
+  return (
+    <div className="min-h-screen paper-bg text-slate-800 font-ui selection:bg-pink-200">
+      
+      {/* HEADER */}
+      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b-4 border-slate-200 crayon-border !border-t-0 !border-l-0 !border-r-0 !rounded-none">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            {/* Logo Section */}
+            <div 
+              className="flex items-center justify-center h-14 w-28 bg-white rounded-2xl crayon-border border-2 border-slate-300 overflow-hidden shadow-sm flex-shrink-0 p-1"
+            >
+              <img 
+                src="image_5223fe.png" 
+                alt="IGK Logo" 
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            <div className="h-8 w-1 bg-slate-200 rounded-full hidden sm:block"></div>
+            <div className="flex items-center gap-2">
+              <div className="bg-indigo-400 text-white p-2 rounded-2xl crayon-border !border-2">
+                <Users size={24} />
+              </div>
+              <h1 className="text-3xl font-black text-slate-700 tracking-tight font-crayon">Class Points</h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
+            {/* Action Buttons */}
+            <button 
+              onClick={() => setShowHiddenModal(true)}
+              className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-slate-600 bg-white border-2 border-slate-300 crayon-border hover:bg-slate-50 transition shrink-0"
+            >
+              <Eye size={16} />
+              Absentees ({hiddenStudents.length})
+            </button>
+
+            <button 
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`flex items-center gap-1 px-4 py-2 text-sm font-bold border-2 crayon-border transition shrink-0 ${
+                isEditMode ? 'bg-orange-400 text-white border-orange-500 crayon-shadow' : 'text-slate-600 bg-white border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <Settings size={16} />
+              {isEditMode ? 'Done Editing' : 'Manage'}
+            </button>
+
+            <button 
+              onClick={() => setShowBatchModal(true)}
+              className="flex items-center gap-1 px-4 py-2 text-sm font-bold text-white bg-pink-500 border-2 border-pink-600 crayon-border crayon-shadow hover:bg-pink-600 transition shrink-0"
+            >
+              <Plus size={16} />
+              Add Class
+            </button>
+          </div>
+        </div>
+
+        {/* GRADE TABS */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t-2 border-dashed border-slate-200 mt-2">
+          <div className="flex space-x-3 py-4 overflow-x-auto hide-scrollbar">
+            <button
+              onClick={() => toggleGrade('All')}
+              className={`px-5 py-2 text-lg font-bold whitespace-nowrap transition-all crayon-border font-crayon ${
+                activeGrades.length === 0 
+                  ? 'bg-slate-700 text-white border-slate-800 crayon-shadow transform -translate-y-1' 
+                  : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5'
+              }`}
+            >
+              All
+            </button>
+            {grades.map(grade => (
+              <button
+                key={grade}
+                onClick={() => toggleGrade(grade)}
+                className={`px-5 py-2 text-lg font-bold whitespace-nowrap transition-all crayon-border font-crayon ${
+                  activeGrades.includes(grade) 
+                    ? 'bg-slate-700 text-white border-slate-800 crayon-shadow transform -translate-y-1' 
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5'
+                }`}
+              >
+                {grade}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT GRID */}
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 py-6 sm:py-8 lg:px-8">
+        {visibleStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 text-center">
+            <Users size={64} className="mb-4 opacity-20" />
+            <h2 className="text-xl font-bold mb-2">No students here yet!</h2>
+            <p className="max-w-md">Add students using the "Add Class" button above. You can paste a whole list of names at once.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 auto-rows-max">
+            {visibleStudents.map(student => (
+              <StudentCard 
+                key={student.id} 
+                student={student} 
+                onAddPoint={handleAddPoint}
+                isEditMode={isEditMode}
+                onUpdate={handleUpdateStudent}
+                onHide={handleHideStudent}
+                onDelete={handleDeleteStudent}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* MODALS */}
+      
+      {/* 1. Batch Add Modal */}
+      {showBatchModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-indigo-50">
+              <h2 className="text-xl font-bold text-indigo-900">Add Students</h2>
+              <button onClick={() => setShowBatchModal(false)} className="text-indigo-400 hover:text-indigo-600 p-1">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleBatchAdd} className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-slate-700 mb-1">Class / Grade Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g., Grade 3A, Math 101"
+                  value={batchGrade}
+                  onChange={(e) => setBatchGrade(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-slate-700 mb-1">Student Names</label>
+                <p className="text-xs text-slate-500 mb-2">Separate names by commas or start a new line for each student.</p>
+                <textarea 
+                  required
+                  rows="6"
+                  placeholder="John Doe, Jane Smith&#10;Alice&#10;Bob"
+                  value={batchNames}
+                  onChange={(e) => setBatchNames(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none"
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowBatchModal(false)}
+                  className="px-5 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="px-5 py-2 rounded-xl font-bold text-white bg-indigo-500 hover:bg-indigo-600 transition shadow-md flex items-center gap-2"
+                >
+                  <Save size={18} /> Add to Class
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Hidden (Absent) Students Modal */}
+      {showHiddenModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <EyeOff size={20} className="text-slate-500" />
+                Absent / Hidden Students
+              </h2>
+              <button onClick={() => setShowHiddenModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+              {hiddenStudents.length === 0 ? (
+                <div className="text-center text-slate-400 py-10">
+                  <p>No students are currently hidden.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {hiddenStudents.map(student => (
+                    <div key={student.id} className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800">{student.name}</span>
+                        <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full w-fit mt-1">
+                          {student.grade} • Score: {student.score}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => handleUnhideStudent(student.id)}
+                        className="flex items-center gap-1 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold text-sm rounded-xl hover:bg-indigo-100 transition"
+                      >
+                        <Eye size={16} />
+                        Unhide
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t bg-white flex justify-end">
+              <button 
+                onClick={() => setShowHiddenModal(false)}
+                className="px-6 py-2 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Delete Confirmation Modal */}
+      {studentToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center font-ui">
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">刪除學生</h2>
+            <p className="text-slate-500 mb-6">
+              確定要永久刪除 <b>{studentToDelete.name}</b> 嗎？這個動作無法復原喔！
+            </p>
+            <div className="flex justify-center gap-3">
+              <button 
+                onClick={() => setStudentToDelete(null)}
+                className="px-5 py-2 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition w-full"
+              >
+                取消
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="px-5 py-2 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition w-full shadow-md"
+              >
+                確認刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
