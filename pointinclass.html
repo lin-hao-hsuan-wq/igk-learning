@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>IGK Classroom Point System</title>
+  <title>IGK Classroom Point </title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -77,6 +77,9 @@
       <div class="flex flex-wrap items-center gap-2">
         <button id="btn-add-class" class="crayon-border crayon-shadow bg-amber-400 hover:bg-amber-500 text-slate-800 font-bold px-3 py-1.5 rounded-xl text-sm flex items-center gap-1 transition">
           👥 Add Class
+        </button>
+        <button id="btn-reset-scores" class="crayon-border crayon-shadow bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-1.5 rounded-xl text-sm transition">
+          🔄 Reset Scores
         </button>
         <button id="btn-absent" class="hidden crayon-border crayon-shadow bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold px-3 py-1.5 rounded-xl text-sm transition">
           👁️ Absent (<span id="absent-count">0</span>)
@@ -240,7 +243,7 @@
       `).join('');
     }
 
-    // 事件控制
+    // イベント制御
     function setGrade(g) {
       activeGrades = [];
       render();
@@ -263,7 +266,7 @@
         s.score++;
         saveData();
 
-        // 動畫 (+1)
+        // アニメーション (+1)
         const rect = e.currentTarget.getBoundingClientRect();
         const x = (e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left + 50)) - rect.left;
         const y = (e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : rect.top + 50)) - rect.top;
@@ -296,9 +299,18 @@
       }
     }
 
-    // Modal 與按鈕綁定
+    // Modal とボタンのバインド
     document.getElementById('btn-add-class').onclick = () => document.getElementById('modal-batch').classList.remove('hidden');
     document.getElementById('btn-absent').onclick = () => document.getElementById('modal-absent').classList.remove('hidden');
+    
+    // 点数一括リセットボタン
+    document.getElementById('btn-reset-scores').onclick = () => {
+      if (confirm('Are you sure you want to reset all scores to 0?')) {
+        students.forEach(s => s.score = 0);
+        saveData();
+      }
+    };
+
     document.getElementById('btn-manage').onclick = () => {
       isEditMode = !isEditMode;
       document.getElementById('btn-manage').innerText = isEditMode ? '✓ Done' : '⚙️ Manage';
@@ -333,7 +345,7 @@
       saveData();
     };
 
-    // 初始化執行
+    // 初期化実行
     render();
   </script>
 </body>
