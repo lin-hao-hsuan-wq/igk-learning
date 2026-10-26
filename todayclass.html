@@ -52,14 +52,17 @@
       background-color: rgba(37, 99, 235, 0.08) !important;
     }
 
+    /* 學生名牌：字體顯著放大 3 級距，並加強觸控與拖曳點擊感 */
     .student-badge {
       display: inline-block;
       cursor: grab;
       transition: all 0.15s ease;
-      line-height: 1.35;
-      padding: 1px 3px;
-      margin: 1px 0;
-      border-radius: 3px;
+      line-height: 1.4;
+      font-size: 1.15rem; /* 放大約3個字元級距，清晰大字 */
+      font-weight: 700;
+      padding: 2px 6px;
+      margin: 2px 1px;
+      border-radius: 4px;
     }
     .student-badge:hover {
       background-color: rgba(0, 0, 0, 0.09);
@@ -70,9 +73,9 @@
     /* 點擊請假/休息改為純紅字，不要畫線 */
     .student-badge.absent {
       color: #e53935 !important;
-      font-weight: 700 !important;
+      font-weight: 800 !important;
       text-decoration: none !important;
-      background-color: rgba(229, 57, 53, 0.1);
+      background-color: rgba(229, 57, 53, 0.12);
     }
 
     /* 滾動條美化 */
@@ -142,6 +145,66 @@
       </div>
     </div>
   </main>
+
+  <!-- 日曆點選日期對話框 (カレンダー選択 Modal) -->
+  <div id="dateModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-100">
+      <div class="flex justify-between items-center mb-3 pb-2 border-b">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+            <i class="fa-regular fa-calendar-days"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800">日付カレンダー選択</h3>
+            <p class="text-xs text-slate-500">カレンダーをクリックするだけで自動入力されます</p>
+          </div>
+        </div>
+        <button id="closeDateModalBtn" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- 快捷點選列 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">ワンクリック設定：</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="setThisWeekMonBtn" class="px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-1">
+              <i class="fa-solid fa-calendar-week"></i> 今週の月曜日を基準
+            </button>
+            <button type="button" id="setNextWeekMonBtn" class="px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 flex items-center justify-center gap-1">
+              <i class="fa-solid fa-forward"></i> 来週の月曜日を基準
+            </button>
+          </div>
+        </div>
+
+        <!-- 日曆選擇器 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">カレンダーから日付を選択：</label>
+          <input type="date" id="calendarDatePicker" class="w-full border-2 border-blue-400 rounded-lg p-2.5 text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/30">
+          <p id="pickerPreviewText" class="text-xs font-semibold text-blue-700 mt-1.5 min-h-[18px]"></p>
+        </div>
+
+        <!-- 一鍵更新全週（月〜金）核取方塊 -->
+        <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs">
+          <label class="flex items-start gap-2.5 cursor-pointer text-amber-950 font-bold leading-snug">
+            <input type="checkbox" id="syncWholeWeekCheckbox" checked class="w-4 h-4 text-amber-600 mt-0.5 rounded">
+            <span>
+              月曜日〜金曜日の全曜日を一括自動計算する（推奨）
+              <span class="block text-[11px] font-normal text-amber-800 mt-0.5">
+                ※選択した日付の週（月〜金）の日付を自動計算し、1回で全曜日の表示を同時に更新します。
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <button type="button" id="cancelDateModalBtn" class="px-4 py-2 text-xs md:text-sm rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">キャンセル</button>
+          <button type="button" id="applyDateModalBtn" class="px-4 py-2 text-xs md:text-sm rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i> 日付を反映する
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 單一新增學生對話框 (生徒追加 Modal) -->
   <div id="addModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden p-4">
@@ -1483,7 +1546,7 @@
 
           // 渲染學生清單 (依年級 G1~G6 整理)
           const studentsDiv = document.createElement('div');
-          studentsDiv.className = 'flex-1 text-xs md:text-sm font-semibold text-slate-900 leading-relaxed';
+          studentsDiv.className = 'flex-1 text-sm md:text-base font-semibold text-slate-900 leading-relaxed';
 
           if (cellData.students && cellData.students.length > 0) {
             const sortedStudents = sortStudentsByGrade(cellData.students);
@@ -1491,7 +1554,7 @@
 
             if (isRaz && !sortedStudents.some(s => s.grade !== 'G1' && s.grade !== 'G2' && s.grade !== 'G3')) {
               const listDiv = document.createElement('div');
-              listDiv.className = 'flex flex-col gap-0.5';
+              listDiv.className = 'flex flex-col gap-1';
               sortedStudents.forEach(stu => {
                 listDiv.appendChild(createStudentBadge(stu, periodKey, col.id));
               });
@@ -1506,22 +1569,22 @@
 
               Object.keys(groups).sort().forEach(gradeKey => {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'mt-1.5 first:mt-0';
+                groupDiv.className = 'mt-2 first:mt-0';
 
                 const gLabel = document.createElement('span');
-                gLabel.className = 'font-bold text-slate-950 block text-xs underline decoration-slate-400 mb-0.5';
+                gLabel.className = 'font-bold text-slate-950 block text-xs md:text-sm underline decoration-slate-400 mb-0.5';
                 gLabel.textContent = gradeKey;
                 groupDiv.appendChild(gLabel);
 
                 const namesContainer = document.createElement('div');
-                namesContainer.className = 'flex flex-wrap items-center gap-x-1 gap-y-0.5';
+                namesContainer.className = 'flex flex-wrap items-center gap-x-1.5 gap-y-1';
 
                 groups[gradeKey].forEach((stu, idx) => {
                   namesContainer.appendChild(createStudentBadge(stu, periodKey, col.id));
                   if (idx < groups[gradeKey].length - 1) {
                     const comma = document.createElement('span');
                     comma.textContent = ',';
-                    comma.className = 'text-slate-600 mr-1 select-none';
+                    comma.className = 'text-slate-600 text-base font-bold mr-1 select-none';
                     namesContainer.appendChild(comma);
                   }
                 });
@@ -1762,16 +1825,77 @@
       };
     }
 
-    // ===== 日期修改 Modal =====
+    // ===== 日期日曆點選式選擇器 (Calendar Date Picker) Modal =====
     function setupDateModal() {
       const modal = document.getElementById('dateModal');
       const closeBtn = document.getElementById('closeDateModalBtn');
       const cancelBtn = document.getElementById('cancelDateModalBtn');
-      const saveBtn = document.getElementById('saveDateModalBtn');
-      const textarea = document.getElementById('dateInputText');
+      const applyBtn = document.getElementById('applyDateModalBtn');
+      const datePicker = document.getElementById('calendarDatePicker');
+      const previewText = document.getElementById('pickerPreviewText');
+      const syncWholeWeek = document.getElementById('syncWholeWeekCheckbox');
+
+      const thisWeekBtn = document.getElementById('setThisWeekMonBtn');
+      const nextWeekBtn = document.getElementById('setNextWeekMonBtn');
+
+      // 取得週一日期物件
+      function getMondayOf(dateObj) {
+        const d = new Date(dateObj);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 星期日為 0，調整至該週週一
+        return new Date(d.setDate(diff));
+      }
+
+      function formatDateToISO(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function updatePreview() {
+        if (!datePicker.value) {
+          previewText.textContent = '';
+          return;
+        }
+        const [y, m, d] = datePicker.value.split('-').map(Number);
+        const chosen = new Date(y, m - 1, d);
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayLabels = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+        const dayIdx = chosen.getDay();
+
+        if (syncWholeWeek.checked) {
+          const monday = getMondayOf(chosen);
+          const friday = new Date(monday);
+          friday.setDate(monday.getDate() + 4);
+          previewText.textContent = `🗓 対象週：${monday.getMonth() + 1}/${monday.getDate()}(月) 〜 ${friday.getMonth() + 1}/${friday.getDate()}(金) の全5日を一括更新します`;
+        } else {
+          previewText.textContent = `🗓 選択日：${m}/${d} (${dayLabels[dayIdx]} / ${dayNames[dayIdx]})`;
+        }
+      }
+
+      datePicker.addEventListener('input', updatePreview);
+      syncWholeWeek.addEventListener('change', updatePreview);
+
+      thisWeekBtn.onclick = () => {
+        const mon = getMondayOf(new Date());
+        datePicker.value = formatDateToISO(mon);
+        updatePreview();
+      };
+
+      nextWeekBtn.onclick = () => {
+        const mon = getMondayOf(new Date());
+        mon.setDate(mon.getDate() + 7);
+        datePicker.value = formatDateToISO(mon);
+        updatePreview();
+      };
 
       openDateModal = function() {
-        textarea.value = appState[currentDay].dateStr;
+        // 預設填入今天或當前週的週一
+        const today = new Date();
+        const mon = getMondayOf(today);
+        datePicker.value = formatDateToISO(mon);
+        updatePreview();
         modal.classList.remove('hidden');
       };
       window.openDateModal = openDateModal;
@@ -1782,11 +1906,60 @@
       closeBtn.onclick = closeModal;
       cancelBtn.onclick = closeModal;
 
-      saveBtn.onclick = () => {
-        if (textarea.value.trim()) {
-          appState[currentDay].dateStr = textarea.value.trim();
-          renderTable();
+      applyBtn.onclick = () => {
+        if (!datePicker.value) {
+          closeModal();
+          return;
         }
+
+        const [y, m, d] = datePicker.value.split('-').map(Number);
+        const chosen = new Date(y, m - 1, d);
+
+        if (syncWholeWeek.checked) {
+          // 計算週一到週五的日期並直接一次同步至全週 5 天
+          const monday = getMondayOf(chosen);
+          const weekKeys = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+          weekKeys.forEach((key, index) => {
+            const currentDayDate = new Date(monday);
+            currentDayDate.setDate(monday.getDate() + index);
+
+            const monthStr = currentDayDate.getMonth() + 1;
+            const dateStr = currentDayDate.getDate();
+            const fullDateStr = `${monthStr}/${dateStr}`;
+
+            // 更新課表主資料庫
+            if (appState[key]) {
+              appState[key].dateStr = `(${key})\n${fullDateStr}`;
+            }
+
+            // 更新頂部星期按鈕上的副標題
+            const dayObj = DAYS.find(item => item.key === key);
+            if (dayObj) {
+              dayObj.sub = fullDateStr;
+            }
+          });
+
+          renderDayButtons();
+          renderTable();
+          showToast(`📅 週一〜週五的日期已全部自動計算並更新完畢！`);
+        } else {
+          // 僅更新當前顯示的這一天
+          const monthStr = chosen.getMonth() + 1;
+          const dateStr = chosen.getDate();
+          const dayName = currentDay;
+          appState[currentDay].dateStr = `(${dayName})\n${monthStr}/${dateStr}`;
+
+          const dayObj = DAYS.find(item => item.key === currentDay);
+          if (dayObj) {
+            dayObj.sub = `${monthStr}/${dateStr}`;
+          }
+
+          renderDayButtons();
+          renderTable();
+          showToast(`📅 ${dayObj?.label || '本日'} 的日期已更新！`);
+        }
+
         closeModal();
       };
     }
