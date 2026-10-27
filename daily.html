@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生徒情報管理手帳 - 六甲校</title>
+  <!-- Google Fonts: 日系可愛手繪手帳字體 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- SheetJS 函式庫：用於在瀏覽器端直接產生與下載 .xlsx 檔案 -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-paper: #fbf8f3;
+      --card-bg: #ffffff;
+      --pencil-color: #4a3e3d;
+      --pastel-pink: #ffe5ec;
+      --pastel-pink-dark: #ffb3c6;
+      --pastel-yellow: #fff3cd;
+      --pastel-yellow-dark: #ffe69c;
+      --pastel-blue: #e0f2fe;
+      --pastel-blue-dark: #bae6fd;
+      --pastel-green: #e8f5e9;
+      --pastel-green-dark: #c8e6c9;
+      --pastel-purple: #f3e8ff;
+      --pastel-purple-dark: #e9d5ff;
+      --tape-color: rgba(255, 235, 150, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Zen Maru Gothic', sans-serif;
+      color: var(--pencil-color);
+    }
+
+    body {
+      background-color: var(--bg-paper);
+      background-image: 
+        radial-gradient(#e5dec9 1px, transparent 1px);
+      background-size: 20px 20px;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* 手繪風格大標題與裝飾 */
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .title-banner {
+      display: inline-block;
+      background: #ffffff;
+      padding: 10px 32px;
+      border: 2px solid var(--pencil-color);
+      border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+      box-shadow: 3px 3px 0 var(--pencil-color);
+      position: relative;
+    }
+
+    .tape {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-2deg);
+      width: 110px;
+      height: 24px;
+      background: var(--tape-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    /* 分頁標籤 (Tabs) */
+    .tabs-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: -2px;
+      padding-left: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: #eee7db;
+      border: 2px solid var(--pencil-color);
+      border-bottom: none;
+      border-radius: 16px 16px 0 0;
+      padding: 10px 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--card-bg);
+      transform: translateY(-2px);
+    }
+
+    /* 內容主卡片 */
+    .content-box {
+      background: var(--card-bg);
+      border: 2.5px solid var(--pencil-color);
+      border-radius: 18px;
+      box-shadow: 4px 5px 0 var(--pencil-color);
+      padding: 24px;
+      min-height: 520px;
+    }
+
+    /* 工具按鈕區 */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      background: var(--pastel-yellow);
+      border: 2px solid var(--pencil-color);
+      border-radius: 20px 8px 18px 6px;
+      padding: 8px 16px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--pencil-color);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.1s ease;
+    }
+
+    .btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--pencil-color);
+    }
+
+    .btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0 0 0 var(--pencil-color);
+    }
+
+    .btn-pink { background: var(--pastel-pink); }
+    .btn-blue { background: var(--pastel-blue); }
+    .btn-green { background: var(--pastel-green); }
+    .btn-danger { background: #ffccd5; }
+
+    /* 表格設計 */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 2px solid var(--pencil-color);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 0.88rem;
+      background: white;
+      white-space: nowrap;
+    }
+
+    th, td {
+      border: 1px solid #d3c9be;
+      padding: 8px 10px;
+    }
+
+    th {
+      background-color: #f7ede2;
+      font-weight: 700;
+      border-bottom: 2px solid var(--pencil-color);
+    }
+
+    tr:nth-child(even) td {
+      background-color: #faf7f2;
+    }
+
+    tr:hover td {
+      background-color: #fff9e6;
+    }
+
+    /* 輸入格與切換按鈕 */
+    input[type="text"], select, textarea {
+      border: 1.5px solid #a89c90;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.85rem;
+      outline: none;
+      background: #ffffff;
+      width: 100%;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--pencil-color);
+      background: #fffdf5;
+    }
+
+    .clickable-badge {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      line-height: 24px;
+      border-radius: 50%;
+      border: 1.5px solid var(--pencil-color);
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      background: white;
+    }
+
+    .clickable-badge.active {
+      background: #ffb3c6;
+      color: #333;
+    }
+
+    /* 考試狀態合格樣式 */
+    .pass-tag {
+      color: #2b8a3e;
+      font-weight: 700;
+    }
+
+    .fail-tag {
+      color: #c92a2a;
+      font-weight: 700;
+    }
+
+    /* 標籤貼紙樣式 (備考) */
+    .allergy-badge {
+      display: inline-block;
+      background: #ffe3e3;
+      border: 1px solid #ffa8a8;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #c92a2a;
+      margin-right: 4px;
+    }
+
+    /* 彈跳視窗 (批次新增) */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.35);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 3px solid var(--pencil-color);
+      border-radius: 20px;
+      box-shadow: 6px 6px 0 var(--pencil-color);
+      width: 100%;
+      max-width: 650px;
+      padding: 24px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="title-banner">
+      <div class="tape"></div>
+      <h1>🌸 六甲校 生徒情報管理手帳</h1>
+    </div>
+  </header>
+
+  <!-- 分頁選單 -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab(1)">🏷️ 1. 基本・送迎</button>
+    <button class="tab-btn" onclick="switchTab(2)">📝 2. 検定・試験</button>
+    <button class="tab-btn" onclick="switchTab(3)">📌 3. 備考・健康メモ</button>
+    <button class="tab-btn" onclick="switchTab(4)">📥 4. Excel 匯出</button>
+  </div>
+
+  <div class="content-box">
+    <!-- ==================== 第一分頁：基本・送迎 ==================== -->
+    <div id="tab1">
+      <div class="action-bar">
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-blue" onclick="openBatchModal()">➕ 批次新增學生 (一括追加)</button>
+          <button class="btn btn-danger" onclick="deleteSelectedStudents()">🗑️ 刪除勾選學生</button>
+        </div>
+        <span style="font-size:0.85rem; color:#776c64;">※ 點選星期或點心圓圈可直接切換（〇 / 空白）</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 36px;"><input type="checkbox" onchange="toggleSelectAll(this)"></th>
+              <th>性別</th>
+              <th>学年</th>
+              <th>名前 (漢字)</th>
+              <th>Name (羅馬字)</th>
+              <th>生年月日</th>
+              <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th>
+              <th>Ⓢ (おやつ)</th>
+              <th>往路</th>
+              <th>復路</th>
+            </tr>
+          </thead>
+          <tbody id="tab1-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== 第二分頁：検定・試験 ==================== -->
+    <div id="tab2" class="hidden">
+      <div class="action-bar">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-green" onclick="addNewTestColumn()">➕ 新增考試日期 (試験日追加)</button>
+          <span style="font-size:0.85rem; color:#776c64;">※ 點選每一格直接輸入，內容會自動即時儲存</span>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead id="tab2-thead"></thead>
+          <tbody id="tab2-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== 第三分頁：備考・健康メモ ==================== -->
+    <div id="tab3" class="hidden">
+      <div class="action-bar">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <label style="font-weight:700;">🔍 關鍵字搜尋：</label>
+          <input type="text" id="notes-search" placeholder="搜尋過敏、體質、姓名..." oninput="renderTab3()" style="width: 220px;">
+        </div>
+        <span style="font-size:0.85rem; color:#776c64;">※ 若包含「アレルギー/喘息/体質」將自動醒目標記</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px;">性別</th>
+              <th style="width: 60px;">学年</th>
+              <th style="width: 140px;">名前 (漢字)</th>
+              <th style="width: 150px;">Name (羅馬字)</th>
+              <th>備考・注意事項メモ (直接點擊編輯)</th>
+            </tr>
+          </thead>
+          <tbody id="tab3-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== 第四分頁：Excel 匯出 ==================== -->
+    <div id="tab4" class="hidden">
+      <div style="max-width: 580px; margin: 30px auto; text-align: center; background: #fffcf5; border: 2px dashed #b8aba0; border-radius: 16px; padding: 32px 20px;">
+        <h2 style="font-size: 1.3rem; margin-bottom: 12px;">📅 月別・送迎表 Excel (.xlsx) 匯出</h2>
+        <p style="font-size: 0.9rem; color: #6d6259; margin-bottom: 24px; line-height: 1.6;">
+          系統將自動根據您設定的各星期出席狀況，依據所選月份生成整月份（每天一頁 Sheet）的每日送迎與點心名冊檔案。
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 24px;">
+          <div>
+            <label style="font-weight: 700; margin-right: 6px;">西元年份：</label>
+            <input type="number" id="export-year" value="2026" style="width: 100px; text-align: center;">
+          </div>
+          <div>
+            <label style="font-weight: 700; margin-right: 6px;">月份：</label>
+            <select id="export-month" style="width: 90px; text-align: center;">
+              <option value="1">1 月</option><option value="2">2 月</option><option value="3">3 月</option>
+              <option value="4">4 月</option><option value="5">5 月</option><option value="6">6 月</option>
+              <option value="7">7 月</option><option value="8">8 月</option><option value="9">9 月</option>
+              <option value="10">10 月</option><option value="11" selected>11 月</option><option value="12">12 月</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-pink" onclick="exportToExcel()" style="padding: 12px 28px; font-size: 1.05rem;">
+          📥 下載完整整月份 Excel 檔 (.xlsx)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批次新增彈跳視窗 -->
+<div id="batch-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 style="margin-bottom: 12px; font-size: 1.15rem;">➕ 批次新增學生 (CSV 格式)</h3>
+    <p style="font-size: 0.85rem; color: #665b53; margin-bottom: 8px;">
+      每行一位學生，以半形逗號分隔：<br>
+      <code>性別,学年,漢字名,羅馬名,生日,出席星期(例:月火水),點心(〇/無),往路,復路,考試備註,一般備註</code>
+    </p>
+    <textarea id="batch-input" rows="8" placeholder="女,G1,石原 瑛茉,Emma Ishihara,2019/12/19,火金,〇,A,,英検5級合格,特記事項なし
+男,G1,岩瀬 広真,Kouma Iwase,2019/9/27,火水,,, ,10級合格,保育園英語経験あり" style="font-family: monospace;"></textarea>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+      <button class="btn" onclick="closeBatchModal()">取消</button>
+      <button class="btn btn-green" onclick="handleBatchSubmit()">確認匯入</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 預設資料：整合原試算表中的學生真實名冊與資訊
+  const DEFAULT_STUDENTS = [
+    { id: 1, gender: "女", grade: "G1", name_kanji: "石原 瑛茉", name_romaji: "Emma Ishihara", dob: "2019/12/19", days: ["火", "金"], snack: true, transport_out: "A", transport_in: "", tests: {"初回2024/6": "10級合格", "2025/2": "9級合格", "2025/6": "5級合格"}, notes: "幼稚園で週3回の英語学習のみ。特記事項なし" },
+    { id: 2, gender: "男", grade: "G1", name_kanji: "岩瀬 広真", name_romaji: "Kouma Iwase", dob: "2019/9/27", days: ["火", "水"], snack: false, transport_out: "", transport_in: "", tests: {"初回2024/6": "10級合格", "2025/2": "9級合格"}, notes: "保育園の英語の授業で簡単な会話" },
+    { id: 3, gender: "女", grade: "G1", name_kanji: "鹿島 美咲", name_romaji: "Misaki Kashima", dob: "2019/8/4", days: ["月", "水", "金"], snack: true, transport_out: "A", transport_in: "", tests: {"初回2024/6": "9級合格", "2025/2": "8級合格"}, notes: "特記事項なし" },
+    { id: 4, gender: "女", grade: "G1", name_kanji: "重安 こころ", name_romaji: "Kokoro Shigeyasu", dob: "2019/8/8", days: ["火", "木"], snack: false, transport_out: "", transport_in: "", tests: {"初回2024/6": "10級不合格", "2025/2": "9級合格"}, notes: "【体質】右足に生まれつきのアザ。靴下の下にストッキング着用" },
+    { id: 5, gender: "男", grade: "G1", name_kanji: "福田 悠晴", name_romaji: "Yusei Fukuda", dob: "2019/4/17", days: ["金"], snack: false, transport_out: "A", transport_in: "A", tests: {}, notes: "【健康】喘息あり。季節の変わり目は咳に注意" },
+    { id: 6, gender: "女", grade: "G1", name_kanji: "山本 夕緋", name_romaji: "Yuuhi Yamamoto", dob: "2020/3/6", days: ["月", "木", "金"], snack: false, transport_out: "A", transport_in: "", tests: {"初回2024/6": "9級合格"}, notes: "【アレルギー】乳糖不耐症(牛乳×、料理やおやつ等の加工品はOK)" },
+    { id: 7, gender: "男", grade: "G1", name_kanji: "慈 恵俊", name_romaji: "Eshun Utsumi", dob: "2020/1/10", days: ["月"], snack: false, transport_out: "A", transport_in: "", tests: {}, notes: "【重要アレルギー】くるみ・ピーカンナッツアレルギーあり。呼吸注意" },
+    { id: 8, gender: "女", grade: "G2", name_kanji: "坂井 緋夏", name_romaji: "Hina Sakai", dob: "2018/9/12", days: ["木", "金"], snack: true, transport_out: "A", transport_in: "A", tests: {"初回2024/6": "9級合格"}, notes: "【体質】暑いと鼻血が出やすいので夏場や運動後は見守り" },
+    { id: 9, gender: "男", grade: "G3", name_kanji: "王 光希", name_romaji: "Koki Oh", dob: "2017/5/22", days: ["木"], snack: false, transport_out: "", transport_in: "", tests: {"初回2024/6": "7級合格", "2025/2": "5級合格", "2025/9": "1級合格", "2024/9": "5級合格", "2025/1": "4級合格", "2025/6": "3級合格"}, notes: "英検3級取得済み" },
+    { id: 10, gender: "女", grade: "G3", name_kanji: "井上 綸七", name_romaji: "Kanna Inoue", dob: "2017/11/1", days: ["月", "火", "水", "木"], snack: true, transport_out: "A", transport_in: "A", tests: {"初回2024/6": "10級合格", "2025/2": "9級合格", "2025/9": "7級合格"}, notes: "感冒時に喘息咳あり" },
+    { id: 11, gender: "女", grade: "G6", name_kanji: "春日 更咲", name_romaji: "Sarasa Kasuga", dob: "2014/5/21", days: ["火", "水"], snack: false, transport_out: "", transport_in: "", tests: {"初回2024/6": "10級合格", "2025/1": "3級合格"}, notes: "【アレルギー】卵アレルギー(完全に火が通っていれば可)" }
+  ];
+
+  const DEFAULT_TEST_COLS = ["初回2024/6", "2025/2", "2025/9", "英検2024/1", "英検2024/6", "2024/9", "2025/1", "2025/6"];
+
+  // 讀取本地儲存或初始化
+  let students = JSON.parse(localStorage.getItem('student_records')) || DEFAULT_STUDENTS;
+  let testColumns = JSON.parse(localStorage.getItem('test_columns')) || DEFAULT_TEST_COLS;
+
+  function saveData() {
+    localStorage.setItem('student_records', JSON.stringify(students));
+    localStorage.setItem('test_columns', JSON.stringify(testColumns));
+  }
+
+  // 切換分頁
+  function switchTab(tabIndex) {
+    document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+      btn.classList.toggle('active', idx === tabIndex - 1);
+    });
+    document.getElementById('tab1').classList.toggle('hidden', tabIndex !== 1);
+    document.getElementById('tab2').classList.toggle('hidden', tabIndex !== 2);
+    document.getElementById('tab3').classList.toggle('hidden', tabIndex !== 3);
+    document.getElementById('tab4').classList.toggle('hidden', tabIndex !== 4);
+
+    if (tabIndex === 1) renderTab1();
+    if (tabIndex === 2) renderTab2();
+    if (tabIndex === 3) renderTab3();
+  }
+
+  // 渲染分頁 1
+  function renderTab1() {
+    const tbody = document.getElementById('tab1-tbody');
+    tbody.innerHTML = '';
+    const daysList = ['月', '火', '水', '木', '金'];
+
+    students.forEach(s => {
+      const tr = document.createElement('tr');
+      let daysHtml = daysList.map(d => {
+        const hasDay = s.days.includes(d);
+        return `<td><span class="clickable-badge ${hasDay ? 'active' : ''}" onclick="toggleDay(${s.id}, '${d}')">${hasDay ? '〇' : ''}</span></td>`;
+      }).join('');
+
+      tr.innerHTML = `
+        <td><input type="checkbox" class="student-select" data-id="${s.id}"></td>
+        <td>${s.gender}</td>
+        <td><strong>${s.grade}</strong></td>
+        <td>${s.name_kanji}</td>
+        <td>${s.name_romaji}</td>
+        <td>${s.dob}</td>
+        ${daysHtml}
+        <td><span class="clickable-badge ${s.snack ? 'active' : ''}" onclick="toggleSnack(${s.id})">${s.snack ? '〇' : ''}</span></td>
+        <td><input type="text" value="${s.transport_out || ''}" style="width:40px; text-align:center;" onchange="updateTransport(${s.id}, 'out', this.value)"></td>
+        <td><input type="text" value="${s.transport_in || ''}" style="width:40px; text-align:center;" onchange="updateTransport(${s.id}, 'in', this.value)"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function toggleDay(id, day) {
+    const s = students.find(item => item.id === id);
+    if (!s) return;
+    if (s.days.includes(day)) {
+      s.days = s.days.filter(d => d !== day);
+    } else {
+      s.days.push(day);
+    }
+    saveData();
+    renderTab1();
+  }
+
+  function toggleSnack(id) {
+    const s = students.find(item => item.id === id);
+    if (!s) return;
+    s.snack = !s.snack;
+    saveData();
+    renderTab1();
+  }
+
+  function updateTransport(id, type, val) {
+    const s = students.find(item => item.id === id);
+    if (!s) return;
+    if (type === 'out') s.transport_out = val.trim();
+    if (type === 'in') s.transport_in = val.trim();
+    saveData();
+  }
+
+  function toggleSelectAll(masterCb) {
+    document.querySelectorAll('.student-select').forEach(cb => cb.checked = masterCb.checked);
+  }
+
+  function deleteSelectedStudents() {
+    const checked = Array.from(document.querySelectorAll('.student-select:checked')).map(cb => parseInt(cb.dataset.id));
+    if (checked.length === 0) return alert('請先勾選欲刪除的學生！');
+    if (!confirm(`確定要刪除選取的 ${checked.length} 位學生資料嗎？`)) return;
+
+    students = students.filter(s => !checked.includes(s.id));
+    saveData();
+    renderTab1();
+  }
+
+  // 渲染分頁 2 (考試動態欄位)
+  function renderTab2() {
+    const thead = document.getElementById('tab2-thead');
+    const tbody = document.getElementById('tab2-tbody');
+
+    let headerHtml = `
+      <tr>
+        <th style="width: 50px;">性別</th>
+        <th style="width: 60px;">学年</th>
+        <th style="width: 140px;">名前 (漢字)</th>
+        <th style="width: 150px;">Name (羅馬字)</th>
+    `;
+    testColumns.forEach(col => {
+      headerHtml += `<th style="background:#eaf2f8;">${col}</th>`;
+    });
+    headerHtml += `</tr>`;
+    thead.innerHTML = headerHtml;
+
+    tbody.innerHTML = '';
+    students.forEach(s => {
+      const tr = document.createElement('tr');
+      let colsHtml = testColumns.map(col => {
+        const val = (s.tests && s.tests[col]) || '';
+        return `<td><input type="text" value="${val}" onchange="updateTestScore(${s.id}, '${col}', this.value)" style="text-align:center;"></td>`;
+      }).join('');
+
+      tr.innerHTML = `
+        <td>${s.gender}</td>
+        <td><strong>${s.grade}</strong></td>
+        <td>${s.name_kanji}</td>
+        <td>${s.name_romaji}</td>
+        ${colsHtml}
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addNewTestColumn() {
+    const colName = prompt('請輸入欲新增的考試日期或項目名稱（例如：2026/11、英検2026/10）：');
+    if (!colName || colName.trim() === '') return;
+    if (testColumns.includes(colName.trim())) return alert('該考試欄位已存在！');
+
+    testColumns.push(colName.trim());
+    saveData();
+    renderTab2();
+  }
+
+  function updateTestScore(id, colName, value) {
+    const s = students.find(item => item.id === id);
+    if (!s) return;
+    if (!s.tests) s.tests = {};
+    s.tests[colName] = value.trim();
+    saveData();
+  }
+
+  // 渲染分頁 3 (備註與健康提醒)
+  function renderTab3() {
+    const tbody = document.getElementById('tab3-tbody');
+    const keyword = (document.getElementById('notes-search').value || '').trim().toLowerCase();
+    tbody.innerHTML = '';
+
+    students.forEach(s => {
+      const noteText = s.notes || '';
+      if (keyword && !s.name_kanji.includes(keyword) && !s.name_romaji.toLowerCase().includes(keyword) && !noteText.toLowerCase().includes(keyword)) {
+        return;
+      }
+
+      const isWarning = noteText.includes('アレルギー') || noteText.includes('喘息') || noteText.includes('体質') || noteText.includes('重要');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.gender}</td>
+        <td><strong>${s.grade}</strong></td>
+        <td>${s.name_kanji}</td>
+        <td>${s.name_romaji}</td>
+        <td style="text-align: left; display:flex; align-items:center; gap:6px;">
+          ${isWarning ? '<span class="allergy-badge">⚠️ 注意</span>' : ''}
+          <input type="text" value="${noteText}" onchange="updateNotes(${s.id}, this.value)" style="flex:1;">
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateNotes(id, val) {
+    const s = students.find(item => item.id === id);
+    if (!s) return;
+    s.notes = val.trim();
+    saveData();
+  }
+
+  // 批次新增 Modal
+  function openBatchModal() { document.getElementById('batch-modal').classList.remove('hidden'); }
+  function closeBatchModal() { document.getElementById('batch-modal').classList.add('hidden'); }
+
+  function handleBatchSubmit() {
+    const text = document.getElementById('batch-input').value.trim();
+    if (!text) return closeBatchModal();
+
+    const lines = text.split('\n');
+    let maxId = students.reduce((max, s) => Math.max(max, s.id), 0);
+
+    lines.forEach(line => {
+      const p = line.split(',').map(item => item.trim());
+      if (p.length >= 4) {
+        maxId++;
+        const gender = p[0] || '女';
+        const grade = p[1] || 'G1';
+        const name_kanji = p[2] || '';
+        const name_romaji = p[3] || '';
+        const dob = p[4] || '';
+        const daysStr = p[5] || '';
+        const days = ['月','火','水','木','金'].filter(d => daysStr.includes(d));
+        const snack = (p[6] === '〇' || p[6] === 'O' || p[6] === 'true');
+        const transport_out = p[7] || '';
+        const transport_in = p[8] || '';
+        const testNote = p[9] || '';
+        const note = p[10] || '';
+
+        students.push({
+          id: maxId,
+          gender, grade, name_kanji, name_romaji, dob,
+          days, snack, transport_out, transport_in,
+          tests: testNote ? { "初回2024/6": testNote } : {},
+          notes: note
+        });
+      }
+    });
+
+    saveData();
+    renderTab1();
+    closeBatchModal();
+    document.getElementById('batch-input').value = '';
+    alert('成功批次匯入學生名單！');
+  }
+
+  // 匯出 Excel (使用 SheetJS 產生符合截圖的每日分頁)
+  function exportToExcel() {
+    const year = parseInt(document.getElementById('export-year').value);
+    const month = parseInt(document.getElementById('export-month').value);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+    const wb = XLSX.utils.book_new();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month - 1, day);
+      const dayStr = dayNames[dateObj.getDay()];
+
+      // 篩選當日出席學生 (依年級排序)
+      const dayStudents = students.filter(s => s.days.includes(dayStr));
+      dayStudents.sort((a, b) => a.grade.localeCompare(b.grade));
+
+      const snackCount = dayStudents.filter(s => s.snack).length;
+
+      // 構建與截圖完全一致的表格結構
+      const ws_data = [
+        ["", `${month}/${day}`, dayStr, "", "15", "11", `スナック ${snackCount}人`, "", ""],
+        ["", "Name", "学年", "到着予定", "Ⓛ", "Ⓢ", "往路", "復路", "Memo"]
+      ];
+
+      dayStudents.forEach((s, idx) => {
+        ws_data.push([
+          idx + 1,
+          s.name_romaji,
+          s.grade,
+          "",
+          "",
+          s.snack ? "〇" : "",
+          s.transport_out || "",
+          s.transport_in || "",
+          ""
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+      // 設定欄寬確保 Excel 乾淨整齊
+      ws['!cols'] = [
+        { wch: 4 },  // 編號
+        { wch: 22 }, // Name
+        { wch: 6 },  // 学年
+        { wch: 9 },  // 到着予定
+        { wch: 5 },  // Ⓛ
+        { wch: 5 },  // Ⓢ
+        { wch: 6 },  // 往路
+        { wch: 6 },  // 復路
+        { wch: 24 }  // Memo
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, `${month}月${day}日`);
+    }
+
+    XLSX.writeFile(wb, `${year}年${month}月_送迎表.xlsx`);
+  }
+
+  // 初始化啟動
+  renderTab1();
+</script>
+</body>
+</html>
