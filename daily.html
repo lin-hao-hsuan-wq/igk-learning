@@ -145,6 +145,14 @@
             <option value="10">10 月</option><option value="11" selected>11 月</option><option value="12">12 月</option>
           </select> 月
         </div>
+        <div style="text-align:left; font-size:0.9rem; margin: 0 auto 18px; max-width: 460px;">
+          <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+            <input type="checkbox" id="skip-holidays" checked onchange="renderHolidayPreview()"> 跳過週六・週日與日本國定假日
+          </label>
+          <label style="display:block; margin-bottom:4px;">其他休校日（日期用逗號分隔，例：29,30,31）</label>
+          <input type="text" id="extra-closed" placeholder="例：29,30,31" oninput="renderHolidayPreview()">
+          <div id="holiday-preview" style="margin-top:10px; font-size:0.82rem; color:#776c64; line-height:1.6;"></div>
+        </div>
         <button class="btn btn-pink" onclick="exportToExcel()">📥 下載整月份 Excel 檔 (.xlsx)</button>
       </div>
     </div>
@@ -373,14 +381,88 @@
     saveData(); closeBatchModal(); document.getElementById('batch-input').value=''; alert('匯入完成！'); switchTab(1);
   }
 
+  // === 日本の祝日（内閣府の祝日法ルールで計算、2020年以降対応） ===
+  function nthMonday(y, m, n) { // m: 1-12
+    let first = new Date(y, m-1, 1).getDay();
+    return 1 + ((8 - first) % 7) + (n-1)*7;
+  }
+  function japaneseHolidays(y) {
+    const h = {}; // 'M/D' -> 名前
+    const add = (m, d, name) => { h[`${m}/${d}`] = name; };
+    const k = y - 1980;
+    add(1, 1, '元日');
+    add(1, nthMonday(y, 1, 2), '成人の日');
+    add(2, 11, '建国記念の日');
+    add(2, 23, '天皇誕生日');
+    add(3, Math.floor(20.8431 + 0.242194*k - Math.floor(k/4)), '春分の日');
+    add(4, 29, '昭和の日');
+    add(5, 3, '憲法記念日'); add(5, 4, 'みどりの日'); add(5, 5, 'こどもの日');
+    if (y === 2020) { add(7, 23, '海の日'); add(7, 24, 'スポーツの日'); add(8, 10, '山の日'); }
+    else if (y === 2021) { add(7, 22, '海の日'); add(7, 23, 'スポーツの日'); add(8, 8, '山の日'); }
+    else { add(7, nthMonday(y, 7, 3), '海の日'); add(8, 11, '山の日'); add(10, nthMonday(y, 10, 2), 'スポーツの日'); }
+    add(9, nthMonday(y, 9, 3), '敬老の日');
+    add(9, Math.floor(23.2488 + 0.242194*k - Math.floor(k/4)), '秋分の日');
+    add(11, 3, '文化の日');
+    add(11, 23, '勤労感謝の日');
+
+    const key = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
+    const base = Object.keys(h).map(s => { const [m, d] = s.split('/').map(Number); return new Date(y, m-1, d); });
+    // 国民の休日：祝日に挟まれた平日
+    base.forEach(dt => {
+      const next2 = new Date(y, dt.getMonth(), dt.getDate()+2), mid = new Date(y, dt.getMonth(), dt.getDate()+1);
+      if (h[key(next2)] && !h[key(mid)] && mid.getDay() !== 0) h[key(mid)] = '国民の休日';
+    });
+    // 振替休日：日曜の祝日 → 次の祝日でない日
+    base.filter(dt => dt.getDay() === 0).forEach(dt => {
+      let sub = new Date(y, dt.getMonth(), dt.getDate()+1);
+      while (h[key(sub)]) sub.setDate(sub.getDate()+1);
+      h[key(sub)] = '振替休日';
+    });
+    return h;
+  }
+
+  // 該月份要跳過的日期：{日: 原因}
+  function getClosedDays(year, month) {
+    const closed = {};
+    if (!document.getElementById('skip-holidays').checked) return closed;
+    const hol = japaneseHolidays(Number(year));
+    const daysNum = new Date(year, month, 0).getDate();
+    for (let d = 1; d <= daysNum; d++) {
+      const wd = new Date(year, month-1, d).getDay();
+      if (hol[`${month}/${d}`]) closed[d] = hol[`${month}/${d}`];
+      else if (wd === 0 || wd === 6) closed[d] = wd === 0 ? '日' : '土';
+    }
+    document.getElementById('extra-closed').value.split(/[,、，\s]+/).map(Number)
+      .filter(d => d >= 1 && d <= daysNum).forEach(d => { closed[d] = closed[d] || '休校日'; });
+    return closed;
+  }
+
+  function renderHolidayPreview() {
+    const year = document.getElementById('export-year').value;
+    const month = document.getElementById('export-month').value;
+    const closed = getClosedDays(year, month);
+    const daysNum = new Date(year, month, 0).getDate();
+    const special = Object.entries(closed).filter(([, r]) => r !== '土' && r !== '日');
+    const weekendCount = Object.values(closed).filter(r => r === '土' || r === '日').length;
+    const box = document.getElementById('holiday-preview');
+    if (!document.getElementById('skip-holidays').checked) { box.textContent = `將匯出全部 ${daysNum} 天。`; return; }
+    box.innerHTML = `將匯出 <strong>${daysNum - Object.keys(closed).length}</strong> 天（跳過週末 ${weekendCount} 天` +
+      (special.length ? `，以及：${special.map(([d, r]) => `${month}/${d} ${esc(r)}`).join('、')}` : '') + '）';
+  }
+  document.getElementById('export-year').addEventListener('input', renderHolidayPreview);
+  document.getElementById('export-month').addEventListener('change', renderHolidayPreview);
+  renderHolidayPreview();
+
   function exportToExcel() {
     let year = document.getElementById('export-year').value;
     let month = document.getElementById('export-month').value;
     let daysNum = new Date(year, month, 0).getDate();
     let dayNames = ['日','月','火','水','木','金','土'];
+    let closed = getClosedDays(year, month);
 
     let wb = XLSX.utils.book_new();
     for(let d=1; d<=daysNum; d++) {
+      if (closed[d]) continue;
       let dayStr = dayNames[new Date(year, month-1, d).getDay()];
       let dayStd = students.filter(s => s.days.includes(dayStr)).sort((a,b) => a.grade.localeCompare(b.grade));
 
