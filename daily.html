@@ -104,7 +104,10 @@
     <div id="tab2" class="hidden">
       <div class="action-bar">
         <button class="btn btn-green" onclick="addNewTestColumn()">➕ 新增考試日期欄位</button>
-        <span style="font-size:0.85rem; color:#776c64;">※ 直接在格子內輸入「合格/不合格」，會自動上色並儲存</span>
+        <span style="font-size:0.85rem; color:#776c64;">
+          <span style="color:#00b4d8; font-weight:700;">■ JET</span>　<span style="color:#b46ee8; font-weight:700;">■ 英検</span>
+          ※ 越靠近姓名越新；直接在格子內輸入「合格/不合格」，會自動上色並儲存
+        </span>
       </div>
       <table id="table2">
         <thead id="tab2-thead"></thead>
@@ -317,13 +320,27 @@
   }
 
   // === 第二分頁：考試紀錄 ===
-  const bgColors = ["#48cae4", "#00b4d8", "#90e0ef", "#c77dff", "#e0aaff", "#c19ee0", "#ffc8dd", "#ffafcc"];
+  // 欄位名稱裡的「年/月」換成可排序的數字；讀不到日期的排最前面
+  function testColDate(col) {
+    const m = String(col).match(/(\d{4})\s*[\/年.\-]\s*(\d{1,2})/);
+    return m ? Number(m[1]) * 100 + Number(m[2]) : Infinity;
+  }
+  // 最新的考試放在最左邊（緊鄰姓名），同一個月 JET 在前
+  function sortTestColumns() {
+    testColumns.sort((a, b) => (testColDate(b) - testColDate(a)) || (a.startsWith('JET') ? -1 : 1));
+  }
+  function testColColor(col) {
+    if (col.startsWith('JET')) return '#00b4d8';
+    if (col.startsWith('英検')) return '#b46ee8';
+    return '#f497b6';
+  }
 
   function renderTab2() {
+    sortTestColumns();
     const thead = document.getElementById('tab2-thead');
     const tbody = document.getElementById('tab2-tbody');
     let h = `<tr><th>性別</th><th>学年</th><th>名前 (漢字)</th><th>Name (羅馬字)</th>`;
-    testColumns.forEach((col, i) => h += `<th style="background:${bgColors[i%bgColors.length]}; color:#fff; text-shadow:1px 1px 0px #333;">${esc(col)}</th>`);
+    testColumns.forEach((col, i) => h += `<th style="background:${testColColor(col)}; color:#fff; text-shadow:1px 1px 0px #333;">${i === 0 ? '🆕 ' : ''}${esc(col)}</th>`);
     thead.innerHTML = h + `</tr>`;
 
     tbody.innerHTML = students.map(s => {
@@ -339,8 +356,10 @@
 
   function updTest(id, ci, val) { let s = students.find(x=>x.id===id); if(!s.tests) s.tests={}; s.tests[testColumns[ci]]=val; saveData(); renderTab2(); }
   function addNewTestColumn() {
-    let col = prompt("輸入新考試欄位名稱 (例如：JET 2026/12、英検 2026/10)：");
-    if(col && !testColumns.includes(col)) { testColumns.push(col); saveData(); renderTab2(); }
+    let col = (prompt("輸入新考試欄位名稱，格式「種類 年/月」(例如：JET 2026/12、英検 2026/10)：") || '').trim().replace(/\s+/g, ' ');
+    if(!col) return;
+    if(testColDate(col) === Infinity) { alert('請在名稱裡寫上年/月，例如：JET 2026/12'); return; }
+    if(!testColumns.includes(col)) { testColumns.push(col); saveData(); renderTab2(); }
   }
 
   // === 第三分頁：備註 ===
