@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>生徒情報管理手帳 - 六甲校</title>
   <!-- Google Fonts: 日系可愛手繪手帳字體 -->
-  <link rel="preconnect" href="[https://fonts.googleapis.com](https://fonts.googleapis.com)">
-  <link rel="preconnect" href="[https://fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
-  <link href="[https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap](https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap)" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
   <!-- SheetJS 函式庫：用於匯出 Excel -->
-  <script src="[https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js](https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js)"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -29,6 +29,7 @@
     .title-banner { display: inline-block; background: #ffffff; padding: 10px 32px; border: 2px solid var(--pencil-color); border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; box-shadow: 3px 3px 0 var(--pencil-color); position: relative; }
     .tape { position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(-2deg); width: 110px; height: 24px; background: var(--tape-color); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; }
+    .subtitle { font-size: 0.85rem; margin-top: 4px; color: #776c64; }
     .tabs-nav { display: flex; gap: 10px; margin-bottom: -2px; padding-left: 12px; flex-wrap: wrap; }
     .tab-btn { background: #eee7db; border: 2px solid var(--pencil-color); border-bottom: none; border-radius: 16px 16px 0 0; padding: 10px 20px; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .tab-btn.active { background: var(--card-bg); padding-bottom: 12px; border-bottom: 2px solid var(--card-bg); transform: translateY(-2px); }
@@ -50,7 +51,7 @@
     input[type="text"]:focus { border-color: var(--pencil-color); background: #fffdf5; }
     .clickable-badge { display: inline-block; width: 24px; height: 24px; line-height: 22px; border-radius: 50%; border: 1.5px solid var(--pencil-color); font-weight: 700; cursor: pointer; user-select: none; background: white; }
     .clickable-badge.active { background: #ffb3c6; color: #333; }
-    .allergy-badge { background: #ffe3e3; border: 1px solid #ffa8a8; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; font-weight: 700; color: #c92a2a; margin-right: 4px; }
+    .allergy-badge { background: #ffe3e3; border: 1px solid #ffa8a8; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; font-weight: 700; color: #c92a2a; margin-right: 4px; white-space: nowrap; }
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 16px; }
     .modal-card { background: var(--card-bg); border: 3px solid var(--pencil-color); border-radius: 20px; box-shadow: 6px 6px 0 var(--pencil-color); width: 100%; max-width: 650px; padding: 24px; }
     .hidden { display: none !important; }
@@ -66,6 +67,7 @@
     <div class="title-banner">
       <div class="tape"></div>
       <h1>🌸 六甲校 生徒情報管理手帳</h1>
+      <div class="subtitle">資料來源：生徒情報一覧「2026年度11月」（78 名）</div>
     </div>
   </header>
 
@@ -84,6 +86,7 @@
           <button class="btn btn-blue" onclick="openBatchModal()">➕ 批次新增學生</button>
           <button class="btn btn-danger" onclick="deleteSelectedStudents()">🗑️ 刪除勾選學生</button>
         </div>
+        <button class="btn" onclick="resetToDefault()">↺ 還原為試算表資料</button>
       </div>
       <table id="table1">
         <thead>
@@ -139,7 +142,7 @@
             <option value="1">1 月</option><option value="2">2 月</option><option value="3">3 月</option>
             <option value="4">4 月</option><option value="5">5 月</option><option value="6">6 月</option>
             <option value="7">7 月</option><option value="8">8 月</option><option value="9">9 月</option>
-            <option value="10" selected>10 月</option><option value="11">11 月</option><option value="12">12 月</option>
+            <option value="10">10 月</option><option value="11" selected>11 月</option><option value="12">12 月</option>
           </select> 月
         </div>
         <button class="btn btn-pink" onclick="exportToExcel()">📥 下載整月份 Excel 檔 (.xlsx)</button>
@@ -160,26 +163,118 @@
 </div>
 
 <script>
-  // 從您的試算表真實擷取的初始資料
+  // 從試算表「2026年度11月」擷取的初始資料
   const DEFAULT_STUDENTS = [
-    {id: 1, gender: "女", grade: "G1", name_kanji: "石原 瑛茉", name_romaji: "Emma Ishihara", dob: "2019/12/19", days: ["月","火"], snack: true, transport_out: "A", transport_in: "", tests: {}, notes: "幼稚園で週3回の英語学習のみ"},
-    {id: 2, gender: "男", grade: "G1", name_kanji: "岩瀬 広真", name_romaji: "Kouma Iwase", dob: "2019/9/27", days: ["火","水"], snack: false, transport_out: "A", transport_in: "", tests: {}, notes: "保育園の英語の授業で"},
-    {id: 3, gender: "女", grade: "G1", name_kanji: "鹿島 美咲", name_romaji: "Misaki Kashima", dob: "2019/8/4", days: ["月","水","金"], snack: true, transport_out: "", transport_in: "", tests: {}, notes: ""},
-    {id: 4, gender: "男", grade: "G3", name_kanji: "王 光希", name_romaji: "Koki Oh", dob: "2017/5/22", days: ["木"], snack: false, transport_out: "A", transport_in: "A", tests: {"初回2024/6": "7級合格", "2025/2": "5級合格", "2025/9": "1級合格", "2024/9": "5級合格", "2025/1": "4級合格", "2025/6": "3級合格"}, notes: ""},
-    {id: 5, gender: "女", grade: "G3", name_kanji: "井上 綸七", name_romaji: "Kanna Inoue", dob: "2017/11/1", days: ["月","火","水","木"], snack: true, transport_out: "A", transport_in: "A", tests: {"初回2024/6": "10級合格", "2025/2": "9級合格", "2025/9": "7級合格"}, notes: "感冒時に喘息咳あり"},
-    {id: 6, gender: "男", grade: "G4", name_kanji: "吉田 英介", name_romaji: "Eisuke Yoshida", dob: "2016/4/21", days: ["月","火","木"], snack: false, transport_out: "", transport_in: "", tests: {"初回2024/6": "9級合格", "2025/2": "7級合格", "2025/9": "5級合格", "2024/9": "4級不合格", "2025/1": "4級合格", "2025/6": "5級合格"}, notes: "K3AS生"},
-    {id: 7, gender: "女", grade: "G6", name_kanji: "春日 更咲", name_romaji: "Sarasa Kasuga", dob: "2014/5/21", days: ["火","水"], snack: true, transport_out: "", transport_in: "", tests: {"初回2024/6": "10級合格", "2025/2": "2級合格", "2025/9": "1級合格", "2024/9": "4級合格", "2025/1": "3級一次合格"}, notes: "【アレルギー】卵アレルギー(完全に火が通っていれば可)"},
-    {id: 8, gender: "女", grade: "G6", name_kanji: "佐藤 由依", name_romaji: "Yui Sato", dob: "2014/9/26", days: ["月","木"], snack: false, transport_out: "A", transport_in: "A", tests: {"初回2024/6": "10級合格", "2025/2": "6級合格", "2025/9": "6級合格", "2024/9": "5級合格", "2025/1": "4級合格", "2025/6": "2級合格"}, notes: "作品のみOK"}
+    {"id": 1, "gender": "女", "grade": "G1", "name_kanji": "石原 瑛茉", "name_romaji": "Emma Ishihara", "dob": "2019/12/19", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】幼稚園で週3回の英語学習のみ"},
+    {"id": 2, "gender": "男", "grade": "G1", "name_kanji": "岩瀬 広真", "name_romaji": "Kouma Iwase", "dob": "2019/9/27", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "【英語経験】保育園の英語の授業で、簡単な会話ができる程度。"},
+    {"id": 3, "gender": "女", "grade": "G1", "name_kanji": "鹿島 美咲", "name_romaji": "Misaki Kashima", "dob": "2019/8/4", "school": "成徳小学校", "days": ["月", "水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 4, "gender": "女", "grade": "G1", "name_kanji": "金多 紗歩", "name_romaji": "Saho Kaneta", "dob": "2020/2/13", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】幼稚園で、週3回40分程度の英語レッスン。アルファベットを書く練習もしているが、まだちゃんとはかけない。"},
+    {"id": 5, "gender": "男", "grade": "G1", "name_kanji": "川畑 遼真", "name_romaji": "Haruma Kawabata", "dob": "2020/1/14", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "【英語経験】週1回英語教室（約1年半）、1度他校のサマースクールに参加経験あり"},
+    {"id": 6, "gender": "女", "grade": "G1", "name_kanji": "栗本 理来", "name_romaji": "Riku Kurimoto", "dob": "2019/6/16", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 7, "gender": "女", "grade": "G1", "name_kanji": "酒井 梓", "name_romaji": "Azusa Sakai", "dob": "2019/4/8", "school": "成徳小学校", "days": ["月", "火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "【英語経験】ユニバーサルキャンパス"},
+    {"id": 8, "gender": "女", "grade": "G1", "name_kanji": "重安 こころ", "name_romaji": "Kokoro Shigeyasu", "dob": "2019/8/8", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "右足に生まれつきのアザ。靴下の下にストッキング着用。"},
+    {"id": 9, "gender": "男", "grade": "G1", "name_kanji": "杉立 舷", "name_romaji": "Gen Sugitate", "dob": "2020/1/7", "school": "成徳小学校", "days": ["火", "水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "【英語経験】幼稚園の授業のみ"},
+    {"id": 10, "gender": "女", "grade": "G1", "name_kanji": "世古 碧", "name_romaji": "Aoi Seko", "dob": "2020/3/24", "school": "福住小学校", "days": ["火", "水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 11, "gender": "女", "grade": "G1", "name_kanji": "田中 愛梨", "name_romaji": "Airi Tanaka", "dob": "2019/8/29", "school": "御影北小学校", "days": ["火"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "脂腺母斑 / 【英語経験】初心者"},
+    {"id": 12, "gender": "女", "grade": "G1", "name_kanji": "津田 莉世", "name_romaji": "Rise Tsuda", "dob": "2019/12/12", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】1歳から4年半、週一の英会話教室には通っています。"},
+    {"id": 13, "gender": "女", "grade": "G1", "name_kanji": "橋本 莉緒", "name_romaji": "Rio Hashimoto", "dob": "2019/4/7", "school": "六甲小学校", "days": ["月", "水", "木"], "snack": true, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "【英語経験】seiha"},
+    {"id": 14, "gender": "男", "grade": "G1", "name_kanji": "福田 悠晴", "name_romaji": "Yusei Fukuda", "dob": "2019/4/17", "school": "御影北小学校", "days": ["金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "喘息"},
+    {"id": 15, "gender": "女", "grade": "G1", "name_kanji": "南 佳苗", "name_romaji": "Kanae Minami", "dob": "2019/9/3", "school": "高羽小学校", "days": ["火", "水", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "【英語経験】アミティ英会話"},
+    {"id": 16, "gender": "女", "grade": "G1", "name_kanji": "藪内 香帆", "name_romaji": "Kaho Yabuuchi", "dob": "2020/2/23", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "緊張すると手を口に入れる癖がある、水分補給の声掛け / 【英語経験】・保育園で英語の時間（週1回）・英語学習アプリ（ドド英語、頻度は不定期）・英語で動画視聴（NetflixでLEGOのアニメ等を15分程度）・英語聞き流し（ほぼ毎日）"},
+    {"id": 17, "gender": "女", "grade": "G1", "name_kanji": "山本 夕緋", "name_romaji": "Yuuhi Yamamoto", "dob": "2020/3/6", "school": "福住小学校", "days": ["月", "金"], "snack": false, "transport_out": "", "transport_in": "A", "tests": {}, "notes": "乳糖不耐症(牛乳× 乳製品・料理やおやつはOK) / 【待ち】(水)帰りバスキャンセル待ち / 【英語経験】3歳の時に、10ヶ月ほど英会話教室の経験有。それ以降はほぼ無。"},
+    {"id": 18, "gender": "女", "grade": "G1", "name_kanji": "吉本 希", "name_romaji": "Mare Yoshimoto", "dob": "2019/8/2", "school": "高羽小学校", "days": ["火", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】週1回の英語教室、保育園での英語(月1回)"},
+    {"id": 19, "gender": "男", "grade": "G1", "name_kanji": "李 詩悠", "name_romaji": "Shiyuu Lee", "dob": "2020/1/31", "school": "稗田小学校", "days": ["火", "金"], "snack": true, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "喘息 / 【英語経験】園での授業のみ"},
+    {"id": 20, "gender": "男", "grade": "G1", "name_kanji": "大仲 和真", "name_romaji": "Kazuma Onaka", "dob": "2019/7/26", "school": "御影北小学校", "days": ["月", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": ""},
+    {"id": 21, "gender": "女", "grade": "G1", "name_kanji": "弓場 茉弥", "name_romaji": "Mahiro Yuba", "dob": "2019/12/6", "school": "六甲小学校", "days": ["金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 22, "gender": "男", "grade": "G1", "name_kanji": "慈 恵俊", "name_romaji": "Eshun Utsumi", "dob": "2020/1/10", "school": "西灘小学校", "days": ["月"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "くるみ、ピーカンナッツアレルギー有。少量なら咳、じんましん程度。大量だと呼吸が苦しくなる。対応方法は病院に確認後知らせてもらう。"},
+    {"id": 23, "gender": "女", "grade": "G1", "name_kanji": "南 心乃香", "name_romaji": "Konoka Minami", "dob": "2019/10/15", "school": "六甲アイランド小学校", "days": ["木"], "snack": false, "transport_out": "B", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 24, "gender": "男", "grade": "G2", "name_kanji": "平瀬 想真", "name_romaji": "Soma Hirase", "dob": "2018/10/1", "school": "西郷小学校", "days": ["月", "火", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】英語個人レッスン(4歳～週1)"},
+    {"id": 25, "gender": "男", "grade": "G2", "name_kanji": "山部 弘誠", "name_romaji": "Kosei Yamabe", "dob": "2018/4/23", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】未経験"},
+    {"id": 26, "gender": "男", "grade": "G2", "name_kanji": "上田 湊斗", "name_romaji": "Minato Ueta", "dob": "2018/11/9", "school": "高羽小学校", "days": ["月", "火", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】ユニバーサルキャンパス"},
+    {"id": 27, "gender": "女", "grade": "G2", "name_kanji": "有吉 純麗", "name_romaji": "Sumire Ariyoshi", "dob": "2018/8/8", "school": "成徳小学校", "days": ["木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】英語教室(1歳半～ 週1)"},
+    {"id": 28, "gender": "男", "grade": "G2", "name_kanji": "澤村 奏汰", "name_romaji": "Kanata Sawamura", "dob": "2018/9/29", "school": "宮本小学校", "days": ["月", "金"], "snack": false, "transport_out": "B", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】2.8km送迎対象外要確認 / 【英語経験】英語サタデースクール(3歳～)"},
+    {"id": 29, "gender": "女", "grade": "G2", "name_kanji": "橋本 珠季", "name_romaji": "Tamaki Hashimoto", "dob": "2018/8/30", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】セイハ(3歳～ 週1)"},
+    {"id": 30, "gender": "男", "grade": "G2", "name_kanji": "足立 英大", "name_romaji": "Ayata Adachi", "dob": "2019/3/1", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】未経験"},
+    {"id": 31, "gender": "男", "grade": "G2", "name_kanji": "永田 創次郎", "name_romaji": "Sohjiroh Nagata", "dob": "2019/3/13", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "10級不合格"}, "notes": "【英語経験】Be studio(2歳～)"},
+    {"id": 32, "gender": "男", "grade": "G2", "name_kanji": "藤原 匠", "name_romaji": "Takumi Fujiwara", "dob": "2018/10/1", "school": "御影北小学校", "days": ["木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
+    {"id": 33, "gender": "男", "grade": "G2", "name_kanji": "宮田 泰槙", "name_romaji": "Taishin Miyata", "dob": "2018/5/13", "school": "御影北小学校", "days": ["月", "水", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【メモ】金曜日バスが満席のため / 【英語経験】未経験"},
+    {"id": 34, "gender": "男", "grade": "G2", "name_kanji": "糸賀 優士", "name_romaji": "Yushi Itoga", "dob": "2018/6/9", "school": "御影北小学校", "days": ["火", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
+    {"id": 35, "gender": "男", "grade": "G2", "name_kanji": "田中 聡一", "name_romaji": "Soichi Tanaka", "dob": "2018/6/22", "school": "御影北小学校", "days": ["火"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】火or木も希望？ / 【英語経験】未経験"},
+    {"id": 36, "gender": "女", "grade": "G2", "name_kanji": "畑 凜采", "name_romaji": "Risa Hata", "dob": "2019/1/2", "school": "御影北小学校", "days": ["火", "水"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】御影インター"},
+    {"id": 37, "gender": "女", "grade": "G2", "name_kanji": "山根 栞", "name_romaji": "Shiori Yamane", "dob": "2018/10/22", "school": "六甲小学校", "days": ["火", "水"], "snack": true, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター(3歳まで海外居住)"},
+    {"id": 38, "gender": "男", "grade": "G2", "name_kanji": "剱物 右京", "name_romaji": "Ukyo Kenmotsu", "dob": "2019/1/10", "school": "御影北小学校", "days": ["火", "水", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
+    {"id": 39, "gender": "女", "grade": "G2", "name_kanji": "玉置 小晴", "name_romaji": "Koharu Tamaki", "dob": "2019/3/5", "school": "成徳小学校", "days": ["水", "木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 40, "gender": "男", "grade": "G3", "name_kanji": "アレクサンダー 優理", "name_romaji": "Yuri Alexander", "dob": "2017/9/9", "school": "高羽小学校", "days": ["水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "5級合格", "英検 2025/6": "5級合格", "英検 2025/9": "4級合格"}, "notes": ""},
+    {"id": 41, "gender": "女", "grade": "G3", "name_kanji": "井上 綸七", "name_romaji": "Kanna Inoue", "dob": "2017/11/1", "school": "御影北小学校", "days": ["火", "水", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": "感冒時に喘息咳"},
+    {"id": 42, "gender": "男", "grade": "G3", "name_kanji": "岩瀬 大和", "name_romaji": "Yamato Iwase", "dob": "2017/6/9", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "7級合格"}, "notes": ""},
+    {"id": 43, "gender": "女", "grade": "G3", "name_kanji": "榎本 華子", "name_romaji": "Kako Enomoto", "dob": "2017/10/8", "school": "高羽小学校", "days": ["火", "水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級不合格", "JET 2025/2": "9級合格", "JET 2025/9": "8級合格"}, "notes": ""},
+    {"id": 44, "gender": "男", "grade": "G3", "name_kanji": "王 光希", "name_romaji": "Koki Oh", "dob": "2017/5/22", "school": "高羽小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "7級合格", "JET 2025/2": "5級合格", "JET 2025/9": "1級合格", "英検 2024/6": "5級合格", "英検 2024/9": "4級合格", "英検 2025/1": "３級合格"}, "notes": ""},
+    {"id": 45, "gender": "男", "grade": "G3", "name_kanji": "大西 悠太", "name_romaji": "Yuta Onishi", "dob": "2017/12/1", "school": "御影北小学校", "days": ["月", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "6級合格", "英検 2025/6": "5級合格"}, "notes": "ほこりアレルギー / 【待ち】月曜日帰りバスキャンセル待ち"},
+    {"id": 46, "gender": "男", "grade": "G3", "name_kanji": "岡部 竜也", "name_romaji": "Ryuya Okabe", "dob": "2017/12/18", "school": "灘小学校", "days": ["火"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級不合格", "JET 2025/2": "10級合格", "JET 2025/9": "8級合格"}, "notes": ""},
+    {"id": 47, "gender": "女", "grade": "G3", "name_kanji": "尾﨑 文", "name_romaji": "Aya Ozaki", "dob": "2017/10/3", "school": "高羽小学校", "days": ["月", "火", "水", "金"], "snack": false, "transport_out": "", "transport_in": "A", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格", "英検 2025/1": "５級合格", "英検 2025/9": "4級合格"}, "notes": ""},
+    {"id": 48, "gender": "女", "grade": "G3", "name_kanji": "金多 恭花", "name_romaji": "Kyouka Kaneta", "dob": "2017/10/3", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": ""},
+    {"id": 49, "gender": "男", "grade": "G3", "name_kanji": "金本 侑樹", "name_romaji": "Yuuki Kanemoto", "dob": "2017/11/20", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": "【待ち】(火)キャンセル待ち②"},
+    {"id": 50, "gender": "女", "grade": "G3", "name_kanji": "京本 実侑", "name_romaji": "Miyuu Kyomoto", "dob": "2017/12/16", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "10級合格", "JET 2025/9": "7級合格"}, "notes": ""},
+    {"id": 51, "gender": "男", "grade": "G3", "name_kanji": "坪井 拓翔", "name_romaji": "Takuto Tsuboi", "dob": "2017/10/30", "school": "御影北小学校", "days": ["月", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "7級合格"}, "notes": ""},
+    {"id": 52, "gender": "男", "grade": "G3", "name_kanji": "東福 康平", "name_romaji": "Kouhei Toufuku", "dob": "2017/4/27", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": ""},
+    {"id": 53, "gender": "男", "grade": "G3", "name_kanji": "林 佳弥", "name_romaji": "Keiya Hayashi", "dob": "2018/3/31", "school": "中央小学校", "days": ["月", "火"], "snack": true, "transport_out": "B", "transport_in": "", "tests": {"JET 2024/6": "8級", "JET 2025/2": "8級合格", "JET 2025/9": "7級合格"}, "notes": "熱性痙攣"},
+    {"id": 54, "gender": "男", "grade": "G3", "name_kanji": "前田 諒", "name_romaji": "Ryo Maeta", "dob": "2018/3/9", "school": "御影北小学校", "days": ["火", "木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": ""},
+    {"id": 55, "gender": "男", "grade": "G3", "name_kanji": "和田 康希", "name_romaji": "Kouki Wada", "dob": "2017/9/29", "school": "高羽小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格", "英検 2025/9": "4級不合格"}, "notes": ""},
+    {"id": 56, "gender": "女", "grade": "G3", "name_kanji": "塔本 花菜", "name_romaji": "Kana Tomoto", "dob": "2017/10/10", "school": "成徳小学校", "days": ["火", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級不合格", "JET 2025/2": "10級合格", "JET 2025/9": "10級合格"}, "notes": ""},
+    {"id": 57, "gender": "女", "grade": "G3", "name_kanji": "堂内 理央", "name_romaji": "Rio Douchi", "dob": "2017/11/30", "school": "成徳小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "7級合格", "JET 2025/2": "5級合格", "JET 2025/9": "3級合格", "英検 2025/1": "４級合格"}, "notes": ""},
+    {"id": 58, "gender": "男", "grade": "G3", "name_kanji": "ナザル アキール", "name_romaji": "Aqeel Nazar", "dob": "2018/2/6", "school": "上筒井小学校", "days": ["月", "水"], "snack": true, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 59, "gender": "女", "grade": "G3", "name_kanji": "竹内 彩乃", "name_romaji": "Ayano Takeuchi", "dob": "2017/6/26", "school": "成徳小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 60, "gender": "女", "grade": "G3", "name_kanji": "鈴木 渉斗", "name_romaji": "Wato Suzuki", "dob": "", "school": "高羽小学校", "days": ["水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 61, "gender": "女", "grade": "G4", "name_kanji": "春日 梛咲", "name_romaji": "Nagisa Kasuga", "dob": "2016/6/17", "school": "高羽小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格", "英検 2025/1": "５級合格"}, "notes": ""},
+    {"id": 62, "gender": "女", "grade": "G4", "name_kanji": "小寺 咲希", "name_romaji": "Saki Kotera", "dob": "2016/7/4", "school": "六甲小学校", "days": ["水", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "5級合格", "英検 2025/9": "５級合格"}, "notes": ""},
+    {"id": 63, "gender": "女", "grade": "G4", "name_kanji": "多喜田 真緒", "name_romaji": "Mao Takita", "dob": "2016/9/20", "school": "高羽小学校", "days": ["木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "5級合格", "英検 2025/9": "５級合格"}, "notes": "八幡児童館 徒歩送迎説明済 / 【待ち】(火)キャンセル待ち③"},
+    {"id": 64, "gender": "男", "grade": "G4", "name_kanji": "永田 重克", "name_romaji": "Shigekatsu Nagata", "dob": "2016/7/29", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級不合格", "JET 2024/9": "9級合格", "JET 2025/2": "8級不合格", "JET 2025/9": "7級合格", "英検 2025/9": "５級合格"}, "notes": ""},
+    {"id": 65, "gender": "男", "grade": "G4", "name_kanji": "藪内 瑛太", "name_romaji": "Eita Yabuuchi", "dob": "2017/2/5", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "ー", "JET 2024/9": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": "アトピー性皮膚炎"},
+    {"id": 66, "gender": "男", "grade": "G4", "name_kanji": "吉田 英介", "name_romaji": "Eisuke Yoshida", "dob": "2016/4/21", "school": "灘小学校", "days": ["月", "火"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "9級", "JET 2024/2": "7級合格", "JET 2024/9": "5級合格", "JET 2025/2": "4級不合格", "JET 2025/9": "4級合格", "英検 2025/9": "５級合格"}, "notes": ""},
+    {"id": 67, "gender": "男", "grade": "G4", "name_kanji": "村上 一犀", "name_romaji": "Issei Murakami", "dob": "2017/1/19", "school": "成徳小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": "【待ち】(火)キャンセル待ち①"},
+    {"id": 68, "gender": "男", "grade": "G4", "name_kanji": "金子 颯汰", "name_romaji": "Sota Kaneko", "dob": "2016/4/30", "school": "成徳小学校", "days": ["水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/2": "10級不合格", "JET 2024/9": "10級不合格", "JET 2025/2": "9級合格", "JET 2025/9": "6級合格", "英検 2025/1": "５級合格", "英検 2025/9": "4級不合格"}, "notes": ""},
+    {"id": 69, "gender": "女", "grade": "G4", "name_kanji": "野原 すみれ", "name_romaji": "Sumire Nohara", "dob": "2016/10/30", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/9": "8級合格"}, "notes": ""},
+    {"id": 70, "gender": "女", "grade": "G4", "name_kanji": "吉山 凜", "name_romaji": "Rin Yoshiyama", "dob": "2016/9/25", "school": "六甲小学校", "days": ["月", "火", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/9": "1級合格"}, "notes": ""},
+    {"id": 71, "gender": "女", "grade": "G4", "name_kanji": "細谷 莉央", "name_romaji": "Rio Hosoya", "dob": "2016/10/12", "school": "六甲小学校", "days": ["水", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "アトピー"},
+    {"id": 72, "gender": "女", "grade": "G4", "name_kanji": "ナザル アスマ", "name_romaji": "Asma Nazar", "dob": "2016/5/30", "school": "上筒井小学校", "days": ["月", "水"], "snack": true, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 73, "gender": "女", "grade": "G4", "name_kanji": "成清 恵菜", "name_romaji": "Ena Narikiyo", "dob": "2016/12/20", "school": "高羽小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
+    {"id": 74, "gender": "男", "grade": "G5", "name_kanji": "原田 康亮", "name_romaji": "Kosuke Harada", "dob": "2015/10/19", "school": "高羽小学校", "days": ["月", "火", "水", "木"], "snack": true, "transport_out": "", "transport_in": "", "tests": {"JET 2022/6": "10級", "JET 2023/9": "6級", "JET 2024/2": "4級合格", "JET 2024/9": "4級不合格", "JET 2025/2": "4級合格", "JET 2025/9": "3級合格", "英検 2024/9": "5級合格", "英検 2025/6": "4級不合格", "英検 2025/9": "4級合格"}, "notes": ""},
+    {"id": 75, "gender": "女", "grade": "G6", "name_kanji": "春日 更咲", "name_romaji": "Sarasa Kasuga", "dob": "2014/5/21", "school": "高羽小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2021/6": "10級", "JET 2023/9": "2級", "JET 2024/2": "1級合格", "英検 2024/1": "4級合格", "英検 2025/1": "３級一次合格"}, "notes": "卵アレルギー(完全に火が通っていれば可)"},
+    {"id": 76, "gender": "女", "grade": "G6", "name_kanji": "佐藤 由依", "name_romaji": "Yui Sato", "dob": "2014/9/26", "school": "美野丘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2021/6": "10級", "JET 2023/9": "6級", "JET 2024/2": "6級合格", "JET 2024/9": "5級合格", "JET 2025/2": "4級合格", "JET 2025/9": "2級合格", "英検 2024/6": "5級合格", "英検 2024/9": "4級不合格", "英検 2025/1": "4級合格", "英検 2025/6": "3級不合格", "英検 2025/9": "3級不合格"}, "notes": ""},
+    {"id": 77, "gender": "男", "grade": "G6", "name_kanji": "林 咲弥", "name_romaji": "Sakuya Hayashi", "dob": "2015/1/24", "school": "中央小学校", "days": ["月", "火"], "snack": true, "transport_out": "B", "transport_in": "", "tests": {"JET 2021/6": "7級", "JET 2023/9": "1級", "JET 2024/2": "1級合格", "英検 2024/9": "4級合格", "英検 2025/1": "３級合格", "英検 2025/6": "準2級不合格", "英検 2025/9": "準2級不合格"}, "notes": "川崎病"},
+    {"id": 78, "gender": "男", "grade": "G6", "name_kanji": "山口 陽大", "name_romaji": "Haruto Yamaguchi", "dob": "2014/12/30", "school": "成徳小学校", "days": ["水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2021/6": "8級", "JET 2023/9": "5級", "JET 2024/2": "4級合格", "JET 2024/9": "4級合格", "JET 2025/2": "4級合格", "JET 2025/9": "2級合格", "英検 2024/1": "4級不合格", "英検 2024/6": "4級不合格", "英検 2024/9": "4級不合格", "英検 2025/1": "4級不合格", "英検 2025/6": "4級合格", "英検 2025/9": "3級不合格"}, "notes": ""}
   ];
 
-  const DEFAULT_TEST_COLS = ["初回2024/6", "2025/2", "2025/9", "英検2024/1", "英検2024/6", "2024/9", "2025/1", "2025/6"];
+  const DEFAULT_TEST_COLS = ["JET 2021/6", "JET 2022/6", "JET 2023/6", "JET 2023/9", "JET 2024/2", "JET 2024/6", "JET 2024/9", "JET 2025/2", "JET 2025/6", "JET 2025/9", "英検 2024/1", "英検 2024/6", "英検 2024/9", "英検 2025/1", "英検 2025/6", "英検 2025/9"];
 
-  let students = JSON.parse(localStorage.getItem('student_records')) || DEFAULT_STUDENTS;
-  let testColumns = JSON.parse(localStorage.getItem('test_columns')) || DEFAULT_TEST_COLS;
+  // 換月份資料時改這個鍵，舊的瀏覽器暫存就不會蓋掉新資料
+  const STORAGE_VERSION = '2026_11';
+  const KEY_STUDENTS = 'student_records_' + STORAGE_VERSION;
+  const KEY_TESTCOLS = 'test_columns_' + STORAGE_VERSION;
+
+  function loadStored(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  let students = loadStored(KEY_STUDENTS, structuredClone(DEFAULT_STUDENTS));
+  let testColumns = loadStored(KEY_TESTCOLS, [...DEFAULT_TEST_COLS]);
 
   function saveData() {
-    localStorage.setItem('student_records', JSON.stringify(students));
-    localStorage.setItem('test_columns', JSON.stringify(testColumns));
+    try {
+      localStorage.setItem(KEY_STUDENTS, JSON.stringify(students));
+      localStorage.setItem(KEY_TESTCOLS, JSON.stringify(testColumns));
+    } catch (e) {}
+  }
+
+  function resetToDefault() {
+    if (!confirm('要清除這台電腦上的修改，還原成試算表的資料嗎？')) return;
+    students = structuredClone(DEFAULT_STUDENTS);
+    testColumns = [...DEFAULT_TEST_COLS];
+    saveData(); switchTab(1);
+  }
+
+  // 資料裡可能有引號或 < >，放進 HTML 前先跳脫
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function switchTab(idx) {
@@ -190,19 +285,18 @@
 
   function renderTab1() {
     const tbody = document.getElementById('tab1-tbody');
-    tbody.innerHTML = '';
     const days = ['月','火','水','木','金'];
-    students.forEach(s => {
+    tbody.innerHTML = students.map(s => {
       let dHtml = days.map(d => `<td onclick="toggleDay(${s.id},'${d}')"><span class="clickable-badge ${s.days.includes(d)?'active':''}">${s.days.includes(d)?'〇':''}</span></td>`).join('');
-      tbody.innerHTML += `<tr>
+      return `<tr>
         <td><input type="checkbox" class="student-select" data-id="${s.id}"></td>
-        <td>${s.gender}</td><td><strong>${s.grade}</strong></td><td>${s.name_kanji}</td><td>${s.name_romaji}</td><td>${s.dob}</td>
+        <td>${esc(s.gender)}</td><td><strong>${esc(s.grade)}</strong></td><td>${esc(s.name_kanji)}</td><td>${esc(s.name_romaji)}</td><td>${esc(s.dob)}</td>
         ${dHtml}
         <td onclick="toggleSnack(${s.id})"><span class="clickable-badge ${s.snack?'active':''}">${s.snack?'〇':''}</span></td>
-        <td><input type="text" value="${s.transport_out||''}" style="width:40px;text-align:center;" onchange="updateTrans(${s.id},'out',this.value)"></td>
-        <td><input type="text" value="${s.transport_in||''}" style="width:40px;text-align:center;" onchange="updateTrans(${s.id},'in',this.value)"></td>
+        <td><input type="text" value="${esc(s.transport_out)}" style="width:40px;text-align:center;" onchange="updateTrans(${s.id},'out',this.value)"></td>
+        <td><input type="text" value="${esc(s.transport_in)}" style="width:40px;text-align:center;" onchange="updateTrans(${s.id},'in',this.value)"></td>
       </tr>`;
-    });
+    }).join('');
   }
 
   function toggleDay(id, d) { let s = students.find(x=>x.id===id); if(s.days.includes(d)) s.days=s.days.filter(x=>x!==d); else s.days.push(d); saveData(); renderTab1(); }
@@ -216,29 +310,28 @@
 
   // === 第二分頁：考試紀錄 ===
   const bgColors = ["#48cae4", "#00b4d8", "#90e0ef", "#c77dff", "#e0aaff", "#c19ee0", "#ffc8dd", "#ffafcc"];
-  
+
   function renderTab2() {
     const thead = document.getElementById('tab2-thead');
     const tbody = document.getElementById('tab2-tbody');
     let h = `<tr><th>性別</th><th>学年</th><th>名前 (漢字)</th><th>Name (羅馬字)</th>`;
-    testColumns.forEach((col, i) => h += `<th style="background:${bgColors[i%bgColors.length]}; color:#fff; text-shadow:1px 1px 0px #333;">${col}</th>`);
+    testColumns.forEach((col, i) => h += `<th style="background:${bgColors[i%bgColors.length]}; color:#fff; text-shadow:1px 1px 0px #333;">${esc(col)}</th>`);
     thead.innerHTML = h + `</tr>`;
 
-    tbody.innerHTML = '';
-    students.forEach(s => {
-      let r = `<tr><td>${s.gender}</td><td><strong>${s.grade}</strong></td><td>${s.name_kanji}</td><td>${s.name_romaji}</td>`;
-      testColumns.forEach(col => {
+    tbody.innerHTML = students.map(s => {
+      let r = `<tr><td>${esc(s.gender)}</td><td><strong>${esc(s.grade)}</strong></td><td>${esc(s.name_kanji)}</td><td>${esc(s.name_romaji)}</td>`;
+      testColumns.forEach((col, ci) => {
         let val = (s.tests && s.tests[col]) || '';
         let passClass = val.includes('不合格') ? 'test-fail' : (val.includes('合格') ? 'test-pass' : '');
-        r += `<td><input type="text" class="${passClass}" value="${val}" style="text-align:center; min-width:80px;" onchange="updTest(${s.id}, '${col}', this.value)"></td>`;
+        r += `<td><input type="text" class="${passClass}" value="${esc(val)}" style="text-align:center; min-width:80px;" onchange="updTest(${s.id}, ${ci}, this.value)"></td>`;
       });
-      tbody.innerHTML += r + `</tr>`;
-    });
+      return r + `</tr>`;
+    }).join('');
   }
 
-  function updTest(id, col, val) { let s = students.find(x=>x.id===id); if(!s.tests) s.tests={}; s.tests[col]=val; saveData(); renderTab2(); }
+  function updTest(id, ci, val) { let s = students.find(x=>x.id===id); if(!s.tests) s.tests={}; s.tests[testColumns[ci]]=val; saveData(); renderTab2(); }
   function addNewTestColumn() {
-    let col = prompt("輸入新考試欄位名稱 (例如：2026/12)：");
+    let col = prompt("輸入新考試欄位名稱 (例如：JET 2026/12、英検 2026/10)：");
     if(col && !testColumns.includes(col)) { testColumns.push(col); saveData(); renderTab2(); }
   }
 
@@ -246,16 +339,17 @@
   function renderTab3() {
     const tbody = document.getElementById('tab3-tbody');
     const kw = document.getElementById('notes-search').value.toLowerCase();
-    tbody.innerHTML = '';
-    students.forEach(s => {
+    tbody.innerHTML = students.filter(s => {
       let n = s.notes || '';
-      if(kw && !s.name_kanji.includes(kw) && !s.name_romaji.toLowerCase().includes(kw) && !n.toLowerCase().includes(kw)) return;
-      let warn = (n.includes('アレルギー') || n.includes('喘息') || n.includes('体質')) ? '<span class="allergy-badge">⚠️ 注意</span>' : '';
-      tbody.innerHTML += `<tr>
-        <td>${s.gender}</td><td><strong>${s.grade}</strong></td><td>${s.name_kanji}</td><td>${s.name_romaji}</td>
-        <td style="text-align:left; display:flex;">${warn}<input type="text" value="${n}" onchange="updNote(${s.id},this.value)"></td>
+      return !kw || s.name_kanji.includes(kw) || s.name_romaji.toLowerCase().includes(kw) || n.toLowerCase().includes(kw);
+    }).map(s => {
+      let n = s.notes || '';
+      let warn = /アレルギー|喘息|体質|不耐|アトピー/.test(n) ? '<span class="allergy-badge">⚠️ 注意</span>' : '';
+      return `<tr>
+        <td>${esc(s.gender)}</td><td><strong>${esc(s.grade)}</strong></td><td>${esc(s.name_kanji)}</td><td>${esc(s.name_romaji)}</td>
+        <td style="text-align:left;"><div style="display:flex; align-items:center;">${warn}<input type="text" value="${esc(n)}" title="${esc(n)}" onchange="updNote(${s.id},this.value)"></div></td>
       </tr>`;
-    });
+    }).join('');
   }
   function updNote(id, val) { students.find(x=>x.id===id).notes=val; saveData(); renderTab3(); }
 
@@ -284,18 +378,18 @@
     let month = document.getElementById('export-month').value;
     let daysNum = new Date(year, month, 0).getDate();
     let dayNames = ['日','月','火','水','木','金','土'];
-    
+
     let wb = XLSX.utils.book_new();
     for(let d=1; d<=daysNum; d++) {
       let dayStr = dayNames[new Date(year, month-1, d).getDay()];
       let dayStd = students.filter(s => s.days.includes(dayStr)).sort((a,b) => a.grade.localeCompare(b.grade));
-      
+
       let ws_data = [
         ["", `${month}/${d}`, dayStr, "", "15", "11", `スナック ${dayStd.filter(s=>s.snack).length}人`, "", ""],
         ["", "Name", "学年", "到着予定", "Ⓛ", "Ⓢ", "往路", "復路", "Memo"]
       ];
       dayStd.forEach((s, i) => ws_data.push([i+1, s.name_romaji, s.grade, "", "", s.snack?"〇":"", s.transport_out||"", s.transport_in||"", ""]));
-      
+
       let ws = XLSX.utils.aoa_to_sheet(ws_data);
       ws['!cols'] = [{wch:4}, {wch:22}, {wch:6}, {wch:9}, {wch:5}, {wch:5}, {wch:6}, {wch:6}, {wch:24}];
       XLSX.utils.book_append_sheet(wb, ws, `${month}月${d}日`);
