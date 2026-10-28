@@ -1234,25 +1234,26 @@
           const cellContent = document.createElement('div');
           cellContent.className = 'flex flex-col h-full min-h-[190px]';
 
-          if (cellData.title || cellData.teacher) {
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'mb-2 font-sans';
-            const count = cellData.students.length;
-            const titleSpan = document.createElement('div');
-            titleSpan.className = 'font-black text-slate-900 text-base leading-tight';
-            titleSpan.textContent = cellData.title ? `${cellData.title} (${count})` : '';
+          // 移除 if 判斷，確保標題與老師區塊永遠渲染，讓無資料的格子也能點擊「(無指定)」
+          const headerDiv = document.createElement('div');
+          headerDiv.className = 'mb-2 font-sans';
+          const count = cellData.students ? cellData.students.length : 0;
+          
+          const titleSpan = document.createElement('div');
+          // 增加 min-h-[1.25rem] 確保即使 title 是空的也不會造成排版塌陷
+          titleSpan.className = 'font-black text-slate-900 text-base leading-tight min-h-[1.25rem]';
+          titleSpan.textContent = cellData.title ? `${cellData.title} (${count})` : '';
 
-            // 老師名字增加「點擊即修改」
-            const teacherSpan = document.createElement('div');
-            teacherSpan.className = `text-sm font-bold ${cellData.teacherColor || 'text-slate-800'} mt-0.5 teacher-editable`;
-            teacherSpan.title = '點擊修改老師姓名';
-            teacherSpan.innerHTML = `<span>${cellData.teacher || '(無指定)'}</span> <i class="fa-solid fa-pen text-[10px] text-slate-400 opacity-60"></i>`;
-            teacherSpan.onclick = () => quickEditTeacher(periodKey, col.id);
+          // 老師名字增加「點擊即修改」
+          const teacherSpan = document.createElement('div');
+          teacherSpan.className = `text-sm font-bold ${cellData.teacherColor || 'text-slate-800'} mt-0.5 teacher-editable`;
+          teacherSpan.title = '點擊修改老師姓名';
+          teacherSpan.innerHTML = `<span>${cellData.teacher || '(無指定)'}</span> <i class="fa-solid fa-pen text-[10px] text-slate-400 opacity-60"></i>`;
+          teacherSpan.onclick = () => quickEditTeacher(periodKey, col.id);
 
-            headerDiv.appendChild(titleSpan);
-            headerDiv.appendChild(teacherSpan);
-            cellContent.appendChild(headerDiv);
-          }
+          headerDiv.appendChild(titleSpan);
+          headerDiv.appendChild(teacherSpan);
+          cellContent.appendChild(headerDiv);
 
           if (cellData.customHtml) {
             const customDiv = document.createElement('div');
