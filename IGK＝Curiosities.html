@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🧸 IGK Integrated System</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 固定版本，避免 Chart.js 大改版時突然壞掉 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
-    
+
     <style>
-        /* ================= 1. 全域與導覽列樣式 (Global & Nav) ================= */
+        /* ================= 1. 全域與導覽列樣式 ================= */
         :root {
             --primary-color: #ff8fb3;
             --primary-dark: #f0789d;
@@ -23,23 +24,36 @@
         body {
             font-family: 'Nunito', 'M PLUS Rounded 1c', sans-serif;
             margin: 0; padding: 0;
-            width: 100vw; height: 100vh;
+            width: 100%; height: 100vh; height: 100dvh;
             overflow: hidden;
             color: var(--text-main);
             background-color: var(--bg-color);
-            /* 強化版可愛點點背景 */
-            background-image: 
+            background-image:
                 radial-gradient(#ffd3b6 3px, transparent 3px),
                 radial-gradient(#ffaaa5 3px, transparent 3px);
             background-size: 50px 50px;
             background-position: 0 0, 25px 25px;
         }
 
-        /* 登入畫面 (加入毛玻璃效果) */
+        /* 讀取中遮罩 */
+        #loading-overlay {
+            display: none; position: fixed; inset: 0; z-index: 20000;
+            background: rgba(255,255,255,0.6); backdrop-filter: blur(3px);
+            flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+            font-weight: 800; color: var(--primary-dark);
+        }
+        #loading-overlay.show { display: flex; }
+        .spinner {
+            width: 48px; height: 48px; border-radius: 50%;
+            border: 6px solid #ffe4e1; border-top-color: var(--primary-color);
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 登入畫面 */
         #login-screen {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10000;
-            background-color: transparent;
         }
         .login-box {
             background: rgba(255, 255, 255, 0.75); padding: 40px; border-radius: 30px;
@@ -59,11 +73,11 @@
             cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 5px 0 rgba(0,0,0,0.1);
         }
         .login-btn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0); }
+        .login-btn:disabled { opacity: 0.6; cursor: wait; }
 
         /* 主應用區塊 */
-        #app-wrapper { display: none; flex-direction: column; height: 100vh; width: 100vw; }
-        
-        /* 導覽列 */
+        #app-wrapper { display: none; flex-direction: column; height: 100vh; height: 100dvh; width: 100%; }
+
         .main-nav {
             display: flex; justify-content: center; gap: 15px; padding: 15px;
             background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
@@ -72,114 +86,283 @@
         .nav-btn {
             padding: 12px 25px; border-radius: 20px; border: 3px solid #ffaaa5;
             background: rgba(255,255,255,0.9); color: #d9736c; font-weight: 800; cursor: pointer;
-            transition: all 0.3s; font-size: 16px; box-shadow: 0 4px 0 #ffe4e1;
+            transition: all 0.3s; font-size: 16px; box-shadow: 0 4px 0 #ffe4e1; font-family: inherit;
         }
         .nav-btn:hover { background: #fff0f5; }
         .nav-btn.active { background: #ffaaa5; color: white; box-shadow: 0 4px 0 #d9736c; transform: translateY(2px); }
+        .nav-btn.settings { border-color: #a8d8ea; color: #6d9fa2; }
 
-        /* 分頁內容容器 */
         .tab-content { display: none; flex-grow: 1; overflow-y: auto; padding: 20px; }
         .tab-content.active { display: flex; flex-direction: column; align-items: center; }
 
-        /* 共用 Modal 背景 */
+        /* 共用 Modal */
         .shared-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(92, 77, 83, 0.5); backdrop-filter: blur(5px);
             justify-content: center; align-items: center; z-index: 9999;
         }
+        .modal-box {
+            background: rgba(255,255,255,0.97); padding: 30px; border-radius: 20px;
+            width: 92%; max-width: 600px; max-height: 88vh; display: flex; flex-direction: column;
+            border: 4px dashed #a8d8ea; position: relative;
+        }
+        .modal-box.pink { border: 5px solid var(--border-color); border-radius: 30px; max-width: 450px; }
+        .modal-box h3 { margin-top: 0; }
+        .modal-scroll { overflow-y: auto; }
+        .close-x {
+            position: absolute; top: 12px; right: 18px; font-size: 28px; color: #aaa;
+            cursor: pointer; font-weight: bold; background: none; border: none; line-height: 1;
+        }
+        .close-x:hover { color: var(--primary-color); }
 
-        /* ================= 2. 日常紀錄 (KidsMemo) 專屬樣式 ================= */
-        /* 加入毛玻璃效果，讓點點背景透出來 */
+        .btn {
+            padding: 12px 24px; border: none; border-radius: 15px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: inherit;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+        .record-card {
+            background: rgba(250,250,250,0.9); padding: 15px; margin-bottom: 15px; border-radius: 10px;
+            border: 1px solid #eee; border-left: 6px solid #a8d8ea; word-break: break-word;
+        }
+        .rc-title { font-weight: bold; color: #d9736c; margin-bottom: 6px; }
+        .rc-body { font-size: 14px; margin-bottom: 6px; line-height: 1.6; }
+        .empty-msg { text-align: center; color: #999; padding: 20px 0; }
+
+        /* ================= 2. 日常紀錄 ================= */
         #tab-daily .t1-container {
             display: flex; flex-direction: column; width: 100%; max-width: 1200px;
             height: calc(100vh - 120px); background: rgba(253, 250, 246, 0.85);
-            padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             border: 3px solid #f8e1df; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
         #tab-daily h2 { color: #d9736c; text-align: center; font-size: 24px; margin: 0 0 20px 0; border-bottom: 3px dotted #ffaaa5; padding-bottom: 15px; }
-        #tab-daily select, #tab-daily input[type="date"] { padding: 12px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 12px; outline: none; background-color: rgba(255,255,255,0.9); font-weight:bold; }
+        #tab-daily select, #tab-daily input[type="date"], #student-modal select {
+            padding: 12px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 12px; outline: none;
+            background-color: rgba(255,255,255,0.9); font-weight: bold; font-family: inherit; color: var(--text-main);
+        }
         #tab-daily select:focus, #tab-daily input[type="date"]:focus { border-color: #ffaaa5; }
-        #tab-daily button.t1-btn { padding: 12px 24px; color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #tab-daily button.t1-btn:hover { transform: translateY(-2px); }
         #tab-daily .top-controls { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
         #tab-daily .btn-group { display: flex; gap: 10px; margin-left: auto; }
         #tab-daily .content-area { display: flex; gap: 30px; flex-grow: 1; overflow: hidden; }
-        #tab-daily .column { flex: 1; display: flex; flex-direction: column; height: 100%; }
+        #tab-daily .column { flex: 1; display: flex; flex-direction: column; min-height: 0; }
         #tab-daily .column label { font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #6d9fa2; }
-        #tab-daily textarea { flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 15px; resize: none; line-height: 1.6; outline: none; font-family: inherit; background: rgba(255,255,255,0.9); }
+        #tab-daily textarea {
+            flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 15px;
+            resize: none; line-height: 1.6; outline: none; font-family: inherit; background: rgba(255,255,255,0.9);
+        }
         #tab-daily textarea:focus { border-color: #a8d8ea; }
-        
-        /* Tool 1 Modals */
-        #tab-daily .modal-content { background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; border: 4px dashed #a8d8ea; position: relative; }
-        #tab-daily .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; font-weight: bold; }
-        #tab-daily .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        #tab-daily .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; color: #d9736c; margin-bottom: 10px; }
-        #tab-daily .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-        #tab-daily .day-cell { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; font-size: 18px; }
-        #tab-daily .day-no-record { background-color: rgba(240,240,240,0.8); color: #a0a0a0; }
-        #tab-daily .day-has-record { background-color: #ffaaa5; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(255, 170, 165, 0.4); transition: transform 0.2s; }
-        #tab-daily .day-has-record:hover { transform: scale(1.1); }
-        #tab-daily .record-card { background: rgba(250,250,250,0.9); border-left: 6px solid #a8d8ea; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #eee; border-left: 6px solid #a8d8ea; }
-        
-        /* ================= 3. 月度統計 (Month.test) 專屬樣式 ================= */
-        /* 加入毛玻璃效果，讓點點背景透出來 */
-        #tab-monthly .t2-container { 
-            max-width: 1200px; width: 100%; background: rgba(255, 255, 255, 0.85); 
-            padding: 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15); 
-            border: 4px dashed var(--border-color); position: relative; overflow: hidden;
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin: 30px 0 20px; gap: 8px; } /* 上方留空間給關閉按鈕，避免蓋到 Next */
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; color: #d9736c; margin-bottom: 10px; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .day-cell { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; font-size: 18px; }
+        .day-no-record { background-color: rgba(240,240,240,0.8); color: #a0a0a0; }
+        .day-has-record {
+            background-color: #ffaaa5; color: white; cursor: pointer; border: none; font-family: inherit;
+            box-shadow: 0 4px 6px rgba(255, 170, 165, 0.4); transition: transform 0.2s;
+        }
+        .day-has-record:hover { transform: scale(1.1); }
+        .day-today { outline: 3px solid #74c0fc; outline-offset: -3px; }
+
+        /* ================= 3. 月度統計 ================= */
+        #tab-monthly .t2-container {
+            max-width: 1200px; width: 100%; background: rgba(255, 255, 255, 0.85);
+            padding: 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15);
+            border: 4px dashed var(--border-color); position: relative;
             backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
-        #tab-monthly h2 { font-size: 24px; font-weight: 800; color: var(--primary-color); margin: 40px 0 20px 0; display: flex; align-items: center; gap: 10px; }
+        #tab-monthly h2 { font-size: 24px; font-weight: 800; color: var(--primary-color); margin: 40px 0 20px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         #tab-monthly h2 span { font-size: 14px; color: #9e8e93; font-weight: 700; background: rgba(255,240,245,0.8); padding: 4px 12px; border-radius: 12px; }
-        #tab-monthly select, #tab-monthly input { width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 16px; font-size: 16px; font-family: inherit; font-weight: 700; color: var(--text-main); outline: none; transition: 0.2s; background: rgba(255,255,255,0.9); }
+        #tab-monthly select, #tab-monthly input {
+            width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 16px; font-size: 16px;
+            font-family: inherit; font-weight: 700; color: var(--text-main); outline: none; transition: 0.2s; background: rgba(255,255,255,0.9);
+        }
         #tab-monthly select:focus, #tab-monthly input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(255, 143, 179, 0.2); }
-        #tab-monthly .t2-btn { padding: 12px 24px; border: none; border-radius: 20px; font-weight: 800; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-family: inherit; box-shadow: 0 5px 0 rgba(0,0,0,0.1); }
-        #tab-monthly .t2-btn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0); }
-        #tab-monthly .form-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; background: rgba(255, 250, 250, 0.8); padding: 30px; border-radius: 24px; margin-bottom: 30px; border: 3px solid var(--border-color); position: relative; z-index: 2; }
-        #tab-monthly table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(255,255,255,0.9); border-radius: 16px; }
-        #tab-monthly th, #tab-monthly td { padding: 16px; text-align: center; border-bottom: 2px dashed var(--border-color); font-weight: 700;}
-        #tab-monthly th { background-color: rgba(255, 240, 245, 0.9); color: var(--text-main); }
-        #tab-monthly .charts-wrapper { display: flex; gap: 25px; margin-top: 20px; flex-wrap: wrap; }
-        #tab-monthly .chart-box { flex: 1; min-width: 400px; background: rgba(255, 250, 250, 0.9); border: 3px solid var(--border-color); padding: 25px; border-radius: 24px; }
-        
-        /* Tool 2 Modals */
-        #tab-monthly .modal-content { background: rgba(255,255,255,0.95); padding: 35px; border-radius: 30px; width: 90%; max-width: 450px; border: 5px solid var(--border-color); position: relative; text-align: center; }
-        #tab-monthly .close-modal { font-size: 28px; cursor: pointer; color: var(--primary-color); font-weight: bold; position: absolute; right: 20px; top: 15px; }
+        .t2-btn {
+            padding: 12px 24px; border: none; border-radius: 20px; font-weight: 800; cursor: pointer; transition: 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-family: inherit; box-shadow: 0 5px 0 rgba(0,0,0,0.1);
+        }
+        .t2-btn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0); }
+        .t2-btn:disabled { opacity: 0.6; cursor: wait; }
+        .t2-top { display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .t2-top .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        #tab-monthly .form-group {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;
+            background: rgba(255, 250, 250, 0.8); padding: 30px; border-radius: 24px; margin-bottom: 30px; border: 3px solid var(--border-color);
+        }
+        #tab-monthly .form-group label { display: block; font-weight: bold; margin-bottom: 6px; }
+        .overview-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+        .overview-head .viewer { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .table-wrap { background: rgba(255,255,255,0.8); border-radius: 24px; border: 3px solid var(--border-color); padding: 10px; margin-bottom: 30px; overflow-x: auto; }
+        #tab-monthly table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(255,255,255,0.9); border-radius: 16px; min-width: 520px; }
+        #tab-monthly th, #tab-monthly td { padding: 16px; text-align: center; border-bottom: 2px dashed var(--border-color); font-weight: 700; }
+        #tab-monthly th { background-color: rgba(255, 240, 245, 0.9); }
+        .charts-wrapper { display: flex; gap: 25px; margin-top: 20px; flex-wrap: wrap; }
+        .chart-box { flex: 1 1 400px; min-width: 0; background: rgba(255, 250, 250, 0.9); border: 3px solid var(--border-color); padding: 25px; border-radius: 24px; }
+        .chart-box h3 { color: var(--primary-color); margin-top: 0; }
+        .manage-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px;
+            background: #fff0f5; border-radius: 10px; margin-bottom: 10px; border: 1px solid #ffc2d4;
+        }
+        .manage-row button { background: #ff9999; color: white; border: none; border-radius: 8px; cursor: pointer; padding: 6px 10px; font-family: inherit; }
 
-        /* 列印模式修正 */
+        /* ================= 4. Whirlwind Group 分組工具（薰衣草主題，只作用在這個分頁） ================= */
+        #tab-shuffle { --sh-ink: #6b21a8; --sh-deep: #3b0764; }
+        #tab-shuffle.active {
+            background-color: rgba(250, 245, 255, 0.92);
+            background-image:
+                radial-gradient(at 10% 10%, #f3e8ff 0px, transparent 50%),
+                radial-gradient(at 90% 20%, #fae8ff 0px, transparent 40%),
+                radial-gradient(at 50% 80%, #e0e7ff 0px, transparent 50%);
+        }
+        .sh-wrap { width: 100%; max-width: 1200px; }
+        .sh-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+        .sh-badge { background: #e9d5ff; color: #6b21a8; font-size: 12px; padding: 4px 12px; border-radius: 999px; font-weight: 800; border: 1px solid #c084fc; }
+        .sh-lang { display: flex; gap: 4px; padding: 4px; background: #fff; border-radius: 999px; border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); }
+        .sh-lang-btn { border: none; background: transparent; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 12px; color: #7e22ce; cursor: pointer; font-family: inherit; }
+        .sh-lang-btn.on { background: #9333ea; color: #fff; }
+        .sh-title { text-align: center; color: #581c87; font-size: 28px; margin: 8px 0 16px; letter-spacing: 0.5px; }
+        .sh-main { display: grid; grid-template-columns: 5fr 7fr; gap: 18px; align-items: start; }
+        .sh-card { background: rgba(255,255,255,0.92); border: 3px solid var(--sh-ink); box-shadow: 5px 5px 0 var(--sh-ink); border-radius: 24px; padding: 18px; min-width: 0; }
+        .sh-card h2 { display: flex; gap: 8px; align-items: center; margin: 0 0 6px; font-size: 17px; color: var(--sh-deep); font-weight: 800; }
+        .sh-sub { font-size: 12px; color: #a855f7; margin: 0 0 10px; line-height: 1.5; }
+        .sh-grade-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
+        .sh-tab, .sh-gc-btn {
+            border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); background: #faf5ff; color: #7e22ce;
+            border-radius: 12px; padding: 6px 2px; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.1s;
+        }
+        .sh-tab:hover, .sh-gc-btn:hover { background: #f3e8ff; }
+        .sh-tab.on, .sh-gc-btn.on { background: #d8b4fe; color: var(--sh-deep); transform: scale(1.05); }
+        .sh-count { font-size: 10px; background: #e9d5ff; color: #6b21a8; border-radius: 999px; padding: 0 7px; }
+        .sh-tab.on .sh-count { background: var(--sh-deep); color: #fff; }
+        .sh-tab:active, .sh-gc-btn:active, .sh-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--sh-ink); }
+        .sh-area {
+            width: 100%; height: 340px; padding: 12px; border: 2px solid #d8b4fe; border-radius: 16px; background: rgba(250,245,255,0.6);
+            color: #581c87; font-size: 15px; line-height: 1.5; resize: vertical; outline: none; font-family: inherit;
+        }
+        .sh-area:focus { border-color: #9333ea; box-shadow: 0 0 0 3px rgba(192,132,252,0.35); }
+        .sh-paste-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .sh-link { background: none; border: none; color: #7e22ce; font-weight: 800; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 4px 0; font-family: inherit; }
+        .sh-link.sh-danger { color: #ef4444; }
+        .sh-right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+        .sh-gc { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 6px 0 12px; }
+        .sh-btn {
+            border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); border-radius: 12px; padding: 10px 20px;
+            font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit; color: var(--sh-deep); transition: transform 0.1s;
+        }
+        .sh-go { width: 100%; background: #e879f9; }
+        .sh-go:hover { background: #f0abfc; }
+        .sh-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 2px solid #f3e8ff; padding-bottom: 8px; margin-bottom: 12px; }
+        .sh-preview-head h2 { margin: 0; }
+        .sh-total { font-size: 12px; font-weight: 800; color: #a855f7; background: #f3e8ff; padding: 4px 12px; border-radius: 999px; }
+        .sh-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .sh-empty { grid-column: 1 / -1; text-align: center; padding: 30px 10px; color: #c084fc; font-weight: 700; }
+        .sh-empty .big { font-size: 36px; display: block; margin-bottom: 6px; animation: sh-bounce 1s infinite; }
+        .sh-empty small { display: block; color: #d8b4fe; margin-top: 4px; }
+        @keyframes sh-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .sh-group { border: 2px solid; border-radius: 16px; padding: 12px; box-shadow: 4px 4px 0 var(--sh-ink); min-width: 0; }
+        .sh-group-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .sh-group-head h3 { margin: 0; font-size: 14px; color: var(--sh-deep); display: flex; gap: 4px; }
+        .sh-group-count { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--sh-ink); color: var(--sh-deep); white-space: nowrap; }
+        .sh-stats { font-size: 10px; color: #9333ea; background: rgba(255,255,255,0.65); border: 1px solid #e9d5ff; border-radius: 6px; padding: 2px 8px; margin-bottom: 8px; font-weight: 700; }
+        .sh-members { list-style: none; margin: 0; padding: 0 4px 0 0; max-height: 200px; overflow-y: auto; }
+        .sh-members li { display: flex; justify-content: space-between; gap: 6px; padding: 4px; border-bottom: 1px dashed #e9d5ff; font-size: 13px; font-weight: 700; color: var(--sh-deep); word-break: break-word; }
+        .sh-members li .g { font-size: 10px; color: #a855f7; background: rgba(243,232,255,0.7); border-radius: 999px; padding: 0 6px; flex-shrink: 0; align-self: center; }
+        .sh-footer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 6px; }
+        .sh-dl { background: #34d399; }
+        .sh-dl:hover { background: #6ee7b7; }
+        .sh-copy { background: #fcd34d; }
+        .sh-copy:hover { background: #fde68a; }
+        .sh-modal-box { max-width: 380px; text-align: center; border: 3px solid #6b21a8; box-shadow: 5px 5px 0 #6b21a8; border-radius: 24px; }
+        .sh-modal-emoji { font-size: 38px; display: block; margin-bottom: 6px; }
+        .sh-modal-box h3 { color: var(--sh-deep, #3b0764); margin: 0 0 6px; }
+        .sh-modal-box p { color: #7e22ce; font-size: 13px; margin: 0 0 18px; line-height: 1.6; white-space: pre-line; }
+        .sh-modal-box .sh-btn { background: #c084fc; width: 100%; --sh-ink: #6b21a8; --sh-deep: #3b0764; }
+        #sh-toast {
+            position: fixed; right: 20px; bottom: 20px; z-index: 15000; background: #581c87; color: #fff; border: 2px solid #d8b4fe;
+            padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 700; opacity: 0; transform: translateY(20px);
+            transition: all 0.3s; pointer-events: none; max-width: calc(100% - 40px);
+        }
+        #sh-toast.show { opacity: 1; transform: none; }
+        @media (max-width: 900px) { .sh-main { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) {
+            .sh-title { font-size: 20px; }
+            .sh-preview { grid-template-columns: 1fr; }
+            .sh-area { height: 220px; }
+            .sh-footer .sh-btn { flex: 1 1 100%; }
+            .sh-card { padding: 14px; }
+        }
+
+        /* 學生名單設定 */
+        #settings-students-text {
+            width: 100%; height: 350px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 15px;
+            font-size: 15px; resize: vertical; line-height: 1.5; outline: none; font-family: inherit;
+        }
+        .help-text { font-size: 13px; color: #777; margin: 0 0 10px; line-height: 1.6; }
+
+        /* 匯入 */
+        #import-text {
+            width: 100%; height: 200px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px;
+            font-size: 13px; font-family: monospace; resize: vertical; outline: none;
+        }
+
+        /* ================= 手機版 ================= */
+        @media (max-width: 768px) {
+            .main-nav { flex-wrap: wrap; gap: 8px; padding: 10px; }
+            .nav-btn { padding: 8px 12px; font-size: 14px; flex: 1 1 40%; }
+            .tab-content { padding: 12px; }
+            #tab-daily .t1-container { height: auto; padding: 18px; }
+            #tab-daily .content-area { flex-direction: column; gap: 16px; overflow: visible; }
+            #tab-daily textarea { min-height: 160px; }
+            #tab-daily .top-controls > select, #tab-daily .top-controls > input { flex: 1 1 100%; }
+            #tab-daily .btn-group { margin-left: 0; width: 100%; }
+            #tab-daily .btn-group .btn { flex: 1; padding: 12px 8px; font-size: 14px; }
+            #tab-monthly .t2-container { padding: 18px; }
+            #tab-monthly .form-group { padding: 18px; }
+            .overview-head { flex-direction: column; align-items: stretch; }
+            .overview-head .viewer { flex-direction: column; align-items: stretch; }
+            .chart-box { flex-basis: 100%; padding: 15px; }
+            .modal-box { padding: 22px 16px; }
+            .day-cell { font-size: 15px; }
+        }
+
+        /* ================= 列印 ================= */
         @media print {
-            body { background: white !important; overflow: visible; height: auto; }
-            .main-nav { display: none !important; }
-            #tab-daily, #tab-gas { display: none !important; }
-            #tab-monthly { display: block !important; padding: 0 !important; }
-            #tab-monthly .t2-container { border: none; box-shadow: none; }
+            body { background: white !important; overflow: visible !important; height: auto !important; }
+            #app-wrapper { display: block !important; height: auto !important; }
+            .main-nav, #tab-daily, #tab-shuffle, #sh-toast, #login-screen, #loading-overlay, .shared-modal, .no-print { display: none !important; }
+            #tab-monthly { display: block !important; overflow: visible !important; padding: 0 !important; }
+            #tab-monthly .t2-container { border: none; box-shadow: none; backdrop-filter: none; padding: 0; }
+            .chart-box { break-inside: avoid; }
         }
     </style>
 </head>
 <body>
 
-    <!-- 登入畫面 -->
-    <div id="login-screen">
+    <div id="loading-overlay"><div class="spinner"></div><div id="loading-msg">Loading... / 読み込み中...</div></div>
+
+    <!-- 讀取失敗畫面（平常不顯示） -->
+    <div id="login-screen" style="display:none;">
         <div class="login-box">
-            <h2 style="color: var(--primary-dark); font-size: 26px; margin-top:0;">🧸 System Login<br><span style="font-size: 16px;">システムログイン</span></h2>
-            <p style="color:#9e8e93; font-weight:bold;">Password / パスワード</p>
-            <input type="password" id="password-input" placeholder="****">
-            <button class="login-btn" onclick="checkPassword()">Login / ログイン</button>
+            <h2 style="color: var(--primary-dark); font-size: 26px; margin-top:0;">🧸 IGK System</h2>
+            <p id="boot-error-msg" style="color:#9e8e93; font-weight:bold; white-space:pre-line;"></p>
+            <button class="login-btn" onclick="boot()">再読み込み / Retry</button>
         </div>
     </div>
 
-    <!-- 登入後的主介面 -->
+    <!-- 登入後主介面 -->
     <div id="app-wrapper">
-        <!-- 導覽列 -->
         <nav class="main-nav">
             <button class="nav-btn active" onclick="switchTab('tab-daily', this)">📝 Our kids</button>
             <button class="nav-btn" onclick="switchTab('tab-monthly', this)">🖍️ For study</button>
-            <button class="nav-btn" onclick="switchTab('tab-gas', this)">✨ Whirlwind Group</button>
-            <!-- 🌟 新增的設定按鈕 -->
-            <button class="nav-btn" style="border-color: #a8d8ea; color: #6d9fa2;" onclick="openSettingsModal()">⚙️ 学生リスト</button>
+            <button class="nav-btn" onclick="switchTab('tab-shuffle', this)">✨ Whirlwind Group</button>
+            <button class="nav-btn settings" onclick="openSettingsModal()">⚙️ 学生リスト</button>
         </nav>
 
-        <!-- ================= [TAB 1] 日常紀錄 KidsMemo ================= -->
+        <!-- ================= [TAB 1] 日常紀錄 ================= -->
         <div id="tab-daily" class="tab-content active">
             <div class="t1-container">
                 <h2>🎨 Daily Record / 日常記録</h2>
@@ -187,93 +370,62 @@
                     <select id="student-name"></select>
                     <input type="date" id="record-date">
                     <div class="btn-group">
-                        <button class="t1-btn" style="background: #ffe082; color: #6d4c41;" id="history-btn-el" onclick="openCalendarModal()">📅 History / 履歴</button>
-                        <button class="t1-btn" style="background: #b2dfdb; color: #004d40;" id="student-btn-el" onclick="openStudentModal()">👤 Student / 児童別</button>
+                        <button class="btn" style="background: #ffe082; color: #6d4c41;" onclick="openCalendarModal()">📅 History / 履歴</button>
+                        <button class="btn" style="background: #b2dfdb; color: #004d40;" onclick="openStudentModal()">👤 Student / 児童別</button>
                     </div>
                 </div>
 
                 <div class="content-area">
                     <div class="column">
-                        <label>📝 Event / 出来事</label>
+                        <label for="event-text">📝 Event / 出来事</label>
                         <textarea id="event-text" placeholder="Detail the event... / 出来事を詳しく記入してください..."></textarea>
                     </div>
                     <div class="column">
-                        <label>💡 Solution / 解決策</label>
+                        <label for="solution-text">💡 Solution / 解決策</label>
                         <textarea id="solution-text" placeholder="Record the solution... / 解決策を記入してください..."></textarea>
                     </div>
                 </div>
-                <button class="t1-btn" style="background: #a8d8ea; color: #4a4a4a; margin-top: 20px; width: 100%;" id="save-btn-el" onclick="saveRecord()">💾 Save Record / 保存する</button>
-            </div>
-
-            <!-- T1 Modals -->
-            <div id="calendar-modal" class="shared-modal">
-                <div class="modal-content">
-                    <span class="close-btn" onclick="closeSharedModal('calendar-modal')">&times;</span>
-                    <div class="calendar-header">
-                        <button class="t1-btn" style="background:#e0e0e0; color:#333;" onclick="changeMonth(-1)">&#9664; Prev</button>
-                        <h3 id="calendar-month-year" style="color: #6d9fa2; margin:0;"></h3>
-                        <button class="t1-btn" style="background:#e0e0e0; color:#333;" onclick="changeMonth(1)">Next &#9654;</button>
-                    </div>
-                    <div class="weekdays">
-                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                    </div>
-                    <div class="days-grid" id="calendar-days"></div>
-                </div>
-            </div>
-
-            <div id="records-modal" class="shared-modal">
-                <div class="modal-content">
-                    <span class="close-btn" onclick="closeSharedModal('records-modal')">&times;</span>
-                    <h3 style="color:#d9736c; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;" id="records-date-title"></h3>
-                    <div id="records-list-container" style="overflow-y: auto;"></div>
-                </div>
-            </div>
-
-            <div id="student-modal" class="shared-modal">
-                <div class="modal-content">
-                    <span class="close-btn" onclick="closeSharedModal('student-modal')">&times;</span>
-                    <h3 style="color:#6d9fa2; border-bottom: 2px dashed #b2dfdb; padding-bottom: 10px;">👤 Student History / 児童履歴記録</h3>
-                    <select id="modal-student-select" style="margin-bottom:20px;" onchange="searchStudentHistory()"></select>
-                    <div id="student-records-container" style="overflow-y: auto;"></div>
-                </div>
+                <button class="btn" style="background: #a8d8ea; color: #4a4a4a; margin-top: 20px; width: 100%;" id="save-btn-el" onclick="saveRecord()">💾 Save Record / 保存する</button>
             </div>
         </div>
 
-        <!-- ================= [TAB 2] 月度統計 Month.test ================= -->
+        <!-- ================= [TAB 2] 月度統計 ================= -->
         <div id="tab-monthly" class="tab-content">
             <div class="t2-container">
-                <div style="display:flex; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <div class="t2-top">
                     <div>
-                        <label style="font-weight:bold; margin-right:10px;">Target Month <span>対象月</span></label>
+                        <label for="monthSelect" style="font-weight:bold; margin-right:10px;">Target Month / 対象月</label>
                         <select id="monthSelect" onchange="handleMonthChange()" style="width:180px; padding:10px;"></select>
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div class="actions no-print">
                         <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="exportData()">📤 Export</button>
-                        <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="importData()">📥 Import</button>
+                        <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="openImportModal()">📥 Import</button>
                         <button class="t2-btn" style="background:#ffe066; color:#8c7300;" onclick="window.print()">🖨️ Print View</button>
                     </div>
                 </div>
 
-                <h2>🧸 Daily Data Entry <span>毎日のデータ入力</span></h2>
-                <div class="form-group">
-                    <div><label>Member Name</label><select id="userSelect"></select></div>
-                    <div><label>Record Date</label><input type="date" id="dateSelect"></div>
-                    <div><label>Score (0-20)</label><input type="number" id="scoreInput" min="0" max="20" value="0"></div>
-                    <div><button class="t2-btn" style="background:var(--primary-color); color:white; width:100%; height:100%; justify-content:center;" onclick="saveMonthlyData()">✏️ Save</button></div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items:flex-end;">
-                    <h2>🖍️ Monthly Overview <span>今月のデータ概要</span></h2>
-                    <div style="margin-bottom:20px;">
-                        <span style="font-weight:bold; font-size:14px; margin-right:10px;">View Score for:</span>
-                        <select id="chartUserSelect" onchange="handleUserSelectChange()" style="width:180px; padding:8px;"></select>
+                <div class="no-print">
+                    <h2>🧸 Daily Data Entry <span>毎日のデータ入力</span></h2>
+                    <div class="form-group">
+                        <div><label for="userSelect">Member Name</label><select id="userSelect"></select></div>
+                        <div><label for="dateSelect">Record Date</label><input type="date" id="dateSelect"></div>
+                        <div><label for="scoreInput">Score (0-20)</label><input type="number" id="scoreInput" min="0" max="20" step="1" value="0"></div>
+                        <div style="display:flex; align-items:flex-end;"><button class="t2-btn" id="score-save-btn" style="background:var(--primary-color); color:white; width:100%; justify-content:center; min-height:52px;" onclick="saveMonthlyData()">✏️ Save</button></div>
                     </div>
                 </div>
-                
-                <div style="background: rgba(255,255,255,0.8); border-radius:24px; border:3px solid var(--border-color); padding:10px; margin-bottom:30px;">
+
+                <div class="overview-head">
+                    <h2>🖍️ Monthly Overview <span>今月のデータ概要</span></h2>
+                    <div class="viewer">
+                        <span style="font-weight:bold; font-size:14px;">View Score for:</span>
+                        <select id="chartUserSelect" onchange="handleUserSelectChange()" style="width:220px; padding:8px;"></select>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
                     <table id="dailySummaryTable">
                         <thead>
-                            <tr><th>Date 📅</th><th>Participants 👥</th><th>Avg Score 📊</th><th>Personal Score 👤</th><th>Action ⚙️</th></tr>
+                            <tr><th>Date 📅</th><th>Participants 👥</th><th>Avg Score 📊</th><th>Personal Score 👤</th><th class="no-print">Action ⚙️</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -281,415 +433,1160 @@
 
                 <div class="charts-wrapper">
                     <div class="chart-box">
-                        <h3 style="color:var(--primary-color); margin-top:0;">🌟 Overall Team Progress</h3>
+                        <h3>🌟 Overall Team Progress</h3>
                         <div style="height:280px;"><canvas id="overallChart"></canvas></div>
                     </div>
                     <div class="chart-box">
-                        <h3 style="color:var(--primary-color); margin-top:0;">🏅 Individual Performance</h3>
+                        <h3>🏅 Individual Performance</h3>
                         <div style="height:280px;"><canvas id="personalChart"></canvas></div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- T2 Modals -->
-            <div id="dataModal" class="shared-modal">
-                <div class="modal-content">
-                    <span class="close-modal" onclick="closeSharedModal('dataModal')">&times;</span>
-                    <h3 id="modalTitle" style="color:var(--primary-dark); margin-top:0;">📅 Manage Data</h3>
-                    <div id="modalList" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
+        <!-- ================= [TAB 3] Whirlwind Group 分組工具（原本的獨立 GAS 已整合進來） ================= -->
+        <div id="tab-shuffle" class="tab-content">
+            <div class="sh-wrap">
+                <div class="sh-top">
+                    <span class="sh-badge" id="sh-badge"></span>
+                    <div class="sh-lang">
+                        <button type="button" class="sh-lang-btn" data-lang="en">English</button>
+                        <button type="button" class="sh-lang-btn" data-lang="ja">日本語</button>
+                    </div>
+                </div>
+                <h1 class="sh-title" id="sh-title"></h1>
+
+                <div class="sh-main">
+                    <!-- 左：學年名單 -->
+                    <section class="sh-card">
+                        <h2><span>📋</span><span id="sh-paste-title"></span></h2>
+                        <p class="sh-sub" id="sh-paste-sub"></p>
+                        <div class="sh-grade-tabs" id="sh-grade-tabs"></div>
+                        <textarea id="sh-area" class="sh-area"></textarea>
+                        <div class="sh-paste-actions">
+                            <button type="button" class="sh-link" id="sh-load-list"></button>
+                            <button type="button" class="sh-link sh-danger" id="sh-clear"></button>
+                        </div>
+                    </section>
+
+                    <!-- 右：設定與結果 -->
+                    <div class="sh-right">
+                        <section class="sh-card">
+                            <h2><span>⚙️</span><span id="sh-settings-title"></span></h2>
+                            <div class="sh-gc" id="sh-gc"></div>
+                            <button type="button" class="sh-btn sh-go" id="sh-go"></button>
+                        </section>
+                        <section class="sh-card">
+                            <div class="sh-preview-head">
+                                <h2><span>🎨</span><span id="sh-preview-title"></span></h2>
+                                <span class="sh-total" id="sh-total"></span>
+                            </div>
+                            <div class="sh-preview" id="sh-preview"></div>
+                        </section>
+                    </div>
+                </div>
+
+                <div class="sh-footer">
+                    <button type="button" class="sh-btn sh-dl" id="sh-download"></button>
+                    <button type="button" class="sh-btn sh-copy" id="sh-copy"></button>
                 </div>
             </div>
         </div>
-
-        <!-- ================= [TAB 3] 外部系統 GAS ================= -->
-        <div id="tab-gas" class="tab-content" style="padding:0;">
-            <!-- 注意：外部網頁內部的背景無法透過這裡的 CSS 更改，會維持原本的樣子喔！ -->
-            <iframe src="https://script.google.com/a/macros/unite-gr.com/s/AKfycbwN07gOKGhP92UJ82Ko1r9o2D3dXNxgo5KKM_jJgN_pp0au6pLnfP0m9noSViSdOPvB1w/exec" style="width:100%; height:100%; border:none; border-radius: 0 0 20px 20px;"></iframe>
-        </div>
-
-        <!-- ================= 🌟 [新功能] リスト登録 Modal ================= -->
-        <div id="settings-modal" class="shared-modal">
-            <div class="modal-content" style="background: rgba(255,255,255,0.95); padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; border: 4px dashed #a8d8ea; position: relative;">
-                <span class="close-btn" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa; font-weight:bold;" onclick="closeSharedModal('settings-modal')">&times;</span>
-                <h3 style="color:#6d9fa2; margin-top:0; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">⚙️ Student List </h3>
-                <p style="font-size: 13px; color: #777; margin-bottom: 10px; line-height: 1.5;">
-                    💡 <b>如何使用？</b><br>
-                    請用 <b>学級</b> 学級を選んでからコピーペーストbr>学級変わるとき、コピーしたら！
-                </p>
-                <textarea id="settings-students-text" style="width: 100%; height: 350px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 15px; font-size: 15px; resize: none; line-height: 1.5; outline: none;"></textarea>
-                <button class="t1-btn" style="background: #a8d8ea; color: #4a4a4a; margin-top: 15px; width: 100%; padding: 12px; border:none; border-radius:15px; font-weight:bold; cursor:pointer;" onclick="saveStudentSettings()">💾 Save & Update / 儲存並更新名單</button>
-            </div>
-        </div>
-
     </div>
 
-    <!-- ================= 4. 聯合 JavaScript 邏輯 ================= -->
+    <!-- ================= Modals ================= -->
+    <div id="calendar-modal" class="shared-modal">
+        <div class="modal-box">
+            <button class="close-x" onclick="closeSharedModal('calendar-modal')" aria-label="close">&times;</button>
+            <div class="calendar-header">
+                <button class="btn" style="background:#e0e0e0; color:#333;" onclick="changeMonth(-1)">&#9664; Prev</button>
+                <h3 id="calendar-month-year" style="color: #6d9fa2; margin:0;"></h3>
+                <button class="btn" style="background:#e0e0e0; color:#333;" onclick="changeMonth(1)">Next &#9654;</button>
+            </div>
+            <div class="weekdays">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div class="days-grid" id="calendar-days"></div>
+        </div>
+    </div>
+
+    <div id="records-modal" class="shared-modal">
+        <div class="modal-box">
+            <button class="close-x" onclick="closeSharedModal('records-modal')" aria-label="close">&times;</button>
+            <h3 style="color:#d9736c; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;" id="records-date-title"></h3>
+            <div id="records-list-container" class="modal-scroll"></div>
+        </div>
+    </div>
+
+    <div id="student-modal" class="shared-modal">
+        <div class="modal-box">
+            <button class="close-x" onclick="closeSharedModal('student-modal')" aria-label="close">&times;</button>
+            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #b2dfdb; padding-bottom: 10px;">👤 Student History / 児童履歴記録</h3>
+            <select id="modal-student-select" style="margin-bottom:20px; width:100%;" onchange="searchStudentHistory()"></select>
+            <div id="student-records-container" class="modal-scroll"></div>
+        </div>
+    </div>
+
+    <div id="dataModal" class="shared-modal">
+        <div class="modal-box pink">
+            <button class="close-x" onclick="closeSharedModal('dataModal')" aria-label="close">&times;</button>
+            <h3 id="modalTitle" style="color:var(--primary-dark);">📅 Manage Data</h3>
+            <div id="modalList" class="modal-scroll" style="max-height: 300px; text-align:left;"></div>
+        </div>
+    </div>
+
+    <div id="import-modal" class="shared-modal">
+        <div class="modal-box">
+            <button class="close-x" onclick="closeSharedModal('import-modal')" aria-label="close">&times;</button>
+            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">📥 Import / 取り込み</h3>
+            <p class="help-text">バックアップファイルを選ぶか、以前コピーしたデータを貼り付けてください。<br>既存のデータは消えません（同じ日付・同じ児童のデータのみ上書き）。</p>
+            <input type="file" id="import-file" accept=".json,application/json" style="margin-bottom:10px;">
+            <textarea id="import-text" placeholder='{"2026-10": {...}}  または  バックアップファイルの内容'></textarea>
+            <button class="btn" id="import-run-btn" style="background:#a8d8ea; color:#4a4a4a; margin-top:15px; width:100%;" onclick="runImport()">📥 取り込む / Import</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="shared-modal">
+        <div class="modal-box" style="max-width: 520px;">
+            <button class="close-x" onclick="closeSharedModal('settings-modal')" aria-label="close">&times;</button>
+            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">⚙️ Student List / 学生リスト</h3>
+            <p class="help-text">
+                💡 <b>使い方</b><br>
+                ・<b>[G1]</b> のように学級名を角かっこで書き、その下に1行に1人ずつ名前を書きます。<br>
+                ・学級が変わったときは、名前を新しい学級の下に移すだけでOK。記録はそのまま引き継がれます。<br>
+                ・名前の文字を変えると、過去の記録と別人扱いになるので注意してください。
+            </p>
+            <textarea id="settings-students-text"></textarea>
+            <button class="btn" id="settings-save-btn" style="background: #a8d8ea; color: #4a4a4a; margin-top: 15px; width: 100%;" onclick="saveStudentSettings()">💾 Save & Update / 保存して更新</button>
+        </div>
+    </div>
+
+    <!-- 分組工具的提示視窗與通知 -->
+    <div id="sh-modal" class="shared-modal">
+        <div class="modal-box sh-modal-box">
+            <span class="sh-modal-emoji" id="sh-modal-emoji">💡</span>
+            <h3 id="sh-modal-title"></h3>
+            <p id="sh-modal-msg"></p>
+            <button type="button" class="sh-btn" id="sh-modal-close" onclick="closeSharedModal('sh-modal')">Got it! 💜</button>
+        </div>
+    </div>
+    <div id="sh-toast"><span>✨</span> <span id="sh-toast-msg"></span></div>
+
     <script>
-        // --- A. 學生名單管理系統 (Shared Data) ---
-        // 系統預設名單 (如果用戶還沒有設定過，會自動載入這份)
-        const DEFAULT_STUDENTS = {
-            "G1": [
-                "石原 瑛茉 Emma Ishihara (G1)", "岩瀬 広真 Kouma Iwase (G1)", "鹿島 美咲 Misaki Kashima (G1)",
-                "金多 紗歩 Saho Kaneta (G1)", "川畑 遼真 Haruma Kawabata (G1)", "河村 泉 Izumi Kawamura (G1)",
-                "栗本 理来 Riku Kurimoto (G1)", "酒井 梓 Azusa Sakai (G1)", "重安 こころ Kokoro Shigeyasu (G1)",
-                "杉立 舷 Gen Sugitate (G1)", "世古 碧 Aoi Seko (G1)", "田中 愛梨 Airi Tanaka (G1)",
-                "津田 莉世 Rise Tsuda (G1)", "橋本 莉緒 Rio Hashimoto (G1)", "福田 悠晴 Yusei Fukuda (G1)",
-                "南 佳苗 Kanae Minami (G1)", "藪內 香帆 Kaho Yabuuchi (G1)", "山本 夕緋 Yuuhi Yamamoto (G1)",
-                "吉本 希 Mare Yoshimoto (G1)", "羅 周周 ZhouZhou Luo (G1)", "李 詩悠 Shiyuu Lee (G1)",
-                "大仲 和真 Kazuma Onaka (G1)", "網 徹真 Toma Ami (G1)", "弓場 茉弥 Mahiro Yuba (G1)", "慈 恵俊 Eshun Utsumi (G1)"
-            ],
-            "G2": [
-                "平瀬 想真 Soma Hirase (G2)", "山部 弘誠 Kosei Yamabe (G2)", "上田 湊斗 Minato Ueta (G2)",
-                "有吉 純麗 Sumire Ariyoshi (G2)", "澤村 奏汰 Kanata Sawamura (G2)", "橋本 珠季 Tamaki Hashimoto (G2)",
-                "足立 英大 Ayata Adachi (G2)", "坂井 緋夏 Hina Sakai (G2)", "永田 創次郎 Sohjiroh Nagata (G2)",
-                "藤原 匠 Takumi Fujiwara (G2)", "宮田 泰槙 Taishin Miyata (G2)", "糸賀 優士 Yushi Itoga (G2)",
-                "田中 聡一 Soichi Tanaka (G2)", "畑 凜采 Risa Hata (G2)",
-                "山根 栞 Shiori Yamane (G2)", "剱物 右京 Ukyo Kenmotsu (G2)", "玉置 小晴 Koharu Tamaki (G2)"
-            ],
-            "G3": ["Aqeel (G3)", "Takuto (G3)", "Ryuya (G3)"]
+        // ================= 設定 =================
+        const API_URL = "https://script.google.com/macros/s/AKfycbyi5CfdkrgiufwUGpFvCxl9NJHudL8s0joB08qEs7HB6ufRY5TTcXldIjfslM-V20ybMQ/exec";
+        const SAVE_BTN_LABEL = '💾 Save Record / 保存する';
+
+        // ================= 狀態 =================
+        let STUDENTS = {};      // { G1: ['石原 瑛茉 Emma Ishihara', ...] }  ← 名字不含 (G1)
+        let cloudRecords = [];  // [{ date, name, event, solution }]
+        let scoreData = {};     // { 'YYYY-MM': { name: { 'YYYY-MM-DD': score } } }
+        let currentCalDate = new Date();
+        let overallChart = null, personalChart = null;
+
+        // ================= 共用工具 =================
+        const $ = id => document.getElementById(id);
+        const pad = n => String(n).padStart(2, '0');
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const nl2br = s => esc(s).replace(/\n/g, '<br>');
+
+        // 用「本地時間」產生 YYYY-MM-DD（避免 UTC 差一天）
+        function localDateStr(d = new Date()) {
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        function cleanDateStr(raw) {
+            if (!raw) return '';
+            const s = String(raw).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            const d = new Date(s);
+            return isNaN(d) ? s.substring(0, 10) : localDateStr(d);
+        }
+
+        // 名字去掉 (G1) 等年級標記 → 升級後紀錄仍對得上
+        function baseName(n) {
+            return String(n == null ? '' : n).replace(/\s*[（(]\s*G\d+\s*[)）]\s*$/i, '').trim();
+        }
+
+        function gradeOf(name) {
+            for (const g in STUDENTS) if (STUDENTS[g].includes(name)) return g;
+            return '';
+        }
+        function label(name) {
+            const g = gradeOf(name);
+            return g ? `${name} (${g})` : name;
+        }
+
+        const store = {
+            get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+            set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
         };
 
-        // 從本機記憶體讀取名單，保證重新整理後名單還在
-        let SHARED_STUDENTS = JSON.parse(localStorage.getItem('igk_students_list_v1')) || DEFAULT_STUDENTS;
+        function setLoading(on, msg) {
+            $('loading-msg').textContent = msg || 'Loading... / 読み込み中...';
+            $('loading-overlay').classList.toggle('show', on);
+        }
 
-        function initSharedStudents() {
-            const t1Main = document.getElementById('student-name');
-            const t1Modal = document.getElementById('modal-student-select');
-            const t2User = document.getElementById('userSelect');
-            const t2Chart = document.getElementById('chartUserSelect');
+        const ERROR_TEXT = {
+            network: 'ネットワークエラーです。接続を確認してください / Network error',
+            bad_response: 'サーバーの応答が正しくありません（GAS が新しいバージョンでデプロイされているか確認してください）',
+            invalid_record: '入力内容が正しくありません / Invalid record',
+            invalid_score: '点数は 0〜20 の整数で入力してください',
+            duplicate_student: '同じ名前が複数の学級にあります',
+            empty_students: '名簿が空です',
+            use_post: 'GAS が古いバージョンです。再デプロイしてください'
+        };
+        function errMsg(e) {
+            return ERROR_TEXT[e.message] || ('Error / エラー: ' + e.message);
+        }
 
-            t1Main.innerHTML = '<option value="" disabled selected>Select Name / 名前を選択</option>';
-            t1Modal.innerHTML = '<option value="" disabled selected>Select a student / 児童を選択</option>';
-            t2User.innerHTML = ''; t2Chart.innerHTML = '';
-
-            for (const [group, names] of Object.entries(SHARED_STUDENTS)) {
-                const opt1 = document.createElement('optgroup'); opt1.label = group;
-                const opt2 = document.createElement('optgroup'); opt2.label = group;
-                const opt3 = document.createElement('optgroup'); opt3.label = group;
-                const opt4 = document.createElement('optgroup'); opt4.label = group;
-
-                names.forEach(name => {
-                    opt1.appendChild(new Option(name, name));
-                    opt2.appendChild(new Option(name, name));
-                    opt3.appendChild(new Option(name, name));
-                    opt4.appendChild(new Option(name, name));
+        // 所有雲端通訊都走這裡：讀得到伺服器回應，失敗就丟出錯誤
+        async function api(action, payload = {}) {
+            let res;
+            try {
+                // body 是字串 → Content-Type 為 text/plain，不會觸發 CORS 預檢，可讀取回應
+                res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(Object.assign({ action }, payload))
                 });
-                t1Main.appendChild(opt1); t1Modal.appendChild(opt2);
-                t2User.appendChild(opt3); t2Chart.appendChild(opt4);
+            } catch (e) {
+                throw new Error('network');
             }
+            let data;
+            try { data = await res.json(); } catch (e) { throw new Error('bad_response'); }
+            if (!data || !data.ok) throw new Error((data && data.error) || 'unknown');
+            return data;
         }
 
-        // 開啟設定畫面，並將資料轉成好編輯的純文字
-        function openSettingsModal() {
-            let textFormat = "";
-            for (let grade in SHARED_STUDENTS) {
-                textFormat += `[${grade}]\n`;
-                textFormat += SHARED_STUDENTS[grade].join('\n') + '\n\n';
+        function applyAll(data) {
+            cloudRecords = (data.records || []).map(r => ({
+                date: cleanDateStr(r.date),
+                name: baseName(r.name),
+                event: r.event != null ? r.event : (r.eventDesc || ''),
+                solution: r.solution != null ? r.solution : (r.solutionDesc || '')
+            }));
+
+            STUDENTS = {};
+            for (const [g, list] of Object.entries(data.students || {})) {
+                STUDENTS[g] = (list || []).map(baseName).filter(Boolean);
             }
-            document.getElementById('settings-students-text').value = textFormat.trim();
-            document.getElementById('settings-modal').style.display = 'flex';
-        }
 
-        // 儲存文字框內的設定，轉換回系統格式
-        function saveStudentSettings() {
-            const text = document.getElementById('settings-students-text').value;
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-            
-            let newStudents = {};
-            let currentGrade = "Uncategorized"; // 防呆機制：如果忘記寫年級
-
-            lines.forEach(line => {
-                if (line.startsWith('[') && line.endsWith(']')) {
-                    currentGrade = line.substring(1, line.length - 1);
-                    newStudents[currentGrade] = [];
-                } else {
-                    if (!newStudents[currentGrade]) newStudents[currentGrade] = [];
-                    newStudents[currentGrade].push(line);
-                }
+            scoreData = {};
+            (data.scores || []).forEach(s => {
+                const date = cleanDateStr(s.date), name = baseName(s.name), m = date.slice(0, 7);
+                if (!scoreData[m]) scoreData[m] = {};
+                if (!scoreData[m][name]) scoreData[m][name] = {};
+                scoreData[m][name][date] = Number(s.score);
             });
-
-            SHARED_STUDENTS = newStudents;
-            localStorage.setItem('igk_students_list_v1', JSON.stringify(SHARED_STUDENTS));
-            
-            initSharedStudents(); // 更新所有的下拉選單
-            closeSharedModal('settings-modal');
-            alert("學生名單已成功更新！\nStudent list updated successfully!");
         }
 
-        function closeSharedModal(id) { document.getElementById(id).style.display = 'none'; }
+        async function reloadAll() {
+            applyAll(await api('getAll'));
+            refreshUI();
+        }
 
-        // --- B. 系統控制邏輯 ---
-        function checkPassword() {
-            const pwd = document.getElementById('password-input').value;
-            if (pwd === '0004') { 
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-wrapper').style.display = 'flex';
-                initSharedStudents(); // 登入後初始化名單
-                preloadCloudData();   // 預載 Tab 1 雲端資料
-                initMonthSelector();  // 初始化 Tab 2 時間
-                handleMonthChange();  // 初始化 Tab 2 圖表
-            } else {
-                alert('Password Incorrect! / パスワードが間違っています！');
+        function refreshUI() {
+            initStudentSelects();
+            initMonthSelector();
+            renderSummaryTable();
+            updateCharts();
+            shRenderGradeTabs();
+            if ($('student-modal').style.display === 'flex') searchStudentHistory();
+            if ($('calendar-modal').style.display === 'flex') renderCalendar();
+        }
+
+        function openModal(id) { $(id).style.display = 'flex'; }
+        function closeSharedModal(id) { $(id).style.display = 'none'; }
+
+        // 點背景也能關閉
+        document.querySelectorAll('.shared-modal').forEach(m => {
+            m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; });
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') document.querySelectorAll('.shared-modal').forEach(m => m.style.display = 'none');
+        });
+
+        // ================= 啟動（打開網頁就直接讀取資料） =================
+        async function boot() {
+            $('login-screen').style.display = 'none';
+            setLoading(true);
+            let data;
+            try {
+                data = await api('getAll');
+            } catch (e) {
+                setLoading(false);
+                $('boot-error-msg').textContent = 'データを読み込めませんでした / Could not load data\n\n' + errMsg(e);
+                $('login-screen').style.display = 'flex';
+                return;
+            }
+            applyAll(data);
+            enterApp();
+            setLoading(false);
+            await migrateLocalData();
+        }
+
+        function enterApp() {
+            $('login-screen').style.display = 'none';
+            $('app-wrapper').style.display = 'flex';
+            $('record-date').value = localDateStr();
+            $('dateSelect').value = localDateStr();
+            refreshUI();
+            shSetLang(shLang);
+            if (Object.keys(STUDENTS).length === 0) {
+                alert('学生リストが空です。「⚙️ 学生リスト」から登録してください。');
             }
         }
 
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+            $(tabId).classList.add('active');
             btnElement.classList.add('active');
 
-            if(tabId === 'tab-monthly') { setTimeout(updateCharts, 50); }
+            if (tabId === 'tab-monthly') setTimeout(updateCharts, 50);
         }
 
-        // --- C. Tab 1: 日常紀錄邏輯 (KidsMemo) ---
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyi5CfdkrgiufwUGpFvCxl9NJHudL8s0joB08qEs7HB6ufRY5TTcXldIjfslM-V20ybMQ/exec";
-        let globalCloudRecords = [];
-        let currentCalDate = new Date();
-        document.getElementById('record-date').valueAsDate = new Date();
+        // 舊版存在這台電腦的資料 → 詢問是否上傳雲端（只問到處理完為止，舊資料不刪除）
+        async function migrateLocalData() {
+            try {
+                if (!store.get('igk_scores_migrated_v3')) {
+                    const parsed = parseScoreBackup(store.get('igk_records_v2'));
+                    if (parsed && parsed.rows.length) {
+                        if (confirm(`このパソコンに旧スコアが ${parsed.rows.length} 件あります。クラウドにアップロードしますか？\n（同じ日付・同じ児童のデータは上書きされます）`)) {
+                            setLoading(true, 'Uploading... / アップロード中...');
+                            await api('importScores', { scores: parsed.rows });
+                            store.set('igk_scores_migrated_v3', '1');
+                            await reloadAll();
+                            setLoading(false);
+                            alert('アップロードしました！');
+                        }
+                    } else {
+                        store.set('igk_scores_migrated_v3', '1');
+                    }
+                }
 
-        function cleanDateStr(rawDate) {
-            if (!rawDate) return "";
-            return rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.substring(0, 10);
-        }
-
-        function preloadCloudData() {
-            fetch(GOOGLE_SCRIPT_URL).then(res => res.json()).then(data => {
-                globalCloudRecords = data.map(r => { r.date = cleanDateStr(r.date); return r; });
-            }).catch(err => console.error("Tab1 Data Error:", err));
-        }
-
-        function saveRecord() {
-            const name = document.getElementById('student-name').value;
-            const date = document.getElementById('record-date').value;
-            const eventDesc = document.getElementById('event-text').value.trim();
-            const solutionDesc = document.getElementById('solution-text').value.trim();
-
-            if (!name || !eventDesc || !solutionDesc) { alert('Please fill in all fields!'); return; }
-            
-            const btn = document.getElementById('save-btn-el');
-            btn.disabled = true; btn.innerText = '🔄 Saving...';
-
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST", mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ date, name, event: eventDesc, solution: solutionDesc })
-            }).then(() => {
-                alert('Saved Successfully to Cloud! / 雲端保存成功！');
-                document.getElementById('event-text').value = '';
-                document.getElementById('solution-text').value = '';
-                preloadCloudData();
-            }).finally(() => { btn.disabled = false; btn.innerText = '💾 Save Record'; });
-        }
-
-        function openCalendarModal() { document.getElementById('calendar-modal').style.display = 'flex'; renderCalendar(); }
-        function openStudentModal() { document.getElementById('student-modal').style.display = 'flex'; }
-        
-        function changeMonth(step) { currentCalDate.setMonth(currentCalDate.getMonth() + step); renderCalendar(); }
-        
-        function renderCalendar() {
-            const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
-            document.getElementById('calendar-month-year').innerText = `${year} / ${String(month + 1).padStart(2, '0')}`;
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const recordDates = globalCloudRecords.map(r => r.date);
-            const grid = document.getElementById('calendar-days');
-            grid.innerHTML = '';
-
-            for (let i = 0; i < firstDayIndex; i++) grid.innerHTML += `<div class="day-cell"></div>`;
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const hasRec = recordDates.includes(dStr);
-                grid.innerHTML += `<div class="day-cell ${hasRec ? 'day-has-record' : 'day-no-record'}" ${hasRec ? `onclick="openDailyRecords('${dStr}')"` : ''}>${i}</div>`;
+                if (!store.get('igk_students_migrated_v3')) {
+                    let local = null;
+                    try { local = JSON.parse(store.get('igk_students_list_v1')); } catch (e) { }
+                    if (local && typeof local === 'object') {
+                        const result = parseStudentText(studentsToText(local));
+                        const same = JSON.stringify(result.students) === JSON.stringify(STUDENTS);
+                        if (!same && !result.errors.length && result.total > 0 &&
+                            confirm('このパソコンに保存されている学生リストをクラウドに反映しますか？\n（キャンセルするとクラウドのリストをそのまま使います）')) {
+                            setLoading(true, 'Uploading... / アップロード中...');
+                            await api('saveStudents', { students: result.students });
+                            await reloadAll();
+                            setLoading(false);
+                        }
+                    }
+                    store.set('igk_students_migrated_v3', '1');
+                }
+            } catch (e) {
+                setLoading(false);
+                alert('移行に失敗しました（次回ログイン時に再試行します）\n' + errMsg(e));
             }
         }
 
+        // ================= 學生名單 =================
+        function fillStudentSelect(sel, placeholder) {
+            const prev = sel.value;
+            sel.innerHTML = '';
+            if (placeholder) {
+                const o = new Option(placeholder, '');
+                o.disabled = true;
+                sel.add(o);
+            }
+            for (const [g, names] of Object.entries(STUDENTS)) {
+                const og = document.createElement('optgroup');
+                og.label = g;
+                names.forEach(n => og.appendChild(new Option(`${n} (${g})`, n)));
+                sel.appendChild(og);
+            }
+            if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+            else if (placeholder) sel.selectedIndex = 0;
+        }
+
+        function initStudentSelects() {
+            fillStudentSelect($('student-name'), 'Select Name / 名前を選択');
+            fillStudentSelect($('modal-student-select'), 'Select a student / 児童を選択');
+            fillStudentSelect($('userSelect'), null);
+            fillStudentSelect($('chartUserSelect'), null);
+        }
+
+        function studentsToText(obj) {
+            let text = '';
+            for (const g in obj) {
+                if (!Array.isArray(obj[g])) continue;
+                text += `[${g}]\n` + obj[g].join('\n') + '\n\n';
+            }
+            return text.trim();
+        }
+
+        function parseStudentText(text) {
+            const lines = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const students = {}, seen = new Map(), errors = [];
+            let cur = null, total = 0;
+            lines.forEach(line => {
+                const h = line.match(/^[\[［]\s*(.+?)\s*[\]］]$/);
+                if (h) {
+                    cur = h[1];
+                    if (!students[cur]) students[cur] = [];   // 重複的學級標題 → 合併，不會清空
+                    return;
+                }
+                if (!cur) { cur = 'Uncategorized'; if (!students[cur]) students[cur] = []; }
+                const n = baseName(line);
+                if (!n) return;
+                if (seen.has(n)) {
+                    if (seen.get(n) !== cur) errors.push(`「${n}」が ${seen.get(n)} と ${cur} の両方にあります`);
+                    return;  // 同じ学級内の重複は無視
+                }
+                seen.set(n, cur);
+                students[cur].push(n);
+                total++;
+            });
+            for (const g in students) if (!students[g].length) delete students[g];
+            return { students, errors, total, names: seen };
+        }
+
+        function openSettingsModal() {
+            $('settings-students-text').value = studentsToText(STUDENTS);
+            openModal('settings-modal');
+        }
+
+        async function saveStudentSettings() {
+            const result = parseStudentText($('settings-students-text').value);
+            if (result.errors.length) { alert('保存できません：\n' + result.errors.join('\n')); return; }
+            if (result.total === 0) { alert('名簿が空です。少なくとも1人は入力してください。'); return; }
+
+            const removed = Object.values(STUDENTS).flat().filter(n => !result.names.has(n));
+            if (removed.length) {
+                const preview = removed.slice(0, 10).join('\n') + (removed.length > 10 ? `\n…ほか ${removed.length - 10} 名` : '');
+                if (!confirm(`次の ${removed.length} 名がリストから外れます（過去の記録は消えません）：\n\n${preview}\n\n保存しますか？`)) return;
+            }
+
+            const btn = $('settings-save-btn');
+            btn.disabled = true;
+            setLoading(true, 'Saving... / 保存中...');
+            try {
+                await api('saveStudents', { students: result.students });
+                await reloadAll();
+                closeSharedModal('settings-modal');
+                setLoading(false);
+                alert('学生リストを更新しました！\nStudent list updated successfully!');
+            } catch (e) {
+                setLoading(false);
+                alert('保存に失敗しました / Save failed\n' + errMsg(e));
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ================= Tab 1：日常紀錄 =================
+        function recordCard(r, title) {
+            return `<div class="record-card">
+                <div class="rc-title">${title}</div>
+                <div class="rc-body"><b>📝 Event / 出来事:</b><br>${nl2br(r.event)}</div>
+                <div class="rc-body"><b>💡 Solution / 解決策:</b><br>${nl2br(r.solution)}</div>
+            </div>`;
+        }
+
+        async function saveRecord() {
+            const name = $('student-name').value;
+            const date = $('record-date').value;
+            const eventDesc = $('event-text').value.trim();
+            const solutionDesc = $('solution-text').value.trim();
+            if (!name || !date || !eventDesc || !solutionDesc) {
+                alert('すべての項目を入力してください / Please fill in all fields!');
+                return;
+            }
+
+            const btn = $('save-btn-el');
+            btn.disabled = true;
+            btn.textContent = '🔄 Saving... / 保存中...';
+            try {
+                await api('addRecord', { date, name, event: eventDesc, solution: solutionDesc });
+            } catch (e) {
+                // 失敗時不清空輸入內容，可以直接再按一次
+                alert('保存に失敗しました / Save failed\n' + errMsg(e));
+                btn.disabled = false;
+                btn.textContent = SAVE_BTN_LABEL;
+                return;
+            }
+            $('event-text').value = '';
+            $('solution-text').value = '';
+            try { await reloadAll(); } catch (e) { /* 已保存成功，重新讀取失敗不影響 */ }
+            btn.disabled = false;
+            btn.textContent = SAVE_BTN_LABEL;
+            alert('Saved Successfully to Cloud! / クラウドに保存しました！');
+        }
+
+        function openCalendarModal() {
+            currentCalDate = new Date();
+            openModal('calendar-modal');
+            renderCalendar();
+        }
+
+        function changeMonth(step) {
+            // 一律用每月 1 號計算，避免 31 號時跳過月份
+            currentCalDate = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() + step, 1);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
+            $('calendar-month-year').textContent = `${year} / ${pad(month + 1)}`;
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const recordDates = new Set(cloudRecords.map(r => r.date));
+            const today = localDateStr();
+
+            let html = '';
+            for (let i = 0; i < firstDayIndex; i++) html += '<div class="day-cell"></div>';
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dStr = `${year}-${pad(month + 1)}-${pad(i)}`;
+                const todayCls = dStr === today ? ' day-today' : '';
+                html += recordDates.has(dStr)
+                    ? `<button type="button" class="day-cell day-has-record${todayCls}" data-date="${dStr}">${i}</button>`
+                    : `<div class="day-cell day-no-record${todayCls}">${i}</div>`;
+            }
+            $('calendar-days').innerHTML = html;
+        }
+
+        $('calendar-days').addEventListener('click', e => {
+            const cell = e.target.closest('[data-date]');
+            if (cell) openDailyRecords(cell.dataset.date);
+        });
+
         function openDailyRecords(targetDate) {
-            const daily = globalCloudRecords.filter(r => r.date === targetDate);
-            document.getElementById('records-date-title').innerText = `📅 ${targetDate} Records`;
-            const list = document.getElementById('records-list-container');
-            list.innerHTML = daily.map(r => `
-                <div class="record-card">
-                    <div style="font-weight:bold; color:#d9736c; margin-bottom:5px;">👤 ${r.name}</div>
-                    <div style="font-size:14px; margin-bottom:5px;"><b>📝 Event:</b><br>${(r.eventDesc||r.event||"").replace(/\n/g,'<br>')}</div>
-                    <div style="font-size:14px;"><b>💡 Solution:</b><br>${(r.solutionDesc||r.solution||"").replace(/\n/g,'<br>')}</div>
-                </div>
-            `).join('');
-            document.getElementById('records-modal').style.display = 'flex';
+            const daily = cloudRecords.filter(r => r.date === targetDate);
+            $('records-date-title').textContent = `📅 ${targetDate} Records`;
+            $('records-list-container').innerHTML = daily.length
+                ? daily.map(r => recordCard(r, `👤 ${esc(label(r.name))}`)).join('')
+                : '<p class="empty-msg">No records.</p>';
+            openModal('records-modal');
+        }
+
+        function openStudentModal() {
+            const main = $('student-name').value;
+            if (main) $('modal-student-select').value = main;
+            openModal('student-modal');
+            searchStudentHistory();
         }
 
         function searchStudentHistory() {
-            const selected = document.getElementById('modal-student-select').value;
-            const container = document.getElementById('student-records-container');
-            if (!selected) return;
-            const records = globalCloudRecords.filter(r => r.name === selected).sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            if (records.length === 0) { container.innerHTML = `<p style="text-align:center;">No records found.</p>`; return; }
-            container.innerHTML = records.map(r => `
-                <div class="record-card">
-                    <div style="font-weight:bold; color:#e57373; margin-bottom:5px;">📅 ${r.date}</div>
-                    <div style="font-size:14px; margin-bottom:5px;"><b>📝 Event:</b><br>${(r.eventDesc||r.event||"").replace(/\n/g,'<br>')}</div>
-                    <div style="font-size:14px;"><b>💡 Solution:</b><br>${(r.solutionDesc||r.solution||"").replace(/\n/g,'<br>')}</div>
-                </div>
-            `).join('');
+            const selected = $('modal-student-select').value;
+            const container = $('student-records-container');
+            if (!selected) { container.innerHTML = ''; return; }
+            const records = cloudRecords
+                .filter(r => r.name === selected)
+                .sort((a, b) => b.date.localeCompare(a.date));
+            container.innerHTML = records.length
+                ? records.map(r => recordCard(r, `📅 ${esc(r.date)}`)).join('')
+                : '<p class="empty-msg">No records found. / 記録がありません</p>';
         }
 
-        // --- D. Tab 2: 月度統計邏輯 (Month.test) ---
-        let overallChart, personalChart;
-        let recordData = JSON.parse(localStorage.getItem('igk_records_v2')) || {};
-
+        // ================= Tab 2：月度統計 =================
         function initMonthSelector() {
-            const now = new Date(), currentYear = now.getFullYear(), currentMonth = now.getMonth();
-            const ms = document.getElementById('monthSelect');
-            ms.innerHTML = '';
-            for(let i = -5; i <= 6; i++) {
-                let d = new Date(currentYear, currentMonth + i, 1);
-                let val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                let opt = new Option(`${d.getFullYear()}年 ${String(d.getMonth() + 1).padStart(2, '0')}月`, val);
-                if(i === 0) opt.selected = true;
-                ms.add(opt);
+            const ms = $('monthSelect');
+            const prev = ms.value;
+            const now = new Date();
+            const months = new Set();
+            for (let i = -5; i <= 6; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                months.add(`${d.getFullYear()}-${pad(d.getMonth() + 1)}`);
             }
-            document.getElementById('dateSelect').value = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            Object.keys(scoreData).forEach(m => months.add(m));   // 有資料的月份一定列出
+            ms.innerHTML = '';
+            Array.from(months).sort().forEach(m => ms.add(new Option(`${m.slice(0, 4)}年 ${m.slice(5)}月`, m)));
+            ms.value = (prev && months.has(prev)) ? prev : localDateStr().slice(0, 7);
         }
 
         function handleMonthChange() { renderSummaryTable(); updateCharts(); }
         function handleUserSelectChange() { renderSummaryTable(); updateCharts(); }
 
-        function saveMonthlyData() {
-            const user = document.getElementById('userSelect').value;
-            const dateInput = document.getElementById('dateSelect').value;
-            const score = parseInt(document.getElementById('scoreInput').value);
+        async function saveMonthlyData() {
+            const user = $('userSelect').value;
+            const date = $('dateSelect').value;
+            const raw = $('scoreInput').value.trim();
+            const score = Number(raw);
 
-            if (!dateInput) { alert("Please select a date."); return; }
-            if (score < 0 || score > 20 || isNaN(score)) { alert("Score must be 0-20."); return; }
-
-            const saveMonth = dateInput.substring(0, 7);
-            if (!recordData[saveMonth]) recordData[saveMonth] = {};
-            if (!recordData[saveMonth][user]) recordData[saveMonth][user] = {};
-            
-            recordData[saveMonth][user][dateInput] = score;
-            localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-            
-            let ms = document.getElementById('monthSelect');
-            if (!Array.from(ms.options).some(opt => opt.value === saveMonth)) {
-                ms.add(new Option(saveMonth, saveMonth));
+            if (!user) { alert('児童を選択してください / Please select a member.'); return; }
+            if (!date) { alert('日付を選択してください / Please select a date.'); return; }
+            if (raw === '' || !Number.isInteger(score) || score < 0 || score > 20) {
+                alert('点数は 0〜20 の整数で入力してください / Score must be a whole number 0-20.');
+                return;
             }
-            ms.value = saveMonth;
-            document.getElementById('chartUserSelect').value = user;
-            
-            alert(`Saved ${score} Qs for ${user}!`);
+
+            const btn = $('score-save-btn');
+            btn.disabled = true;
+            setLoading(true, 'Saving... / 保存中...');
+            try {
+                await api('setScore', { date, name: user, score });
+            } catch (e) {
+                setLoading(false);
+                btn.disabled = false;
+                alert('保存に失敗しました / Save failed\n' + errMsg(e));
+                return;
+            }
+            try { await reloadAll(); } catch (e) { }
+            $('monthSelect').value = date.slice(0, 7);
+            $('chartUserSelect').value = user;
             handleMonthChange();
+            setLoading(false);
+            btn.disabled = false;
+            alert(`Saved ${score} Qs for ${label(user)}!`);
         }
 
         function getActiveDates(monthKey) {
-            const monthData = recordData[monthKey] || {};
+            const monthData = scoreData[monthKey] || {};
             const dates = new Set();
-            for (let u in monthData) for (let d in monthData[u]) dates.add(d);
+            for (const u in monthData) for (const d in monthData[u]) dates.add(d);
             return Array.from(dates).sort();
         }
 
         function renderSummaryTable() {
-            const tbody = document.getElementById('dailySummaryTable').querySelector('tbody');
-            const selectedMonth = document.getElementById('monthSelect').value;
-            const monthData = recordData[selectedMonth] || {};
+            const tbody = $('dailySummaryTable').querySelector('tbody');
+            const selectedMonth = $('monthSelect').value;
+            const monthData = scoreData[selectedMonth] || {};
             const activeDates = getActiveDates(selectedMonth);
-            const currentUser = document.getElementById('chartUserSelect').value;
-            tbody.innerHTML = '';
+            const currentUser = $('chartUserSelect').value;
 
             if (activeDates.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color:#999;">No records found this month.</td></tr>`; return;
+                tbody.innerHTML = '<tr><td colspan="5" style="color:#999;">No records found this month.</td></tr>';
+                return;
             }
 
-            activeDates.forEach(date => {
+            tbody.innerHTML = activeDates.map(date => {
                 let total = 0, count = 0, pScore = '-';
-                for (let u in monthData) {
+                for (const u in monthData) {
                     if (monthData[u][date] !== undefined) {
-                        total += monthData[u][date]; count++;
+                        total += monthData[u][date];
+                        count++;
                         if (u === currentUser) pScore = `<b style="color:var(--accent-dark);">${monthData[u][date]} Qs</b>`;
                     }
                 }
                 const avg = count > 0 ? (total / count).toFixed(1) + ' Qs' : '-';
-                tbody.innerHTML += `<tr>
-                    <td>${date}</td><td>${count} Ppl</td><td style="color:var(--primary-dark); font-weight:bold;">${avg}</td>
-                    <td>${pScore}</td><td><button class="t2-btn" style="padding:6px 12px; background:#ffe4e1; color:var(--primary-dark);" onclick="openManageModal('${date}')">🔍 View</button></td>
+                return `<tr>
+                    <td>${esc(date)}</td><td>${count} Ppl</td>
+                    <td style="color:var(--primary-dark); font-weight:bold;">${avg}</td>
+                    <td>${pScore}</td>
+                    <td class="no-print"><button class="t2-btn" style="padding:6px 12px; background:#ffe4e1; color:var(--primary-dark);" data-date="${esc(date)}">🔍 View</button></td>
                 </tr>`;
-            });
+            }).join('');
         }
+
+        $('dailySummaryTable').querySelector('tbody').addEventListener('click', e => {
+            const btn = e.target.closest('button[data-date]');
+            if (btn) openManageModal(btn.dataset.date);
+        });
 
         function openManageModal(date) {
-            const sm = document.getElementById('monthSelect').value;
-            const md = recordData[sm] || {};
-            document.getElementById('modalTitle').innerText = `📅 ${date} Details`;
-            const list = document.getElementById('modalList');
-            list.innerHTML = '';
-            
-            let hasData = false;
-            for (let u in md) {
-                if (md[u][date] !== undefined) {
-                    hasData = true;
-                    list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:10px; background:#fff0f5; border-radius:10px; margin-bottom:10px; border:1px solid #ffc2d4;">
-                        <span>👤 <b>${u.split(' ')[0]}</b>: ${md[u][date]} Qs</span>
-                        <button style="background:#ff9999; color:white; border:none; border-radius:8px; cursor:pointer;" onclick="deleteRecord('${sm}', '${u}', '${date}')">🗑️ Del</button>
-                    </div>`;
-                }
-            }
-            if (!hasData) list.innerHTML = 'No records.';
-            document.getElementById('dataModal').style.display = 'flex';
+            const md = scoreData[date.slice(0, 7)] || {};
+            $('modalTitle').textContent = `📅 ${date} Details`;
+            const rows = Object.keys(md)
+                .filter(u => md[u][date] !== undefined)
+                .map(u => `<div class="manage-row">
+                    <span>👤 <b>${esc(label(u))}</b>: ${md[u][date]} Qs</span>
+                    <button type="button" data-name="${esc(u)}" data-date="${esc(date)}">🗑️ Del</button>
+                </div>`);
+            $('modalList').innerHTML = rows.length ? rows.join('') : '<p class="empty-msg">No records.</p>';
+            openModal('dataModal');
         }
 
-        function deleteRecord(m, u, d) {
-            if (confirm(`Delete record for ${u} on ${d}?`)) {
-                delete recordData[m][u][d];
-                if (Object.keys(recordData[m][u]).length === 0) delete recordData[m][u];
-                localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-                renderSummaryTable(); updateCharts(); openManageModal(d);
+        $('modalList').addEventListener('click', e => {
+            const btn = e.target.closest('button[data-name]');
+            if (btn) deleteScore(btn.dataset.name, btn.dataset.date);
+        });
+
+        async function deleteScore(name, date) {
+            if (!confirm(`${label(name)} の ${date} の記録を削除しますか？\nDelete this record?`)) return;
+            setLoading(true, 'Deleting... / 削除中...');
+            try {
+                await api('deleteScore', { date, name });
+                await reloadAll();
+                openManageModal(date);
+            } catch (e) {
+                alert('削除に失敗しました / Delete failed\n' + errMsg(e));
+            } finally {
+                setLoading(false);
             }
         }
 
         function updateCharts() {
-            const sm = document.getElementById('monthSelect').value;
-            const md = recordData[sm] || {};
+            if (typeof Chart === 'undefined') return;
+            const sm = $('monthSelect').value;
+            const md = scoreData[sm] || {};
             const dates = getActiveDates(sm);
-            const cu = document.getElementById('chartUserSelect').value;
-            
+            const cu = $('chartUserSelect').value;
+
             const labels = dates.map(d => d.slice(5));
             const avgData = dates.map(d => {
                 let t = 0, c = 0;
-                for (let u in md) { if (md[u][d] !== undefined) { t += md[u][d]; c++; } }
-                return c > 0 ? (t/c).toFixed(1) : null;
+                for (const u in md) if (md[u][d] !== undefined) { t += md[u][d]; c++; }
+                return c > 0 ? Math.round((t / c) * 10) / 10 : null;
             });
             const pData = dates.map(d => (md[cu] && md[cu][d] !== undefined) ? md[cu][d] : null);
 
-            Chart.defaults.font.family = "'Nunito', sans-serif"; Chart.defaults.color = '#9e8e93';
-            const opt = { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 20, ticks: {stepSize:4} } }, plugins: {legend: {display:false}} };
+            Chart.defaults.font.family = "'Nunito', sans-serif";
+            Chart.defaults.color = '#9e8e93';
+            const opt = {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 20, ticks: { stepSize: 4 } } },
+                plugins: { legend: { display: false } }
+            };
 
             if (overallChart) overallChart.destroy();
-            overallChart = new Chart(document.getElementById('overallChart'), {
-                type: 'bar', data: { labels, datasets: [{ data: avgData, backgroundColor: 'rgba(116, 192, 252, 0.6)', borderColor: '#74c0fc', borderWidth: 2, borderRadius: 8 }] }, options: opt
+            overallChart = new Chart($('overallChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ data: avgData, backgroundColor: 'rgba(116, 192, 252, 0.6)', borderColor: '#74c0fc', borderWidth: 2, borderRadius: 8 }] },
+                options: opt
             });
 
             if (personalChart) personalChart.destroy();
-            personalChart = new Chart(document.getElementById('personalChart'), {
-                type: 'bar', data: { labels, datasets: [{ data: pData, backgroundColor: 'rgba(255, 143, 179, 0.6)', borderColor: '#ff8fb3', borderWidth: 2, borderRadius: 8 }] }, options: opt
+            personalChart = new Chart($('personalChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ data: pData, backgroundColor: 'rgba(255, 143, 179, 0.6)', borderColor: '#ff8fb3', borderWidth: 2, borderRadius: 8 }] },
+                options: opt
             });
         }
 
+        // ---- 備份匯出（下載檔案，不再依賴剪貼簿權限）----
         function exportData() {
-            navigator.clipboard.writeText(JSON.stringify(recordData));
-            alert("Data copied to clipboard!");
+            const rows = [];
+            for (const m in scoreData) for (const u in scoreData[m]) for (const d in scoreData[m][u]) {
+                rows.push({ date: d, name: u, score: scoreData[m][u][d] });
+            }
+            rows.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+            const json = JSON.stringify({ app: 'IGK', type: 'scores', exportedAt: new Date().toISOString(), scores: rows }, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `IGK_スコアバックアップ_${localDateStr()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
-        function importData() {
-            const input = prompt("Paste JSON data:");
-            if (input) {
-                try {
-                    recordData = JSON.parse(input);
-                    localStorage.setItem('igk_records_v2', JSON.stringify(recordData));
-                    handleMonthChange(); alert("Import successful!");
-                } catch(e) { alert("Invalid data."); }
+
+        // ---- 匯入：支援新備份檔、舊版剪貼簿格式；先檢查再合併，不會整個覆蓋 ----
+        function parseScoreBackup(raw) {
+            let obj = raw;
+            if (typeof raw === 'string') {
+                if (!raw.trim()) return null;
+                try { obj = JSON.parse(raw); } catch (e) { return null; }
+            }
+            if (!obj || typeof obj !== 'object') return null;
+
+            let list = [];
+            if (Array.isArray(obj)) list = obj;
+            else if (Array.isArray(obj.scores)) list = obj.scores;
+            else {
+                // 舊格式 { 'YYYY-MM': { name: { 'YYYY-MM-DD': score } } }
+                for (const m in obj) {
+                    const users = obj[m];
+                    if (!users || typeof users !== 'object') continue;
+                    for (const u in users) {
+                        const days = users[u];
+                        if (!days || typeof days !== 'object') continue;
+                        for (const d in days) list.push({ date: d, name: u, score: days[d] });
+                    }
+                }
+            }
+
+            const rows = [];
+            let bad = 0;
+            list.forEach(s => {
+                const date = cleanDateStr(s && s.date);
+                const name = baseName(s && s.name);
+                const score = Number(s && s.score);
+                if (/^\d{4}-\d{2}-\d{2}$/.test(date) && name && Number.isInteger(score) && score >= 0 && score <= 20) {
+                    rows.push({ date, name, score });
+                } else {
+                    bad++;
+                }
+            });
+            return { rows, bad };
+        }
+
+        function openImportModal() {
+            $('import-text').value = '';
+            $('import-file').value = '';
+            openModal('import-modal');
+        }
+
+        $('import-file').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => { $('import-text').value = reader.result; };
+            reader.onerror = () => alert('ファイルを読み込めませんでした / Could not read file.');
+            reader.readAsText(file);
+        });
+
+        async function runImport() {
+            const parsed = parseScoreBackup($('import-text').value);
+            if (!parsed) { alert('データの形式が正しくありません / Invalid data.'); return; }
+            if (!parsed.rows.length) { alert(`取り込めるデータがありません（無効 ${parsed.bad} 件）`); return; }
+            const note = parsed.bad ? `\n（形式が正しくない ${parsed.bad} 件はスキップします）` : '';
+            if (!confirm(`${parsed.rows.length} 件を取り込みます。${note}\n既存のデータは消えません。よろしいですか？`)) return;
+
+            const btn = $('import-run-btn');
+            btn.disabled = true;
+            setLoading(true, 'Importing... / 取り込み中...');
+            try {
+                const res = await api('importScores', { scores: parsed.rows });
+                await reloadAll();
+                closeSharedModal('import-modal');
+                setLoading(false);
+                alert(`取り込み完了：${res.imported} 件 / Import successful!`);
+            } catch (e) {
+                setLoading(false);
+                alert('取り込みに失敗しました / Import failed\n' + errMsg(e));
+            } finally {
+                btn.disabled = false;
             }
         }
+
+        // ================= Tab 3：Whirlwind Group 分組工具 =================
+        // 全部在瀏覽器內運作，不需要後端；分組結果不會存到雲端
+        const SH_I18N = {
+            en: {
+                title: "✨ Lavender Dream: Whirlwind Group Shuffle! ✨",
+                edition: "✨ MAGIC EDITION ✨",
+                pasteTitle: "Grade List Paste Area",
+                pasteSub: "Click on a grade tab and paste your list (one name per line) directly into the box.",
+                clearBtn: "🧹 Clear current grade list",
+                loadBtn: "📥 Load from Student List",
+                settingsTitle: "Party Group Settings",
+                btnSubmit: "🔮 Shuffle Now! 🔮",
+                previewTitle: "Group Preview",
+                totalLabel: "Total: {count} {people}",
+                emptyTitle: "Your magic board is still empty! ✨",
+                emptySub: "Paste lists on the left, then click 'Shuffle Now!'",
+                downloadBtn: "💾 Download Result (.txt)",
+                copyBtn: "📋 Copy to Clipboard",
+                knowBtn: "Got it! 💜",
+                gradeLabel: "Grade {num} ({g})",
+                placeholder: "Paste {grade} list here...\nJohn\nMary\nBob",
+                gcBtn: "{num} Groups",
+                modalTitleEmpty: "💡 Input Prompt",
+                modalMsgEmpty: "Your grade lists are empty, please paste some names first!",
+                modalTitleLess: "⚠️ Not Enough People",
+                modalMsgLess: "Total count ({total}) is smaller than specified group count ({groups})!",
+                noDataTitle: "💡 No Data",
+                noDataDownload: 'Please click "Shuffle Now!" first to generate groups!',
+                noDataCopy: 'Please click "Shuffle Now!" first to copy!',
+                loadEmptyTitle: "📋 Student List is empty",
+                loadEmptyMsg: "Please register students in ⚙️ 学生リスト first.",
+                loadConfirm: "Replace all grade lists with the Student List?",
+                toastLoaded: "📥 Loaded {count} students from the Student List!",
+                toastSuccess: "🔮 Grouping successful! Balanced by count and grade.",
+                toastDownload: "💾 File downloaded successfully!",
+                toastCopy: "📋 Grouping report copied to clipboard!",
+                toastCopyFail: "❌ Copy failed. Try downloading instead.",
+                txtTitle: "====================================\r\n ✨ Lavender Dream: Whirlwind Group Shuffle Results ✨ \r\n Generated At: {time}\r\n====================================\r\n\r\n",
+                txtGroupHead: "【{emoji} {name}】(Total: {count} persons)\r\n",
+                txtGradeDistribution: "Grade Distribution: {stats}\r\n",
+                txtMemberList: "Member List:\r\n",
+                fileName: "Lavender_Dream_Groups_{date}.txt",
+                persons: "persons",
+                people: "People",
+                emptyGroup: "Empty"
+            },
+            ja: {
+                title: "✨ ラベンダー・ドリーム：ぐるぐるグループシャッフル！ ✨",
+                edition: "✨ マジックエディション ✨",
+                pasteTitle: "学年別名簿貼り付けエリア",
+                pasteSub: "下の学年タブをクリックし、名簿（1行に1名）をテキストエリアに直接貼り付けてください。",
+                clearBtn: "🧹 現在の学年名簿をクリア",
+                loadBtn: "📥 学生リストから読み込む",
+                settingsTitle: "パーティーグループ設定",
+                btnSubmit: "🔮 シャッフルスタート！ 🔮",
+                previewTitle: "グループプレビュー",
+                totalLabel: "合計：{count} {people}",
+                emptyTitle: "魔法のボードはまだ空っぽです！ ✨",
+                emptySub: "左側に名簿を貼り付け、「シャッフルスタート！」をクリックしてください。",
+                downloadBtn: "💾 結果をダウンロード (.txt)",
+                copyBtn: "📋 クリップボードにコピー",
+                knowBtn: "わかりました！ 💜",
+                gradeLabel: "{num}年生 ({g})",
+                placeholder: "ここに {grade} の名簿を貼り付けてください...\n田中\n佐藤\n鈴木",
+                gcBtn: "{num}グループ",
+                modalTitleEmpty: "💡 入力エラー",
+                modalMsgEmpty: "学年名簿が空っぽです。まず名前を入力してください！",
+                modalTitleLess: "⚠️ 人数不足",
+                modalMsgLess: "現在の合計人数（{total}人）が指定グループ数（{groups}）未満です！",
+                noDataTitle: "💡 データなし",
+                noDataDownload: "先に「シャッフルスタート！」をクリックしてください！",
+                noDataCopy: "先に「シャッフルスタート！」をクリックしてください！",
+                loadEmptyTitle: "📋 学生リストが空です",
+                loadEmptyMsg: "先に「⚙️ 学生リスト」で児童を登録してください。",
+                loadConfirm: "すべての学年名簿を学生リストの内容に置き換えますか？",
+                toastLoaded: "📥 学生リストから {count} 名を読み込みました！",
+                toastSuccess: "🔮 グループ分け成功！人数と学年のバランスを調整しました。",
+                toastDownload: "💾 ダウンロードに成功しました！",
+                toastCopy: "📋 結果をクリップボードにコピーしました！",
+                toastCopyFail: "❌ コピー失敗。ダウンロードをお試しください。",
+                txtTitle: "====================================\r\n ✨ ラベンダー・ドリーム：ぐるぐるグループシャッフル結果 ✨ \r\n 出力時間：{time}\r\n====================================\r\n\r\n",
+                txtGroupHead: "【{emoji} {name}】(合計: {count} 人)\r\n",
+                txtGradeDistribution: "学年構成: {stats}\r\n",
+                txtMemberList: "メンバー名簿:\r\n",
+                fileName: "ラベンダーお楽しみグループ分け結果_{date}.txt",
+                persons: "人",
+                people: "人",
+                emptyGroup: "空っぽ"
+            }
+        };
+
+        const SH_THEMES = [
+            { name: { en: 'Sparkle Team', ja: 'きらきらチーム' }, emoji: '✨', border: '#fbbf24', bg: '#fffbeb', badge: '#fde68a' },
+            { name: { en: 'Dreamy Cloud Team', ja: 'ふわふわチーム' }, emoji: '☁️', border: '#38bdf8', bg: '#f0f9ff', badge: '#bae6fd' },
+            { name: { en: 'Lovely Heart Team', ja: 'はーとチーム' }, emoji: '💖', border: '#f472b6', bg: '#fdf2f8', badge: '#fbcfe8' },
+            { name: { en: 'Magic Rainbow Team', ja: 'にじいろチーム' }, emoji: '🌈', border: '#2dd4bf', bg: '#f0fdfa', badge: '#99f6e4' },
+            { name: { en: 'Shiny Star Team', ja: 'ほしぞらチーム' }, emoji: '⭐', border: '#818cf8', bg: '#eef2ff', badge: '#c7d2fe' }
+        ];
+        const SH_BASE_GRADES = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'];
+
+        let shLang = store.get('igk_shuffle_lang') === 'ja' ? 'ja' : 'en';
+        let shGrade = 'G1';
+        let shGroupCount = 3;
+        let shResult = null;
+        let shToastTimer = null;
+        const shText = {};   // { G1: '名前\n名前', ... }
+
+        const shT = () => SH_I18N[shLang];
+
+        // G1〜G6，加上學生名單裡其他的學級名稱
+        function shGrades() {
+            const extra = Object.keys(STUDENTS).filter(g => !SH_BASE_GRADES.includes(g));
+            return SH_BASE_GRADES.concat(extra);
+        }
+        function shNames(g) {
+            return String(shText[g] || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+        }
+        function shGradeLabel(g) {
+            const m = g.match(/^G(\d+)$/);
+            return m ? shT().gradeLabel.replace('{num}', m[1]).replace('{g}', g) : g;
+        }
+
+        function shSetLang(lang) {
+            shLang = lang;
+            store.set('igk_shuffle_lang', lang);
+            const t = shT();
+            document.querySelectorAll('.sh-lang-btn').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+            const map = {
+                'sh-badge': 'edition', 'sh-title': 'title', 'sh-paste-title': 'pasteTitle', 'sh-paste-sub': 'pasteSub',
+                'sh-clear': 'clearBtn', 'sh-load-list': 'loadBtn', 'sh-settings-title': 'settingsTitle', 'sh-go': 'btnSubmit',
+                'sh-preview-title': 'previewTitle', 'sh-download': 'downloadBtn', 'sh-copy': 'copyBtn', 'sh-modal-close': 'knowBtn'
+            };
+            for (const id in map) $(id).textContent = t[map[id]];
+            shRenderGradeTabs();
+            shRenderGroupButtons();
+            if (shResult) shRenderPreview(shResult); else shRenderEmpty();
+        }
+
+        function shRenderGradeTabs() {
+            const grades = shGrades();
+            if (!grades.includes(shGrade)) shGrade = grades[0];
+            $('sh-grade-tabs').innerHTML = grades.map(g => `
+                <button type="button" class="sh-tab${g === shGrade ? ' on' : ''}" data-grade="${esc(g)}">
+                    <span>${esc(shGradeLabel(g))}</span><span class="sh-count">${shNames(g).length}</span>
+                </button>`).join('');
+            $('sh-area').placeholder = shT().placeholder.replace('{grade}', shGradeLabel(shGrade));
+            $('sh-area').value = shText[shGrade] || '';
+            shUpdateTotal();
+        }
+
+        function shUpdateCounts() {
+            document.querySelectorAll('#sh-grade-tabs [data-grade]').forEach(b => {
+                b.querySelector('.sh-count').textContent = shNames(b.dataset.grade).length;
+            });
+            shUpdateTotal();
+        }
+
+        function shUpdateTotal() {
+            const total = shGrades().reduce((sum, g) => sum + shNames(g).length, 0);
+            $('sh-total').textContent = shT().totalLabel.replace('{count}', total).replace('{people}', shT().people);
+        }
+
+        function shRenderGroupButtons() {
+            $('sh-gc').innerHTML = [2, 3, 4, 5].map(n =>
+                `<button type="button" class="sh-gc-btn${n === shGroupCount ? ' on' : ''}" data-n="${n}">${esc(shT().gcBtn.replace('{num}', n))}</button>`
+            ).join('');
+        }
+
+        function shLoadFromList() {
+            const t = shT();
+            const grades = Object.keys(STUDENTS);
+            if (!grades.length) { shModal(t.loadEmptyTitle, t.loadEmptyMsg, '📋'); return; }
+            const hasText = shGrades().some(g => shNames(g).length);
+            if (hasText && !confirm(t.loadConfirm)) return;
+            shGrades().forEach(g => { shText[g] = ''; });
+            let count = 0;
+            grades.forEach(g => { shText[g] = STUDENTS[g].join('\n'); count += STUDENTS[g].length; });
+            shRenderGradeTabs();
+            shToast(t.toastLoaded.replace('{count}', count));
+        }
+
+        function shShuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 分組：依學年逐一分配，先平衡總人數，總人數相同時再平衡該學年人數
+        function shDistribute() {
+            const t = shT();
+            const grades = shGrades();
+            const gradeData = {};
+            let totalCount = 0;
+            grades.forEach(g => { gradeData[g] = shNames(g); totalCount += gradeData[g].length; });
+
+            if (totalCount === 0) { shModal(t.modalTitleEmpty, t.modalMsgEmpty, '✨'); return; }
+            if (totalCount < shGroupCount) {
+                shModal(t.modalTitleLess, t.modalMsgLess.replace('{total}', totalCount).replace('{groups}', shGroupCount), '💜');
+                return;
+            }
+
+            const groups = [];
+            for (let i = 0; i < shGroupCount; i++) groups.push({ id: i + 1, theme: SH_THEMES[i] || SH_THEMES[0], members: [] });
+
+            grades.forEach(g => {
+                shShuffle([...gradeData[g]]).forEach(name => {
+                    groups.sort((a, b) => {
+                        const totalDiff = a.members.length - b.members.length;
+                        if (totalDiff !== 0) return totalDiff;
+                        return a.members.filter(m => m.grade === g).length - b.members.filter(m => m.grade === g).length;
+                    });
+                    groups[0].members.push({ name, grade: g });
+                });
+            });
+
+            groups.sort((a, b) => a.id - b.id);
+            shResult = groups;
+            shRenderPreview(groups);
+            shToast(t.toastSuccess);
+        }
+
+        function shGradeStats(group, sep) {
+            const stats = {};
+            group.members.forEach(m => { stats[m.grade] = (stats[m.grade] || 0) + 1; });
+            return Object.entries(stats).sort().map(([g, c]) => `${g}:${c}${shT().persons}`).join(sep);
+        }
+
+        function shRenderPreview(groups) {
+            const t = shT();
+            $('sh-preview').innerHTML = groups.map(group => {
+                const members = [...group.members].sort((a, b) => a.grade.localeCompare(b.grade));
+                const list = members.length
+                    ? members.map(m => `<li><span>👤 ${esc(m.name)}</span><span class="g">${esc(m.grade)}</span></li>`).join('')
+                    : `<li style="justify-content:center; color:#d8b4fe;">${esc(t.emptyGroup)}</li>`;
+                return `<div class="sh-group" style="border-color:${group.theme.border}; background:${group.theme.bg};">
+                    <div class="sh-group-head">
+                        <h3><span>${group.theme.emoji}</span><span>${esc(group.theme.name[shLang])}</span></h3>
+                        <span class="sh-group-count" style="background:${group.theme.badge};">${group.members.length} ${esc(t.people)}</span>
+                    </div>
+                    <div class="sh-stats">📊 ${esc(shGradeStats(group, ' | ') || t.emptyGroup)}</div>
+                    <ul class="sh-members">${list}</ul>
+                </div>`;
+            }).join('');
+        }
+
+        function shRenderEmpty() {
+            const t = shT();
+            $('sh-preview').innerHTML = `<div class="sh-empty"><span class="big">✨</span>${esc(t.emptyTitle)}<small>${esc(t.emptySub)}</small></div>`;
+        }
+
+        function shResultText() {
+            const t = shT();
+            let text = t.txtTitle.replace('{time}', new Date().toLocaleString());
+            shResult.forEach(group => {
+                text += t.txtGroupHead.replace('{emoji}', group.theme.emoji).replace('{name}', group.theme.name[shLang]).replace('{count}', group.members.length);
+                text += t.txtGradeDistribution.replace('{stats}', shGradeStats(group, ', '));
+                text += t.txtMemberList;
+                [...group.members].sort((a, b) => a.grade.localeCompare(b.grade)).forEach(m => { text += ` 👤 ${m.name} (${m.grade})\r\n`; });
+                text += '\r\n------------------------------------\r\n\r\n';
+            });
+            return text;
+        }
+
+        function shDownload() {
+            const t = shT();
+            if (!shResult) { shModal(t.noDataTitle, t.noDataDownload, '✨'); return; }
+            const blob = new Blob([shResultText()], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = t.fileName.replace('{date}', localDateStr());
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            shToast(t.toastDownload);
+        }
+
+        async function shCopy() {
+            const t = shT();
+            if (!shResult) { shModal(t.noDataTitle, t.noDataCopy, '✨'); return; }
+            const text = shResultText();
+            let ok = false;
+            try {
+                if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; }
+            } catch (e) { ok = false; }
+            if (!ok) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                ta.remove();
+            }
+            if (ok) shToast(t.toastCopy); else shModal('❌ Fail / エラー', t.toastCopyFail, '😢');
+        }
+
+        function shModal(title, msg, emoji = '💡') {
+            $('sh-modal-title').textContent = title;
+            $('sh-modal-msg').textContent = msg;
+            $('sh-modal-emoji').textContent = emoji;
+            openModal('sh-modal');
+        }
+
+        function shToast(msg) {
+            $('sh-toast-msg').textContent = msg;
+            $('sh-toast').classList.add('show');
+            clearTimeout(shToastTimer);
+            shToastTimer = setTimeout(() => $('sh-toast').classList.remove('show'), 3000);
+        }
+
+        // 事件綁定
+        document.querySelectorAll('.sh-lang-btn').forEach(b => b.addEventListener('click', () => shSetLang(b.dataset.lang)));
+        $('sh-grade-tabs').addEventListener('click', e => {
+            const b = e.target.closest('[data-grade]');
+            if (!b) return;
+            shGrade = b.dataset.grade;
+            shRenderGradeTabs();
+            $('sh-area').focus();
+        });
+        $('sh-area').addEventListener('input', () => { shText[shGrade] = $('sh-area').value; shUpdateCounts(); });
+        $('sh-gc').addEventListener('click', e => {
+            const b = e.target.closest('[data-n]');
+            if (!b) return;
+            shGroupCount = Number(b.dataset.n);
+            shRenderGroupButtons();
+        });
+        $('sh-clear').addEventListener('click', () => { shText[shGrade] = ''; $('sh-area').value = ''; shUpdateCounts(); });
+        $('sh-load-list').addEventListener('click', shLoadFromList);
+        $('sh-go').addEventListener('click', shDistribute);
+        $('sh-download').addEventListener('click', shDownload);
+        $('sh-copy').addEventListener('click', shCopy);
+
+        boot();
     </script>
 </body>
 </html>
-
-```
