@@ -4,12 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>生徒情報管理手帳 - 六甲校</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: 日系可愛手繪手帳字體 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- SheetJS 函式庫：用於匯出 Excel -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- html2canvas (用於匯出圖片) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root {
@@ -20,75 +27,297 @@
       --pastel-yellow: #fff3cd;
       --pastel-blue: #e0f2fe;
       --pastel-green: #e8f5e9;
+      --pastel-orange: #ffe8cc;
       --tape-color: rgba(255, 235, 150, 0.7);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Zen Maru Gothic', sans-serif; color: var(--pencil-color); }
-    body { background-color: var(--bg-paper); background-image: radial-gradient(#e5dec9 1px, transparent 1px); background-size: 20px 20px; padding: 24px 16px; min-height: 100vh; }
-    .container { max-width: 1250px; margin: 0 auto; }
+    
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Zen Maru Gothic', sans-serif; 
+      color: var(--pencil-color); 
+    }
+    .fa, .fas, .fa-solid, .far, .fa-regular { 
+      font-family: "Font Awesome 6 Free" !important; 
+    }
+
+    body { 
+      background-color: var(--bg-paper); 
+      background-image: radial-gradient(#e5dec9 1px, transparent 1px); 
+      background-size: 20px 20px; 
+      padding: 24px 16px; 
+      min-height: 100vh; 
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
     header { text-align: center; margin-bottom: 24px; position: relative; }
-    .title-banner { display: inline-block; background: #ffffff; padding: 10px 32px; border: 2px solid var(--pencil-color); border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; box-shadow: 3px 3px 0 var(--pencil-color); position: relative; }
-    .tape { position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(-2deg); width: 110px; height: 24px; background: var(--tape-color); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .title-banner { 
+      display: inline-block; 
+      background: #ffffff; 
+      padding: 10px 32px; 
+      border: 2px solid var(--pencil-color); 
+      border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; 
+      box-shadow: 3px 3px 0 var(--pencil-color); 
+      position: relative; 
+    }
+    .tape { 
+      position: absolute; 
+      top: -12px; 
+      left: 50%; 
+      transform: translateX(-50%) rotate(-2deg); 
+      width: 110px; 
+      height: 24px; 
+      background: var(--tape-color); 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    }
     h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; }
     .subtitle { font-size: 0.85rem; margin-top: 4px; color: #776c64; }
-    .tabs-nav { display: flex; gap: 10px; margin-bottom: -2px; padding-left: 12px; flex-wrap: wrap; }
-    .tab-btn { background: #eee7db; border: 2px solid var(--pencil-color); border-bottom: none; border-radius: 16px 16px 0 0; padding: 10px 20px; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .tab-btn.active { background: var(--card-bg); padding-bottom: 12px; border-bottom: 2px solid var(--card-bg); transform: translateY(-2px); }
-    .content-box { background: var(--card-bg); border: 2.5px solid var(--pencil-color); border-radius: 18px; box-shadow: 4px 5px 0 var(--pencil-color); padding: 24px; min-height: 520px; overflow-x: auto;}
+    
+    .tabs-nav { display: flex; gap: 8px; margin-bottom: -2px; padding-left: 12px; flex-wrap: wrap; }
+    .tab-btn { 
+      background: #eee7db; 
+      border: 2px solid var(--pencil-color); 
+      border-bottom: none; 
+      border-radius: 16px 16px 0 0; 
+      padding: 10px 18px; 
+      font-size: 0.95rem; 
+      font-weight: 700; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      transition: all 0.15s ease; 
+    }
+    .tab-btn:hover { background: #e4d8c6; }
+    .tab-btn.active { 
+      background: var(--card-bg); 
+      padding-bottom: 12px; 
+      border-bottom: 2px solid var(--card-bg); 
+      transform: translateY(-2px); 
+      font-size: 1rem; 
+    }
+    
+    .content-box { 
+      background: var(--card-bg); 
+      border: 2.5px solid var(--pencil-color); 
+      border-radius: 18px; 
+      box-shadow: 4px 5px 0 var(--pencil-color); 
+      padding: 24px; 
+      min-height: 540px; 
+      overflow-x: auto;
+    }
     .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
-    .btn { background: var(--pastel-yellow); border: 2px solid var(--pencil-color); border-radius: 20px 8px 18px 6px; padding: 8px 16px; font-size: 0.92rem; font-weight: 700; cursor: pointer; box-shadow: 2px 2px 0 var(--pencil-color); transition: all 0.1s ease; }
+    
+    /* 可愛手帳按鈕 */
+    .btn { 
+      background: var(--pastel-yellow); 
+      border: 2px solid var(--pencil-color); 
+      border-radius: 20px 8px 18px 6px; 
+      padding: 8px 16px; 
+      font-size: 0.92rem; 
+      font-weight: 700; 
+      cursor: pointer; 
+      box-shadow: 2px 2px 0 var(--pencil-color); 
+      transition: all 0.1s ease; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px; 
+    }
     .btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--pencil-color); }
     .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--pencil-color); }
     .btn-pink { background: var(--pastel-pink); }
     .btn-blue { background: var(--pastel-blue); }
     .btn-green { background: var(--pastel-green); }
     .btn-danger { background: #ffccd5; }
-    table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.88rem; white-space: nowrap; }
-    th, td { border: 1px solid #d3c9be; padding: 8px 6px; }
-    th { background-color: #f7ede2; font-weight: 700; border-bottom: 2px solid var(--pencil-color); }
-    tr:nth-child(even) td { background-color: #faf7f2; }
-    tr:hover td { background-color: #fff9e6; }
-    input[type="text"], textarea { border: 1.5px solid #a89c90; border-radius: 6px; padding: 4px 6px; font-size: 0.85rem; outline: none; width: 100%; }
-    input[type="text"]:focus { border-color: var(--pencil-color); background: #fffdf5; }
-    .clickable-badge { display: inline-block; width: 24px; height: 24px; line-height: 22px; border-radius: 50%; border: 1.5px solid var(--pencil-color); font-weight: 700; cursor: pointer; user-select: none; background: white; }
+
+    /* 手帳風基本表格 (Tab 1-3) */
+    .hand-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.88rem; white-space: nowrap; }
+    .hand-table th, .hand-table td { border: 1px solid #d3c9be; padding: 8px 6px; }
+    .hand-table th { background-color: #f7ede2; font-weight: 700; border-bottom: 2px solid var(--pencil-color); }
+    .hand-table tr:nth-child(even) td { background-color: #faf7f2; }
+    .hand-table tr:hover td { background-color: #fff9e6; }
+    
+    input[type="text"], input[type="number"], textarea, select { 
+      border: 1.5px solid #a89c90; 
+      border-radius: 8px; 
+      padding: 6px 8px; 
+      font-size: 0.9rem; 
+      outline: none; 
+      width: 100%; 
+      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.05); 
+    }
+    input[type="text"]:focus, textarea:focus, select:focus { 
+      border-color: var(--pencil-color); 
+      background: #fffdf5; 
+    }
+    
+    .clickable-badge { 
+      display: inline-block; 
+      width: 24px; 
+      height: 24px; 
+      line-height: 22px; 
+      border-radius: 50%; 
+      border: 1.5px solid var(--pencil-color); 
+      font-weight: 700; 
+      cursor: pointer; 
+      user-select: none; 
+      background: white; 
+    }
     .clickable-badge.active { background: #ffb3c6; color: #333; }
-    .allergy-badge { background: #ffe3e3; border: 1px solid #ffa8a8; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; font-weight: 700; color: #c92a2a; margin-right: 4px; white-space: nowrap; }
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 16px; }
-    .modal-card { background: var(--card-bg); border: 3px solid var(--pencil-color); border-radius: 20px; box-shadow: 6px 6px 0 var(--pencil-color); width: 100%; max-width: 650px; padding: 24px; }
-    .hidden { display: none !important; }
-    /* 考試結果特定樣式 */
+    .allergy-badge { 
+      background: #ffe3e3; 
+      border: 1px solid #ffa8a8; 
+      border-radius: 4px; 
+      padding: 2px 6px; 
+      font-size: 0.75rem; 
+      font-weight: 700; 
+      color: #c92a2a; 
+      margin-right: 4px; 
+      white-space: nowrap; 
+    }
+    
     .test-pass { background-color: #e6fcf5 !important; color: #099268 !important; font-weight: 700;}
     .test-fail { color: #e03131 !important; font-weight: 700;}
+
+    /* 對話框樣式 */
+    .modal-overlay { 
+      position: fixed; 
+      top: 0; left: 0; right: 0; bottom: 0; 
+      background: rgba(0,0,0,0.4); 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      z-index: 100; 
+      padding: 16px; 
+      backdrop-filter: blur(2px); 
+    }
+    .modal-card { 
+      background: var(--card-bg); 
+      border: 3px solid var(--pencil-color); 
+      border-radius: 20px; 
+      box-shadow: 6px 6px 0 var(--pencil-color); 
+      width: 100%; 
+      max-width: 680px; 
+      padding: 24px; 
+      max-height: 90vh; 
+      display: flex; 
+      flex-direction: column; 
+    }
+    .hidden { display: none !important; }
+
+    /* ========================================================
+       Tab 4: 排課系統 (TODAY'S CLASS) 專屬樣式 
+       ======================================================== */
+    .schedule-table {
+      border-collapse: separate; 
+      border-spacing: 0;
+      border: 3px solid var(--pencil-color);
+      border-radius: 12px;
+      background-color: #ffffff;
+      width: 100%; 
+      min-width: 1100px; 
+      overflow: hidden;
+    }
+    .schedule-table th, .schedule-table td {
+      border: 1.5px dashed #d3c9be;
+      vertical-align: top;
+    }
+    
+    .bg-orange-header { background-color: var(--pastel-orange) !important; color: var(--pencil-color) !important; }
+    .bg-green-header { background-color: var(--pastel-green) !important; color: var(--pencil-color) !important; }
+    .bg-cyan-cell { background-color: var(--pastel-blue) !important; }
+    .bg-yellow-cell { background-color: var(--pastel-yellow) !important; }
+    
+    /* 貼紙風格學生名牌 */
+    .student-badge {
+      display: inline-block; 
+      cursor: grab; 
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      line-height: 1.4; 
+      font-size: 0.95rem; 
+      font-weight: 700;
+      padding: 3px 8px; 
+      margin: 2px 2px;
+      background: #ffffff; 
+      border: 1.5px solid var(--pencil-color);
+      border-radius: 8px 4px 8px 4px;
+      box-shadow: 1px 2px 0 rgba(74, 62, 61, 0.2);
+    }
+    .student-badge:hover { 
+      transform: translateY(-1px) rotate(-1deg); 
+      box-shadow: 2px 3px 0 rgba(74, 62, 61, 0.3); 
+    }
+    .student-badge:active { 
+      cursor: grabbing; 
+      transform: scale(0.96); 
+      box-shadow: none; 
+    }
+    .student-badge.absent {
+      color: #e03131 !important; 
+      font-weight: 800 !important;
+      background-color: #ffe3e3; 
+      border-color: #ffa8a8; 
+      text-decoration: line-through;
+    }
+    
+    .drag-over {
+      outline: 3px dashed #ffb3c6 !important; 
+      outline-offset: -4px;
+      background-color: rgba(255, 179, 198, 0.18) !important;
+    }
+
+    .teacher-editable {
+      cursor: pointer; 
+      border-radius: 6px; 
+      padding: 2px 6px; 
+      transition: all 0.15s ease;
+      display: inline-flex; 
+      align-items: center; 
+      gap: 4px;
+    }
+    .teacher-editable:hover { background-color: rgba(0, 0, 0, 0.06); }
+
+    .export-mode .fa-pencil, .export-mode .fa-pen { display: none !important; }
+    .export-mode .teacher-editable, .export-mode th div { cursor: default !important; }
+    .export-mode .teacher-editable:hover { background-color: transparent !important; }
+
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #d3c9be; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a89c90; }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- 手帳頂部抬頭 -->
   <header>
     <div class="title-banner">
       <div class="tape"></div>
       <h1>🌸 六甲校 生徒情報管理手帳</h1>
-      <div class="subtitle">資料來源：生徒情報一覧「2026年度11月」（78 名）</div>
+      <div class="subtitle">生徒名簿・検定一覧・本日のクラス・送迎表 Excel 出力</div>
     </div>
   </header>
 
+  <!-- 手帳五大分頁導覽 -->
   <div class="tabs-nav">
     <button class="tab-btn active" onclick="switchTab(1)">🏷️ 1. 基本・送迎</button>
     <button class="tab-btn" onclick="switchTab(2)">📝 2. 検定・試験</button>
     <button class="tab-btn" onclick="switchTab(3)">📌 3. 備考・健康メモ</button>
-    <button class="tab-btn" onclick="switchTab(4)">📥 4. Excel 匯出</button>
+    <button class="tab-btn" onclick="switchTab(4)">🗓️ 4. 本日のクラス</button>
+    <button class="tab-btn" onclick="switchTab(5)">📥 5. Excel 匯出</button>
   </div>
 
   <div class="content-box">
+    <!-- ============================================== -->
     <!-- Tab 1: 基本・送迎 -->
+    <!-- ============================================== -->
     <div id="tab1">
       <div class="action-bar">
         <div style="display:flex; gap:8px;">
-          <button class="btn btn-blue" onclick="openBatchModal()">➕ 批次新增學生</button>
-          <button class="btn btn-danger" onclick="deleteSelectedStudents()">🗑️ 刪除勾選學生</button>
+          <button class="btn btn-blue" onclick="openBatchModal()"><i class="fa-solid fa-plus"></i> 批次新增學生</button>
+          <button class="btn btn-danger" onclick="deleteSelectedStudents()"><i class="fa-solid fa-trash"></i> 刪除勾選學生</button>
         </div>
-        <button class="btn" onclick="resetToDefault()">↺ 還原為試算表資料</button>
+        <button class="btn" onclick="resetToDefault()"><i class="fa-solid fa-arrow-rotate-left"></i> 還原為試算表資料</button>
       </div>
-      <table id="table1">
+      <table class="hand-table" id="table1">
         <thead>
           <tr>
             <th style="width: 36px;"><input type="checkbox" onchange="toggleSelectAll(this)"></th>
@@ -100,30 +329,34 @@
       </table>
     </div>
 
+    <!-- ============================================== -->
     <!-- Tab 2: 検定・試験 -->
+    <!-- ============================================== -->
     <div id="tab2" class="hidden">
       <div class="action-bar">
-        <button class="btn btn-green" onclick="addNewTestColumn()">➕ 新增考試日期欄位</button>
+        <button class="btn btn-green" onclick="addNewTestColumn()"><i class="fa-solid fa-plus"></i> 新增考試日期欄位</button>
         <span style="font-size:0.85rem; color:#776c64;">
-          <span style="color:#00b4d8; font-weight:700;">■ JET</span>　<span style="color:#b46ee8; font-weight:700;">■ 英検</span>
+          <span style="color:#00b4d8; font-weight:700;">■ JET</span> <span style="color:#b46ee8; font-weight:700;">■ 英検</span>
           ※ 越靠近姓名越新；直接在格子內輸入「合格/不合格」，會自動上色並儲存
         </span>
       </div>
-      <table id="table2">
+      <table class="hand-table" id="table2">
         <thead id="tab2-thead"></thead>
         <tbody id="tab2-tbody"></tbody>
       </table>
     </div>
 
+    <!-- ============================================== -->
     <!-- Tab 3: 備考 -->
+    <!-- ============================================== -->
     <div id="tab3" class="hidden">
       <div class="action-bar">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <strong>🔍 搜尋：</strong>
-          <input type="text" id="notes-search" placeholder="姓名、過敏、體質..." oninput="renderTab3()" style="width:200px;">
+        <div style="display:flex; align-items:center; gap:8px; font-weight:bold;">
+          <i class="fa-solid fa-magnifying-glass"></i> 搜尋：
+          <input type="text" id="notes-search" placeholder="姓名、過敏、體質..." oninput="renderTab3()" style="width:250px;">
         </div>
       </div>
-      <table id="table3">
+      <table class="hand-table" id="table3">
         <thead>
           <tr>
             <th style="width: 50px;">性別</th><th style="width: 60px;">学年</th>
@@ -135,46 +368,319 @@
       </table>
     </div>
 
-    <!-- Tab 4: Excel 匯出 -->
-    <div id="tab4" class="hidden">
+    <!-- ============================================== -->
+    <!-- Tab 4: 排課系統 (TODAY'S CLASS) -->
+    <!-- ============================================== -->
+    <div id="tab4" class="hidden flex flex-col h-full">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-3">
+            <h2 class="text-xl md:text-2xl font-black flex items-center gap-2">
+              <i class="fa-solid fa-graduation-cap text-blue-600"></i> TODAY'S CLASS
+            </h2>
+            <span id="autoDateBadge" class="text-xs bg-white text-blue-700 px-3 py-1 rounded-full border border-blue-200 font-bold flex items-center gap-1 shadow-sm">
+              <i class="fa-regular fa-calendar-check text-blue-600"></i> 當週日期已自動同步
+            </span>
+          </div>
+          <p class="text-xs md:text-sm mt-1 text-slate-600 font-semibold">
+            💡 操作提示：點擊格內的<span class="text-blue-600 font-bold">「老師姓名」</span>或<span class="text-orange-600 font-bold">「教室名稱」</span>可快速修改。名牌可自由拖曳換教室。
+          </p>
+        </div>
+
+        <!-- 課表功能按鈕組 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="openTeacherModalBtn" class="btn btn-blue">
+            <i class="fa-solid fa-chalkboard-user"></i> 老師教室管理
+          </button>
+          
+          <label class="btn bg-white cursor-pointer flex items-center gap-1.5 border-orange-300 text-orange-900">
+            <input type="checkbox" id="mergeKidsCheckbox" class="w-4 h-4 rounded accent-orange-500">
+            <span>6F (Kids02 & 03) 合班</span>
+          </label>
+          
+          <button id="openLevelModalBtn" class="btn btn-blue">
+            <i class="fa-solid fa-sliders"></i> 學生程度管理
+          </button>
+          <button id="promoteModalBtn" class="btn">
+            <i class="fa-solid fa-graduation-cap"></i> 年度進級
+          </button>
+          <button id="batchAddClassModalBtn" class="btn btn-green">
+            <i class="fa-solid fa-users"></i> 生徒一括追加
+          </button>
+          <button id="addStudentModalBtn" class="btn btn-green">
+            <i class="fa-solid fa-user-plus"></i> 生徒追加
+          </button>
+          <button id="exportImageBtn" class="btn btn-pink">
+            <i class="fa-solid fa-camera"></i> 画像を保存
+          </button>
+          <button id="resetClassBtn" class="btn bg-slate-100 text-slate-700">
+            <i class="fa-solid fa-arrow-rotate-left"></i> 初期状態
+          </button>
+        </div>
+      </div>
+
+      <!-- 星期切換列 -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-3 border-b-2 border-dashed border-[#d3c9be] mb-4" id="dayButtonsContainer"></div>
+
+      <!-- 課表本體 -->
+      <div class="w-full overflow-x-auto flex-1 pb-4">
+        <div id="exportContainer" class="p-2 bg-white rounded-lg">
+          <div id="tableContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Tab 5: Excel 匯出 -->
+    <!-- ============================================== -->
+    <div id="tab5" class="hidden">
       <div style="max-width: 580px; margin: 30px auto; text-align: center; background: #fffcf5; border: 2px dashed #b8aba0; border-radius: 16px; padding: 32px 20px;">
-        <h2 style="font-size: 1.3rem; margin-bottom: 12px;">📅 每日送迎表 Excel 匯出</h2>
-        <div style="margin: 20px 0; display: flex; justify-content: center; gap: 16px;">
-          <input type="number" id="export-year" value="2026" style="width: 100px; text-align: center;"> 年
-          <select id="export-month" style="width: 90px; text-align: center;">
+        <h2 style="font-size: 1.3rem; margin-bottom: 12px; font-weight:bold;">📅 每日送迎表 Excel 匯出</h2>
+        <div style="margin: 20px 0; display: flex; justify-content: center; gap: 16px; align-items:center;">
+          <input type="number" id="export-year" value="2026" style="width: 100px; text-align: center; font-weight:bold;"> 年
+          <select id="export-month" style="width: 90px; text-align: center; font-weight:bold;">
             <option value="1">1 月</option><option value="2">2 月</option><option value="3">3 月</option>
             <option value="4">4 月</option><option value="5">5 月</option><option value="6">6 月</option>
             <option value="7">7 月</option><option value="8">8 月</option><option value="9">9 月</option>
             <option value="10">10 月</option><option value="11" selected>11 月</option><option value="12">12 月</option>
           </select> 月
         </div>
-        <div style="text-align:left; font-size:0.9rem; margin: 0 auto 18px; max-width: 460px;">
+        <div style="text-align:left; font-size:0.95rem; margin: 0 auto 18px; max-width: 460px; font-weight:bold;">
           <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-            <input type="checkbox" id="skip-holidays" checked onchange="renderHolidayPreview()"> 跳過週六・週日與日本國定假日
+            <input type="checkbox" id="skip-holidays" checked onchange="renderHolidayPreview()" class="w-4 h-4 accent-pink-500"> 跳過週六・週日與日本國定假日
           </label>
           <label style="display:block; margin-bottom:4px;">其他休校日（日期用逗號分隔，例：29,30,31）</label>
           <input type="text" id="extra-closed" placeholder="例：29,30,31" oninput="renderHolidayPreview()">
-          <div id="holiday-preview" style="margin-top:10px; font-size:0.82rem; color:#776c64; line-height:1.6;"></div>
+          <div id="holiday-preview" style="margin-top:10px; font-size:0.85rem; color:#776c64; line-height:1.6;"></div>
         </div>
-        <button class="btn btn-pink" onclick="exportToExcel()">📥 下載整月份 Excel 檔 (.xlsx)</button>
+        <button class="btn btn-pink" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> 下載整月份 Excel 檔 (.xlsx)</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ============================================== -->
+<!-- 各種彈跳視窗 (Modals) 集合 -->
+<!-- ============================================== -->
+
+<!-- 1. 基本名簿批次新增 Modal (Tab 1) -->
 <div id="batch-modal" class="modal-overlay hidden">
   <div class="modal-card">
-    <h3>➕ 批次新增學生 (CSV 格式)</h3>
-    <textarea id="batch-input" rows="8" placeholder="性別,学年,漢字名,羅馬名,生日,星期(月火水),點心(〇),往路,復路" style="margin-top:10px;"></textarea>
-    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
-      <button class="btn" onclick="closeBatchModal()">取消</button>
+    <h3 class="text-lg font-bold mb-2"><i class="fa-solid fa-plus text-blue-500"></i> 批次新增學生 (CSV 格式)</h3>
+    <textarea id="batch-input" rows="8" placeholder="性別,学年,漢字名,羅馬名,生日,星期(月火水),點心(〇),往路,復路" class="flex-1 mt-2"></textarea>
+    <div class="flex justify-end gap-3 mt-4">
+      <button class="btn bg-slate-100" onclick="closeBatchModal()">取消</button>
       <button class="btn btn-green" onclick="handleBatchSubmit()">確認匯入</button>
     </div>
   </div>
 </div>
 
+<!-- 2. 授課老師與教室標題設定 Modal (Tab 4) -->
+<div id="teacherModal" class="modal-overlay hidden">
+  <div class="modal-card max-h-[85vh]">
+    <div class="flex justify-between items-center mb-3 pb-2 border-b-2 border-dashed border-[#d3c9be]">
+      <div>
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <i class="fa-solid fa-chalkboard-user text-blue-500"></i> 授課老師與教室設定 (<span id="modalCurrentDayText"></span>)
+        </h3>
+        <p class="text-xs text-slate-500 mt-1">可修改教室名稱及 1st / 2nd 時段的負責老師</p>
+      </div>
+      <button id="closeTeacherModalBtn" class="text-xl font-bold hover:text-red-500">&times;</button>
+    </div>
+    <div id="teacherModalContent" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+    <div class="flex justify-end gap-3 pt-3 mt-2 border-t-2 border-dashed border-[#d3c9be]">
+      <button id="cancelTeacherModalBtn" class="btn bg-slate-100">取消</button>
+      <button id="saveTeacherModalBtn" class="btn btn-blue">儲存老師與教室設定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 學生程度管理 Modal (Tab 4) -->
+<div id="levelModal" class="modal-overlay hidden">
+  <div class="modal-card max-h-[90vh] w-full max-w-4xl">
+    <div class="flex justify-between items-center mb-3 pb-2 border-b-2 border-dashed border-[#d3c9be]">
+      <div>
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <i class="fa-solid fa-user-graduate text-indigo-600"></i> 學生程度管理 (文字化與選單)
+        </h3>
+        <p class="text-xs text-slate-500 mt-1">程度代碼：Jr 01, Jr 02, Kids01, Kids02, Kids03</p>
+      </div>
+      <button id="closeLevelModalBtn" class="text-xl font-bold hover:text-red-500">&times;</button>
+    </div>
+    
+    <div class="flex gap-4 mb-3 text-sm font-bold border-b border-[#d3c9be]">
+      <button id="tabTextBtn" class="pb-2 border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-1.5">
+        <i class="fa-solid fa-code"></i> 文字化呈現與整批匯入
+      </button>
+      <button id="tabTableBtn" class="pb-2 text-slate-500 hover:text-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-table-list"></i> 表格快速選擇視圖
+      </button>
+    </div>
+
+    <div id="levelTextView" class="flex-1 flex flex-col min-h-[300px]">
+      <label class="block text-xs font-bold text-slate-600 mb-1">
+        格式：<code>學生名 | 學年 | 預設:程度 | 週一:程度 | 週二:程度 | 週三:程度 | 週四:程度 | 週五:程度</code>
+      </label>
+      <textarea id="levelExportTextarea" class="w-full flex-1 p-3 font-mono text-xs leading-relaxed"></textarea>
+    </div>
+
+    <div id="levelTableView" class="flex-1 overflow-y-auto pr-1 hidden min-h-[300px]">
+      <table class="hand-table text-xs md:text-sm">
+        <thead>
+          <tr>
+            <th>生徒名</th><th>学年</th><th>預設程度</th>
+            <th>月 (Mon)</th><th>火 (Tue)</th><th>水 (Wed)</th><th>木 (Thu)</th><th>金 (Fri)</th>
+          </tr>
+        </thead>
+        <tbody id="studentLevelTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-between items-center pt-3 mt-2 border-t-2 border-dashed border-[#d3c9be]">
+      <span class="text-sm font-bold text-slate-600" id="studentTotalCountText"></span>
+      <div class="flex gap-2">
+        <button id="cancelLevelModalBtn" class="btn bg-slate-100">取消</button>
+        <button id="saveLevelModalBtn" class="btn btn-blue"><i class="fa-solid fa-check"></i> 儲存程度並套用</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 單一新增學生對話框 (Tab 4) -->
+<div id="addModal" class="modal-overlay hidden">
+  <div class="modal-card max-w-md">
+    <div class="flex justify-between items-center mb-4 pb-2 border-b-2 border-dashed border-[#d3c9be]">
+      <h3 class="text-lg font-bold"><i class="fa-solid fa-user-plus text-blue-600"></i> 生徒の個別追加</h3>
+      <button id="closeModalBtn" class="text-xl font-bold hover:text-red-500">&times;</button>
+    </div>
+    <form id="addStudentForm" class="space-y-4 font-bold text-sm">
+      <div>
+        <label class="block mb-1">生徒の名前 (ローマ字)</label>
+        <input type="text" id="newStudentName" required placeholder="例：Alex, Leo">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block mb-1">学年 (Grade)</label>
+          <select id="newStudentGrade">
+            <option value="G1">G1</option><option value="G2">G2</option><option value="G3">G3</option>
+            <option value="G4">G4</option><option value="G5">G5</option><option value="G6">G6</option>
+          </select>
+        </div>
+        <div>
+          <label class="block mb-1">時間帯 (Period)</label>
+          <select id="newStudentPeriod">
+            <option value="1st">1st Period (4PM)</option><option value="2nd">2nd Period (5PM)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block mb-1">対象の教室 / クラス</label>
+        <select id="newStudentTargetRoom"></select>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="cancelModalBtn" class="btn bg-slate-100">取消</button>
+        <button type="submit" class="btn btn-blue">クラスに追加</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 5. 課表生徒一括追加對話框 (Tab 4) -->
+<div id="batchClassModal" class="modal-overlay hidden">
+  <div class="modal-card max-w-lg">
+    <div class="flex justify-between items-center mb-3 pb-2 border-b-2 border-dashed border-[#d3c9be]">
+      <div>
+        <h3 class="text-lg font-bold"><i class="fa-solid fa-users text-emerald-600"></i> 生徒の一括追加・名簿更新</h3>
+        <p class="text-xs text-slate-500 mt-0.5">複数人の名前を一度に貼り付けてクラスへ反映できます</p>
+      </div>
+      <button id="closeBatchClassBtn" class="text-xl font-bold hover:text-red-500">&times;</button>
+    </div>
+    <form id="batchAddClassForm" class="space-y-3 font-bold text-sm">
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block mb-1">時間帯</label>
+          <select id="batchClassPeriod">
+            <option value="1st">1st (4PM)</option><option value="2nd">2nd (5PM)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block mb-1">対象教室</label>
+          <select id="batchClassTargetRoom"></select>
+        </div>
+        <div>
+          <label class="block mb-1">基本学年</label>
+          <select id="batchClassDefaultGrade">
+            <option value="G1">G1</option><option value="G2">G2</option><option value="G3">G3</option>
+            <option value="G4">G4</option><option value="G5">G5</option><option value="G6">G6</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block mb-1">生徒リスト (カンマ、改行等で区切ってください)</label>
+        <textarea id="batchClassStudentNames" rows="5" required placeholder="例1: Emma, Kouma, Saho&#10;例2: G1: Gen, Aoi&#10;G2: Soma, Minato"></textarea>
+      </div>
+      <div class="bg-[#fff9e6] p-2.5 rounded-lg border border-[#e3d8c5]">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="batchClassOverwrite" class="w-4 h-4 accent-emerald-600">
+          <span>対象クラスの既存名簿をクリア（上書き）する</span>
+        </label>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="cancelBatchClassBtn" class="btn bg-slate-100">取消</button>
+        <button type="submit" class="btn btn-green">一括反映する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 6. 年度進級 Modal (Tab 4) -->
+<div id="promoteModal" class="modal-overlay hidden">
+  <div class="modal-card max-w-md">
+    <div class="flex justify-between items-center mb-3 pb-2 border-b-2 border-dashed border-[#d3c9be]">
+      <h3 class="text-base font-bold flex items-center gap-2">
+        <i class="fa-solid fa-graduation-cap text-amber-600"></i> 新学年・生徒の一括進級
+      </h3>
+      <button id="closePromoteModalBtn" class="text-xl font-bold hover:text-red-500">&times;</button>
+    </div>
+    <div class="space-y-4 font-bold text-sm">
+      <div class="bg-[#fff9e6] border border-[#e3d8c5] rounded-lg p-2.5 text-center text-xs">
+        昇格：G1➔G2 | G2➔G3 | G3➔G4 | G4➔G5 | G5➔G6
+      </div>
+      <div>
+        <label class="block mb-1 text-xs">最高学年（G6）の卒業生取り扱い：</label>
+        <div class="space-y-2 border border-[#d3c9be] rounded-lg p-2.5 bg-white text-xs">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="g6Action" value="remove" checked class="w-4 h-4 accent-amber-600">
+            <span>卒業生として名簿から削除する（推奨）</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="g6Action" value="graduated" class="w-4 h-4 accent-amber-600">
+            <span>学年を「Grad(卒業)」に変更して残す</span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="block mb-1 text-xs">適用範圍：</label>
+        <select id="promoteScope" class="text-xs">
+          <option value="all">全曜日を一括更新（月〜金の全生徒）</option>
+          <option value="current">現在表示中の曜日のみ適用</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="cancelPromoteModalBtn" class="btn bg-slate-100">取消</button>
+        <button type="button" id="confirmPromoteBtn" class="btn"><i class="fa-solid fa-check"></i> 進級を実行する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================== -->
+<!-- 整合 JavaScript 程式碼 -->
+<!-- ============================================== -->
 <script>
-  // 從試算表「2026年度11月」擷取的初始資料
+  /* -------------------------------------------------------------
+     1. 基本學生手帳資料庫 (78 名完整名冊)
+     ------------------------------------------------------------- */
   const DEFAULT_STUDENTS = [
     {"id": 1, "gender": "女", "grade": "G1", "name_kanji": "石原 瑛茉", "name_romaji": "Emma Ishihara", "dob": "2019/12/19", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】幼稚園で週3回の英語学習のみ"},
     {"id": 2, "gender": "男", "grade": "G1", "name_kanji": "岩瀬 広真", "name_romaji": "Kouma Iwase", "dob": "2019/9/27", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "【英語経験】保育園の英語の授業で、簡単な会話ができる程度。"},
@@ -191,26 +697,26 @@
     {"id": 13, "gender": "女", "grade": "G1", "name_kanji": "橋本 莉緒", "name_romaji": "Rio Hashimoto", "dob": "2019/4/7", "school": "六甲小学校", "days": ["月", "水", "木"], "snack": true, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "【英語経験】seiha"},
     {"id": 14, "gender": "男", "grade": "G1", "name_kanji": "福田 悠晴", "name_romaji": "Yusei Fukuda", "dob": "2019/4/17", "school": "御影北小学校", "days": ["金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "喘息"},
     {"id": 15, "gender": "女", "grade": "G1", "name_kanji": "南 佳苗", "name_romaji": "Kanae Minami", "dob": "2019/9/3", "school": "高羽小学校", "days": ["火", "水", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "【英語経験】アミティ英会話"},
-    {"id": 16, "gender": "女", "grade": "G1", "name_kanji": "藪内 香帆", "name_romaji": "Kaho Yabuuchi", "dob": "2020/2/23", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "緊張すると手を口に入れる癖がある、水分補給の声掛け / 【英語経験】・保育園で英語の時間（週1回）・英語学習アプリ（ドド英語、頻度は不定期）・英語で動画視聴（NetflixでLEGOのアニメ等を15分程度）・英語聞き流し（ほぼ毎日）"},
-    {"id": 17, "gender": "女", "grade": "G1", "name_kanji": "山本 夕緋", "name_romaji": "Yuuhi Yamamoto", "dob": "2020/3/6", "school": "福住小学校", "days": ["月", "金"], "snack": false, "transport_out": "", "transport_in": "A", "tests": {}, "notes": "乳糖不耐症(牛乳× 乳製品・料理やおやつはOK) / 【待ち】(水)帰りバスキャンセル待ち / 【英語経験】3歳の時に、10ヶ月ほど英会話教室の経験有。それ以降はほぼ無。"},
+    {"id": 16, "gender": "女", "grade": "G1", "name_kanji": "藪内 香帆", "name_romaji": "Kaho Yabuuchi", "dob": "2020/2/23", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": "緊張すると手を口に入れる癖がある、水分補給の声掛け"},
+    {"id": 17, "gender": "女", "grade": "G1", "name_kanji": "山本 夕緋", "name_romaji": "Yuuhi Yamamoto", "dob": "2020/3/6", "school": "福住小学校", "days": ["月", "金"], "snack": false, "transport_out": "", "transport_in": "A", "tests": {}, "notes": "乳糖不耐症(牛乳× 乳製品・料理やおやつはOK)"},
     {"id": 18, "gender": "女", "grade": "G1", "name_kanji": "吉本 希", "name_romaji": "Mare Yoshimoto", "dob": "2019/8/2", "school": "高羽小学校", "days": ["火", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "【英語経験】週1回の英語教室、保育園での英語(月1回)"},
     {"id": 19, "gender": "男", "grade": "G1", "name_kanji": "李 詩悠", "name_romaji": "Shiyuu Lee", "dob": "2020/1/31", "school": "稗田小学校", "days": ["火", "金"], "snack": true, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": "喘息 / 【英語経験】園での授業のみ"},
     {"id": 20, "gender": "男", "grade": "G1", "name_kanji": "大仲 和真", "name_romaji": "Kazuma Onaka", "dob": "2019/7/26", "school": "御影北小学校", "days": ["月", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {}, "notes": ""},
     {"id": 21, "gender": "女", "grade": "G1", "name_kanji": "弓場 茉弥", "name_romaji": "Mahiro Yuba", "dob": "2019/12/6", "school": "六甲小学校", "days": ["金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
-    {"id": 22, "gender": "男", "grade": "G1", "name_kanji": "慈 恵俊", "name_romaji": "Eshun Utsumi", "dob": "2020/1/10", "school": "西灘小学校", "days": ["月"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "くるみ、ピーカンナッツアレルギー有。少量なら咳、じんましん程度。大量だと呼吸が苦しくなる。対応方法は病院に確認後知らせてもらう。"},
+    {"id": 22, "gender": "男", "grade": "G1", "name_kanji": "慈 恵俊", "name_romaji": "Eshun Utsumi", "dob": "2020/1/10", "school": "西灘小学校", "days": ["月"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {}, "notes": "くるみ、ピーカンナッツアレルギー有。"},
     {"id": 23, "gender": "女", "grade": "G1", "name_kanji": "南 心乃香", "name_romaji": "Konoka Minami", "dob": "2019/10/15", "school": "六甲アイランド小学校", "days": ["木"], "snack": false, "transport_out": "B", "transport_in": "", "tests": {}, "notes": ""},
     {"id": 24, "gender": "男", "grade": "G2", "name_kanji": "平瀬 想真", "name_romaji": "Soma Hirase", "dob": "2018/10/1", "school": "西郷小学校", "days": ["月", "火", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】英語個人レッスン(4歳～週1)"},
     {"id": 25, "gender": "男", "grade": "G2", "name_kanji": "山部 弘誠", "name_romaji": "Kosei Yamabe", "dob": "2018/4/23", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】未経験"},
     {"id": 26, "gender": "男", "grade": "G2", "name_kanji": "上田 湊斗", "name_romaji": "Minato Ueta", "dob": "2018/11/9", "school": "高羽小学校", "days": ["月", "火", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】ユニバーサルキャンパス"},
     {"id": 27, "gender": "女", "grade": "G2", "name_kanji": "有吉 純麗", "name_romaji": "Sumire Ariyoshi", "dob": "2018/8/8", "school": "成徳小学校", "days": ["木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】英語教室(1歳半～ 週1)"},
-    {"id": 28, "gender": "男", "grade": "G2", "name_kanji": "澤村 奏汰", "name_romaji": "Kanata Sawamura", "dob": "2018/9/29", "school": "宮本小学校", "days": ["月", "金"], "snack": false, "transport_out": "B", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】2.8km送迎対象外要確認 / 【英語経験】英語サタデースクール(3歳～)"},
+    {"id": 28, "gender": "男", "grade": "G2", "name_kanji": "澤村 奏汰", "name_romaji": "Kanata Sawamura", "dob": "2018/9/29", "school": "宮本小学校", "days": ["月", "金"], "snack": false, "transport_out": "B", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】2.8km送迎対象外要確認"},
     {"id": 29, "gender": "女", "grade": "G2", "name_kanji": "橋本 珠季", "name_romaji": "Tamaki Hashimoto", "dob": "2018/8/30", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】セイハ(3歳～ 週1)"},
     {"id": 30, "gender": "男", "grade": "G2", "name_kanji": "足立 英大", "name_romaji": "Ayata Adachi", "dob": "2019/3/1", "school": "高羽小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】未経験"},
     {"id": 31, "gender": "男", "grade": "G2", "name_kanji": "永田 創次郎", "name_romaji": "Sohjiroh Nagata", "dob": "2019/3/13", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "10級不合格"}, "notes": "【英語経験】Be studio(2歳～)"},
     {"id": 32, "gender": "男", "grade": "G2", "name_kanji": "藤原 匠", "name_romaji": "Takumi Fujiwara", "dob": "2018/10/1", "school": "御影北小学校", "days": ["木"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
-    {"id": 33, "gender": "男", "grade": "G2", "name_kanji": "宮田 泰槙", "name_romaji": "Taishin Miyata", "dob": "2018/5/13", "school": "御影北小学校", "days": ["月", "水", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【メモ】金曜日バスが満席のため / 【英語経験】未経験"},
+    {"id": 33, "gender": "男", "grade": "G2", "name_kanji": "宮田 泰槙", "name_romaji": "Taishin Miyata", "dob": "2018/5/13", "school": "御影北小学校", "days": ["月", "水", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【メモ】金曜日バスが満席のため"},
     {"id": 34, "gender": "男", "grade": "G2", "name_kanji": "糸賀 優士", "name_romaji": "Yushi Itoga", "dob": "2018/6/9", "school": "御影北小学校", "days": ["火", "木", "金"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
-    {"id": 35, "gender": "男", "grade": "G2", "name_kanji": "田中 聡一", "name_romaji": "Soichi Tanaka", "dob": "2018/6/22", "school": "御影北小学校", "days": ["火"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】火or木も希望？ / 【英語経験】未経験"},
+    {"id": 35, "gender": "男", "grade": "G2", "name_kanji": "田中 聡一", "name_romaji": "Soichi Tanaka", "dob": "2018/6/22", "school": "御影北小学校", "days": ["火"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "10級合格"}, "notes": "【メモ】火or木も希望？"},
     {"id": 36, "gender": "女", "grade": "G2", "name_kanji": "畑 凜采", "name_romaji": "Risa Hata", "dob": "2019/1/2", "school": "御影北小学校", "days": ["火", "水"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2025/6": "10級合格"}, "notes": "【英語経験】御影インター"},
     {"id": 37, "gender": "女", "grade": "G2", "name_kanji": "山根 栞", "name_romaji": "Shiori Yamane", "dob": "2018/10/22", "school": "六甲小学校", "days": ["火", "水"], "snack": true, "transport_out": "", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター(3歳まで海外居住)"},
     {"id": 38, "gender": "男", "grade": "G2", "name_kanji": "剱物 右京", "name_romaji": "Ukyo Kenmotsu", "dob": "2019/1/10", "school": "御影北小学校", "days": ["火", "水", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2025/6": "9級合格"}, "notes": "【英語経験】御影インター"},
@@ -224,7 +730,7 @@
     {"id": 46, "gender": "男", "grade": "G3", "name_kanji": "岡部 竜也", "name_romaji": "Ryuya Okabe", "dob": "2017/12/18", "school": "灘小学校", "days": ["火"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級不合格", "JET 2025/2": "10級合格", "JET 2025/9": "8級合格"}, "notes": ""},
     {"id": 47, "gender": "女", "grade": "G3", "name_kanji": "尾﨑 文", "name_romaji": "Aya Ozaki", "dob": "2017/10/3", "school": "高羽小学校", "days": ["月", "火", "水", "金"], "snack": false, "transport_out": "", "transport_in": "A", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格", "英検 2025/1": "５級合格", "英検 2025/9": "4級合格"}, "notes": ""},
     {"id": 48, "gender": "女", "grade": "G3", "name_kanji": "金多 恭花", "name_romaji": "Kyouka Kaneta", "dob": "2017/10/3", "school": "高羽小学校", "days": ["火", "金"], "snack": false, "transport_out": "A", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": ""},
-    {"id": 49, "gender": "男", "grade": "G3", "name_kanji": "金本 侑樹", "name_romaji": "Yuuki Kanemoto", "dob": "2017/11/20", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": "【待ち】(火)キャンセル待ち②"},
+    {"id": 49, "gender": "男", "grade": "G3", "name_kanji": "金本 侑樹", "name_romaji": "Yuuki Kanemoto", "dob": "2017/11/20", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": ""},
     {"id": 50, "gender": "女", "grade": "G3", "name_kanji": "京本 実侑", "name_romaji": "Miyuu Kyomoto", "dob": "2017/12/16", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "10級合格", "JET 2025/2": "10級合格", "JET 2025/9": "7級合格"}, "notes": ""},
     {"id": 51, "gender": "男", "grade": "G3", "name_kanji": "坪井 拓翔", "name_romaji": "Takuto Tsuboi", "dob": "2017/10/30", "school": "御影北小学校", "days": ["月", "水", "木"], "snack": false, "transport_out": "A", "transport_in": "A", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "7級合格"}, "notes": ""},
     {"id": 52, "gender": "男", "grade": "G3", "name_kanji": "東福 康平", "name_romaji": "Kouhei Toufuku", "dob": "2017/4/27", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/6": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": ""},
@@ -238,11 +744,11 @@
     {"id": 60, "gender": "女", "grade": "G3", "name_kanji": "鈴木 渉斗", "name_romaji": "Wato Suzuki", "dob": "", "school": "高羽小学校", "days": ["水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {}, "notes": ""},
     {"id": 61, "gender": "女", "grade": "G4", "name_kanji": "春日 梛咲", "name_romaji": "Nagisa Kasuga", "dob": "2016/6/17", "school": "高羽小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格", "英検 2025/1": "５級合格"}, "notes": ""},
     {"id": 62, "gender": "女", "grade": "G4", "name_kanji": "小寺 咲希", "name_romaji": "Saki Kotera", "dob": "2016/7/4", "school": "六甲小学校", "days": ["水", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "5級合格", "英検 2025/9": "５級合格"}, "notes": ""},
-    {"id": 63, "gender": "女", "grade": "G4", "name_kanji": "多喜田 真緒", "name_romaji": "Mao Takita", "dob": "2016/9/20", "school": "高羽小学校", "days": ["木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "5級合格", "英検 2025/9": "５級合格"}, "notes": "八幡児童館 徒歩送迎説明済 / 【待ち】(火)キャンセル待ち③"},
+    {"id": 63, "gender": "女", "grade": "G4", "name_kanji": "多喜田 真緒", "name_romaji": "Mao Takita", "dob": "2016/9/20", "school": "高羽小学校", "days": ["木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "9級合格", "JET 2025/2": "8級合格", "JET 2025/9": "5級合格", "英検 2025/9": "５級合格"}, "notes": "八幡児童館 徒歩送迎説明済"},
     {"id": 64, "gender": "男", "grade": "G4", "name_kanji": "永田 重克", "name_romaji": "Shigekatsu Nagata", "dob": "2016/7/29", "school": "成徳小学校", "days": ["火", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級不合格", "JET 2024/9": "9級合格", "JET 2025/2": "8級不合格", "JET 2025/9": "7級合格", "英検 2025/9": "５級合格"}, "notes": ""},
     {"id": 65, "gender": "男", "grade": "G4", "name_kanji": "藪内 瑛太", "name_romaji": "Eita Yabuuchi", "dob": "2017/2/5", "school": "灘小学校", "days": ["火", "水"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "ー", "JET 2024/9": "9級合格", "JET 2025/2": "7級合格", "JET 2025/9": "5級合格"}, "notes": "アトピー性皮膚炎"},
     {"id": 66, "gender": "男", "grade": "G4", "name_kanji": "吉田 英介", "name_romaji": "Eisuke Yoshida", "dob": "2016/4/21", "school": "灘小学校", "days": ["月", "火"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "9級", "JET 2024/2": "7級合格", "JET 2024/9": "5級合格", "JET 2025/2": "4級不合格", "JET 2025/9": "4級合格", "英検 2025/9": "５級合格"}, "notes": ""},
-    {"id": 67, "gender": "男", "grade": "G4", "name_kanji": "村上 一犀", "name_romaji": "Issei Murakami", "dob": "2017/1/19", "school": "成徳小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": "【待ち】(火)キャンセル待ち①"},
+    {"id": 67, "gender": "男", "grade": "G4", "name_kanji": "村上 一犀", "name_romaji": "Issei Murakami", "dob": "2017/1/19", "school": "成徳小学校", "days": ["木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2023/6": "10級", "JET 2024/2": "10級合格", "JET 2024/9": "10級合格", "JET 2025/2": "9級合格", "JET 2025/9": "7級合格"}, "notes": ""},
     {"id": 68, "gender": "男", "grade": "G4", "name_kanji": "金子 颯汰", "name_romaji": "Sota Kaneko", "dob": "2016/4/30", "school": "成徳小学校", "days": ["水", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2024/2": "10級不合格", "JET 2024/9": "10級不合格", "JET 2025/2": "9級合格", "JET 2025/9": "6級合格", "英検 2025/1": "５級合格", "英検 2025/9": "4級不合格"}, "notes": ""},
     {"id": 69, "gender": "女", "grade": "G4", "name_kanji": "野原 すみれ", "name_romaji": "Sumire Nohara", "dob": "2016/10/30", "school": "六甲小学校", "days": ["水", "木"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/9": "8級合格"}, "notes": ""},
     {"id": 70, "gender": "女", "grade": "G4", "name_kanji": "吉山 凜", "name_romaji": "Rin Yoshiyama", "dob": "2016/9/25", "school": "六甲小学校", "days": ["月", "火", "木", "金"], "snack": false, "transport_out": "", "transport_in": "", "tests": {"JET 2025/9": "1級合格"}, "notes": ""},
@@ -257,8 +763,6 @@
   ];
 
   const DEFAULT_TEST_COLS = ["JET 2021/6", "JET 2022/6", "JET 2023/6", "JET 2023/9", "JET 2024/2", "JET 2024/6", "JET 2024/9", "JET 2025/2", "JET 2025/6", "JET 2025/9", "英検 2024/1", "英検 2024/6", "英検 2024/9", "英検 2025/1", "英検 2025/6", "英検 2025/9"];
-
-  // 換月份資料時改這個鍵，舊的瀏覽器暫存就不會蓋掉新資料
   const STORAGE_VERSION = '2026_11';
   const KEY_STUDENTS = 'student_records_' + STORAGE_VERSION;
   const KEY_TESTCOLS = 'test_columns_' + STORAGE_VERSION;
@@ -280,20 +784,29 @@
     if (!confirm('要清除這台電腦上的修改，還原成試算表的資料嗎？')) return;
     students = structuredClone(DEFAULT_STUDENTS);
     testColumns = [...DEFAULT_TEST_COLS];
-    saveData(); switchTab(1);
+    saveData(); 
+    switchTab(1);
   }
 
-  // 資料裡可能有引號或 < >，放進 HTML 前先跳脫
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function switchTab(idx) {
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx - 1));
-    for(let i=1; i<=4; i++) document.getElementById('tab'+i).classList.toggle('hidden', i !== idx);
-    if(idx===1) renderTab1(); if(idx===2) renderTab2(); if(idx===3) renderTab3();
+    for(let i=1; i<=5; i++) {
+      const el = document.getElementById('tab' + i);
+      if (el) el.classList.toggle('hidden', i !== idx);
+    }
+    if (idx === 1) renderTab1();
+    if (idx === 2) renderTab2();
+    if (idx === 3) renderTab3();
+    if (idx === 4) renderTable();
   }
 
+  /* -------------------------------------------------------------
+     2. Tab 1 ~ Tab 3 邏輯
+     ------------------------------------------------------------- */
   function renderTab1() {
     const tbody = document.getElementById('tab1-tbody');
     const days = ['月','火','水','木','金'];
@@ -310,22 +823,29 @@
     }).join('');
   }
 
-  function toggleDay(id, d) { let s = students.find(x=>x.id===id); if(s.days.includes(d)) s.days=s.days.filter(x=>x!==d); else s.days.push(d); saveData(); renderTab1(); }
-  function toggleSnack(id) { let s = students.find(x=>x.id===id); s.snack=!s.snack; saveData(); renderTab1(); }
-  function updateTrans(id, type, val) { let s = students.find(x=>x.id===id); if(type==='out') s.transport_out=val; else s.transport_in=val; saveData(); }
+  function toggleDay(id, d) { 
+    let s = students.find(x => x.id === id); 
+    if (s.days.includes(d)) s.days = s.days.filter(x => x !== d); 
+    else s.days.push(d); 
+    saveData(); 
+    renderTab1(); 
+  }
+  function toggleSnack(id) { let s = students.find(x => x.id === id); s.snack = !s.snack; saveData(); renderTab1(); }
+  function updateTrans(id, type, val) { let s = students.find(x => x.id === id); if (type === 'out') s.transport_out = val; else s.transport_in = val; saveData(); }
   function toggleSelectAll(cb) { document.querySelectorAll('.student-select').forEach(c => c.checked = cb.checked); }
   function deleteSelectedStudents() {
     let ids = Array.from(document.querySelectorAll('.student-select:checked')).map(c => parseInt(c.dataset.id));
-    if(ids.length && confirm(`確定刪除 ${ids.length} 筆資料？`)) { students = students.filter(s => !ids.includes(s.id)); saveData(); renderTab1(); }
+    if (ids.length && confirm(`確定刪除 ${ids.length} 筆資料？`)) { 
+      students = students.filter(s => !ids.includes(s.id)); 
+      saveData(); 
+      renderTab1(); 
+    }
   }
 
-  // === 第二分頁：考試紀錄 ===
-  // 欄位名稱裡的「年/月」換成可排序的數字；讀不到日期的排最前面
   function testColDate(col) {
     const m = String(col).match(/(\d{4})\s*[\/年.\-]\s*(\d{1,2})/);
     return m ? Number(m[1]) * 100 + Number(m[2]) : Infinity;
   }
-  // 最新的考試放在最左邊（緊鄰姓名），同一個月 JET 在前
   function sortTestColumns() {
     testColumns.sort((a, b) => (testColDate(b) - testColDate(a)) || (a.startsWith('JET') ? -1 : 1));
   }
@@ -334,7 +854,6 @@
     if (col.startsWith('英検')) return '#b46ee8';
     return '#f497b6';
   }
-
   function renderTab2() {
     sortTestColumns();
     const thead = document.getElementById('tab2-thead');
@@ -353,16 +872,14 @@
       return r + `</tr>`;
     }).join('');
   }
-
-  function updTest(id, ci, val) { let s = students.find(x=>x.id===id); if(!s.tests) s.tests={}; s.tests[testColumns[ci]]=val; saveData(); renderTab2(); }
+  function updTest(id, ci, val) { let s = students.find(x => x.id === id); if (!s.tests) s.tests = {}; s.tests[testColumns[ci]] = val; saveData(); renderTab2(); }
   function addNewTestColumn() {
-    let col = (prompt("輸入新考試欄位名稱，格式「種類 年/月」(例如：JET 2026/12、英検 2026/10)：") || '').trim().replace(/\s+/g, ' ');
-    if(!col) return;
-    if(testColDate(col) === Infinity) { alert('請在名稱裡寫上年/月，例如：JET 2026/12'); return; }
-    if(!testColumns.includes(col)) { testColumns.push(col); saveData(); renderTab2(); }
+    let col = (prompt("輸入新考試欄位名稱，格式「種類 年/月」(例如：JET 2026/12)：") || '').trim().replace(/\s+/g, ' ');
+    if (!col) return;
+    if (testColDate(col) === Infinity) { alert('請在名稱裡寫上年/月，例如：JET 2026/12'); return; }
+    if (!testColumns.includes(col)) { testColumns.push(col); saveData(); renderTab2(); }
   }
 
-  // === 第三分頁：備註 ===
   function renderTab3() {
     const tbody = document.getElementById('tab3-tbody');
     const kw = document.getElementById('notes-search').value.toLowerCase();
@@ -378,35 +895,1421 @@
       </tr>`;
     }).join('');
   }
-  function updNote(id, val) { students.find(x=>x.id===id).notes=val; saveData(); renderTab3(); }
+  function updNote(id, val) { students.find(x => x.id === id).notes = val; saveData(); renderTab3(); }
 
-  // === 批次新增與 Excel 匯出 ===
   function openBatchModal() { document.getElementById('batch-modal').classList.remove('hidden'); }
   function closeBatchModal() { document.getElementById('batch-modal').classList.add('hidden'); }
   function handleBatchSubmit() {
     let t = document.getElementById('batch-input').value.trim();
-    if(!t) return closeBatchModal();
+    if (!t) return closeBatchModal();
     let maxId = students.reduce((m, s) => Math.max(m, s.id), 0);
     t.split('\n').forEach(line => {
       let p = line.split(',');
-      if(p.length >= 4) {
+      if (p.length >= 4) {
         students.push({
-          id: ++maxId, gender: p[0], grade: p[1], name_kanji: p[2], name_romaji: p[3], dob: p[4]||'',
-          days: ['月','火','水','木','金'].filter(d=>(p[5]||'').includes(d)),
-          snack: (p[6]==='〇'||p[6]==='O'), transport_out: p[7]||'', transport_in: p[8]||'', tests: {}, notes: p[9]||''
+          id: ++maxId, gender: p[0], grade: p[1], name_kanji: p[2], name_romaji: p[3], dob: p[4] || '',
+          days: ['月','火','水','木','金'].filter(d => (p[5] || '').includes(d)),
+          snack: (p[6] === '〇' || p[6] === 'O'), transport_out: p[7] || '', transport_in: p[8] || '', tests: {}, notes: p[9] || ''
         });
       }
     });
-    saveData(); closeBatchModal(); document.getElementById('batch-input').value=''; alert('匯入完成！'); switchTab(1);
+    saveData(); closeBatchModal(); document.getElementById('batch-input').value = ''; alert('匯入完成！'); switchTab(1);
   }
 
-  // === 日本の祝日（内閣府の祝日法ルールで計算、2020年以降対応） ===
-  function nthMonday(y, m, n) { // m: 1-12
+  /* -------------------------------------------------------------
+     3. Tab 4: 排課系統 (TODAY'S CLASS) 完整資料與互動邏輯
+     ------------------------------------------------------------- */
+  function calculateAutoDates() {
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    if (day === 0 || day === 6) monday.setDate(monday.getDate() + 7);
+
+    const map = {};
+    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach((k, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      const m = d.getMonth() + 1;
+      const dateNum = d.getDate();
+      map[k] = {
+        dateStr: `(${k})\n${m}/${dateNum}`,
+        sub: `${m}/${dateNum}`
+      };
+    });
+    return map;
+  }
+
+  const AUTO_DATES = calculateAutoDates();
+  const DAYS = [
+    { key: 'Monday', label: '月曜日', sub: AUTO_DATES.Monday.sub },
+    { key: 'Tuesday', label: '火曜日', sub: AUTO_DATES.Tuesday.sub },
+    { key: 'Wednesday', label: '水曜日', sub: AUTO_DATES.Wednesday.sub },
+    { key: 'Thursday', label: '木曜日', sub: AUTO_DATES.Thursday.sub },
+    { key: 'Friday', label: '金曜日', sub: AUTO_DATES.Friday.sub }
+  ];
+
+  const INITIAL_SCHEDULE_DATA = {
+    Monday: {
+      dateStr: AUTO_DATES.Monday.dateStr,
+      columns: [
+        { id: 'j1', name: 'Junior 01 (4F)', headerBg: 'bg-white' },
+        { id: 'j2', name: 'Junior 02 (4F)', headerBg: 'bg-white' },
+        { id: 'k5f1', name: 'Kids02\n(5F-A)', headerBg: 'bg-orange-header' },
+        { id: 'k5f2', name: 'Kids02\n(5F-B)', headerBg: 'bg-orange-header' },
+        { id: 'k6f', name: 'Kids01\n(6F)\nBig Room', headerBg: 'bg-green-header' },
+        { id: 'test_cram', name: 'Test &\nCram (6F)\nSmall\nRoom', headerBg: 'bg-green-header' }
+      ],
+      periods: {
+        '1st': {
+          time: '1st\n(4PM-\n4:50PM\n)',
+          cells: {
+            j1: { title: 'Blue TOE', teacher: 'M= Gio', teacherColor: 'text-purple-600', colorType: 'cyan', students: [
+              { id: 'm1_1', name: 'Kanata', grade: 'G2', absent: false },
+              { id: 'm1_2', name: 'Aqeel', grade: 'G3', absent: false },
+              { id: 'm1_3', name: 'Takuto', grade: 'G3', absent: false }
+            ]},
+            j2: { title: 'Yellow TOE', teacher: 'M= Taka', teacherColor: 'text-purple-600', colorType: 'yellow', students: [
+              { id: 'm1_4', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'm1_5', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 'm1_6', name: 'Rio', grade: 'G1', absent: false },
+              { id: 'm1_7', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'm1_8', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'm1_9', name: 'Toma', grade: 'G1', absent: false },
+              { id: 'm1_10', name: 'Eshun', grade: 'G1', absent: false }
+            ]},
+            k5f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 'm1_11', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'm1_12', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'm1_13', name: 'Yuta', grade: 'G3', absent: false },
+              { id: 'm1_14', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 'm1_15', name: 'Asma', grade: 'G4', absent: false },
+              { id: 'm1_16', name: 'Eisuke', grade: 'G4', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'm1_17', name: 'Aya', grade: 'G3', absent: false },
+              { id: 'm1_18', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'm1_19', name: 'Kousuke', grade: 'G5', absent: false },
+              { id: 'm1_20', name: 'Sakuya', grade: 'G6', absent: false }
+            ]},
+            test_cram: { title: '', teacher: '', colorType: 'white', students: [] }
+          }
+        },
+        '2nd': {
+          time: '2nd\n(5PM-\n5:50PM\n)',
+          cells: {
+            j1: { title: '', teacher: '', colorType: 'yellow', students: [] },
+            j2: { title: 'Blue Activity', teacher: 'M= Gio Taka', teacherColor: 'text-purple-600', colorType: 'cyan', students: [
+              { id: 'm2_1', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'm2_2', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 'm2_3', name: 'Rio', grade: 'G1', absent: false },
+              { id: 'm2_4', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'm2_5', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'm2_6', name: 'Toma', grade: 'G1', absent: false },
+              { id: 'm2_7', name: 'Eshun', grade: 'G1', absent: false },
+              { id: 'm2_8', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'm2_9', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'm2_10', name: 'Kanata', grade: 'G2', absent: false },
+              { id: 'm2_11', name: 'Taishin', grade: 'G2', absent: false },
+              { id: 'm2_12', name: 'Aqeel', grade: 'G3', absent: false },
+              { id: 'm2_13', name: 'Takuto', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'm2_14', name: 'Yuta', grade: 'G3', absent: false },
+              { id: 'm2_15', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 'm2_16', name: 'Asma', grade: 'G4', absent: false },
+              { id: 'm2_17', name: 'Eisuke', grade: 'G4', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 'm2_18', name: 'Aya', grade: 'G3', absent: false },
+              { id: 'm2_19', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'm2_20', name: 'Kousuke', grade: 'G5', absent: false },
+              { id: 'm2_21', name: 'Sakuya', grade: 'G6', absent: false }
+            ]},
+            test_cram: { title: '', teacher: '', colorType: 'white', badgeText: '17:50-18:40', badgeBg: 'bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded border border-emerald-300', students: [] }
+          }
+        }
+      }
+    },
+    Tuesday: {
+      dateStr: AUTO_DATES.Tuesday.dateStr,
+      columns: [
+        { id: 'j1', name: 'Junior 01 (4F)', headerBg: 'bg-white' },
+        { id: 'j2', name: 'Junior 02 (4F)', headerBg: 'bg-white' },
+        { id: 'k5f1', name: 'Kids01\n(5F-A)', headerBg: 'bg-orange-header' },
+        { id: 'k5f2', name: 'Kids01\n(5F-B)', headerBg: 'bg-orange-header' },
+        { id: 'k6f1', name: 'Kids03\n(6F)\nBig Room', headerBg: 'bg-green-header' },
+        { id: 'k6f2', name: 'Kids03\n(6F)\nBig Room', headerBg: 'bg-green-header' },
+        { id: 'raz', name: 'Raz Kids', headerBg: 'bg-green-header' }
+      ],
+      periods: {
+        '1st': {
+          time: '1st\n(4PM-\n4:50PM\n)',
+          cells: {
+            j1: { title: 'Blue Activity', teacher: 'M= Gio Koukei', teacherColor: 'text-blue-600 font-bold', colorType: 'cyan', students: [
+              { id: 't1_1', name: 'Emma', grade: 'G1', absent: false },
+              { id: 't1_2', name: 'Kouma', grade: 'G1', absent: false },
+              { id: 't1_3', name: 'Saho', grade: 'G1', absent: false },
+              { id: 't1_4', name: 'Riku', grade: 'G1', absent: false },
+              { id: 't1_5', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 't1_6', name: 'Kokoro', grade: 'G1', absent: false },
+              { id: 't1_7', name: 'Gen', grade: 'G1', absent: false },
+              { id: 't1_8', name: 'Aoi', grade: 'G1', absent: false },
+              { id: 't1_9', name: 'Airi', grade: 'G1', absent: false },
+              { id: 't1_10', name: 'Rise', grade: 'G1', absent: false },
+              { id: 't1_11', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 't1_12', name: 'Kaho', grade: 'G1', absent: false },
+              { id: 't1_13', name: 'Mare', grade: 'G1', absent: false },
+              { id: 't1_14', name: 'Shiyuu', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Yellow TOE', teacher: 'M= Taka Mariko', teacherColor: 'text-blue-600 font-bold', colorType: 'yellow', students: [
+              { id: 't1_15', name: 'Soma', grade: 'G2', absent: false },
+              { id: 't1_16', name: 'Minato', grade: 'G2', absent: false },
+              { id: 't1_17', name: 'Sohjiroh', grade: 'G2', absent: false },
+              { id: 't1_18', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 't1_19', name: 'Soichi', grade: 'G2', absent: false },
+              { id: 't1_20', name: 'Risa', grade: 'G2', absent: false },
+              { id: 't1_21', name: 'Shiori', grade: 'G2', absent: false },
+              { id: 't1_22', name: 'Ukyou', grade: 'G2', absent: true },
+              { id: 't1_23', name: 'Ryuya', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'CLIL', teacher: 'Afrin', teacherColor: 'text-purple-600', colorType: 'white', students: [
+              { id: 't1_24', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 't1_25', name: 'Kana', grade: 'G3', absent: false },
+              { id: 't1_26', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 't1_27', name: 'Kako', grade: 'G3', absent: false },
+              { id: 't1_28', name: 'Kyouka', grade: 'G3', absent: false },
+              { id: 't1_29', name: 'Eisuke', grade: 'G4', absent: false },
+              { id: 't1_30', name: 'Shigekatsu', grade: 'G4', absent: false },
+              { id: 't1_31', name: 'Kaisei', grade: 'G4', absent: false },
+              { id: 't1_32', name: 'Eita', grade: 'G4', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 't1_33', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 't1_34', name: 'Rin', grade: 'G4', absent: false },
+              { id: 't1_35', name: 'Nagisa', grade: 'G4', absent: false },
+              { id: 't1_36', name: 'Kosuke', grade: 'G5', absent: false },
+              { id: 't1_37', name: 'Yui', grade: 'G6', absent: false },
+              { id: 't1_38', name: 'Sarasa', grade: 'G6', absent: false },
+              { id: 't1_39', name: 'Sakuya', grade: 'G6', absent: false }
+            ]},
+            k6f2: { title: 'TOE', teacher: 'Kim', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 't1_40', name: 'Ryo', grade: 'G3', absent: false },
+              { id: 't1_41', name: 'Kouki.W', grade: 'G3', absent: false },
+              { id: 't1_42', name: 'Yamato', grade: 'G3', absent: false },
+              { id: 't1_43', name: 'Kouhei', grade: 'G3', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', students: [
+              { id: 't1_44', name: 'Emma', grade: 'G1', absent: false },
+              { id: 't1_45', name: 'Saho', grade: 'G1', absent: false },
+              { id: 't1_46', name: 'Riku', grade: 'G1', absent: false },
+              { id: 't1_47', name: 'Kokoro', grade: 'G1', absent: false },
+              { id: 't1_48', name: 'Shigeyasu', grade: 'G1', absent: false },
+              { id: 't1_49', name: 'Gen', grade: 'G1', absent: false },
+              { id: 't1_50', name: 'Airi T', grade: 'G1', absent: false },
+              { id: 't1_51', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 't1_52', name: 'Mare', grade: 'G1', absent: false },
+              { id: 't1_53', name: 'Soichi', grade: 'G2', absent: false },
+              { id: 't1_54', name: 'Ryuya', grade: 'G3', absent: false }
+            ]}
+          }
+        },
+        '2nd': {
+          time: '2nd\n(5PM-\n5:45PM\n)',
+          cells: {
+            j1: { title: 'Yellow TOE', teacher: 'M= Taka Mariko', teacherColor: 'text-blue-600 font-bold', colorType: 'yellow', students: [
+              { id: 't2_1', name: 'Emma', grade: 'G1', absent: false },
+              { id: 't2_2', name: 'Kouma', grade: 'G1', absent: false },
+              { id: 't2_3', name: 'Saho', grade: 'G1', absent: false },
+              { id: 't2_4', name: 'Riku', grade: 'G1', absent: false },
+              { id: 't2_5', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 't2_6', name: 'Kokoro', grade: 'G1', absent: false },
+              { id: 't2_7', name: 'Gen', grade: 'G1', absent: false },
+              { id: 't2_8', name: 'Aoi', grade: 'G1', absent: false },
+              { id: 't2_9', name: 'Airi', grade: 'G1', absent: false },
+              { id: 't2_10', name: 'Rise', grade: 'G1', absent: false },
+              { id: 't2_11', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 't2_12', name: 'Kaho', grade: 'G1', absent: false },
+              { id: 't2_13', name: 'Mare', grade: 'G1', absent: false },
+              { id: 't2_14', name: 'Shiyuu', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Blue Activity', teacher: 'M= Gio Koukei', teacherColor: 'text-blue-600 font-bold', colorType: 'cyan', students: [
+              { id: 't2_15', name: 'Soma', grade: 'G2', absent: false },
+              { id: 't2_16', name: 'Minato', grade: 'G2', absent: false },
+              { id: 't2_17', name: 'Sohjiroh', grade: 'G2', absent: false },
+              { id: 't2_18', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 't2_19', name: 'Soichi', grade: 'G2', absent: false },
+              { id: 't2_20', name: 'Risa', grade: 'G2', absent: false },
+              { id: 't2_21', name: 'Shiori', grade: 'G2', absent: false },
+              { id: 't2_22', name: 'Ukyou', grade: 'G2', absent: true },
+              { id: 't2_23', name: 'Ryuya', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 't2_24', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 't2_25', name: 'Kana', grade: 'G3', absent: false },
+              { id: 't2_26', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 't2_27', name: 'Kako', grade: 'G3', absent: false },
+              { id: 't2_28', name: 'Kyouka', grade: 'G3', absent: false },
+              { id: 't2_29', name: 'Eisuke', grade: 'G4', absent: false },
+              { id: 't2_30', name: 'Shigekatsu', grade: 'G4', absent: false },
+              { id: 't2_31', name: 'Kaisei', grade: 'G4', absent: false },
+              { id: 't2_32', name: 'Eita', grade: 'G4', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f1: { title: 'CLIL', teacher: 'Kim', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 't2_33', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 't2_34', name: 'Rin', grade: 'G4', absent: false },
+              { id: 't2_35', name: 'Nagisa', grade: 'G4', absent: false },
+              { id: 't2_36', name: 'Kosuke', grade: 'G5', absent: false },
+              { id: 't2_37', name: 'Yui', grade: 'G6', absent: false },
+              { id: 't2_38', name: 'Sarasa', grade: 'G6', absent: false },
+              { id: 't2_39', name: 'Sakuya', grade: 'G6', absent: false }
+            ]},
+            k6f2: { title: 'CLIL', teacher: 'Afrin', teacherColor: 'text-purple-600', colorType: 'white', students: [
+              { id: 't2_40', name: 'Ryo', grade: 'G3', absent: false },
+              { id: 't2_41', name: 'Kouki.W', grade: 'G3', absent: false },
+              { id: 't2_42', name: 'Yamato', grade: 'G3', absent: false },
+              { id: 't2_43', name: 'Kouhei', grade: 'G3', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', students: [] }
+          }
+        }
+      }
+    },
+    Wednesday: {
+      dateStr: AUTO_DATES.Wednesday.dateStr,
+      columns: [
+        { id: 'j1', name: 'Junior 01 (4F)', headerBg: 'bg-white' },
+        { id: 'j2', name: 'Junior 02 (4F)', headerBg: 'bg-white' },
+        { id: 'k5f1', name: 'Kids01\n(5F-A)', headerBg: 'bg-orange-header' },
+        { id: 'k5f2', name: 'Kids01\n(5F-B)', headerBg: 'bg-orange-header' },
+        { id: 'k6f1', name: 'Kids02 (6F)\nBig Room', headerBg: 'bg-green-header' },
+        { id: 'k6f2', name: 'Kids 03 (6F)\nSmall\nRoom', headerBg: 'bg-green-header' },
+        { id: 'raz', name: 'Raz Kids', headerBg: 'bg-green-header' }
+      ],
+      periods: {
+        '1st': {
+          time: '1st\n(4PM-\n4:50PM\n)',
+          cells: {
+            j1: { title: 'Blue Activity', teacher: 'M= Koukei Taka', teacherColor: 'text-pink-600', colorType: 'cyan', students: [
+              { id: 'w1_1', name: 'Kouma', grade: 'G1', absent: false },
+              { id: 'w1_2', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'w1_3', name: 'Haruma', grade: 'G1', absent: false },
+              { id: 'w1_4', name: 'Gen', grade: 'G1', absent: false },
+              { id: 'w1_5', name: 'Aoi', grade: 'G1', absent: true },
+              { id: 'w1_6', name: 'Rio', grade: 'G1', absent: true },
+              { id: 'w1_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'w1_8', name: 'Kaho', grade: 'G1', absent: false },
+              { id: 'w1_9', name: 'Mare', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-purple-600', colorType: 'yellow', students: [
+              { id: 'w1_10', name: 'Kosei', grade: 'G2', absent: false },
+              { id: 'w1_11', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'w1_12', name: 'Tamaki', grade: 'G2', absent: false },
+              { id: 'w1_13', name: 'Ayata', grade: 'G2', absent: false },
+              { id: 'w1_14', name: 'Taishin', grade: 'G2', absent: false },
+              { id: 'w1_15', name: 'Risa', grade: 'G2', absent: false },
+              { id: 'w1_16', name: 'Shiori', grade: 'G2', absent: false },
+              { id: 'w1_17', name: 'Ukyou', grade: 'G2', absent: false },
+              { id: 'w1_18', name: 'Koharu', grade: 'G2', absent: false },
+              { id: 'w1_19', name: 'Aqeel', grade: 'G3', absent: false },
+              { id: 'w1_20', name: 'Takuto', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 'w1_21', name: 'Yuri', grade: 'G3', absent: false },
+              { id: 'w1_22', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 'w1_23', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'w1_24', name: 'Nagisa', grade: 'G4', absent: false },
+              { id: 'w1_25', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'w1_26', name: 'Sumire', grade: 'G4', absent: false },
+              { id: 'w1_27', name: 'Sota', grade: 'G4', absent: false },
+              { id: 'w1_28', name: 'Kosuke.H', grade: 'G5', absent: true },
+              { id: 'w1_29', name: 'Sarasa', grade: 'G6', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f1: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'w1_30', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 'w1_31', name: 'Miyuu', grade: 'G3', absent: false },
+              { id: 'w1_32', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 'w1_33', name: 'Kako', grade: 'G3', absent: false },
+              { id: 'w1_34', name: 'Yuuki', grade: 'G4', absent: false },
+              { id: 'w1_35', name: 'Eita', grade: 'G4', absent: false },
+              { id: 'w1_36', name: 'Yui.S', grade: 'G6', absent: false },
+              { id: 'w1_37', name: 'Haruto.Y', grade: 'G6', absent: false }
+            ]},
+            k6f2: { title: 'TOE', teacher: 'Kim', teacherColor: 'text-purple-600', colorType: 'white', students: [
+              { id: 'w1_38', name: 'Kouki', grade: 'G3', absent: false },
+              { id: 'w1_39', name: 'Yamato', grade: 'G3', absent: false },
+              { id: 'w1_40', name: 'Asma', grade: 'G4', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', students: [
+              { id: 'w1_41', name: 'Kouma', grade: 'G1', absent: false },
+              { id: 'w1_42', name: 'Haruma', grade: 'G1', absent: false },
+              { id: 'w1_43', name: 'Kosei', grade: 'G2', absent: false },
+              { id: 'w1_44', name: 'Tamaki', grade: 'G2', absent: false },
+              { id: 'w1_45', name: 'Ayata', grade: 'G2', absent: false },
+              { id: 'w1_46', name: 'Koharu', grade: 'G2', absent: false },
+              { id: 'w1_47', name: 'Kaho', grade: 'G1', absent: false },
+              { id: 'w1_48', name: 'Rio', grade: 'G1', absent: false },
+              { id: 'w1_49', name: 'Risa', grade: 'G2', absent: false },
+              { id: 'w1_50', name: 'Shiori', grade: 'G2', absent: false }
+            ]}
+          }
+        },
+        '2nd': {
+          time: '2nd\n(5PM-\n5:45PM\n)',
+          cells: {
+            j1: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-purple-600', colorType: 'yellow', students: [
+              { id: 'w2_1', name: 'Kouma', grade: 'G1', absent: false },
+              { id: 'w2_2', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'w2_3', name: 'Haruma', grade: 'G1', absent: false },
+              { id: 'w2_4', name: 'Gen', grade: 'G1', absent: false },
+              { id: 'w2_5', name: 'Aoi', grade: 'G1', absent: true },
+              { id: 'w2_6', name: 'Rio', grade: 'G1', absent: true },
+              { id: 'w2_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'w2_8', name: 'Kaho', grade: 'G1', absent: false },
+              { id: 'w2_9', name: 'Mare', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Blue Activity', teacher: 'M= Koukei Taka', teacherColor: 'text-pink-600', colorType: 'cyan', students: [
+              { id: 'w2_10', name: 'Kosei', grade: 'G2', absent: false },
+              { id: 'w2_11', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'w2_12', name: 'Tamaki', grade: 'G2', absent: false },
+              { id: 'w2_13', name: 'Ayata', grade: 'G2', absent: false },
+              { id: 'w2_14', name: 'Taishin', grade: 'G2', absent: false },
+              { id: 'w2_15', name: 'Risa', grade: 'G2', absent: false },
+              { id: 'w2_16', name: 'Shiori', grade: 'G2', absent: false },
+              { id: 'w2_17', name: 'Ukyou', grade: 'G2', absent: false },
+              { id: 'w2_18', name: 'Aqeel', grade: 'G3', absent: false },
+              { id: 'w2_19', name: 'Takuto', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'CLIL', teacher: 'Kim', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'w2_20', name: 'Yuri', grade: 'G3', absent: false },
+              { id: 'w2_21', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 'w2_22', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'w2_23', name: 'Nagisa', grade: 'G4', absent: false },
+              { id: 'w2_24', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'w2_25', name: 'Sumire', grade: 'G4', absent: false },
+              { id: 'w2_26', name: 'Sota', grade: 'G4', absent: false },
+              { id: 'w2_27', name: 'Kosuke.H', grade: 'G5', absent: true },
+              { id: 'w2_28', name: 'Sarasa', grade: 'G6', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 'w2_29', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 'w2_30', name: 'Miyuu', grade: 'G3', absent: false },
+              { id: 'w2_31', name: 'Keiya', grade: 'G3', absent: false },
+              { id: 'w2_32', name: 'Kako', grade: 'G3', absent: false },
+              { id: 'w2_33', name: 'Yuuki', grade: 'G4', absent: false },
+              { id: 'w2_34', name: 'Eita', grade: 'G4', absent: false },
+              { id: 'w2_35', name: 'Yui.S', grade: 'G6', absent: false },
+              { id: 'w2_36', name: 'Haruto.Y', grade: 'G6', absent: false }
+            ]},
+            k6f2: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'w2_37', name: 'Kouki', grade: 'G3', absent: false },
+              { id: 'w2_38', name: 'Yamato', grade: 'G3', absent: false },
+              { id: 'w2_39', name: 'Asma', grade: 'G4', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', customHtml: `
+              <div class="text-xs text-left leading-tight font-semibold">
+                <div class="font-bold">18:00-18:30</div>
+                <div class="bg-orange-300 text-black px-1 inline-block font-bold">5F</div>
+                <div class="bg-blue-200 text-blue-900 px-1 inline-block">Private</div>
+                <div class="mt-1">(Kim): Yui. S</div>
+              </div>
+            `, students: [] }
+          }
+        }
+      }
+    },
+    Thursday: {
+      dateStr: AUTO_DATES.Thursday.dateStr,
+      columns: [
+        { id: 'j1', name: 'Junior 01 (4F)', headerBg: 'bg-white' },
+        { id: 'j2', name: 'Junior 02 (4F)', headerBg: 'bg-white' },
+        { id: 'k5f1', name: 'Kids01\n(5F-A)', headerBg: 'bg-orange-header' },
+        { id: 'k5f2', name: 'Kids01\n(5F-B)', headerBg: 'bg-orange-header' },
+        { id: 'k6f', name: 'Kids 02/03\n(6F)\nBig Room', headerBg: 'bg-green-header' },
+        { id: 'raz', name: 'Raz Kids', headerBg: 'bg-green-header' }
+      ],
+      periods: {
+        '1st': {
+          time: '1st\n(4PM-\n4:50PM\n)',
+          cells: {
+            j1: { title: 'Blue Activity', teacher: 'M= Gio Taka', teacherColor: 'text-blue-600 font-bold', colorType: 'cyan', students: [
+              { id: 'th1_1', name: 'Haruma', grade: 'G1', absent: false },
+              { id: 'th1_2', name: 'Riku', grade: 'G1', absent: false },
+              { id: 'th1_3', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 'th1_4', name: 'Kokoro', grade: 'G1', absent: false },
+              { id: 'th1_5', name: 'Gen', grade: 'G1', absent: false },
+              { id: 'th1_6', name: 'Rio', grade: 'G1', absent: false },
+              { id: 'th1_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'th1_8', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'th1_9', name: 'Mare', grade: 'G1', absent: false },
+              { id: 'th1_10', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'th1_11', name: 'Toma', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-blue-600 font-bold', colorType: 'yellow', students: [
+              { id: 'th1_12', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'th1_13', name: 'Kosei', grade: 'G2', absent: false },
+              { id: 'th1_14', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'th1_15', name: 'Sumire', grade: 'G2', absent: false },
+              { id: 'th1_16', name: 'Ayata', grade: 'G2', absent: false },
+              { id: 'th1_17', name: 'Hina', grade: 'G2', absent: false },
+              { id: 'th1_18', name: 'Sohjiroh', grade: 'G2', absent: false },
+              { id: 'th1_19', name: 'Takumi', grade: 'G2', absent: false },
+              { id: 'th1_20', name: 'Koharu', grade: 'G2', absent: false }
+            ]},
+            k5f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600', colorType: 'white', students: [
+              { id: 'th1_21', name: 'Kanna', grade: 'G3', absent: true },
+              { id: 'th1_22', name: 'Kana', grade: 'G3', absent: false },
+              { id: 'th1_23', name: 'Yuta', grade: 'G3', absent: false },
+              { id: 'th1_24', name: 'Kouki', grade: 'G3', absent: false },
+              { id: 'th1_25', name: 'Kouhei', grade: 'G3', absent: false },
+              { id: 'th1_26', name: 'Yuki', grade: 'G3', absent: false },
+              { id: 'th1_27', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'th1_28', name: 'Mao', grade: 'G4', absent: false },
+              { id: 'th1_29', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'th1_30', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'th1_31', name: 'Sumire', grade: 'G4', absent: false },
+              { id: 'th1_32', name: 'Kousuke', grade: 'G5', absent: true }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'th1_33', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 'th1_34', name: 'Miyuu', grade: 'G3', absent: false },
+              { id: 'th1_35', name: 'Ryo', grade: 'G3', absent: false },
+              { id: 'th1_36', name: 'Rio.D', grade: 'G3', absent: false },
+              { id: 'th1_37', name: 'Takuto', grade: 'G3', absent: false },
+              { id: 'th1_38', name: 'Ayano', grade: 'G3', absent: false },
+              { id: 'th1_39', name: 'Eisuke', grade: 'G4', absent: false },
+              { id: 'th1_40', name: 'Ena', grade: 'G4', absent: false },
+              { id: 'th1_41', name: 'Issei', grade: 'G4', absent: false },
+              { id: 'th1_42', name: 'Shigekatsu', grade: 'G4', absent: false },
+              { id: 'th1_43', name: 'Kaisei', grade: 'G4', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', students: [
+              { id: 'th1_44', name: 'Sumire', grade: 'G2', absent: false },
+              { id: 'th1_45', name: 'Hina', grade: 'G2', absent: false },
+              { id: 'th1_46', name: 'Takumi', grade: 'G2', absent: false },
+              { id: 'th1_47', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'th1_48', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 'th1_49', name: 'Sohjiroh', grade: 'G2', absent: false },
+              { id: 'th1_50', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'th1_51', name: 'Minato', grade: 'G2', absent: false }
+            ]}
+          }
+        },
+        '2nd': {
+          time: '2nd\n(5PM-\n5:50PM\n)',
+          cells: {
+            j1: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-blue-600 font-bold', colorType: 'yellow', students: [
+              { id: 'th2_1', name: 'Haruma', grade: 'G1', absent: false },
+              { id: 'th2_2', name: 'Riku', grade: 'G1', absent: false },
+              { id: 'th2_3', name: 'Azusa', grade: 'G1', absent: false },
+              { id: 'th2_4', name: 'Kokoro', grade: 'G1', absent: false },
+              { id: 'th2_5', name: 'Gen', grade: 'G1', absent: false },
+              { id: 'th2_6', name: 'Rio', grade: 'G1', absent: false },
+              { id: 'th2_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'th2_8', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'th2_9', name: 'Mare', grade: 'G1', absent: false },
+              { id: 'th2_10', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'th2_11', name: 'Toma', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Blue Activity', teacher: 'M= Gio Taka', teacherColor: 'text-blue-600 font-bold', colorType: 'cyan', students: [
+              { id: 'th2_12', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'th2_13', name: 'Kosei', grade: 'G2', absent: false },
+              { id: 'th2_14', name: 'Minato', grade: 'G2', absent: false },
+              { id: 'th2_15', name: 'Sumire', grade: 'G2', absent: false },
+              { id: 'th2_16', name: 'Ayata', grade: 'G2', absent: false },
+              { id: 'th2_17', name: 'Hina', grade: 'G2', absent: false },
+              { id: 'th2_18', name: 'Sohjiroh', grade: 'G2', absent: false },
+              { id: 'th2_19', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 'th2_20', name: 'Koharu', grade: 'G2', absent: false },
+              { id: 'th2_21', name: 'Takuto', grade: 'G3', absent: false }
+            ]},
+            k5f1: { title: 'CLIL', teacher: 'Nathan', teacherColor: 'text-pink-600', colorType: 'white', students: [
+              { id: 'th2_22', name: 'Kanna', grade: 'G3', absent: true },
+              { id: 'th2_23', name: 'Kana', grade: 'G3', absent: false },
+              { id: 'th2_24', name: 'Yuta', grade: 'G3', absent: false },
+              { id: 'th2_25', name: 'Kouki', grade: 'G3', absent: false },
+              { id: 'th2_26', name: 'Kouhei', grade: 'G3', absent: false },
+              { id: 'th2_27', name: 'Yuki', grade: 'G3', absent: false },
+              { id: 'th2_28', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'th2_29', name: 'Mao', grade: 'G4', absent: false },
+              { id: 'th2_30', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'th2_31', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'th2_32', name: 'Sumire', grade: 'G4', absent: false },
+              { id: 'th2_33', name: 'Kousuke', grade: 'G5', absent: true }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-blue-600 font-bold', colorType: 'white', students: [
+              { id: 'th2_34', name: 'Miyuu', grade: 'G3', absent: false },
+              { id: 'th2_35', name: 'Ryo', grade: 'G3', absent: false },
+              { id: 'th2_36', name: 'Rio.D', grade: 'G3', absent: false },
+              { id: 'th2_37', name: 'Ayano', grade: 'G3', absent: false },
+              { id: 'th2_38', name: 'Eisuke', grade: 'G4', absent: false },
+              { id: 'th2_39', name: 'Ena', grade: 'G4', absent: false },
+              { id: 'th2_40', name: 'Issei', grade: 'G4', absent: false },
+              { id: 'th2_41', name: 'Shigekatsu', grade: 'G4', absent: false },
+              { id: 'th2_42', name: 'Kaisei', grade: 'G4', absent: false }
+            ]},
+            raz: { title: '', teacher: '', colorType: 'white', students: [] }
+          }
+        }
+      }
+    },
+    Friday: {
+      dateStr: AUTO_DATES.Friday.dateStr,
+      columns: [
+        { id: 'j1', name: 'Junior 01 (4F)', headerBg: 'bg-white' },
+        { id: 'j2', name: 'Junior 02 (4F)', headerBg: 'bg-white' },
+        { id: 'k5f1', name: 'Kids01\n(5F-A)', headerBg: 'bg-orange-header' },
+        { id: 'k5f2', name: 'Kids01\n(5F-B)', headerBg: 'bg-orange-header' },
+        { id: 'k6f', name: 'Kids02 (6F)\nBig Room', headerBg: 'bg-green-header' }
+      ],
+      periods: {
+        '1st': {
+          time: '1st\n(4PM-\n4:50PM\n)',
+          cells: {
+            j1: { title: 'Blue Activity', teacher: 'M= Gio Taka', teacherColor: 'text-pink-600', colorType: 'cyan', students: [
+              { id: 'f1_1', name: 'Emma', grade: 'G1', absent: false },
+              { id: 'f1_2', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'f1_3', name: 'Saho', grade: 'G1', absent: false },
+              { id: 'f1_4', name: 'Aoi', grade: 'G1', absent: false },
+              { id: 'f1_5', name: 'Rise', grade: 'G1', absent: false },
+              { id: 'f1_6', name: 'Yusei', grade: 'G1', absent: false },
+              { id: 'f1_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'f1_8', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'f1_9', name: 'Shiyuu', grade: 'G1', absent: false },
+              { id: 'f1_10', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'f1_11', name: 'Mahiro', grade: 'G1', absent: false },
+              { id: 'f1_12', name: 'Konoka', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-pink-600', colorType: 'yellow', students: [
+              { id: 'f1_13', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'f1_14', name: 'Sumire.A', grade: 'G2', absent: false },
+              { id: 'f1_15', name: 'Kanata', grade: 'G2', absent: false },
+              { id: 'f1_16', name: 'Tamaki', grade: 'G2', absent: false },
+              { id: 'f1_17', name: 'Hina', grade: 'G2', absent: false },
+              { id: 'f1_18', name: 'Taishin', grade: 'G2', absent: false },
+              { id: 'f1_19', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 'f1_20', name: 'Ukyou', grade: 'G2', absent: false }
+            ]},
+            k5f1: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-purple-600 font-bold', colorType: 'white', students: [
+              { id: 'f1_21', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'f1_22', name: 'Mao', grade: 'G4', absent: false },
+              { id: 'f1_23', name: 'Sota', grade: 'G4', absent: false },
+              { id: 'f1_24', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'f1_25', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'f1_26', name: 'Haruto.Y', grade: 'G6', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'CLIL', teacher: 'Afrin', teacherColor: 'text-purple-600 font-bold', colorType: 'white', students: [
+              { id: 'f1_27', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 'f1_28', name: 'Kako', grade: 'G3', absent: false },
+              { id: 'f1_29', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 'f1_30', name: 'Kyouka', grade: 'G3', absent: false },
+              { id: 'f1_31', name: 'Kana', grade: 'G3', absent: false },
+              { id: 'f1_32', name: 'Ayano', grade: 'G3', absent: false }
+            ]}
+          }
+        },
+        '2nd': {
+          time: '2nd\n(5PM-\n5:45PM\n)',
+          cells: {
+            j1: { title: 'Yellow TOE', teacher: 'M= Henry', teacherColor: 'text-purple-600 font-bold', colorType: 'yellow', students: [
+              { id: 'f2_1', name: 'Emma', grade: 'G1', absent: false },
+              { id: 'f2_2', name: 'Misaki', grade: 'G1', absent: false },
+              { id: 'f2_3', name: 'Saho', grade: 'G1', absent: false },
+              { id: 'f2_4', name: 'Aoi', grade: 'G1', absent: false },
+              { id: 'f2_5', name: 'Rise', grade: 'G1', absent: false },
+              { id: 'f2_6', name: 'Yusei', grade: 'G1', absent: false },
+              { id: 'f2_7', name: 'Kanae', grade: 'G1', absent: false },
+              { id: 'f2_8', name: 'Yuuhi', grade: 'G1', absent: false },
+              { id: 'f2_9', name: 'Shiyuu', grade: 'G1', absent: false },
+              { id: 'f2_10', name: 'Kazuma', grade: 'G1', absent: false },
+              { id: 'f2_11', name: 'Mahiro', grade: 'G1', absent: false },
+              { id: 'f2_12', name: 'Konoka', grade: 'G1', absent: false }
+            ]},
+            j2: { title: 'Blue Activity', teacher: 'M= Gio Taka', teacherColor: 'text-pink-600', colorType: 'cyan', students: [
+              { id: 'f2_13', name: 'Soma', grade: 'G2', absent: false },
+              { id: 'f2_14', name: 'Sumire.A', grade: 'G2', absent: false },
+              { id: 'f2_15', name: 'Kanata', grade: 'G2', absent: false },
+              { id: 'f2_16', name: 'Tamaki', grade: 'G2', absent: false },
+              { id: 'f2_17', name: 'Hina', grade: 'G2', absent: false },
+              { id: 'f2_18', name: 'Taishin', grade: 'G2', absent: false },
+              { id: 'f2_19', name: 'Yushi', grade: 'G2', absent: false },
+              { id: 'f2_20', name: 'Ukyou', grade: 'G2', absent: false }
+            ]},
+            k5f1: { title: 'CLIL', teacher: 'Afrin', teacherColor: 'text-purple-600 font-bold', colorType: 'white', students: [
+              { id: 'f2_21', name: 'Saki', grade: 'G4', absent: false },
+              { id: 'f2_22', name: 'Mao', grade: 'G4', absent: false },
+              { id: 'f2_23', name: 'Sota', grade: 'G4', absent: false },
+              { id: 'f2_24', name: 'Rin', grade: 'G4', absent: false },
+              { id: 'f2_25', name: 'Rio.H', grade: 'G4', absent: false },
+              { id: 'f2_26', name: 'Haruto.Y', grade: 'G6', absent: false }
+            ]},
+            k5f2: { title: '', teacher: '', colorType: 'white', students: [] },
+            k6f: { title: 'TOE', teacher: 'Toshi', teacherColor: 'text-purple-600 font-bold', colorType: 'white', students: [
+              { id: 'f2_27', name: 'Kanna', grade: 'G3', absent: false },
+              { id: 'f2_28', name: 'Kako', grade: 'G3', absent: false },
+              { id: 'f2_29', name: 'Aya.O', grade: 'G3', absent: false },
+              { id: 'f2_30', name: 'Kyouka', grade: 'G3', absent: false },
+              { id: 'f2_31', name: 'Kana', grade: 'G3', absent: false },
+              { id: 'f2_32', name: 'Ayano', grade: 'G3', absent: false }
+            ]}
+          }
+        }
+      }
+    }
+  };
+
+  let appState = JSON.parse(JSON.stringify(INITIAL_SCHEDULE_DATA));
+  let currentDay = 'Monday';
+  let draggedItemInfo = null;
+  let isKidsMerged = false;
+
+  function sortStudentsStrict(studentsList) {
+    const gradeOrder = { 'G1': 1, 'G2': 2, 'G3': 3, 'G4': 4, 'G5': 5, 'G6': 6, 'Grad': 7 };
+    return studentsList.slice().sort((a, b) => {
+      const orderA = gradeOrder[a.grade] || 99;
+      const orderB = gradeOrder[b.grade] || 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  function quickEditTeacher(periodKey, roomId) {
+    const dayData = appState[currentDay];
+    const cell = dayData.periods[periodKey]?.cells[roomId];
+    if (!cell) return;
+    const currentTeacher = cell.teacher || '';
+    const newTeacher = prompt(`請輸入 ${currentDay} [${periodKey}] 的授課老師姓名：`, currentTeacher);
+    if (newTeacher !== null) {
+      cell.teacher = newTeacher.trim();
+      renderTable();
+    }
+  }
+
+  function quickEditRoom(roomId) {
+    const dayData = appState[currentDay];
+    const col = dayData.columns.find(c => c.id === roomId);
+    if (!col) return;
+    const currentName = col.name.replace(/\n/g, '\\n');
+    const newName = prompt(`請輸入新的教室/班級名稱 (可使用 \\n 換行)：`, currentName);
+    if (newName !== null) {
+      col.name = newName.replace(/\\n/g, '\n').trim();
+      renderTable();
+    }
+  }
+
+  function renderDayButtons() {
+    const container = document.getElementById('dayButtonsContainer');
+    container.innerHTML = '';
+    DAYS.forEach(day => {
+      const btn = document.createElement('button');
+      const isActive = day.key === currentDay;
+      btn.className = `px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 border-2 border-[#4a3e3d] ${
+        isActive 
+          ? 'bg-[#e0f2fe] shadow-[2px_2px_0_#4a3e3d] -translate-y-0.5' 
+          : 'bg-white hover:bg-[#fff9e6]'
+      }`;
+      btn.innerHTML = `<i class="fa-regular fa-calendar-check"></i> <span>${day.label}</span> <span class="text-xs opacity-75 font-normal">(${day.sub})</span>`;
+      btn.onclick = () => {
+        currentDay = day.key;
+        renderDayButtons();
+        renderTable();
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  function renderTable() {
+    const dayData = appState[currentDay];
+    const tableContainer = document.getElementById('tableContainer');
+    tableContainer.innerHTML = '';
+
+    const table = document.createElement('table');
+    table.className = 'schedule-table text-center';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.className = 'h-16 text-sm font-bold';
+
+    const thDate = document.createElement('th');
+    thDate.className = 'w-24 p-2 bg-[#f7ede2] whitespace-pre-line leading-tight text-center border-b-2 font-bold';
+    thDate.innerHTML = `<span>${dayData.dateStr}</span>`;
+    headerRow.appendChild(thDate);
+
+    let displayColumns = dayData.columns;
+    if (isKidsMerged && dayData.columns.some(c => c.id === 'k6f1' || c.id === 'k6f2')) {
+      displayColumns = dayData.columns.filter(c => c.id !== 'k6f2').map(c => {
+        if (c.id === 'k6f1') {
+          return { ...c, id: 'k6f_merged', name: 'Kids02 & 03\n(6F) Big Room\n[合班]' };
+        }
+        return c;
+      });
+    }
+
+    displayColumns.forEach(col => {
+      const th = document.createElement('th');
+      th.className = `p-2 ${col.headerBg} whitespace-pre-line leading-snug font-bold border-b-2 relative`;
+      th.style.width = `${100 / (displayColumns.length + 1)}%`;
+      th.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full min-h-[58px] cursor-pointer hover:bg-black/5 rounded p-1 transition-colors" onclick="quickEditRoom('${col.id}')" title="點擊修改教室名稱">
+          <span>${col.name.replace(/\n/g, '<br>')}</span>
+          <i class="fa-solid fa-pencil text-[10px] opacity-40 mt-1"></i>
+        </div>
+      `;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    ['1st', '2nd'].forEach(periodKey => {
+      const periodData = dayData.periods[periodKey];
+      if (!periodData) return;
+
+      const row = document.createElement('tr');
+      row.className = 'min-h-[220px]';
+
+      const tdTime = document.createElement('td');
+      tdTime.className = 'p-3 bg-white font-extrabold text-blue-600 text-lg leading-tight whitespace-pre-line border-r-2 align-middle text-center';
+      tdTime.textContent = periodData.time;
+      row.appendChild(tdTime);
+
+      displayColumns.forEach(col => {
+        let cellData;
+        if (col.id === 'k6f_merged') {
+          const c1 = periodData.cells['k6f1'] || { students: [] };
+          const c2 = periodData.cells['k6f2'] || { students: [] };
+          cellData = {
+            title: 'Kids 02 & 03 (合班)',
+            teacher: `${c1.teacher || ''} / ${c2.teacher || ''}`.replace(/^ \/ | \/ $/g, ''),
+            colorType: 'white',
+            students: [...c1.students, ...c2.students]
+          };
+        } else {
+          cellData = periodData.cells[col.id] || { students: [], colorType: 'white' };
+        }
+
+        const td = document.createElement('td');
+        let bgClass = 'bg-white';
+        if (cellData.colorType === 'cyan') bgClass = 'bg-cyan-cell';
+        if (cellData.colorType === 'yellow') bgClass = 'bg-yellow-cell';
+
+        td.className = `p-2.5 text-left transition-colors relative ${bgClass}`;
+        td.dataset.period = periodKey;
+        td.dataset.roomId = col.id;
+
+        td.addEventListener('dragover', (e) => { e.preventDefault(); td.classList.add('drag-over'); });
+        td.addEventListener('dragleave', () => td.classList.remove('drag-over'));
+        td.addEventListener('drop', (e) => handleDrop(e, periodKey, col.id));
+
+        const cellContent = document.createElement('div');
+        cellContent.className = 'flex flex-col h-full min-h-[190px]';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'mb-2';
+        const count = cellData.students ? cellData.students.length : 0;
+        
+        const titleSpan = document.createElement('div');
+        titleSpan.className = 'font-black text-slate-900 text-base leading-tight min-h-[1.25rem]';
+        titleSpan.textContent = cellData.title ? `${cellData.title} (${count})` : '';
+
+        const teacherSpan = document.createElement('div');
+        teacherSpan.className = `text-sm font-bold ${cellData.teacherColor || 'text-slate-800'} mt-0.5 teacher-editable`;
+        teacherSpan.title = '點擊修改老師姓名';
+        teacherSpan.innerHTML = `<span><i class="fa-solid fa-chalkboard-user mr-1 text-slate-400"></i>${cellData.teacher || '(無指定)'}</span>`;
+        teacherSpan.onclick = () => quickEditTeacher(periodKey, col.id);
+
+        headerDiv.appendChild(titleSpan);
+        headerDiv.appendChild(teacherSpan);
+        cellContent.appendChild(headerDiv);
+
+        if (cellData.customHtml) {
+          const customDiv = document.createElement('div');
+          customDiv.innerHTML = cellData.customHtml;
+          cellContent.appendChild(customDiv);
+        }
+        if (cellData.badgeText) {
+          const badgeDiv = document.createElement('div');
+          badgeDiv.className = 'my-2';
+          badgeDiv.innerHTML = `<span class="${cellData.badgeBg}">${cellData.badgeText}</span>`;
+          cellContent.appendChild(badgeDiv);
+        }
+
+        const studentsDiv = document.createElement('div');
+        studentsDiv.className = 'flex-1 text-sm md:text-base font-semibold leading-relaxed';
+
+        if (cellData.students && cellData.students.length > 0) {
+          const sortedStudents = sortStudentsStrict(cellData.students);
+          const isRaz = col.id === 'raz';
+
+          if (isRaz && !sortedStudents.some(s => s.grade !== 'G1' && s.grade !== 'G2' && s.grade !== 'G3')) {
+            const listDiv = document.createElement('div');
+            listDiv.className = 'flex flex-col gap-1';
+            sortedStudents.forEach(stu => {
+              listDiv.appendChild(createStudentBadge(stu, periodKey, col.id));
+            });
+            studentsDiv.appendChild(listDiv);
+          } else {
+            const groups = {};
+            sortedStudents.forEach(stu => {
+              const g = stu.grade || 'G1';
+              if (!groups[g]) groups[g] = [];
+              groups[g].push(stu);
+            });
+
+            Object.keys(groups).sort().forEach(gradeKey => {
+              const groupDiv = document.createElement('div');
+              groupDiv.className = 'mt-2 first:mt-0';
+
+              const gLabel = document.createElement('span');
+              gLabel.className = 'font-bold block text-xs underline decoration-slate-400 mb-0.5';
+              gLabel.textContent = gradeKey;
+              groupDiv.appendChild(gLabel);
+
+              const namesContainer = document.createElement('div');
+              namesContainer.className = 'flex flex-wrap items-center gap-1.5';
+
+              groups[gradeKey].forEach((stu) => {
+                namesContainer.appendChild(createStudentBadge(stu, periodKey, col.id));
+              });
+
+              groupDiv.appendChild(namesContainer);
+              studentsDiv.appendChild(groupDiv);
+            });
+          }
+        }
+
+        cellContent.appendChild(studentsDiv);
+        td.appendChild(cellContent);
+        row.appendChild(td);
+      });
+
+      tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+  }
+
+  function createStudentBadge(student, periodKey, roomId) {
+    const span = document.createElement('span');
+    span.textContent = student.name;
+    span.className = `student-badge ${student.absent ? 'absent' : ''}`;
+    span.setAttribute('draggable', 'true');
+    span.title = `学年: ${student.grade} | クリック: 欠席(赤字)切替 | ドラッグ: 教室移動`;
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      student.absent = !student.absent;
+      const dayData = appState[currentDay];
+      ['1st', '2nd'].forEach(p => {
+        Object.values(dayData.periods[p].cells).forEach(cell => {
+          const matched = cell.students.find(s => s.name === student.name && s.grade === student.grade);
+          if (matched) matched.absent = student.absent;
+        });
+      });
+      renderTable();
+    });
+
+    span.addEventListener('dragstart', (e) => {
+      draggedItemInfo = {
+        studentName: student.name,
+        studentGrade: student.grade,
+        sourcePeriod: periodKey,
+        sourceRoomId: roomId
+      };
+      e.dataTransfer.setData('text/plain', student.name);
+      e.dataTransfer.effectAllowed = 'move';
+      span.style.opacity = '0.35';
+    });
+
+    span.addEventListener('dragend', () => {
+      span.style.opacity = '1';
+      draggedItemInfo = null;
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    return span;
+  }
+
+  function handleDrop(e, targetPeriod, targetRoomId) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!draggedItemInfo) return;
+
+    const { studentName, studentGrade, sourcePeriod, sourceRoomId } = draggedItemInfo;
+    const dayData = appState[currentDay];
+
+    const sourceCell = dayData.periods[sourcePeriod]?.cells[sourceRoomId];
+    const targetCell = dayData.periods[targetPeriod]?.cells[targetRoomId];
+    if (!sourceCell || !targetCell) return;
+
+    const stuIndex = sourceCell.students.findIndex(s => s.name === studentName && s.grade === studentGrade);
+    if (stuIndex === -1) return;
+
+    const [movedStudent] = sourceCell.students.splice(stuIndex, 1);
+    targetCell.students.push(movedStudent);
+    targetCell.students = sortStudentsStrict(targetCell.students);
+
+    if (studentGrade !== 'G2') {
+      const otherPeriod = targetPeriod === '1st' ? '2nd' : '1st';
+      const otherSrc = dayData.periods[otherPeriod]?.cells[sourceRoomId];
+      const otherTgt = dayData.periods[otherPeriod]?.cells[targetRoomId];
+
+      if (otherSrc && otherTgt) {
+        const oIdx = otherSrc.students.findIndex(s => s.name === studentName && s.grade === studentGrade);
+        if (oIdx !== -1) {
+          const [oMoved] = otherSrc.students.splice(oIdx, 1);
+          otherTgt.students.push(oMoved);
+          otherTgt.students = sortStudentsStrict(otherTgt.students);
+        }
+      }
+    }
+
+    renderTable();
+  }
+
+  function setupTeacherManager() {
+    const modal = document.getElementById('teacherModal');
+    const openBtn = document.getElementById('openTeacherModalBtn');
+    const closeBtn = document.getElementById('closeTeacherModalBtn');
+    const cancelBtn = document.getElementById('cancelTeacherModalBtn');
+    const saveBtn = document.getElementById('saveTeacherModalBtn');
+    const content = document.getElementById('teacherModalContent');
+    const currentDayText = document.getElementById('modalCurrentDayText');
+
+    openBtn.onclick = () => {
+      currentDayText.textContent = DAYS.find(d => d.key === currentDay)?.label || currentDay;
+      content.innerHTML = '';
+      const dayData = appState[currentDay];
+      dayData.columns.forEach(col => {
+        const c1 = dayData.periods['1st']?.cells[col.id] || {};
+        const c2 = dayData.periods['2nd']?.cells[col.id] || {};
+
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-lg border border-[#d3c9be] bg-[#faf7f2]';
+        card.innerHTML = `
+          <div class="font-bold text-sm flex flex-col gap-1 border-b pb-2 mb-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs text-slate-500">教室名稱</label>
+              <span class="text-[10px] text-slate-400">ID: ${col.id}</span>
+            </div>
+            <input type="text" data-room-name="${col.id}" value="${col.name.replace(/\n/g, '\\n')}" class="w-full border rounded p-1.5 font-semibold bg-white text-sm">
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-blue-700 mb-1">1st Period 授課老師</label>
+              <input type="text" data-room="${col.id}" data-period="1st" value="${c1.teacher || ''}" class="w-full border rounded p-1.5 font-semibold bg-white">
+            </div>
+            <div>
+              <label class="block font-bold text-blue-700 mb-1">2nd Period 授課老師</label>
+              <input type="text" data-room="${col.id}" data-period="2nd" value="${c2.teacher || ''}" class="w-full border rounded p-1.5 font-semibold bg-white">
+            </div>
+          </div>
+        `;
+        content.appendChild(card);
+      });
+      modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => modal.classList.add('hidden');
+    closeBtn.onclick = closeModal;
+    cancelBtn.onclick = closeModal;
+
+    saveBtn.onclick = () => {
+      const dayData = appState[currentDay];
+      const nameInputs = content.querySelectorAll('input[data-room-name]');
+      nameInputs.forEach(input => {
+        const roomId = input.dataset.roomName;
+        const col = dayData.columns.find(c => c.id === roomId);
+        if (col) col.name = input.value.trim().replace(/\\n/g, '\n');
+      });
+
+      const teacherInputs = content.querySelectorAll('input[data-room]');
+      teacherInputs.forEach(input => {
+        const roomId = input.dataset.room;
+        const period = input.dataset.period;
+        const val = input.value.trim();
+        if (dayData.periods[period]?.cells[roomId]) {
+          dayData.periods[period].cells[roomId].teacher = val;
+        }
+      });
+
+      renderTable();
+      closeModal();
+    };
+  }
+
+  function setupLevelManager() {
+    const modal = document.getElementById('levelModal');
+    const openBtn = document.getElementById('openLevelModalBtn');
+    const closeBtn = document.getElementById('closeLevelModalBtn');
+    const cancelBtn = document.getElementById('cancelLevelModalBtn');
+    const saveBtn = document.getElementById('saveLevelModalBtn');
+    const tabTextBtn = document.getElementById('tabTextBtn');
+    const tabTableBtn = document.getElementById('tabTableBtn');
+    const textView = document.getElementById('levelTextView');
+    const tableView = document.getElementById('levelTableView');
+    const exportTextarea = document.getElementById('levelExportTextarea');
+    const tableBody = document.getElementById('studentLevelTableBody');
+    const countText = document.getElementById('studentTotalCountText');
+    const LEVEL_OPTS = ['Jr 01', 'Jr 02', 'Kids01', 'Kids02', 'Kids03'];
+
+    function extractMasterList() {
+      const studentMap = {};
+      Object.keys(appState).forEach(dayKey => {
+        const day = appState[dayKey];
+        ['1st', '2nd'].forEach(p => {
+          Object.keys(day.periods[p].cells).forEach(roomId => {
+            const cell = day.periods[p].cells[roomId];
+            let level = 'Jr 01';
+            if (roomId === 'j1') level = 'Jr 01';
+            else if (roomId === 'j2') level = 'Jr 02';
+            else if (roomId === 'k5f1' || roomId === 'k5f2') level = 'Kids01';
+            else if (roomId === 'k6f' || roomId === 'k6f1') level = 'Kids02';
+            else if (roomId === 'k6f2') level = 'Kids03';
+
+            cell.students.forEach(s => {
+              const key = `${s.name}_${s.grade}`;
+              if (!studentMap[key]) {
+                studentMap[key] = {
+                  name: s.name,
+                  grade: s.grade,
+                  defaultLevel: level,
+                  levels: { Monday: level, Tuesday: level, Wednesday: level, Thursday: level, Friday: level }
+                };
+              }
+              studentMap[key].levels[dayKey] = level;
+            });
+          });
+        });
+      });
+      return sortStudentsStrict(Object.values(studentMap));
+    }
+
+    let masterList = extractMasterList();
+
+    function updateTextarea() {
+      exportTextarea.value = masterList.map(s => {
+        return `${s.name} | ${s.grade} | 預設:${s.defaultLevel} | 週一:${s.levels.Monday} | 週二:${s.levels.Tuesday} | 週三:${s.levels.Wednesday} | 週四:${s.levels.Thursday} | 週五:${s.levels.Friday}`;
+      }).join('\n');
+      countText.textContent = `現在登録数：${masterList.length} 名`;
+    }
+
+    function updateTableRows() {
+      tableBody.innerHTML = '';
+      masterList.forEach(s => {
+        const tr = document.createElement('tr');
+        const makeSelect = (val, callback) => {
+          const sel = document.createElement('select');
+          sel.className = 'border rounded p-1 text-xs bg-white font-semibold';
+          LEVEL_OPTS.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            if (opt === val) o.selected = true;
+            sel.appendChild(o);
+          });
+          sel.onchange = (e) => callback(e.target.value);
+          return sel;
+        };
+
+        tr.innerHTML = `<td class="p-2 font-bold">${s.name}</td><td class="p-2 font-semibold text-slate-600">${s.grade}</td>`;
+
+        const tdDef = document.createElement('td');
+        tdDef.className = 'p-2';
+        tdDef.appendChild(makeSelect(s.defaultLevel, (v) => s.defaultLevel = v));
+        tr.appendChild(tdDef);
+
+        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+          const td = document.createElement('td');
+          td.className = 'p-2';
+          td.appendChild(makeSelect(s.levels[d] || s.defaultLevel, (v) => s.levels[d] = v));
+          tr.appendChild(td);
+        });
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    tabTextBtn.onclick = () => {
+      tabTextBtn.className = 'pb-2 border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-1.5';
+      tabTableBtn.className = 'pb-2 text-slate-500 hover:text-slate-700 flex items-center gap-1.5';
+      textView.classList.remove('hidden');
+      tableView.classList.add('hidden');
+      updateTextarea();
+    };
+
+    tabTableBtn.onclick = () => {
+      tabTableBtn.className = 'pb-2 border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-1.5';
+      tabTextBtn.className = 'pb-2 text-slate-500 hover:text-slate-700 flex items-center gap-1.5';
+      tableView.classList.remove('hidden');
+      textView.classList.add('hidden');
+      updateTableRows();
+    };
+
+    openBtn.onclick = () => {
+      masterList = extractMasterList();
+      updateTextarea();
+      updateTableRows();
+      modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => modal.classList.add('hidden');
+    closeBtn.onclick = closeModal;
+    cancelBtn.onclick = closeModal;
+
+    saveBtn.onclick = () => {
+      if (!textView.classList.contains('hidden')) {
+        const lines = exportTextarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+        const parsed = [];
+        lines.forEach(line => {
+          const p = line.split('|').map(item => item.trim());
+          if (p.length >= 8) {
+            parsed.push({
+              name: p[0],
+              grade: p[1],
+              defaultLevel: p[2].replace('預設:', '').trim(),
+              levels: {
+                Monday: p[3].replace('週一:', '').trim(),
+                Tuesday: p[4].replace('週二:', '').trim(),
+                Wednesday: p[5].replace('週三:', '').trim(),
+                Thursday: p[6].replace('週四:', '').trim(),
+                Friday: p[7].replace('週五:', '').trim()
+              }
+            });
+          }
+        });
+        if (parsed.length > 0) masterList = parsed;
+      }
+
+      Object.keys(appState).forEach(dayKey => {
+        const day = appState[dayKey];
+        ['1st', '2nd'].forEach(p => {
+          Object.keys(day.periods[p].cells).forEach(r => {
+            if (r !== 'test_cram' && r !== 'raz') {
+              day.periods[p].cells[r].students = [];
+            }
+          });
+
+          masterList.forEach(stu => {
+            const lvl = stu.levels[dayKey] || stu.defaultLevel;
+            let targetRoom = 'j1';
+            if (lvl === 'Jr 01') targetRoom = 'j1';
+            else if (lvl === 'Jr 02') targetRoom = 'j2';
+            else if (lvl === 'Kids01') targetRoom = 'k5f1';
+            else if (lvl === 'Kids02') targetRoom = day.columns.some(c => c.id === 'k6f1') ? 'k6f1' : 'k6f';
+            else if (lvl === 'Kids03') targetRoom = day.columns.some(c => c.id === 'k6f2') ? 'k6f2' : 'k6f';
+
+            if (day.periods[p].cells[targetRoom]) {
+              day.periods[p].cells[targetRoom].students.push({
+                id: `stu_${stu.name}_${Date.now()}_${Math.random()}`,
+                name: stu.name,
+                grade: stu.grade,
+                absent: false
+              });
+            }
+          });
+
+          Object.keys(day.periods[p].cells).forEach(r => {
+            day.periods[p].cells[r].students = sortStudentsStrict(day.periods[p].cells[r].students);
+          });
+        });
+      });
+
+      renderTable();
+      closeModal();
+    };
+  }
+
+  function setupExportImage() {
+    const exportBtn = document.getElementById('exportImageBtn');
+    exportBtn.addEventListener('click', async () => {
+      const originalBtnHTML = exportBtn.innerHTML;
+      exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 処理中...';
+      exportBtn.disabled = true;
+
+      const tableContainer = document.getElementById('exportContainer');
+      tableContainer.classList.add('export-mode');
+
+      try {
+        const canvas = await html2canvas(tableContainer, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: false
+        });
+
+        const dayLabel = DAYS.find(d => d.key === currentDay)?.label || currentDay;
+        const fileName = `Class_Schedule_${dayLabel}.png`;
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (error) {
+        alert("画像の保存に失敗しました。もう一度お試しください。");
+      } finally {
+        tableContainer.classList.remove('export-mode');
+        exportBtn.innerHTML = originalBtnHTML;
+        exportBtn.disabled = false;
+      }
+    });
+  }
+
+  function setupTab4Modals() {
+    // 合班核取方塊
+    document.getElementById('mergeKidsCheckbox').addEventListener('change', (e) => {
+      isKidsMerged = e.target.checked;
+      renderTable();
+    });
+
+    // 課表重設
+    document.getElementById('resetClassBtn').addEventListener('click', () => {
+      if (confirm('本日の変更をすべてリセットしますか？ (初期状態に戻ります)')) {
+        appState[currentDay] = JSON.parse(JSON.stringify(INITIAL_SCHEDULE_DATA[currentDay]));
+        renderTable();
+      }
+    });
+
+    // 單一學生新增
+    const addModal = document.getElementById('addModal');
+    document.getElementById('addStudentModalBtn').onclick = () => {
+      const select = document.getElementById('newStudentTargetRoom');
+      select.innerHTML = '';
+      appState[currentDay].columns.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name.replace(/\n/g, ' ');
+        select.appendChild(opt);
+      });
+      addModal.classList.remove('hidden');
+    };
+    document.getElementById('closeModalBtn').onclick = () => addModal.classList.add('hidden');
+    document.getElementById('cancelModalBtn').onclick = () => addModal.classList.add('hidden');
+    document.getElementById('addStudentForm').onsubmit = (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newStudentName').value.trim();
+      const grade = document.getElementById('newStudentGrade').value;
+      const period = document.getElementById('newStudentPeriod').value;
+      const room = document.getElementById('newStudentTargetRoom').value;
+      if (!name) return;
+
+      const cell = appState[currentDay].periods[period]?.cells[room];
+      if (cell) {
+        cell.students.push({ id: 'custom_' + Date.now(), name, grade, absent: false });
+        cell.students = sortStudentsStrict(cell.students);
+        renderTable();
+      }
+      addModal.classList.add('hidden');
+      document.getElementById('newStudentName').value = '';
+    };
+
+    // 課表生徒一括追加
+    const batchClassModal = document.getElementById('batchClassModal');
+    document.getElementById('batchAddClassModalBtn').onclick = () => {
+      const select = document.getElementById('batchClassTargetRoom');
+      select.innerHTML = '';
+      appState[currentDay].columns.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name.replace(/\n/g, ' ');
+        select.appendChild(opt);
+      });
+      batchClassModal.classList.remove('hidden');
+    };
+    document.getElementById('closeBatchClassBtn').onclick = () => batchClassModal.classList.add('hidden');
+    document.getElementById('cancelBatchClassBtn').onclick = () => batchClassModal.classList.add('hidden');
+    document.getElementById('batchAddClassForm').onsubmit = (e) => {
+      e.preventDefault();
+      const raw = document.getElementById('batchClassStudentNames').value;
+      const period = document.getElementById('batchClassPeriod').value;
+      const room = document.getElementById('batchClassTargetRoom').value;
+      const defGrade = document.getElementById('batchClassDefaultGrade').value;
+      const overwrite = document.getElementById('batchClassOverwrite').checked;
+      const cell = appState[currentDay].periods[period]?.cells[room];
+      if (!cell || !raw.trim()) return;
+
+      const lines = raw.split('\n');
+      const parsed = [];
+      let currGrade = defGrade;
+
+      lines.forEach(l => {
+        let trimmed = l.trim();
+        if (!trimmed) return;
+        const match = trimmed.match(/^(G[1-6])[\s:：]/i);
+        if (match) {
+          currGrade = match[1].toUpperCase();
+          trimmed = trimmed.substring(match[0].length).trim();
+        }
+        trimmed.split(/[,、，;\t]+/).map(n => n.trim()).filter(Boolean).forEach(n => {
+          parsed.push({ id: 'b_' + Date.now() + Math.random(), name: n, grade: currGrade, absent: false });
+        });
+      });
+
+      if (overwrite) cell.students = parsed;
+      else cell.students.push(...parsed);
+      cell.students = sortStudentsStrict(cell.students);
+      renderTable();
+      batchClassModal.classList.add('hidden');
+      document.getElementById('batchClassStudentNames').value = '';
+    };
+
+    // 年度進級
+    const promoteModal = document.getElementById('promoteModal');
+    document.getElementById('promoteModalBtn').onclick = () => promoteModal.classList.remove('hidden');
+    document.getElementById('closePromoteModalBtn').onclick = () => promoteModal.classList.add('hidden');
+    document.getElementById('cancelPromoteModalBtn').onclick = () => promoteModal.classList.add('hidden');
+    document.getElementById('confirmPromoteBtn').onclick = () => {
+      const action = document.querySelector('input[name="g6Action"]:checked').value;
+      const scope = document.getElementById('promoteScope').value;
+      const targets = scope === 'all' ? Object.keys(appState) : [currentDay];
+
+      targets.forEach(dKey => {
+        const d = appState[dKey];
+        ['1st', '2nd'].forEach(p => {
+          Object.values(d.periods[p].cells).forEach(cell => {
+            const updated = [];
+            cell.students.forEach(s => {
+              if (s.grade === 'G1') s.grade = 'G2';
+              else if (s.grade === 'G2') s.grade = 'G3';
+              else if (s.grade === 'G3') s.grade = 'G4';
+              else if (s.grade === 'G4') s.grade = 'G5';
+              else if (s.grade === 'G5') s.grade = 'G6';
+              else if (s.grade === 'G6') {
+                if (action === 'graduated') { s.grade = 'Grad'; updated.push(s); }
+                return;
+              }
+              updated.push(s);
+            });
+            cell.students = sortStudentsStrict(updated);
+          });
+        });
+      });
+
+      renderTable();
+      promoteModal.classList.add('hidden');
+    };
+  }
+
+  /* -------------------------------------------------------------
+     4. Tab 5: 日本節假日運算與固定 55 列 Excel 匯出
+     ------------------------------------------------------------- */
+  function nthMonday(y, m, n) {
     let first = new Date(y, m-1, 1).getDay();
     return 1 + ((8 - first) % 7) + (n-1)*7;
   }
+
   function japaneseHolidays(y) {
-    const h = {}; // 'M/D' -> 名前
+    const h = {};
     const add = (m, d, name) => { h[`${m}/${d}`] = name; };
     const k = y - 1980;
     add(1, 1, '元日');
@@ -426,12 +2329,10 @@
 
     const key = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
     const base = Object.keys(h).map(s => { const [m, d] = s.split('/').map(Number); return new Date(y, m-1, d); });
-    // 国民の休日：祝日に挟まれた平日
     base.forEach(dt => {
       const next2 = new Date(y, dt.getMonth(), dt.getDate()+2), mid = new Date(y, dt.getMonth(), dt.getDate()+1);
       if (h[key(next2)] && !h[key(mid)] && mid.getDay() !== 0) h[key(mid)] = '国民の休日';
     });
-    // 振替休日：日曜の祝日 → 次の祝日でない日
     base.filter(dt => dt.getDay() === 0).forEach(dt => {
       let sub = new Date(y, dt.getMonth(), dt.getDate()+1);
       while (h[key(sub)]) sub.setDate(sub.getDate()+1);
@@ -440,7 +2341,6 @@
     return h;
   }
 
-  // 該月份要跳過的日期：{日: 原因}
   function getClosedDays(year, month) {
     const closed = {};
     if (!document.getElementById('skip-holidays').checked) return closed;
@@ -464,41 +2364,116 @@
     const special = Object.entries(closed).filter(([, r]) => r !== '土' && r !== '日');
     const weekendCount = Object.values(closed).filter(r => r === '土' || r === '日').length;
     const box = document.getElementById('holiday-preview');
-    if (!document.getElementById('skip-holidays').checked) { box.textContent = `將匯出全部 ${daysNum} 天。`; return; }
+    if (!document.getElementById('skip-holidays').checked) { 
+      box.textContent = `將匯出全部 ${daysNum} 天。`; 
+      return; 
+    }
     box.innerHTML = `將匯出 <strong>${daysNum - Object.keys(closed).length}</strong> 天（跳過週末 ${weekendCount} 天` +
       (special.length ? `，以及：${special.map(([d, r]) => `${month}/${d} ${esc(r)}`).join('、')}` : '') + '）';
   }
   document.getElementById('export-year').addEventListener('input', renderHolidayPreview);
   document.getElementById('export-month').addEventListener('change', renderHolidayPreview);
-  renderHolidayPreview();
 
   function exportToExcel() {
     let year = document.getElementById('export-year').value;
     let month = document.getElementById('export-month').value;
     let daysNum = new Date(year, month, 0).getDate();
-    let dayNames = ['日','月','火','水','木','金','土'];
+    let dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     let closed = getClosedDays(year, month);
 
     let wb = XLSX.utils.book_new();
-    for(let d=1; d<=daysNum; d++) {
-      if (closed[d]) continue;
-      let dayStr = dayNames[new Date(year, month-1, d).getDay()];
-      let dayStd = students.filter(s => s.days.includes(dayStr)).sort((a,b) => a.grade.localeCompare(b.grade));
 
+    for (let d = 1; d <= daysNum; d++) {
+      if (closed[d]) continue;
+      let dayStr = dayNames[new Date(year, month - 1, d).getDay()];
+      let dayStd = students
+        .filter(s => s.days.includes(dayStr))
+        .sort((a, b) => a.grade.localeCompare(b.grade));
+
+      // 人數統計
+      let snackCount = dayStd.filter(s => s.snack).length;
+      let outCount = dayStd.filter(s => s.transport_out && s.transport_out.trim() !== "").length;
+      let inCount = dayStd.filter(s => s.transport_in && s.transport_in.trim() !== "").length;
+
+      // 欄位架構對齊：往路上方 = 往路總人數，復路上方 = 復路總人數，Memo上方 = スナック總人數
       let ws_data = [
-        ["", `${month}/${d}`, dayStr, "", "15", "11", `スナック ${dayStd.filter(s=>s.snack).length}人`, "", ""],
+        ["", `${month}/${d}`, dayStr, "", "", "", `${outCount}人`, `${inCount}人`, `スナック ${snackCount}人`],
         ["", "Name", "学年", "到着予定", "Ⓛ", "Ⓢ", "往路", "復路", "Memo"]
       ];
-      dayStd.forEach((s, i) => ws_data.push([i+1, s.name_romaji, s.grade, "", "", s.snack?"〇":"", s.transport_out||"", s.transport_in||"", ""]));
+
+      // 固定輸出 55 格欄位
+      const TOTAL_ROWS = 55;
+      for (let i = 0; i < TOTAL_ROWS; i++) {
+        let s = dayStd[i];
+        if (s) {
+          ws_data.push([
+            i + 1,
+            s.name_romaji,
+            s.grade,
+            "",
+            "",
+            s.snack ? "〇" : "",
+            s.transport_out || "",
+            s.transport_in || "",
+            ""
+          ]);
+        } else {
+          ws_data.push([
+            i + 1,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]);
+        }
+      }
 
       let ws = XLSX.utils.aoa_to_sheet(ws_data);
-      ws['!cols'] = [{wch:4}, {wch:22}, {wch:6}, {wch:9}, {wch:5}, {wch:5}, {wch:6}, {wch:6}, {wch:24}];
+      ws['!cols'] = [
+        { wch: 4 },  // 序號
+        { wch: 22 }, // Name
+        { wch: 6 },  // 学年
+        { wch: 9 },  // 到着予定
+        { wch: 5 },  // Ⓛ
+        { wch: 5 },  // Ⓢ
+        { wch: 8 },  // 往路 (容納人數標記)
+        { wch: 8 },  // 復路 (容納人數標記)
+        { wch: 24 }  // Memo
+      ];
+
       XLSX.utils.book_append_sheet(wb, ws, `${month}月${d}日`);
     }
+
     XLSX.writeFile(wb, `${year}年${month}月_六甲校送迎表.xlsx`);
   }
 
-  renderTab1();
+  /* -------------------------------------------------------------
+     5. 系統整體初始化
+     ------------------------------------------------------------- */
+  window.onload = function() {
+    // 排序所有課表初始學生
+    Object.keys(appState).forEach(dayKey => {
+      const day = appState[dayKey];
+      ['1st', '2nd'].forEach(p => {
+        Object.keys(day.periods[p].cells).forEach(roomId => {
+          day.periods[p].cells[roomId].students = sortStudentsStrict(day.periods[p].cells[roomId].students);
+        });
+      });
+    });
+
+    renderTab1();
+    renderDayButtons();
+    renderTable();
+    setupTeacherManager();
+    setupLevelManager();
+    setupExportImage();
+    setupTab4Modals();
+    renderHolidayPreview();
+  };
 </script>
 </body>
 </html>
