@@ -92,6 +92,8 @@
         .nav-btn.active { background: #ffaaa5; color: white; box-shadow: 0 4px 0 #d9736c; transform: translateY(2px); }
         .nav-btn.settings { border-color: #a8d8ea; color: #6d9fa2; }
 
+        #offline-bar { display: none; flex-shrink: 0; background: #fff3cd; color: #8a6d3b; font-weight: bold; font-size: 13px; padding: 8px 16px; text-align: center; line-height: 1.6; }
+        #offline-bar button { margin-left: 8px; border: 2px solid #e0b252; background: #fff; color: #8a6d3b; border-radius: 10px; padding: 2px 10px; font-weight: bold; cursor: pointer; font-family: inherit; }
         .tab-content { display: none; flex-grow: 1; overflow-y: auto; padding: 20px; }
         .tab-content.active { display: flex; flex-direction: column; align-items: center; }
 
@@ -133,26 +135,27 @@
         /* ================= 2. 日常紀錄 ================= */
         #tab-daily .t1-container {
             display: flex; flex-direction: column; width: 100%; max-width: 1200px;
-            height: calc(100vh - 120px); background: rgba(253, 250, 246, 0.85);
-            padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border: 3px solid #f8e1df; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            height: calc(100vh - 120px); background: rgba(255, 255, 255, 0.85);
+            padding: 30px 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15);
+            border: 4px dashed var(--border-color); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
-        #tab-daily h2 { color: #d9736c; text-align: center; font-size: 24px; margin: 0 0 20px 0; border-bottom: 3px dotted #ffaaa5; padding-bottom: 15px; }
+        #tab-daily h2, .sh-title { color: var(--primary-color); text-align: center; font-size: 24px; font-weight: 800; margin: 0 0 20px 0; border-bottom: 3px dotted var(--border-color); padding-bottom: 15px; }
         #tab-daily select, #tab-daily input[type="date"], #student-modal select {
-            padding: 12px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 12px; outline: none;
-            background-color: rgba(255,255,255,0.9); font-weight: bold; font-family: inherit; color: var(--text-main);
+            padding: 12px 14px; font-size: 16px; border: 2px solid var(--border-color); border-radius: 16px; outline: none;
+            background-color: rgba(255,255,255,0.9); font-weight: 700; font-family: inherit; color: var(--text-main);
         }
-        #tab-daily select:focus, #tab-daily input[type="date"]:focus { border-color: #ffaaa5; }
+        #tab-daily select:focus, #tab-daily input[type="date"]:focus, #tab-daily textarea:focus {
+            border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(255, 143, 179, 0.2);
+        }
         #tab-daily .top-controls { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
         #tab-daily .btn-group { display: flex; gap: 10px; margin-left: auto; }
         #tab-daily .content-area { display: flex; gap: 30px; flex-grow: 1; overflow: hidden; }
         #tab-daily .column { flex: 1; display: flex; flex-direction: column; min-height: 0; }
         #tab-daily .column label { font-weight: bold; margin-bottom: 10px; font-size: 18px; color: #6d9fa2; }
         #tab-daily textarea {
-            flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid #e0e0e0; border-radius: 15px;
+            flex-grow: 1; width: 100%; padding: 15px; font-size: 16px; border: 2px solid var(--border-color); border-radius: 16px;
             resize: none; line-height: 1.6; outline: none; font-family: inherit; background: rgba(255,255,255,0.9);
         }
-        #tab-daily textarea:focus { border-color: #a8d8ea; }
 
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin: 30px 0 20px; gap: 8px; } /* 上方留空間給關閉按鈕，避免蓋到 Next */
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; color: #d9736c; margin-bottom: 10px; }
@@ -208,92 +211,90 @@
         }
         .manage-row button { background: #ff9999; color: white; border: none; border-radius: 8px; cursor: pointer; padding: 6px 10px; font-family: inherit; }
 
-        /* ================= 4. Whirlwind Group 分組工具（薰衣草主題，只作用在這個分頁） ================= */
-        #tab-shuffle { --sh-ink: #6b21a8; --sh-deep: #3b0764; }
-        #tab-shuffle.active {
-            background-color: rgba(250, 245, 255, 0.92);
-            background-image:
-                radial-gradient(at 10% 10%, #f3e8ff 0px, transparent 50%),
-                radial-gradient(at 90% 20%, #fae8ff 0px, transparent 40%),
-                radial-gradient(at 50% 80%, #e0e7ff 0px, transparent 50%);
+        /* ================= 4. Whirlwind Group 分組工具（和其他分頁相同的粉紅主題） ================= */
+        .sh-wrap {
+            width: 100%; max-width: 1200px; background: rgba(255, 255, 255, 0.85);
+            padding: 30px 40px; border-radius: 30px; box-shadow: 0 12px 40px rgba(255, 143, 179, 0.15);
+            border: 4px dashed var(--border-color); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
-        .sh-wrap { width: 100%; max-width: 1200px; }
-        .sh-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-        .sh-badge { background: #e9d5ff; color: #6b21a8; font-size: 12px; padding: 4px 12px; border-radius: 999px; font-weight: 800; border: 1px solid #c084fc; }
-        .sh-lang { display: flex; gap: 4px; padding: 4px; background: #fff; border-radius: 999px; border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); }
-        .sh-lang-btn { border: none; background: transparent; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 12px; color: #7e22ce; cursor: pointer; font-family: inherit; }
-        .sh-lang-btn.on { background: #9333ea; color: #fff; }
-        .sh-title { text-align: center; color: #581c87; font-size: 28px; margin: 8px 0 16px; letter-spacing: 0.5px; }
-        .sh-main { display: grid; grid-template-columns: 5fr 7fr; gap: 18px; align-items: start; }
-        .sh-card { background: rgba(255,255,255,0.92); border: 3px solid var(--sh-ink); box-shadow: 5px 5px 0 var(--sh-ink); border-radius: 24px; padding: 18px; min-width: 0; }
-        .sh-card h2 { display: flex; gap: 8px; align-items: center; margin: 0 0 6px; font-size: 17px; color: var(--sh-deep); font-weight: 800; }
-        .sh-sub { font-size: 12px; color: #a855f7; margin: 0 0 10px; line-height: 1.5; }
-        .sh-grade-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
+        .sh-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .sh-badge { font-size: 14px; color: #9e8e93; font-weight: 700; background: rgba(255,240,245,0.9); padding: 4px 12px; border-radius: 12px; }
+        .sh-lang { display: flex; gap: 4px; padding: 4px; background: rgba(255,255,255,0.9); border-radius: 20px; border: 3px solid #ffaaa5; box-shadow: 0 4px 0 #ffe4e1; }
+        .sh-lang-btn { border: none; background: transparent; padding: 5px 14px; border-radius: 16px; font-weight: 800; font-size: 13px; color: #d9736c; cursor: pointer; font-family: inherit; }
+        .sh-lang-btn.on { background: #ffaaa5; color: #fff; }
+        .sh-main { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
+        .sh-card { background: rgba(255, 250, 250, 0.8); border: 3px solid var(--border-color); border-radius: 24px; padding: 22px; min-width: 0; }
+        .sh-card h2 { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; font-size: 20px; color: var(--primary-color); font-weight: 800; }
+        .sh-sub { font-size: 13px; color: #9e8e93; margin: 0 0 12px; line-height: 1.5; }
+        .sh-grade-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
         .sh-tab, .sh-gc-btn {
-            border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); background: #faf5ff; color: #7e22ce;
-            border-radius: 12px; padding: 6px 2px; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.1s;
+            border: 3px solid #ffaaa5; box-shadow: 0 4px 0 #ffe4e1; background: rgba(255,255,255,0.9); color: #d9736c;
+            border-radius: 16px; padding: 6px 2px; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: all 0.2s;
         }
-        .sh-tab:hover, .sh-gc-btn:hover { background: #f3e8ff; }
-        .sh-tab.on, .sh-gc-btn.on { background: #d8b4fe; color: var(--sh-deep); transform: scale(1.05); }
-        .sh-count { font-size: 10px; background: #e9d5ff; color: #6b21a8; border-radius: 999px; padding: 0 7px; }
-        .sh-tab.on .sh-count { background: var(--sh-deep); color: #fff; }
-        .sh-tab:active, .sh-gc-btn:active, .sh-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--sh-ink); }
+        .sh-tab:hover, .sh-gc-btn:hover { background: #fff0f5; }
+        .sh-tab.on, .sh-gc-btn.on { background: #ffaaa5; color: #fff; box-shadow: 0 4px 0 #d9736c; transform: translateY(2px); }
+        .sh-count { font-size: 11px; background: #ffe4e1; color: #d9736c; border-radius: 999px; padding: 0 8px; }
+        .sh-tab.on .sh-count { background: #fff; color: #d9736c; }
         .sh-area {
-            width: 100%; height: 340px; padding: 12px; border: 2px solid #d8b4fe; border-radius: 16px; background: rgba(250,245,255,0.6);
-            color: #581c87; font-size: 15px; line-height: 1.5; resize: vertical; outline: none; font-family: inherit;
+            width: 100%; height: 340px; padding: 14px; border: 2px solid var(--border-color); border-radius: 16px; background: rgba(255,255,255,0.9);
+            color: var(--text-main); font-size: 16px; line-height: 1.6; resize: vertical; outline: none; font-family: inherit; font-weight: 700;
         }
-        .sh-area:focus { border-color: #9333ea; box-shadow: 0 0 0 3px rgba(192,132,252,0.35); }
-        .sh-paste-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-        .sh-link { background: none; border: none; color: #7e22ce; font-weight: 800; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 4px 0; font-family: inherit; }
-        .sh-link.sh-danger { color: #ef4444; }
-        .sh-right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-        .sh-gc { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 6px 0 12px; }
+        .sh-area:focus { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(255, 143, 179, 0.2); }
+        .sh-paste-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .sh-link { background: none; border: none; color: var(--accent-dark); font-weight: 800; font-size: 14px; cursor: pointer; text-decoration: underline; padding: 4px 0; font-family: inherit; }
+        .sh-link.sh-danger { color: #e57373; }
+        .sh-right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+        .sh-gc { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 16px; }
+        .sh-gc-btn { padding: 10px 2px; }
         .sh-btn {
-            border: 2.5px solid var(--sh-ink); box-shadow: 3px 3px 0 var(--sh-ink); border-radius: 12px; padding: 10px 20px;
-            font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit; color: var(--sh-deep); transition: transform 0.1s;
+            border: none; border-radius: 20px; padding: 12px 24px; font-weight: 800; font-size: 15px; cursor: pointer;
+            font-family: inherit; color: #fff; box-shadow: 0 5px 0 rgba(0,0,0,0.1); transition: 0.2s;
         }
-        .sh-go { width: 100%; background: #e879f9; }
-        .sh-go:hover { background: #f0abfc; }
-        .sh-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 2px solid #f3e8ff; padding-bottom: 8px; margin-bottom: 12px; }
+        .sh-btn:active, .sh-tab:active, .sh-gc-btn:active { transform: translateY(5px); box-shadow: none; }
+        .sh-go { width: 100%; background: var(--primary-color); min-height: 52px; font-size: 17px; }
+        .sh-go:hover { background: var(--primary-dark); }
+        .sh-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 2px dashed var(--border-color); padding-bottom: 10px; margin-bottom: 14px; }
         .sh-preview-head h2 { margin: 0; }
-        .sh-total { font-size: 12px; font-weight: 800; color: #a855f7; background: #f3e8ff; padding: 4px 12px; border-radius: 999px; }
-        .sh-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-        .sh-empty { grid-column: 1 / -1; text-align: center; padding: 30px 10px; color: #c084fc; font-weight: 700; }
+        .sh-total { font-size: 14px; font-weight: 700; color: #9e8e93; background: rgba(255,240,245,0.9); padding: 4px 12px; border-radius: 12px; }
+        .sh-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .sh-empty { grid-column: 1 / -1; text-align: center; padding: 30px 10px; color: #c9b8bd; font-weight: 700; }
         .sh-empty .big { font-size: 36px; display: block; margin-bottom: 6px; animation: sh-bounce 1s infinite; }
-        .sh-empty small { display: block; color: #d8b4fe; margin-top: 4px; }
+        .sh-empty small { display: block; margin-top: 4px; font-weight: 400; }
         @keyframes sh-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        .sh-group { border: 2px solid; border-radius: 16px; padding: 12px; box-shadow: 4px 4px 0 var(--sh-ink); min-width: 0; }
-        .sh-group-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
-        .sh-group-head h3 { margin: 0; font-size: 14px; color: var(--sh-deep); display: flex; gap: 4px; }
-        .sh-group-count { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--sh-ink); color: var(--sh-deep); white-space: nowrap; }
-        .sh-stats { font-size: 10px; color: #9333ea; background: rgba(255,255,255,0.65); border: 1px solid #e9d5ff; border-radius: 6px; padding: 2px 8px; margin-bottom: 8px; font-weight: 700; }
-        .sh-members { list-style: none; margin: 0; padding: 0 4px 0 0; max-height: 200px; overflow-y: auto; }
-        .sh-members li { display: flex; justify-content: space-between; gap: 6px; padding: 4px; border-bottom: 1px dashed #e9d5ff; font-size: 13px; font-weight: 700; color: var(--sh-deep); word-break: break-word; }
-        .sh-members li .g { font-size: 10px; color: #a855f7; background: rgba(243,232,255,0.7); border-radius: 999px; padding: 0 6px; flex-shrink: 0; align-self: center; }
-        .sh-footer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 6px; }
-        .sh-dl { background: #34d399; }
-        .sh-dl:hover { background: #6ee7b7; }
-        .sh-copy { background: #fcd34d; }
-        .sh-copy:hover { background: #fde68a; }
-        .sh-modal-box { max-width: 380px; text-align: center; border: 3px solid #6b21a8; box-shadow: 5px 5px 0 #6b21a8; border-radius: 24px; }
+        .sh-group { border: 3px solid; border-radius: 20px; padding: 14px; background: rgba(255,255,255,0.9); min-width: 0; }
+        .sh-group-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .sh-group-head h3 { margin: 0; font-size: 15px; color: var(--text-main); display: flex; gap: 4px; }
+        .sh-group-count { font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 999px; color: var(--text-main); white-space: nowrap; }
+        .sh-stats { font-size: 11px; color: #9e8e93; background: rgba(255,240,245,0.8); border-radius: 8px; padding: 3px 8px; margin-bottom: 8px; font-weight: 700; }
+        .sh-members { list-style: none; margin: 0; padding: 0 4px 0 0; max-height: 220px; overflow-y: auto; }
+        .sh-members li { display: flex; justify-content: space-between; gap: 6px; padding: 5px 4px; border-bottom: 2px dashed #ffe4e1; font-size: 14px; font-weight: 700; color: var(--text-main); word-break: break-word; }
+        .sh-members li .g { font-size: 11px; color: #9e8e93; background: rgba(255,240,245,0.9); border-radius: 999px; padding: 0 8px; flex-shrink: 0; align-self: center; }
+        .sh-footer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 24px 0 0; }
+        .sh-dl { background: var(--accent-color); }
+        .sh-dl:hover { background: var(--accent-dark); }
+        .sh-copy { background: #ffe066; color: #8c7300; }
+        .sh-copy:hover { background: #ffd43b; }
+        .sh-modal-box { max-width: 400px; text-align: center; }
         .sh-modal-emoji { font-size: 38px; display: block; margin-bottom: 6px; }
-        .sh-modal-box h3 { color: var(--sh-deep, #3b0764); margin: 0 0 6px; }
-        .sh-modal-box p { color: #7e22ce; font-size: 13px; margin: 0 0 18px; line-height: 1.6; white-space: pre-line; }
-        .sh-modal-box .sh-btn { background: #c084fc; width: 100%; --sh-ink: #6b21a8; --sh-deep: #3b0764; }
+        .sh-modal-box h3 { color: var(--primary-dark); margin: 0 0 8px; }
+        .sh-modal-box p { color: var(--text-main); font-size: 14px; margin: 0 0 18px; line-height: 1.6; white-space: pre-line; }
+        .sh-modal-box .sh-btn { background: var(--primary-color); width: 100%; }
         #sh-toast {
-            position: fixed; right: 20px; bottom: 20px; z-index: 15000; background: #581c87; color: #fff; border: 2px solid #d8b4fe;
-            padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 700; opacity: 0; transform: translateY(20px);
+            position: fixed; right: 20px; bottom: 20px; z-index: 15000; background: rgba(255,255,255,0.97); color: var(--primary-dark);
+            border: 3px solid var(--border-color); box-shadow: 0 8px 24px rgba(255, 143, 179, 0.3);
+            padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 800; opacity: 0; transform: translateY(20px);
             transition: all 0.3s; pointer-events: none; max-width: calc(100% - 40px);
         }
         #sh-toast.show { opacity: 1; transform: none; }
         @media (max-width: 900px) { .sh-main { grid-template-columns: 1fr; } }
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+            #tab-daily .t1-container, .sh-wrap { padding: 18px; }
             .sh-title { font-size: 20px; }
             .sh-preview { grid-template-columns: 1fr; }
             .sh-area { height: 220px; }
             .sh-footer .sh-btn { flex: 1 1 100%; }
-            .sh-card { padding: 14px; }
+            .sh-card { padding: 16px; }
         }
 
         /* 學生名單設定 */
@@ -303,8 +304,13 @@
         }
         .help-text { font-size: 13px; color: #777; margin: 0 0 10px; line-height: 1.6; }
 
-        /* 匯入 */
-        #import-text {
+        /* 備份 */
+        .backup-section { border-top: 2px dashed #e0e0e0; margin-top: 18px; padding-top: 14px; }
+        .backup-section h4 { margin: 0 0 6px; color: #6d9fa2; }
+        .rc-actions { text-align: right; }
+        .rc-del { background: #ffe4e1; color: #d9736c; border: none; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: bold; cursor: pointer; font-family: inherit; }
+        .rc-del:hover { background: #ffc9c4; }
+        #import-text, #sheet-text {
             width: 100%; height: 200px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px;
             font-size: 13px; font-family: monospace; resize: vertical; outline: none;
         }
@@ -344,15 +350,6 @@
 
     <div id="loading-overlay"><div class="spinner"></div><div id="loading-msg">Loading... / 読み込み中...</div></div>
 
-    <!-- 讀取失敗畫面（平常不顯示） -->
-    <div id="login-screen" style="display:none;">
-        <div class="login-box">
-            <h2 style="color: var(--primary-dark); font-size: 26px; margin-top:0;">🧸 IGK System</h2>
-            <p id="boot-error-msg" style="color:#9e8e93; font-weight:bold; white-space:pre-line;"></p>
-            <button class="login-btn" onclick="boot()">再読み込み / Retry</button>
-        </div>
-    </div>
-
     <!-- 登入後主介面 -->
     <div id="app-wrapper">
         <nav class="main-nav">
@@ -360,7 +357,9 @@
             <button class="nav-btn" onclick="switchTab('tab-monthly', this)">🖍️ For study</button>
             <button class="nav-btn" onclick="switchTab('tab-shuffle', this)">✨ Whirlwind Group</button>
             <button class="nav-btn settings" onclick="openSettingsModal()">⚙️ 学生リスト</button>
+            <button class="nav-btn settings" onclick="openModal('backup-modal')">💾 バックアップ</button>
         </nav>
+        <div id="offline-bar">⚠️ このブラウザではデータを保存できません（プライベートモードなど）。ページを閉じると入力内容は消えます。</div>
 
         <!-- ================= [TAB 1] 日常紀錄 ================= -->
         <div id="tab-daily" class="tab-content active">
@@ -398,8 +397,7 @@
                         <select id="monthSelect" onchange="handleMonthChange()" style="width:180px; padding:10px;"></select>
                     </div>
                     <div class="actions no-print">
-                        <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="exportData()">📤 Export</button>
-                        <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="openImportModal()">📥 Import</button>
+                        <button class="t2-btn" style="background:var(--accent-color); color:white;" onclick="openModal('backup-modal')">💾 Backup</button>
                         <button class="t2-btn" style="background:#ffe066; color:#8c7300;" onclick="window.print()">🖨️ Print View</button>
                     </div>
                 </div>
@@ -454,7 +452,7 @@
                         <button type="button" class="sh-lang-btn" data-lang="ja">日本語</button>
                     </div>
                 </div>
-                <h1 class="sh-title" id="sh-title"></h1>
+                <h2 class="sh-title" id="sh-title"></h2>
 
                 <div class="sh-main">
                     <!-- 左：學年名單 -->
@@ -535,14 +533,32 @@
         </div>
     </div>
 
-    <div id="import-modal" class="shared-modal">
+    <div id="backup-modal" class="shared-modal">
         <div class="modal-box">
-            <button class="close-x" onclick="closeSharedModal('import-modal')" aria-label="close">&times;</button>
-            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">📥 Import / 取り込み</h3>
-            <p class="help-text">バックアップファイルを選ぶか、以前コピーしたデータを貼り付けてください。<br>既存のデータは消えません（同じ日付・同じ児童のデータのみ上書き）。</p>
-            <input type="file" id="import-file" accept=".json,application/json" style="margin-bottom:10px;">
-            <textarea id="import-text" placeholder='{"2026-10": {...}}  または  バックアップファイルの内容'></textarea>
-            <button class="btn" id="import-run-btn" style="background:#a8d8ea; color:#4a4a4a; margin-top:15px; width:100%;" onclick="runImport()">📥 取り込む / Import</button>
+            <button class="close-x" onclick="closeSharedModal('backup-modal')" aria-label="close">&times;</button>
+            <h3 style="color:#6d9fa2; border-bottom: 2px dashed #a8d8ea; padding-bottom: 10px;">💾 Backup / バックアップ</h3>
+            <div class="modal-scroll">
+                <p class="help-text">
+                    データは<b>このパソコンのブラウザ</b>に保存されます。別のパソコン・別のブラウザでは見えません。<br>
+                    ブラウザの履歴（Cookie・サイトデータ）を消すとデータも消えるので、<b>定期的にダウンロード</b>してください。
+                </p>
+                <button class="btn" id="backup-download" style="background:#b2dfdb; color:#004d40; width:100%;">📤 全データをダウンロード / Download all</button>
+
+                <div class="backup-section">
+                    <h4>📥 復元 / Restore</h4>
+                    <p class="help-text">バックアップファイルを選ぶか、内容を貼り付けてください。既存のデータは消えません（同じ内容は重複しません）。<br>別のパソコンへデータを移すときもこれを使います。</p>
+                    <input type="file" id="import-file" accept=".json,application/json" style="margin-bottom:10px; max-width:100%;">
+                    <textarea id="import-text" placeholder="バックアップファイルの内容"></textarea>
+                    <button class="btn" id="import-run-btn" style="background:#a8d8ea; color:#4a4a4a; margin-top:10px; width:100%;">📥 復元する / Restore</button>
+                </div>
+
+                <div class="backup-section">
+                    <h4>📋 スプレッドシートから日常記録を取り込む</h4>
+                    <p class="help-text">以前の Google スプレッドシートで「日付・名前・出来事・解決策」の列をまとめて選んでコピー（Ctrl+C）し、下に貼り付けてください。見出しの行も一緒にコピーするとより確実です。</p>
+                    <textarea id="sheet-text" placeholder="2026/10/01	石原 瑛茉 Emma Ishihara	出来事…	解決策…"></textarea>
+                    <button class="btn" id="sheet-run-btn" style="background:#ffe082; color:#6d4c41; margin-top:10px; width:100%;">📋 日常記録を取り込む / Import records</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -574,7 +590,6 @@
 
     <script>
         // ================= 設定 =================
-        const API_URL = "https://script.google.com/macros/s/AKfycbyi5CfdkrgiufwUGpFvCxl9NJHudL8s0joB08qEs7HB6ufRY5TTcXldIjfslM-V20ybMQ/exec";
         const SAVE_BTN_LABEL = '💾 Save Record / 保存する';
 
         // ================= 狀態 =================
@@ -629,38 +644,159 @@
         }
 
         const ERROR_TEXT = {
-            network: 'ネットワークエラーです。接続を確認してください / Network error',
-            bad_response: 'サーバーの応答が正しくありません（GAS が新しいバージョンでデプロイされているか確認してください）',
+            storage: 'ブラウザに保存できませんでした（容量不足またはプライベートモード）。バックアップをダウンロードしてください',
             invalid_record: '入力内容が正しくありません / Invalid record',
             invalid_score: '点数は 0〜20 の整数で入力してください',
             duplicate_student: '同じ名前が複数の学級にあります',
-            empty_students: '名簿が空です',
-            use_post: 'GAS が古いバージョンです。再デプロイしてください'
+            empty_students: '名簿が空です'
         };
         function errMsg(e) {
             return ERROR_TEXT[e.message] || ('Error / エラー: ' + e.message);
         }
 
-        // 所有雲端通訊都走這裡：讀得到伺服器回應，失敗就丟出錯誤
-        async function api(action, payload = {}) {
-            let res;
-            try {
-                // body 是字串 → Content-Type 為 text/plain，不會觸發 CORS 預檢，可讀取回應
-                res = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(Object.assign({ action }, payload))
-                });
-            } catch (e) {
-                throw new Error('network');
+        // ================= 資料存放（這台電腦的瀏覽器，不需要 GAS / 網路） =================
+        const DB_KEY = 'igk_db_v3';
+        const DEFAULT_STUDENTS = {
+            G1: [
+                '石原 瑛茉 Emma Ishihara', '岩瀬 広真 Kouma Iwase', '鹿島 美咲 Misaki Kashima',
+                '金多 紗歩 Saho Kaneta', '川畑 遼真 Haruma Kawabata', '河村 泉 Izumi Kawamura',
+                '栗本 理来 Riku Kurimoto', '酒井 梓 Azusa Sakai', '重安 こころ Kokoro Shigeyasu',
+                '杉立 舷 Gen Sugitate', '世古 碧 Aoi Seko', '田中 愛梨 Airi Tanaka',
+                '津田 莉世 Rise Tsuda', '橋本 莉緒 Rio Hashimoto', '福田 悠晴 Yusei Fukuda',
+                '南 佳苗 Kanae Minami', '藪內 香帆 Kaho Yabuuchi', '山本 夕緋 Yuuhi Yamamoto',
+                '吉本 希 Mare Yoshimoto', '羅 周周 ZhouZhou Luo', '李 詩悠 Shiyuu Lee',
+                '大仲 和真 Kazuma Onaka', '網 徹真 Toma Ami', '弓場 茉弥 Mahiro Yuba', '慈 恵俊 Eshun Utsumi'
+            ],
+            G2: [
+                '平瀬 想真 Soma Hirase', '山部 弘誠 Kosei Yamabe', '上田 湊斗 Minato Ueta',
+                '有吉 純麗 Sumire Ariyoshi', '澤村 奏汰 Kanata Sawamura', '橋本 珠季 Tamaki Hashimoto',
+                '足立 英大 Ayata Adachi', '坂井 緋夏 Hina Sakai', '永田 創次郎 Sohjiroh Nagata',
+                '藤原 匠 Takumi Fujiwara', '宮田 泰槙 Taishin Miyata', '糸賀 優士 Yushi Itoga',
+                '田中 聡一 Soichi Tanaka', '畑 凜采 Risa Hata',
+                '山根 栞 Shiori Yamane', '剱物 右京 Ukyo Kenmotsu', '玉置 小晴 Koharu Tamaki'
+            ],
+            G3: ['Aqeel', 'Takuto', 'Ryuya']
+        };
+        let db = null;
+        let storageOK = true;
+
+        const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s);
+        const validScore = n => Number.isInteger(n) && n >= 0 && n <= 20;
+        const recKey = r => [r.date, r.name, r.event, r.solution].join('\u0001');
+
+        function loadDB() {
+            let d = null;
+            try { d = JSON.parse(store.get(DB_KEY)); } catch (e) { d = null; }
+            if (!d || typeof d !== 'object') {
+                // 第一次使用：自動把舊版存在這台電腦的分數和名單搬過來
+                d = { records: [], scores: [], students: null };
+                const oldScores = parseScoreBackup(store.get('igk_records_v2'));
+                if (oldScores) d.scores = oldScores.rows;
+                let oldList = null;
+                try { oldList = JSON.parse(store.get('igk_students_list_v1')); } catch (e) { }
+                if (oldList && typeof oldList === 'object') {
+                    const r = parseStudentText(studentsToText(oldList));
+                    if (r.total && !r.errors.length) d.students = r.students;
+                }
             }
-            let data;
-            try { data = await res.json(); } catch (e) { throw new Error('bad_response'); }
-            if (!data || !data.ok) throw new Error((data && data.error) || 'unknown');
-            return data;
+            if (!Array.isArray(d.records)) d.records = [];
+            if (!Array.isArray(d.scores)) d.scores = [];
+            if (!d.students || typeof d.students !== 'object' || !Object.keys(d.students).length) {
+                d.students = JSON.parse(JSON.stringify(DEFAULT_STUDENTS));
+            }
+            d.records.forEach(r => { if (!r.id) r.id = newId(); });
+            db = d;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(db)); storageOK = true; }
+            catch (e) { storageOK = false; }   // 無法保存 → 只放在記憶體，並顯示提示
+        }
+
+        function saveDB() {
+            if (!storageOK) return;
+            try { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+            catch (e) { throw new Error('storage'); }
+        }
+
+        // 介面呼叫的入口（保留原本的寫法，改成在本機處理）；失敗時資料自動還原
+        async function api(action, p = {}) {
+            if (action === 'getAll') return { ok: true, records: db.records, scores: db.scores, students: db.students };
+            const before = JSON.stringify(db);
+            try {
+                const out = apiLocal(action, p) || {};
+                saveDB();
+                return Object.assign({ ok: true }, out);
+            } catch (e) {
+                db = JSON.parse(before);
+                throw e;
+            }
+        }
+
+        function apiLocal(action, p) {
+            switch (action) {
+                case 'addRecord': {
+                    const r = { id: newId(), date: cleanDateStr(p.date), name: baseName(p.name),
+                        event: String(p.event || '').trim(), solution: String(p.solution || '').trim() };
+                    if (!isDate(r.date) || !r.name || !r.event || !r.solution) throw new Error('invalid_record');
+                    db.records.push(r);
+                    return {};
+                }
+                case 'deleteRecord':
+                    db.records = db.records.filter(r => r.id !== p.id);
+                    return {};
+                case 'importRecords': {
+                    const keys = new Set(db.records.map(recKey));
+                    let imported = 0, skipped = 0;
+                    (p.records || []).forEach(x => {
+                        const r = { date: cleanDateStr(x.date), name: baseName(x.name),
+                            event: String(x.event || '').trim(), solution: String(x.solution || '').trim() };
+                        if (!isDate(r.date) || !r.name || (!r.event && !r.solution)) { skipped++; return; }
+                        const k = recKey(r);
+                        if (keys.has(k)) { skipped++; return; }
+                        keys.add(k);
+                        r.id = newId();
+                        db.records.push(r);
+                        imported++;
+                    });
+                    db.records.sort((a, b) => a.date.localeCompare(b.date));
+                    return { imported, skipped };
+                }
+                case 'setScore': {
+                    const date = cleanDateStr(p.date), name = baseName(p.name), score = Number(p.score);
+                    if (!isDate(date) || !name || !validScore(score)) throw new Error('invalid_score');
+                    db.scores = db.scores.filter(s => !(s.date === date && s.name === name));
+                    db.scores.push({ date, name, score });
+                    return {};
+                }
+                case 'deleteScore': {
+                    const date = cleanDateStr(p.date), name = baseName(p.name);
+                    db.scores = db.scores.filter(s => !(s.date === date && s.name === name));
+                    return {};
+                }
+                case 'importScores': {
+                    const map = new Map(db.scores.map(s => [s.date + '|' + s.name, s]));
+                    let imported = 0;
+                    (p.scores || []).forEach(x => {
+                        const date = cleanDateStr(x.date), name = baseName(x.name), score = Number(x.score);
+                        if (isDate(date) && name && validScore(score)) { map.set(date + '|' + name, { date, name, score }); imported++; }
+                    });
+                    db.scores = Array.from(map.values());
+                    return { imported };
+                }
+                case 'saveStudents': {
+                    const result = parseStudentText(studentsToText(p.students || {}));
+                    if (result.errors.length) throw new Error('duplicate_student');
+                    if (!result.total) throw new Error('empty_students');
+                    db.students = result.students;
+                    return {};
+                }
+                default:
+                    throw new Error('unknown_action');
+            }
         }
 
         function applyAll(data) {
             cloudRecords = (data.records || []).map(r => ({
+                id: r.id,
                 date: cleanDateStr(r.date),
                 name: baseName(r.name),
                 event: r.event != null ? r.event : (r.eventDesc || ''),
@@ -669,7 +805,7 @@
 
             STUDENTS = {};
             for (const [g, list] of Object.entries(data.students || {})) {
-                STUDENTS[g] = (list || []).map(baseName).filter(Boolean);
+                STUDENTS[g] = (Array.isArray(list) ? list : []).map(baseName).filter(Boolean);
             }
 
             scoreData = {};
@@ -694,6 +830,7 @@
             shRenderGradeTabs();
             if ($('student-modal').style.display === 'flex') searchStudentHistory();
             if ($('calendar-modal').style.display === 'flex') renderCalendar();
+            if ($('records-modal').style.display === 'flex' && lastDailyDate) openDailyRecords(lastDailyDate);
         }
 
         function openModal(id) { $(id).style.display = 'flex'; }
@@ -707,27 +844,15 @@
             if (e.key === 'Escape') document.querySelectorAll('.shared-modal').forEach(m => m.style.display = 'none');
         });
 
-        // ================= 啟動（打開網頁就直接讀取資料） =================
-        async function boot() {
-            $('login-screen').style.display = 'none';
-            setLoading(true);
-            let data;
-            try {
-                data = await api('getAll');
-            } catch (e) {
-                setLoading(false);
-                $('boot-error-msg').textContent = 'データを読み込めませんでした / Could not load data\n\n' + errMsg(e);
-                $('login-screen').style.display = 'flex';
-                return;
-            }
-            applyAll(data);
+        // ================= 啟動（直接讀取這台電腦裡的資料） =================
+        function boot() {
+            loadDB();
+            applyAll({ records: db.records, scores: db.scores, students: db.students });
             enterApp();
-            setLoading(false);
-            await migrateLocalData();
+            if (!storageOK) $('offline-bar').style.display = 'block';
         }
 
         function enterApp() {
-            $('login-screen').style.display = 'none';
             $('app-wrapper').style.display = 'flex';
             $('record-date').value = localDateStr();
             $('dateSelect').value = localDateStr();
@@ -745,47 +870,6 @@
             btnElement.classList.add('active');
 
             if (tabId === 'tab-monthly') setTimeout(updateCharts, 50);
-        }
-
-        // 舊版存在這台電腦的資料 → 詢問是否上傳雲端（只問到處理完為止，舊資料不刪除）
-        async function migrateLocalData() {
-            try {
-                if (!store.get('igk_scores_migrated_v3')) {
-                    const parsed = parseScoreBackup(store.get('igk_records_v2'));
-                    if (parsed && parsed.rows.length) {
-                        if (confirm(`このパソコンに旧スコアが ${parsed.rows.length} 件あります。クラウドにアップロードしますか？\n（同じ日付・同じ児童のデータは上書きされます）`)) {
-                            setLoading(true, 'Uploading... / アップロード中...');
-                            await api('importScores', { scores: parsed.rows });
-                            store.set('igk_scores_migrated_v3', '1');
-                            await reloadAll();
-                            setLoading(false);
-                            alert('アップロードしました！');
-                        }
-                    } else {
-                        store.set('igk_scores_migrated_v3', '1');
-                    }
-                }
-
-                if (!store.get('igk_students_migrated_v3')) {
-                    let local = null;
-                    try { local = JSON.parse(store.get('igk_students_list_v1')); } catch (e) { }
-                    if (local && typeof local === 'object') {
-                        const result = parseStudentText(studentsToText(local));
-                        const same = JSON.stringify(result.students) === JSON.stringify(STUDENTS);
-                        if (!same && !result.errors.length && result.total > 0 &&
-                            confirm('このパソコンに保存されている学生リストをクラウドに反映しますか？\n（キャンセルするとクラウドのリストをそのまま使います）')) {
-                            setLoading(true, 'Uploading... / アップロード中...');
-                            await api('saveStudents', { students: result.students });
-                            await reloadAll();
-                            setLoading(false);
-                        }
-                    }
-                    store.set('igk_students_migrated_v3', '1');
-                }
-            } catch (e) {
-                setLoading(false);
-                alert('移行に失敗しました（次回ログイン時に再試行します）\n' + errMsg(e));
-            }
         }
 
         // ================= 學生名單 =================
@@ -888,8 +972,27 @@
                 <div class="rc-title">${title}</div>
                 <div class="rc-body"><b>📝 Event / 出来事:</b><br>${nl2br(r.event)}</div>
                 <div class="rc-body"><b>💡 Solution / 解決策:</b><br>${nl2br(r.solution)}</div>
+                ${r.id ? `<div class="rc-actions"><button type="button" class="rc-del" data-id="${esc(r.id)}">🗑️ 削除 / Delete</button></div>` : ''}
             </div>`;
         }
+
+        async function deleteRecordById(id) {
+            const r = cloudRecords.find(x => x.id === id);
+            if (!r) return;
+            if (!confirm(`${label(r.name)}（${r.date}）の記録を削除しますか？\nDelete this record?`)) return;
+            try {
+                await api('deleteRecord', { id });
+                await reloadAll();
+            } catch (e) {
+                alert('削除に失敗しました / Delete failed\n' + errMsg(e));
+            }
+        }
+        ['records-list-container', 'student-records-container'].forEach(cid => {
+            $(cid).addEventListener('click', e => {
+                const b = e.target.closest('.rc-del');
+                if (b) deleteRecordById(b.dataset.id);
+            });
+        });
 
         async function saveRecord() {
             const name = $('student-name').value;
@@ -918,7 +1021,7 @@
             try { await reloadAll(); } catch (e) { /* 已保存成功，重新讀取失敗不影響 */ }
             btn.disabled = false;
             btn.textContent = SAVE_BTN_LABEL;
-            alert('Saved Successfully to Cloud! / クラウドに保存しました！');
+            alert('Saved! / 保存しました！');
         }
 
         function openCalendarModal() {
@@ -958,7 +1061,9 @@
             if (cell) openDailyRecords(cell.dataset.date);
         });
 
+        let lastDailyDate = '';
         function openDailyRecords(targetDate) {
+            lastDailyDate = targetDate;
             const daily = cloudRecords.filter(r => r.date === targetDate);
             $('records-date-title').textContent = `📅 ${targetDate} Records`;
             $('records-list-container').innerHTML = daily.length
@@ -1151,26 +1256,26 @@
             });
         }
 
-        // ---- 備份匯出（下載檔案，不再依賴剪貼簿權限）----
-        function exportData() {
-            const rows = [];
-            for (const m in scoreData) for (const u in scoreData[m]) for (const d in scoreData[m][u]) {
-                rows.push({ date: d, name: u, score: scoreData[m][u][d] });
-            }
-            rows.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
-            const json = JSON.stringify({ app: 'IGK', type: 'scores', exportedAt: new Date().toISOString(), scores: rows }, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
+        // ================= 備份（下載 / 還原 / 從試算表匯入） =================
+        function downloadText(text, filename, type) {
+            const blob = new Blob([text], { type });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `IGK_スコアバックアップ_${localDateStr()}.json`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        // ---- 匯入：支援新備份檔、舊版剪貼簿格式；先檢查再合併，不會整個覆蓋 ----
+        $('backup-download').addEventListener('click', () => {
+            const data = { app: 'IGK', type: 'all', version: 3, exportedAt: new Date().toISOString(),
+                records: db.records, scores: db.scores, students: db.students };
+            downloadText(JSON.stringify(data, null, 2), `IGK_全データバックアップ_${localDateStr()}.json`, 'application/json');
+        });
+
+        // 舊版分數格式也能讀：{ 'YYYY-MM': { name: { 'YYYY-MM-DD': score } } }
         function parseScoreBackup(raw) {
             let obj = raw;
             if (typeof raw === 'string') {
@@ -1183,7 +1288,6 @@
             if (Array.isArray(obj)) list = obj;
             else if (Array.isArray(obj.scores)) list = obj.scores;
             else {
-                // 舊格式 { 'YYYY-MM': { name: { 'YYYY-MM-DD': score } } }
                 for (const m in obj) {
                     const users = obj[m];
                     if (!users || typeof users !== 'object') continue;
@@ -1201,19 +1305,10 @@
                 const date = cleanDateStr(s && s.date);
                 const name = baseName(s && s.name);
                 const score = Number(s && s.score);
-                if (/^\d{4}-\d{2}-\d{2}$/.test(date) && name && Number.isInteger(score) && score >= 0 && score <= 20) {
-                    rows.push({ date, name, score });
-                } else {
-                    bad++;
-                }
+                if (isDate(date) && name && validScore(score)) rows.push({ date, name, score });
+                else bad++;
             });
             return { rows, bad };
-        }
-
-        function openImportModal() {
-            $('import-text').value = '';
-            $('import-file').value = '';
-            openModal('import-modal');
         }
 
         $('import-file').addEventListener('change', e => {
@@ -1225,29 +1320,111 @@
             reader.readAsText(file);
         });
 
-        async function runImport() {
-            const parsed = parseScoreBackup($('import-text').value);
-            if (!parsed) { alert('データの形式が正しくありません / Invalid data.'); return; }
-            if (!parsed.rows.length) { alert(`取り込めるデータがありません（無効 ${parsed.bad} 件）`); return; }
-            const note = parsed.bad ? `\n（形式が正しくない ${parsed.bad} 件はスキップします）` : '';
-            if (!confirm(`${parsed.rows.length} 件を取り込みます。${note}\n既存のデータは消えません。よろしいですか？`)) return;
+        $('import-run-btn').addEventListener('click', async () => {
+            const raw = $('import-text').value;
+            let obj = null;
+            try { obj = JSON.parse(raw); } catch (e) { }
+            if (!obj || typeof obj !== 'object') { alert('データの形式が正しくありません / Invalid data.'); return; }
 
-            const btn = $('import-run-btn');
-            btn.disabled = true;
-            setLoading(true, 'Importing... / 取り込み中...');
-            try {
-                const res = await api('importScores', { scores: parsed.rows });
-                await reloadAll();
-                closeSharedModal('import-modal');
-                setLoading(false);
-                alert(`取り込み完了：${res.imported} 件 / Import successful!`);
-            } catch (e) {
-                setLoading(false);
-                alert('取り込みに失敗しました / Import failed\n' + errMsg(e));
-            } finally {
-                btn.disabled = false;
+            const isFull = obj.app === 'IGK' && obj.type === 'all';
+            const records = isFull && Array.isArray(obj.records) ? obj.records : [];
+            const scores = parseScoreBackup(obj) || { rows: [] };
+            let students = null;
+            if (isFull && obj.students && typeof obj.students === 'object') {
+                const r = parseStudentText(studentsToText(obj.students));
+                if (r.total && !r.errors.length) students = r.students;
             }
+            if (!records.length && !scores.rows.length && !students) { alert('取り込めるデータがありません / Nothing to import.'); return; }
+            if (!confirm(`日常記録 ${records.length} 件、スコア ${scores.rows.length} 件を取り込みます。\n既存のデータは消えません。よろしいですか？`)) return;
+            const replaceList = students && confirm('学生リストもバックアップの内容に置き換えますか？\n（キャンセル＝今の学生リストのまま）');
+
+            try {
+                const a = records.length ? await api('importRecords', { records }) : { imported: 0 };
+                const b = scores.rows.length ? await api('importScores', { scores: scores.rows }) : { imported: 0 };
+                if (replaceList) await api('saveStudents', { students });
+                await reloadAll();
+                $('import-text').value = '';
+                $('import-file').value = '';
+                alert(`復元しました！\n日常記録：${a.imported} 件追加\nスコア：${b.imported} 件`);
+            } catch (e) {
+                alert('復元に失敗しました / Restore failed\n' + errMsg(e));
+            }
+        });
+
+        // ---- Google スプレッドシートからコピーした表（タブ区切り）を読む ----
+        function parseTSV(text) {
+            const rows = [];
+            let row = [], cell = '', q = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (q) {
+                    if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+                    else cell += c;
+                } else if (c === '"' && cell === '') q = true;
+                else if (c === '\t') { row.push(cell); cell = ''; }
+                else if (c === '\n' || c === '\r') {
+                    if (c === '\r' && text[i + 1] === '\n') i++;
+                    row.push(cell); rows.push(row); row = []; cell = '';
+                } else cell += c;
+            }
+            if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+            return rows.filter(r => r.some(x => String(x).trim()));
         }
+
+        function sheetDate(v) {
+            const m = String(v || '').trim().match(/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/);
+            return m ? `${m[1]}-${pad(m[2])}-${pad(m[3])}` : '';
+        }
+
+        const SHEET_ALIASES = {
+            date: ['date', '日付', '日期', '記録日', 'timestamp', 'タイムスタンプ'],
+            name: ['name', '名前', '氏名', '姓名', '児童', 'student'],
+            event: ['event', 'eventdesc', '出来事', '事件'],
+            solution: ['solution', 'solutiondesc', '解決策', '解決方法']
+        };
+
+        function parseSheetRecords(text) {
+            const rows = parseTSV(String(text || ''));
+            if (!rows.length) return { list: [], bad: 0 };
+            let cols = { date: 0, name: 1, event: 2, solution: 3 };
+            const head = rows[0].map(h => String(h).trim().toLowerCase());
+            if (!sheetDate(rows[0][0]) || head.some(h => SHEET_ALIASES.date.includes(h))) {
+                const found = {};
+                for (const k in SHEET_ALIASES) {
+                    const i = head.findIndex(h => SHEET_ALIASES[k].includes(h));
+                    if (i >= 0) found[k] = i;
+                }
+                if (Object.keys(found).length === 4) cols = found;
+                rows.shift();   // 見出しの行
+            }
+            const list = [];
+            let bad = 0;
+            rows.forEach(r => {
+                const rec = { date: sheetDate(r[cols.date]), name: baseName(r[cols.name]),
+                    event: String(r[cols.event] || '').trim(), solution: String(r[cols.solution] || '').trim() };
+                if (rec.date && rec.name && (rec.event || rec.solution)) list.push(rec); else bad++;
+            });
+            return { list, bad };
+        }
+
+        $('sheet-run-btn').addEventListener('click', async () => {
+            const { list, bad } = parseSheetRecords($('sheet-text').value);
+            if (!list.length) {
+                alert('取り込める記録が見つかりません。\n「日付・名前・出来事・解決策」の列を選んでコピーしてください。');
+                return;
+            }
+            const sample = list[0];
+            const note = bad ? `\n（読み取れない ${bad} 行はスキップします）` : '';
+            if (!confirm(`${list.length} 件の日常記録を取り込みます。${note}\n\n1件目の確認：\n日付：${sample.date}\n名前：${sample.name}\n出来事：${sample.event.slice(0, 30)}\n\nよろしいですか？`)) return;
+            try {
+                const res = await api('importRecords', { records: list });
+                await reloadAll();
+                $('sheet-text').value = '';
+                alert(`取り込み完了：${res.imported} 件追加（重複・不正 ${res.skipped} 件はスキップ）`);
+            } catch (e) {
+                alert('取り込みに失敗しました / Import failed\n' + errMsg(e));
+            }
+        });
 
         // ================= Tab 3：Whirlwind Group 分組工具 =================
         // 全部在瀏覽器內運作，不需要後端；分組結果不會存到雲端
@@ -1341,11 +1518,11 @@
         };
 
         const SH_THEMES = [
-            { name: { en: 'Sparkle Team', ja: 'きらきらチーム' }, emoji: '✨', border: '#fbbf24', bg: '#fffbeb', badge: '#fde68a' },
-            { name: { en: 'Dreamy Cloud Team', ja: 'ふわふわチーム' }, emoji: '☁️', border: '#38bdf8', bg: '#f0f9ff', badge: '#bae6fd' },
-            { name: { en: 'Lovely Heart Team', ja: 'はーとチーム' }, emoji: '💖', border: '#f472b6', bg: '#fdf2f8', badge: '#fbcfe8' },
-            { name: { en: 'Magic Rainbow Team', ja: 'にじいろチーム' }, emoji: '🌈', border: '#2dd4bf', bg: '#f0fdfa', badge: '#99f6e4' },
-            { name: { en: 'Shiny Star Team', ja: 'ほしぞらチーム' }, emoji: '⭐', border: '#818cf8', bg: '#eef2ff', badge: '#c7d2fe' }
+            { name: { en: 'Sparkle Team', ja: 'きらきらチーム' }, emoji: '✨', border: '#ffe082', bg: '#fffdf3', badge: '#fff1b8' },
+            { name: { en: 'Dreamy Cloud Team', ja: 'ふわふわチーム' }, emoji: '☁️', border: '#a8d8ea', bg: '#f5fbfd', badge: '#d6eef6' },
+            { name: { en: 'Lovely Heart Team', ja: 'はーとチーム' }, emoji: '💖', border: '#ffc2d4', bg: '#fff7fa', badge: '#ffe4ec' },
+            { name: { en: 'Magic Rainbow Team', ja: 'にじいろチーム' }, emoji: '🌈', border: '#b2dfdb', bg: '#f5fbfa', badge: '#d7efec' },
+            { name: { en: 'Shiny Star Team', ja: 'ほしぞらチーム' }, emoji: '⭐', border: '#d4c1ec', bg: '#faf7fd', badge: '#ebe1f6' }
         ];
         const SH_BASE_GRADES = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'];
 
