@@ -7,13 +7,13 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
-    <!-- ★ 修正: バージョンを固定 (将来の更新で突然壊れないように) -->
     <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
     <!-- Day.js -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- ★ 核心解析套件 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
@@ -54,6 +54,252 @@
 <body>
     <div id="root"></div>
 
+    <script>
+/* IGK 名谷シフトPDF 自動取込モジュール (pdf.js 6.x 用 / ブラウザ・Node 両対応) */
+(function (root) {
+  const IGKA_OK = new Set(['Monika', 'Mozelle', 'Gio', 'Sadia', 'Kim', 'Bjoerg', 'Nilima']);
+  const BOTH_CAMPUS = new Set(['Gio', 'Kim']);
+  const SKIP_RE = /Halloween|Party|Sports|Rehearsal|Fasion|Break|Parade|Show|show&tell|Demo|Open school|Cooking/;
+  const MAGENTA = '#ff00ff';
+  const tmin = (s) => { const [h, m] = s.split(':'); return +h * 60 + +m; };
+  const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const toHex = (a) => typeof a[0] === 'string' ? a[0].toLowerCase()
+    : '#' + a.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+
+  async function extract(pdfjs, page) {
+    const H = page.view[3];
+    const ol = await page.getOperatorList();
+    const O = pdfjs.OPS, paint = new Set([O.fill, O.eoFill, O.fillStroke, O.eoFillStroke, O.closeFillStroke, O.closeEOFillStroke]);
+    const mul = (m, n) => [m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1], m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3], m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]];
+    let ctm = [1, 0, 0, 1, 0, 0], fill = '#000000'; const stack = [], rects = [];
+    ol.fnArray.forEach((fn, i) => {
+      const a = ol.argsArray[i];
+      if (fn === O.save) stack.push([ctm, fill]);
+      else if (fn === O.restore) { [ctm, fill] = stack.pop() || [[1, 0, 0, 1, 0, 0], fill]; }
+      else if (fn === O.transform) ctm = mul(ctm, a);
+      else if (fn === O.setFillRGBColor) fill = toHex(a);
+      else if (fn === O.constructPath && paint.has(a[0])) {
+        const d = Array.from(a[1] && a[1][0] ? a[1][0] : []);
+        const xs = [], ys = [];
+        for (let k = 0; k + 2 < d.length; k += 3) if (d[k] === 0 || d[k] === 1) {
+          xs.push(ctm[0]*d[k+1] + ctm[2]*d[k+2] + ctm[4]); ys.push(H - (ctm[1]*d[k+1] + ctm[3]*d[k+2] + ctm[5]));
+        }
+        if (xs.length < 4) return;
+        const r = { x0: Math.min(...xs), x1: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys), color: fill };
+        if (r.x1 - r.x0 > 3 && r.bottom - r.top > 3 && r.x1 - r.x0 < 200) rects.push(r);
+      }
+    });
+    const tc = await page.getTextContent();
+    const words = tc.items.filter((t) => t.str && t.str.trim()).map((t) => {
+      let bold = false;
+      try { bold = /bold/i.test(page.commonObjs.get(t.fontName).name || ''); } catch (e) {}
+      const top = H - t.transform[5] - t.height;
+      return { text: t.str.normalize('NFKC').trim(), x0: t.transform[4], x1: t.transform[4] + t.width, top, bottom: top + t.height, bold, size: t.height };
+    });
+    return { rects, words, H };
+  }
+
+  // 1ページ=1か月分(5週×5日)の名谷シフト表を解析
+  async function parseMyodani(pdfjs, data, opts = {}) {
+    const doc = await pdfjs.getDocument({ data, verbosity: 0 }).promise;
+    const ex = await extract(pdfjs, await doc.getPage(1));
+    const { words, H } = ex; const rects = ex.rects.filter((r) => r.x1 - r.x0 < 40);
+    const dates = words.filter((w) => /^\d{1,2}\/\d{1,2}$/.test(w.text) && w.bold && w.top < H - 20);
+    const tops = [...new Set(dates.map((w) => Math.round(w.top)))].sort((a, b) => a - b);
+    const blockH = tops.length > 1 ? tops[1] - tops[0] : 160;
+    const bands = tops.map((t, i) => [t - 2, i + 1 < tops.length ? tops[i + 1] - 2 : t + blockH - 2]);
+    const out = {}; const cx = (w) => (w.x0 + w.x1) / 2;
+    for (const [y0, y1] of bands) {
+      const row = dates.filter((w) => w.top >= y0 && w.top < y1).sort((a, b) => a.x0 - b.x0);
+      const cs = row.map(cx);
+      const edges = [cs[0] - (cs[1] - cs[0]) / 2, ...cs.slice(0, -1).map((c, i) => (c + cs[i + 1]) / 2), cs[cs.length - 1] + (cs[cs.length - 1] - cs[cs.length - 2]) / 2];
+      const labs = words.filter((w) => w.top >= y0 && w.top < y1 && /^\d{1,2}:\d{2}$/.test(w.text) && w.x1 < edges[0] + 5).sort((a, b) => a.top - b.top);
+      const rows = labs.map((l, i) => ({ yc: (l.top + l.bottom) / 2, t: tmin(l.text), d: i + 1 < labs.length ? tmin(labs[i + 1].text) - tmin(l.text) : 30 }));
+      const covered = (r) => rows.filter((x) => x.yc >= r.top - 0.5 && x.yc <= r.bottom + 0.5);
+      row.forEach((dw, di) => {
+        const xa = edges[di], xb = edges[di + 1];
+        const inb = words.filter((w) => w.x0 >= xa && w.x0 < xb && w.top >= y0 && w.top < y1 && w.top > labs[0].top - 3);
+        const bold = inb.filter((w) => w.bold && w.size < 5.5 && !/^[\d/（）()]/.test(w.text)).sort((a, b) => a.top - b.top);
+        let people = [];
+        for (const w of bold) {
+          const p = people.find((q) => Math.abs(cx(q) - cx(w)) < 7 && w.top - q.last > 0 && w.top - q.last < 9);
+          if (p) { p.words.push(w.text); p.last = w.top; p.bottom = w.bottom; } else people.push({ x0: w.x0, x1: w.x1, top: w.top, last: w.top, bottom: w.bottom, words: [w.text] });
+        }
+        people = people.filter((p) => !p.words.some((x) => SKIP_RE.test(x)));
+        const info = {};
+        for (const p of people) {
+          p.name = p.words[p.words.length - 1];
+          const jp = inb.filter((w) => !w.bold && /[\u3000-\u9fff]/.test(w.text) && Math.abs(cx(w) - cx(p)) < 9 && w.top >= p.top - 9 && w.top < p.top).sort((a, b) => a.x0 - b.x0).map((w) => w.text).join('');
+          if (jp) p.words.unshift(jp);
+          const o = info[p.name] = { names: p.words, shift: null, shiftFrom: null, off: false, igkA: 0, remark: [] };
+          const near = (w, a, b) => !w.bold && Math.abs(cx(w) - cx(p)) < 9 && w.top >= a && w.top < b;
+          const txt = inb.filter((w) => near(w, p.bottom - 1, p.bottom + 22)).sort((a, b) => a.top - b.top).map((w) => w.text).join('').replace(/\s/g, '');
+          const m = txt.match(/(\d{1,2}(?::\d{2})?)-(\d{1,2}(?::\d{2})?)/);
+          if (m) { o.shift = [m[1], m[2]]; o.shiftFrom = 'text'; }
+          else if (/(\d{1,2}:\d{2})-/.test(txt)) { o.shift = [txt.match(/(\d{1,2}:\d{2})-/)[1], null]; o.shiftFrom = 'text'; o.remark.push('終了時刻なし(要確認)'); }
+          if (/OFF\?/.test(txt)) o.remark.push('OFF?(要確認)'); else if (/Off/.test(txt)) o.off = true;
+          if (/AMoff/i.test(txt)) o.remark.push('AM off(午前休)');
+          if (!o.shift && !o.off) {
+            const above = inb.filter((w) => near(w, p.top - 24, p.top - 3)).sort((a, b) => a.top - b.top).map((w) => w.text).join('').replace(/\s/g, '');
+            const m3 = above.match(/(\d{1,2}(?::\d{2})?)-(\d{1,2}(?::\d{2})?)/);
+            if (m3) { o.shift = [m3[1], m3[2]]; o.shiftFrom = 'above'; }
+          }
+        }
+        for (const w of inb) if (w.text === '早退') {
+          const c = people.filter((p) => Math.abs(cx(w) - cx(p)) < 9 && p.top <= w.top);
+          if (c.length) info[c.reduce((a, b) => (b.top > a.top ? b : a)).name].remark.push('早退');
+        }
+        // 時間の記載がない人: 名前の下の色付きセルの範囲を左の時間軸と照合
+        for (const p of people) {
+          const o = info[p.name]; if (o.shift || o.off) continue;
+          const nextTop = Math.min(9e9, ...people.filter((q) => q !== p && Math.abs(cx(q) - cx(p)) < 7 && q.top > p.top).map((q) => q.top));
+          const col = rects.filter((r) => r.x0 - 0.5 <= cx(p) && cx(p) <= r.x1 + 0.5 && r.top >= y0 && r.top < y1 && r.bottom >= p.top - 6 && r.top < nextTop && r.color !== '#ffffff');
+          const rs = col.flatMap(covered);
+          if (rs.length) { o.shift = [hm(Math.min(...rs.map((x) => x.t))), hm(Math.max(...rs.map((x) => x.t + x.d)))]; o.shiftFrom = 'color'; }
+        }
+        // 洋紅セル = IGKA (対象者のみ)
+        const mags = rects.filter((r) => r.color === MAGENTA && r.x0 >= xa && r.x0 < xb && r.top >= y0 && r.top < y1);
+        const colw = 11.5;
+        for (const r of mags) {
+          const n = Math.max(1, Math.round((r.x1 - r.x0) / colw));
+          for (let k = 0; k < n; k++) {
+            const a = r.x0 + k * (r.x1 - r.x0) / n, b = r.x0 + (k + 1) * (r.x1 - r.x0) / n;
+            const c = people.filter((p) => p.x0 <= b && p.x1 >= a && p.top <= r.bottom - 1);
+            if (!c.length) continue;
+            const p = c.reduce((x, y) => (y.top > x.top ? y : x));
+            const mins = covered(r).reduce((s, x) => s + x.d, 0);
+            if (IGKA_OK.has(p.name)) info[p.name].igkA += mins / 60;
+          }
+        }
+        for (const [n, o] of Object.entries(info)) { if (BOTH_CAMPUS.has(n)) o.campus = opts.campus || '名谷'; if (o.remark.includes('早退') === false && false) o.remark = o.remark; }
+        out[dw.text] = info;
+      });
+    }
+    return out; // { '9/28': { Yuri: {names, shift:[s,e], shiftFrom, off, igkA, remark[], campus?} } }
+  }
+
+  const norm = (s) => { if (s == null) return ''; return s.includes(':') ? hm(tmin(s)) : hm(+s * 60); };
+  const key = (s) => s.toLowerCase().replace(/\s+/g, '');
+  // 名前の照合: 日本語の姓 > 別名の完全一致。校舎(campus)が合う人を優先 (Mariko が六甲/名谷で別人のため)
+  const matchEmp = (employees, words, campus, both) => {
+    const pools = both ? [employees] : [employees.filter((e) => e.location === campus)];
+    for (const pool of pools) {
+      const jp = words.filter((w) => /[^\x00-\x7F]/.test(w));
+      const hit = pool.find((e) => jp.some((w) => key(e.name).startsWith(key(w)) || (e.aliases || []).some((a) => key(a) === key(w))))
+        || pool.find((e) => words.some((w) => [e.name, ...(e.aliases || [])].some((n) => key(n) === key(w))));
+      if (hit) return hit;
+    }
+    return null;
+  };
+  
+  // ★ 修正: pickYear の時區問題修正
+  const pickYear = (mo, da, start, end) => {
+    const [sy, sm, sd] = start.split('-').map(Number);
+    const [ey, em, ed] = end.split('-').map(Number);
+    const s = new Date(sy, sm - 1, sd), e = new Date(ey, em - 1, ed); 
+    let best = null;
+    for (const y of [sy - 1, sy, sy + 1, ey]) {
+      const d = new Date(y, mo - 1, da); 
+      if (d >= s && d <= e) best = y;
+    }
+    return best;
+  };
+
+  // opts: { start:'YYYY-MM-DD', end:'YYYY-MM-DD', campus:'myodani'|'rokko' } — 範囲(給与期間 16日〜翌15日)外の日は除外
+  function toEntries(parsed, employees, opts) {
+    const entries = [], unmatched = []; let outOfRange = 0;
+    for (const [md, info] of Object.entries(parsed)) {
+      const [mo, da] = md.split('/').map(Number);
+      const y = pickYear(mo, da, opts.start, opts.end);
+      if (y == null) { outOfRange++; continue; }
+      const date = `${y}/${String(mo).padStart(2, '0')}/${String(da).padStart(2, '0')}`;
+      for (const o of Object.values(info)) {
+        const both = !!o.campus || BOTH_CAMPUS.has(o.names[o.names.length - 1]);
+        const emp = matchEmp(employees, o.names, opts.campus, both);
+        if (!emp) { unmatched.push({ date, name: o.names.join(' ') }); continue; }
+        if (o.otherCampus) continue; // 別校舎の表に載っている日は、その校舎のPDFを優先
+        const remark = [...o.remark]; if (o.off) remark.unshift('Off(休み)');
+        if (o.campus) remark.unshift(`${o.campus}校勤務`);
+        if (o.drive && o.drive.length) remark.push(o.drive.join(' / '));
+        if (o.shiftFrom === 'color') remark.push('時間は色付きセルから推定');
+        entries.push({ empId: emp.id, empName: emp.name, date, shiftStart: o.shift ? norm(o.shift[0]) : '', shiftEnd: o.shift && o.shift[1] ? norm(o.shift[1]) : '',
+          igkAHours: emp.type === 'full' ? 0 : o.igkA, driveMins: o.driveMins || 0, remark: remark.join(' / '), off: o.off, src: opts.campus });
+      }
+    }
+    return { entries, unmatched, outOfRange };
+  }
+
+  // ===== 六甲: 1日ずつ縦に並ぶ表 (列=人, 行=時間) =====
+  const RK_NAMES = ['Toshi', 'Minori', 'Mikuma', 'Taka', 'Koukei', 'Kim', 'Nathan', 'Afrin', 'Henry', 'Gio', 'Mariko'];
+  const RK_IGKA = new Set(['#a4f0fb', '#fba4d1', '#00b0f0']); // 水色(TOE/Activity)・ピンク(Kids)・空色(個別)
+  const isGrey = (c) => /^#([0-9a-f]{2})\1\1$/.test(c);
+  async function parseRokko(pdfjs, data, opts = {}) {
+    const doc = await pdfjs.getDocument({ data, verbosity:0 }).promise;
+    const out = {}; let cols = null, cur = null;
+    for (let pn = 1; pn <= doc.numPages; pn++) {
+      const { rects, words, H } = await extract(pdfjs, await doc.getPage(pn));
+      const head = words.filter((w) => RK_NAMES.includes(w.text) && w.size > 10);
+      if (head.length >= 8) { const hs = RK_NAMES.map((n) => head.find((h) => h.text === n)).filter(Boolean); const c = hs.map((h) => (h.x0 + h.x1) / 2);
+        cols = hs.map((h, i) => ({ name: h.text, a: i ? (c[i - 1] + c[i]) / 2 : c[0] - (c[1] - c[0]) / 2, b: i + 1 < c.length ? (c[i] + c[i + 1]) / 2 : c[i] + (c[i] - c[i - 1]) / 2 })); }
+      if (!cols) continue;
+      // 日付ラベルは文字ごとに分割されているため、左端の同じ行を連結して復元する
+      const lineMap = {};
+      words.filter((w) => w.x0 < 100 && w.x1 < cols[0].a + 3 && !/^\d{1,2}:\d{2}$/.test(w.text)).forEach((w) => { const k = Math.round(w.top / 3); (lineMap[k] = lineMap[k] || []).push(w); });
+      const labels = Object.values(lineMap).map((ws) => { ws.sort((a, b) => a.x0 - b.x0); return { text: ws.map((w) => w.text).join(''), top: Math.min(...ws.map((w) => w.top)) }; })
+        .filter((l) => /(\d{1,2})月(\d{1,2})日/.test(l.text)).sort((a, b) => a.top - b.top);
+      const secs = []; let y = 0;
+      labels.forEach((l) => { if (l.top > y + 5) secs.push({ day: cur, y0: y, y1: l.top }); const m = l.text.match(/(\d{1,2})月(\d{1,2})日/); cur = `${+m[1]}/${+m[2]}`; y = l.top; });
+      secs.push({ day: cur, y0: y, y1: H });
+      for (const sc of secs) {
+        if (!sc.day) continue;
+        const labs = words.filter((w) => w.top >= sc.y0 && w.top < sc.y1 && /^\d{1,2}:\d{2}$/.test(w.text) && w.x1 < cols[0].a + 3).sort((a, b) => a.top - b.top);
+        if (!labs.length) continue;
+        const rows = labs.map((l, i) => ({ yc: (l.top + l.bottom) / 2, t: tmin(l.text), d: i + 1 < labs.length ? tmin(labs[i + 1].text) - tmin(l.text) : 30 }));
+        const cover = (r) => rows.filter((x) => x.yc >= r.top - 0.5 && x.yc <= r.bottom + 0.5);
+        const day = out[sc.day] = out[sc.day] || {};
+        for (const col of cols) {
+          if (col.name === 'Toshi') continue;
+          const cw = col.b - col.a;
+          // セルは横に結合されることがあるため、列との重なりが半分以上の色付きセルをその列のものとして扱う
+          const rs = rects.filter((r) => r.color !== '#ffffff' && !isGrey(r.color) && r.top >= sc.y0 && r.bottom <= sc.y1 + 1 && r.top >= labs[0].top - 3
+            && Math.min(r.x1, col.b) - Math.max(r.x0, col.a) >= cw * 0.5);
+          // 文字は1文字ずつ分割されるため、同じ行を連結して復元する
+          const lm = {};
+          words.filter((w) => (w.x0 + w.x1) / 2 > col.a && (w.x0 + w.x1) / 2 < col.b && w.top >= labs[0].top - 3 && w.top < sc.y1).forEach((w) => { const k = Math.round(w.top / 3); (lm[k] = lm[k] || []).push(w); });
+          const lines = Object.values(lm).map((ws) => { ws.sort((p, q) => p.x0 - q.x0); return { text: ws.map((w) => w.text).join(''), top: ws[0].top }; }).sort((p, q) => p.top - q.top);
+          const rowsCov = rs.flatMap((r) => cover(r).map((x) => ({ ...x, color: r.color })));
+          const o = { names: [col.name], shift: null, shiftFrom: null, off: false, igkA: 0, remark: [], drive: [], driveMins: 0 };
+          if (rowsCov.length) {
+            o.shift = [hm(Math.min(...rowsCov.map((x) => x.t))), hm(Math.max(...rowsCov.map((x) => x.t + x.d)))]; o.shiftFrom = 'color';
+            const seen = new Set(); rowsCov.forEach((x) => { const k = x.t; if (RK_IGKA.has(x.color) && !seen.has(k)) { seen.add(k); o.igkA += x.d / 60; } });
+          }
+          const joined = lines.map((l) => l.text).join(' ');
+          const re = /(\d{1,2}:\d{2})\s*(乗車|下車|返却|到着)/g; let m, st = null;
+          while ((m = re.exec(joined))) { if (m[2] === '乗車') st = m[1]; else if (st) { o.drive.push(`${st}-${m[1]}`); o.driveMins += tmin(m[1]) - tmin(st); st = null; } }
+          lines.forEach((l) => { if (/遅刻|残業|早退|代講|work from home|忘れ物/i.test(l.text) && !o.remark.includes(l.text)) o.remark.push(l.text); if (/^Myodani$/i.test(l.text) && l.top > sc.y0 + 5) o.otherCampus = true; });
+          if (rowsCov.length || o.remark.length) day[col.name] = o;
+        }
+      }
+    }
+    return out;
+  }
+
+  async function parseAny(pdfjs, data, opts = {}) {
+    const doc = await pdfjs.getDocument({ data: data.slice(), verbosity: 0 }).promise;
+    const tc = await (await doc.getPage(1)).getTextContent();
+    const text = tc.items.map((t) => t.str).join(' ');
+    // ★ 修正: 六甲校判定前の空白除去で誤判定防止
+    const cleanText = text.replace(/\s+/g, '');
+    if (/Toshi/i.test(cleanText) && /Minori/i.test(cleanText)) return { type: 'rokko', campus: 'rokko', parsed: await parseRokko(pdfjs, data, opts) };
+    return { type: 'myodani', campus: 'myodani', parsed: await parseMyodani(pdfjs, data, opts) };
+  }
+
+  // Babel に変換されないよう、動的 import は Function 経由で実行する
+  root.__dynImport = (u) => new Function('u', 'return import(u)')(u);
+  root.ShiftPdfImport = { parseAny, parseMyodani, parseRokko, toEntries };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+    </script>
     <script type="text/babel">
         const firebaseConfig = {
             apiKey: "AIzaSyC2CVG7H5-LYs7bvNFJSdEf8blFNZmJOxs",
@@ -70,7 +316,17 @@
 
         const { useState, useEffect } = React;
 
-        const HOLIDAYS_2026 = ['2026/01/01', '2026/01/12', '2026/02/11', '2026/02/23', '2026/03/20', '2026/04/29', '2026/05/03', '2026/05/04', '2026/05/05', '2026/05/06', '2026/07/20', '2026/08/11', '2026/09/21', '2026/09/22', '2026/09/23', '2026/10/12', '2026/11/03', '2026/11/23'];
+        // ★ 修正: 國定假日擴充至 2029 年
+        const HOLIDAYS = [
+            // 2026
+            '2026/01/01', '2026/01/12', '2026/02/11', '2026/02/23', '2026/03/20', '2026/04/29', '2026/05/03', '2026/05/04', '2026/05/05', '2026/05/06', '2026/07/20', '2026/08/11', '2026/09/21', '2026/09/22', '2026/09/23', '2026/10/12', '2026/11/03', '2026/11/23',
+            // 2027
+            '2027/01/01', '2027/01/11', '2027/02/11', '2027/02/23', '2027/03/21', '2027/03/22', '2027/04/29', '2027/05/03', '2027/05/04', '2027/05/05', '2027/07/19', '2027/08/11', '2027/09/20', '2027/09/23', '2027/10/11', '2027/11/03', '2027/11/23',
+            // 2028
+            '2028/01/01', '2028/01/10', '2028/02/11', '2028/02/23', '2028/03/20', '2028/04/29', '2028/05/03', '2028/05/04', '2028/05/05', '2028/07/17', '2028/08/11', '2028/09/18', '2028/09/22', '2028/10/09', '2028/11/03', '2028/11/23',
+            // 2029
+            '2029/01/01', '2029/01/08', '2029/02/11', '2029/02/12', '2029/02/23', '2029/03/20', '2029/04/29', '2029/04/30', '2029/05/03', '2029/05/04', '2029/05/05', '2029/07/16', '2029/08/11', '2029/09/17', '2029/09/23', '2029/09/24', '2029/10/08', '2029/11/03', '2029/11/23'
+        ];
 
         const INITIAL_EMPLOYEES = [
             { num: 6, id: 'm2', name: 'Tran ThiNhat Linh', type: 'full', location: 'myodani', aliases: ['Linh', 'リン'] },
@@ -102,7 +358,7 @@
             { num: 91, id: 'm_bjoerg', name: 'BjoergBendix', type: 'part', location: 'myodani', aliases: ['Bjoerg', 'ビョルグ'] },
         ];
 
-        const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS_2026.includes(dateStr);
+        const isHoliday = (dateStr) => [0, 6].includes(dayjs(dateStr).day()) || HOLIDAYS.includes(dateStr);
 
         const padNum = (num) => String(num).padStart(3, '0');
 
@@ -561,7 +817,8 @@
             const [logs, setLogs] = useState([]);
             const [attendanceData, setAttendanceData] = useState({});
             const [timecardText, setTimecardText] = useState('');
-            const [payMonth, setPayMonth] = useState('2026-09');
+            // ★ 修正: 預設月份依照當下的電腦時間
+            const [payMonth, setPayMonth] = useState(dayjs().format('YYYY-MM'));
             const [activeLocation, setActiveLocation] = useState('rokko');
             const [activeEmployeeId, setActiveEmployeeId] = useState('r1');
             const [processedFiles, setProcessedFiles] = useState([]);
@@ -694,6 +951,124 @@
                 });
             };
 
+
+const [shiftPreview, setShiftPreview] = useState(null); // { entries, unmatched, outOfRange, files, start, end }
+const [shiftBusy, setShiftBusy] = useState(false);
+
+// 名谷・六甲のシフトPDFを「複数まとめて」選択できます。毎回アップロードして使う運用向けです。
+// 集計期間は画面上の「期間設定」(支給月から自動: 前月16日〜当月15日) を使い、期間外の日は取り込みません。
+const handleShiftPdf = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setShiftBusy(true);
+    try {
+        // PDFの色・座標を読むため、このときだけ pdf.js 6.x を読み込む (既存の 3.11 は有休PDFにそのまま使用)
+        const pdfjs = await window.__dynImport('https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.min.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.worker.min.mjs';
+        const merged = new Map(), unmatched = [], used = [];
+        let outOfRange = 0;
+        for (const file of files) {
+            try {
+                const data = new Uint8Array(await file.arrayBuffer());
+                const r = await window.ShiftPdfImport.parseAny(pdfjs, data, { campus: '名谷' });
+                const t = window.ShiftPdfImport.toEntries(r.parsed, employees, { start: batchStart, end: batchEnd, campus: r.campus });
+                t.entries.forEach(en => merged.set(`${en.empId}_${en.date}`, en)); // 同じ人・同じ日が重複したら後のファイルを採用
+                unmatched.push(...t.unmatched);
+                outOfRange += t.outOfRange;
+                used.push(`${file.name} (${r.type === 'rokko' ? '六甲' : '名谷'}・${t.entries.length}件)`);
+            } catch (err) {
+                addLog(`[シフトPDF] ${file.name} の解析に失敗: ${err.message}`, 'error');
+            }
+        }
+        const entries = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date) || a.empName.localeCompare(b.empName));
+        setShiftPreview({ entries, unmatched, outOfRange, files: used, start: batchStart, end: batchEnd });
+        addLog(`[シフトPDF] ${files.length}ファイル / ${entries.length}件を解析しました。プレビューで確認してください。`, 'info');
+    } catch (err) {
+        addLog(`[シフトPDF] エラー: ${err.message}`, 'error');
+    }
+    setShiftBusy(false);
+    e.target.value = null; // 同じファイルを再度選べるようにする
+};
+
+const applyShiftPreview = () => {
+    if (!shiftPreview) return;
+    setAttendanceData(prev => {
+        const next = { ...prev };
+        shiftPreview.entries.forEach(en => {
+            next[en.empId] = { ...(next[en.empId] || {}) };
+            const d = { ...(next[en.empId][en.date] || {}) };
+            if (en.shiftStart) d.shiftStart = en.shiftStart;
+            if (en.shiftEnd) d.shiftEnd = en.shiftEnd;
+            if (en.igkAHours > 0) d.igkAHours = en.igkAHours;
+            if (en.driveMins > 0) d.driveMins = en.driveMins;
+            if (en.remark && !(d.remark || '').includes(en.remark)) d.remark = d.remark ? `${d.remark} / ${en.remark}` : en.remark;
+            next[en.empId][en.date] = d;
+        });
+        return next;
+    });
+    addLog(`[シフトPDF] ${shiftPreview.entries.length}件を適用しました。`, 'success');
+    setShiftPreview(null);
+};
+
+const pdfCol = db.collection('igk_pdfs');
+
+const savePdfToCloud = async (pdf, empId) => {
+    try {
+        let url = pdf.dataUrl;
+        // Firestore の1ドキュメントは約1MBまで。大きい場合は画質を下げて保存する
+        if (url.length > 900000) {
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+            const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+            c.getContext('2d').drawImage(img, 0, 0);
+            url = c.toDataURL('image/jpeg', 0.55);
+        }
+        if (url.length > 1000000) throw new Error('画像が大きすぎて保存できません');
+        await pdfCol.doc(pdf.id).set({ empId, name: pdf.name, dataUrl: url, width: pdf.width, height: pdf.height, payMonth, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    } catch (err) { addLog(`[PDF] クラウド保存エラー (${pdf.name}): ${err.message}`, 'error'); }
+};
+
+const deletePdfFromCloud = async (pdfId) => {
+    try { await pdfCol.doc(pdfId).delete(); } catch (err) { addLog(`[PDF] クラウド削除エラー: ${err.message}`, 'error'); }
+};
+
+// 支給月を切り替えたとき・起動時に、その月の有休PDFをクラウドから復元する
+useEffect(() => {
+    if (!isCloudLoaded) return;
+    let cancelled = false;
+    pdfCol.where('payMonth', '==', payMonth).get().then(snap => {
+        if (cancelled) return;
+        const next = {};
+        snap.forEach(d => { const v = d.data(); (next[v.empId] = next[v.empId] || []).push({ id: d.id, name: v.name, dataUrl: v.dataUrl, width: v.width, height: v.height }); });
+        setMatchedPdfs(next);
+    }).catch(err => addLog(`[PDF] クラウド読込エラー: ${err.message}`, 'error'));
+    return () => { cancelled = true; };
+}, [payMonth, isCloudLoaded]);
+
+// 有休PDFを社員ごとのラベル付きで1つのPDFにまとめて保存 (Googleドライブ等でそのまま開ける)
+const exportLeavePdfs = async () => {
+    const list = [...employees].sort((a, b) => a.num - b.num).flatMap(emp => (matchedPdfs[emp.id] || []).map(p => ({ emp, p })));
+    if (!list.length) return alert('有休PDFがありません。');
+    try {
+        const { jsPDF } = window.jspdf;
+        let doc = null;
+        for (const { emp, p } of list) {
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = p.dataUrl; });
+            const bar = 44, c = document.createElement('canvas'); c.width = img.width; c.height = img.height + bar;
+            const g = c.getContext('2d');
+            g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+            g.fillStyle = '#111'; g.font = 'bold 22px sans-serif';
+            g.fillText(`${padNum(emp.num)} ${emp.name}  (${payMonth})  ${p.name}`, 12, 29);
+            g.drawImage(img, 0, bar);
+            const orient = c.width > c.height ? 'l' : 'p';
+            if (!doc) doc = new jsPDF({ unit: 'px', format: [c.width, c.height], orientation: orient, hotfixes: ['px_scaling'] });
+            else doc.addPage([c.width, c.height], orient);
+            doc.addImage(c.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, c.width, c.height);
+        }
+        doc.save(`IGK_有休申請書_${payMonth}.pdf`);
+        addLog(`有休PDF ${list.length}件を1つのPDFに出力しました。`, 'success');
+    } catch (err) { addLog(`有休PDF出力エラー: ${err.message}`, 'error'); }
+};
+
             const handleResetMonthData = () => {
                 if(window.confirm(`【警告】${payMonth} のシフト・交通費データを全てリセットしますか？\n(手動入力したデータも消えます)`)) {
                     const payDateObj = dayjs(`${payMonth}-01`);
@@ -720,7 +1095,8 @@
                         return newData;
                     });
                     setProcessedFiles([]);
-                    setMatchedPdfs({});   // ★ 同時清空暫存的 PDF
+                    Object.values(matchedPdfs).flat().forEach(p => deletePdfFromCloud(p.id));
+                    setMatchedPdfs({});
                     setUnmatchedPdfs([]); // ★ 同時清空暫存的 PDF
                     addLog(`${payMonth} のデータをリセットしました。`, 'success');
                 }
@@ -773,6 +1149,7 @@
                         if (matchedEmp) {
                             if (!newMatched[matchedEmp.id]) newMatched[matchedEmp.id] = [];
                             newMatched[matchedEmp.id].push(pdfObj);
+                            savePdfToCloud(pdfObj, matchedEmp.id);
                             addLog(`[PDF] ${file.name} -> ${matchedEmp.name} に自動紐付けました`, 'success');
                         } else {
                             newUnmatched.push(pdfObj);
@@ -804,12 +1181,14 @@
                     next[empId].push(pdf);
                     return next;
                 });
+                savePdfToCloud(pdf, empId);
                 const empName = employees.find(e => e.id === empId)?.name;
                 addLog(`[PDF] ${pdf.name} を ${empName} に手動紐付けしました`, 'success');
             };
 
             // ★ 取消配對或刪除
             const handleRemoveMatchedPdf = (empId, pdfId) => {
+                deletePdfFromCloud(pdfId);
                 setMatchedPdfs(prev => {
                     const next = { ...prev };
                     if (next[empId]) {
@@ -1049,6 +1428,7 @@
                         }
 
                         addSum('実働総時間:', formatVerboseMins(totalWorkMinsGlobal) || '0分 (0.00H)');
+                        if (matchedPdfs[emp.id] && matchedPdfs[emp.id].length) addSum('有休申請書 添付:', matchedPdfs[emp.id].map(p => p.name).join(', '));
 
                         const feeRow = ws.addRow([]);
                         feeRow.getCell(16).value = emp.type === 'full' ? '出張費合計:' : '交通費合計:';
@@ -1466,6 +1846,9 @@
                                         <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} className="hidden" disabled={isProcessingPdf} />
                                     </label>
                                     {isProcessingPdf && <div className="text-xs text-center text-purple-600 font-bold">{pdfProcessStatus}</div>}
+<button onClick={exportLeavePdfs} className="bg-purple-600 text-white text-xs px-4 py-2 rounded shadow font-bold hover:bg-purple-700 transition">
+    <i className="fa-solid fa-file-pdf mr-1"></i>有休PDFを一括ダウンロード
+</button>
 
                                     {/* 顯示未配對名單 */}
                                     {unmatchedPdfs.length > 0 && (
@@ -1515,6 +1898,16 @@
                                     )}
                                 </div>
                             </SettingPanel>
+
+<SettingPanel title="シフト表PDF 取込 (名谷・六甲)">
+    <div className="flex flex-col gap-2">
+        <label className="border border-dashed border-teal-400 rounded p-4 text-center bg-teal-50 hover:bg-teal-100 cursor-pointer text-xs font-bold text-teal-800 shadow-sm transition">
+            <i className="fa-solid fa-calendar-days mr-2"></i>{shiftBusy ? '解析中...' : 'シフトPDFを選択 (複数可)'}
+            <input type="file" accept=".pdf" multiple onChange={handleShiftPdf} className="hidden" disabled={shiftBusy} />
+        </label>
+        <div className="text-[10px] text-gray-500 leading-snug">対象期間: {batchStart} 〜 {batchEnd}<br/>名谷・六甲のPDFは自動判別します。期間は「期間設定」で変更できます。</div>
+    </div>
+</SettingPanel>
 
                             <SettingPanel title="Wagaco 打刻テキスト貼付">
                                 <div className="flex flex-col gap-2">
@@ -1785,6 +2178,44 @@
                         {currentView === 'setup' && renderSetupScreen()}
                         {currentView === 'reports' && renderReportsScreen()}
                     </main>
+
+{shiftPreview && (
+    <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div className="bg-white rounded-xl shadow-2xl w-[1000px] max-w-[95vw] flex flex-col max-h-[88vh] overflow-hidden">
+            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <div>
+                    <h2 className="font-black text-gray-800 text-sm">シフトPDF プレビュー ({shiftPreview.entries.length}件) 期間: {shiftPreview.start} 〜 {shiftPreview.end}</h2>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{shiftPreview.files.join(' / ')} {shiftPreview.outOfRange > 0 && ` / 期間外の${shiftPreview.outOfRange}日分は除外`}</div>
+                </div>
+                <button onClick={() => setShiftPreview(null)} className="text-gray-400 hover:text-red-500"><i className="fa-solid fa-xmark fa-xl"></i></button>
+            </div>
+            {shiftPreview.unmatched.length > 0 && (
+                <div className="px-4 py-2 bg-red-50 text-[11px] text-red-700 border-b">
+                    名簿に一致しない人 (適用されません): {[...new Set(shiftPreview.unmatched.map(u => u.name))].join(' / ')}
+                </div>
+            )}
+            <div className="flex-1 overflow-auto">
+                <table className="w-full text-[11px] border-collapse">
+                    <thead className="bg-gray-100 sticky top-0"><tr>{['日付','氏名','開始','終了','IGKA(H)','運転(分)','備考'].map(h => <th key={h} className="border p-1 text-left">{h}</th>)}</tr></thead>
+                    <tbody>
+                        {shiftPreview.entries.map((en, i) => (
+                            <tr key={i} className={en.off ? 'bg-red-50' : (en.remark.includes('推定') || en.remark.includes('要確認')) ? 'bg-yellow-50' : ''}>
+                                <td className="border p-1 font-mono whitespace-nowrap">{en.date}</td><td className="border p-1 whitespace-nowrap">{en.empName}</td>
+                                <td className="border p-1 font-mono">{en.shiftStart}</td><td className="border p-1 font-mono">{en.shiftEnd}</td>
+                                <td className="border p-1 text-blue-700 font-bold">{en.igkAHours || ''}</td><td className="border p-1 text-purple-700 font-bold">{en.driveMins || ''}</td>
+                                <td className="border p-1">{en.remark}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="p-3 border-t flex justify-end gap-2 bg-gray-50">
+                <button onClick={() => setShiftPreview(null)} className="px-4 py-2 text-xs font-bold rounded border bg-white">キャンセル</button>
+                <button onClick={applyShiftPreview} className="px-4 py-2 text-xs font-bold rounded bg-green-600 text-white shadow">この内容を適用</button>
+            </div>
+        </div>
+    </div>
+)}
 
                     {showEmpModal && (
                         <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
