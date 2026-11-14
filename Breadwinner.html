@@ -221,9 +221,9 @@
         const remark = [...o.remark]; if (o.off) remark.unshift('Off(休み)');
         if (o.campus) remark.unshift(`${o.campus}校勤務`);
         if (o.drive && o.drive.length) remark.push(o.drive.join(' / '));
-        if (o.shiftFrom === 'color') remark.push('時間は色付きセルから推定');
         entries.push({ empId: emp.id, empName: emp.name, date, shiftStart: o.shift ? norm(o.shift[0]) : '', shiftEnd: o.shift && o.shift[1] ? norm(o.shift[1]) : '',
-          igkAHours: emp.type === 'full' ? 0 : o.igkA, driveMins: o.driveMins || 0, remark: remark.join(' / '), off: o.off, src: opts.campus });
+          igkAHours: emp.type === 'full' ? 0 : o.igkA, driveMins: o.driveMins || 0, remark: remark.join(' / '), off: o.off, src: opts.campus,
+          estimated: o.shiftFrom === 'color' }); // 備考には書かず、プレビューの黄色表示だけに使う
       }
     }
     return { entries, unmatched, outOfRange };
@@ -411,6 +411,21 @@
                 total += calculateMinutes(match[1], match[2]);
             }
             return total;
+        };
+
+        // ★ 修正: 前のバージョンで備考に自動で入ったメモを、クラウド読込時に取り除く (次の自動保存で消えたままになる)
+        const AUTO_NOTE = '時間は色付きセルから推定';
+        const stripAutoNote = (remark) => remark.split(' / ').map(s => s.split(AUTO_NOTE).join('').trim()).filter(Boolean).join(' / ');
+        const cleanAutoNotes = (allData) => {
+            const next = {};
+            Object.entries(allData || {}).forEach(([empId, days]) => {
+                if (!days || typeof days !== 'object') { next[empId] = days; return; }
+                next[empId] = {};
+                Object.entries(days).forEach(([date, d]) => {
+                    next[empId][date] = (d && typeof d.remark === 'string' && d.remark.includes(AUTO_NOTE)) ? { ...d, remark: stripAutoNote(d.remark) } : d;
+                });
+            });
+            return next;
         };
 
         const SettingPanel = ({ title, children, className = '' }) => (
@@ -878,7 +893,7 @@
                             setEmployees(INITIAL_EMPLOYEES.filter(e => !deleted.includes(e.id)));
                         }
 
-                        if (cloudData.attendanceData) setAttendanceData(cloudData.attendanceData);
+                        if (cloudData.attendanceData) setAttendanceData(cleanAutoNotes(cloudData.attendanceData));
                         if (cloudData.processedFiles) setProcessedFiles(cloudData.processedFiles);
                         if (cloudData.isLocked !== undefined) setIsLocked(cloudData.isLocked);
                     } else {
@@ -2199,7 +2214,7 @@ const exportLeavePdfs = async () => {
                     <thead className="bg-gray-100 sticky top-0"><tr>{['日付','氏名','開始','終了','IGKA(H)','運転(分)','備考'].map(h => <th key={h} className="border p-1 text-left">{h}</th>)}</tr></thead>
                     <tbody>
                         {shiftPreview.entries.map((en, i) => (
-                            <tr key={i} className={en.off ? 'bg-red-50' : (en.remark.includes('推定') || en.remark.includes('要確認')) ? 'bg-yellow-50' : ''}>
+                            <tr key={i} className={en.off ? 'bg-red-50' : (en.estimated || en.remark.includes('要確認')) ? 'bg-yellow-50' : ''}>
                                 <td className="border p-1 font-mono whitespace-nowrap">{en.date}</td><td className="border p-1 whitespace-nowrap">{en.empName}</td>
                                 <td className="border p-1 font-mono">{en.shiftStart}</td><td className="border p-1 font-mono">{en.shiftEnd}</td>
                                 <td className="border p-1 text-blue-700 font-bold">{en.igkAHours || ''}</td><td className="border p-1 text-purple-700 font-bold">{en.driveMins || ''}</td>
