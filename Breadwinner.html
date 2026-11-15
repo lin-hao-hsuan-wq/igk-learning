@@ -72,13 +72,24 @@
     const ol = await page.getOperatorList();
     const O = pdfjs.OPS, paint = new Set([O.fill, O.eoFill, O.fillStroke, O.eoFillStroke, O.closeFillStroke, O.closeEOFillStroke]);
     const mul = (m, n) => [m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1], m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3], m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]];
-    let ctm = [1, 0, 0, 1, 0, 0], fill = '#000000'; const stack = [], rects = [];
+    let ctm = [1, 0, 0, 1, 0, 0], fill = '#000000'; const stack = [], rects = [], vlines = [];
+    const strokeOps = new Set([O.stroke, O.closeStroke]);
     ol.fnArray.forEach((fn, i) => {
       const a = ol.argsArray[i];
       if (fn === O.save) stack.push([ctm, fill]);
       else if (fn === O.restore) { [ctm, fill] = stack.pop() || [[1, 0, 0, 1, 0, 0], fill]; }
       else if (fn === O.transform) ctm = mul(ctm, a);
       else if (fn === O.setFillRGBColor) fill = toHex(a);
+      else if (fn === O.constructPath && strokeOps.has(a[0])) {
+        // ★ 追加: 線で引かれた縦の罫線 (名谷では日と日の境界の太線) を拾う。命令ごとの長さ: 移動/線=3, 曲線=7, 2次曲線=5, 閉じる=1
+        const d = Array.from(a[1] && a[1][0] ? a[1][0] : []); let pts = [];
+        const flush = () => { if (pts.length >= 2) { const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+          if (Math.max(...xs) - Math.min(...xs) < 0.5 && Math.max(...ys) - Math.min(...ys) > 20) vlines.push({ x: (Math.max(...xs) + Math.min(...xs)) / 2, top: Math.min(...ys), bottom: Math.max(...ys) }); } pts = []; };
+        for (let k = 0; k < d.length;) { const op = d[k]; if (op === 0) flush();
+          if (op === 0 || op === 1) pts.push([ctm[0]*d[k+1] + ctm[2]*d[k+2] + ctm[4], H - (ctm[1]*d[k+1] + ctm[3]*d[k+2] + ctm[5])]);
+          k += op === 4 ? 1 : op === 2 ? 7 : op === 3 ? 5 : 3; }
+        flush();
+      }
       else if (fn === O.constructPath && paint.has(a[0])) {
         const d = Array.from(a[1] && a[1][0] ? a[1][0] : []);
         const xs = [], ys = [];
@@ -99,7 +110,7 @@
       const top = H - t.transform[5] - t.height;
       return { text: t.str.normalize('NFKC').trim(), x0: t.transform[4], x1: t.transform[4] + t.width, top, bottom: top + t.height, bold, size: t.height };
     });
-    return { rects, words, H };
+    return { rects, words, H, vlines };
   }
 
   // 1ページ=1か月分(5週×5日)の名谷シフト表を解析
@@ -119,8 +130,17 @@
       const labs = words.filter((w) => w.top >= y0 && w.top < y1 && /^\d{1,2}:\d{2}$/.test(w.text) && w.x1 < edges[0] + 5).sort((a, b) => a.top - b.top);
       const rows = labs.map((l, i) => ({ yc: (l.top + l.bottom) / 2, t: tmin(l.text), d: i + 1 < labs.length ? tmin(labs[i + 1].text) - tmin(l.text) : 30 }));
       const covered = (r) => rows.filter((x) => x.yc >= r.top - 0.5 && x.yc <= r.bottom + 0.5);
+      // ★ 修正: 日の境界は、日と日の間の太い縦線から取る。名谷の表は日ごとに人数が違って幅も違うため、
+      // 日付と日付の中間で切ると境界が最大で1人分ずれていた (例: 10/9 の左端の 加藤 Yuri が抜けていた)。
+      // 線が見つからない日だけ、これまでの中間で切る方法を使う。月曜の左側は時刻の列を含めない。
+      const ym = row[0].top + 1;
+      const bx = [...new Set((ex.vlines || []).filter((v) => v.top <= ym && v.bottom >= ym).map((v) => Math.round(v.x * 10) / 10))].sort((a, b) => a - b);
+      const axisR = labs.length ? Math.max(...labs.map((l) => l.x1)) + 0.5 : -Infinity;
+      const labelCx = (w) => { const wd = words.find((v) => Math.abs(v.top - w.top) < 1 && v.x0 >= w.x1 - 1 && v.x0 <= w.x1 + 2 && /^[(（]/.test(v.text)); return wd ? (w.x0 + wd.x1) / 2 : cx(w); };
+      const cellOf = (di) => { const c = labelCx(row[di]); const L = bx.filter((x) => x < c).pop(), R = bx.find((x) => x > c);
+        return (L == null || R == null) ? [edges[di], edges[di + 1]] : [Math.max(L, axisR), R]; };
       row.forEach((dw, di) => {
-        const xa = edges[di], xb = edges[di + 1];
+        const [xa, xb] = cellOf(di);
         const inb = words.filter((w) => w.x0 >= xa && w.x0 < xb && w.top >= y0 && w.top < y1 && w.top > labs[0].top - 3);
         const bold = inb.filter((w) => w.bold && w.size < 5.5 && !/^[\d/（）()]/.test(w.text)).sort((a, b) => a.top - b.top);
         let people = [];
@@ -142,10 +162,20 @@
           else if (/(\d{1,2}:\d{2})-/.test(txt)) { o.shift = [txt.match(/(\d{1,2}:\d{2})-/)[1], null]; o.shiftFrom = 'text'; o.remark.push('終了時刻なし(要確認)'); }
           if (/OFF\?/.test(txt)) o.remark.push('OFF?(要確認)'); else if (/Off/.test(txt)) o.off = true;
           if (/AMoff/i.test(txt)) o.remark.push('AM off(午前休)');
+          // ★ 追加: 「確認中」は時間が決まっていない印。黄色いセルを時間と読まないようにする (例: 11/25 Bjoerg)
+          if (!o.shift && /確認中/.test(txt)) { o.remark.push('確認中(要確認)'); o.tbd = true; }
           if (!o.shift && !o.off) {
             const above = inb.filter((w) => near(w, p.top - 24, p.top - 3)).sort((a, b) => a.top - b.top).map((w) => w.text).join('').replace(/\s/g, '');
             const m3 = above.match(/(\d{1,2}(?::\d{2})?)-(\d{1,2}(?::\d{2})?)/);
             if (m3) { o.shift = [m3[1], m3[2]]; o.shiftFrom = 'above'; }
+          }
+          // ★ 修正: 名前のすぐ下が「AM off」などで、時間がもっと下に書いてある場合 (例: 10/13 Linh「14:15-18:15」)。
+          // 同じ列で、次の人の名前の手前まで探す (時刻の「:」があるものだけ。部屋番号などを拾わないため)
+          if (!o.shift && !o.off) {
+            const nextTop = Math.min(y1, ...people.filter((q) => q !== p && Math.abs(cx(q) - cx(p)) < 7 && q.top > p.top).map((q) => q.top));
+            const below = inb.filter((w) => near(w, p.bottom + 22, nextTop)).sort((a, b) => a.top - b.top).map((w) => w.text).join('').replace(/\s/g, '');
+            const m4 = below.match(/(\d{1,2}:\d{2})-(\d{1,2}(?::\d{2})?)/);
+            if (m4) { o.shift = [m4[1], m4[2]]; o.shiftFrom = 'text'; }
           }
         }
         for (const w of inb) if (w.text === '早退') {
@@ -154,25 +184,27 @@
         }
         // 時間の記載がない人: 名前の下の色付きセルの範囲を左の時間軸と照合
         for (const p of people) {
-          const o = info[p.name]; if (o.shift || o.off) continue;
+          const o = info[p.name]; if (o.shift || o.off || o.tbd) continue;
           const nextTop = Math.min(9e9, ...people.filter((q) => q !== p && Math.abs(cx(q) - cx(p)) < 7 && q.top > p.top).map((q) => q.top));
-          const col = rects.filter((r) => r.x0 - 0.5 <= cx(p) && cx(p) <= r.x1 + 0.5 && r.top >= y0 && r.top < y1 && r.bottom >= p.top - 6 && r.top < nextTop && r.color !== '#ffffff');
+          // ★ 修正: グレーのセルは勤務ではない (休みの印) ので数えない (例: 11/20 Linh の列が全部グレー)
+          const col = rects.filter((r) => r.x0 - 0.5 <= cx(p) && cx(p) <= r.x1 + 0.5 && r.top >= y0 && r.top < y1 && r.bottom >= p.top - 6 && r.top < nextTop && r.color !== '#ffffff' && !isGrey(r.color));
           const rs = col.flatMap(covered);
           if (rs.length) { o.shift = [hm(Math.min(...rs.map((x) => x.t))), hm(Math.max(...rs.map((x) => x.t + x.d)))]; o.shiftFrom = 'color'; }
+          // ★ 追加: 時間がどこからも読めなかった人は、プレビューで黄色にして確認してもらう
+          else if (!o.tbd && !o.remark.some((r) => r.includes('要確認'))) o.remark.push('時間の記載なし(要確認)');
         }
         // 洋紅セル = IGKA (対象者のみ)
+        // ★ 修正: 横に並んだ洋紅セルは1つの四角形で描かれる。以前は幅 11.5 ごとに人数を割っていたが、PDFの縮尺で列の幅が変わり
+        // (11月の表は1列 約14.7)、同じ人を2回数えることがあった (例: 11/4 Gio 2時間 → 3時間)。名前の列ごとに1回だけ数える
         const mags = rects.filter((r) => r.color === MAGENTA && r.x0 >= xa && r.x0 < xb && r.top >= y0 && r.top < y1);
-        const colw = 11.5;
         for (const r of mags) {
-          const n = Math.max(1, Math.round((r.x1 - r.x0) / colw));
-          for (let k = 0; k < n; k++) {
-            const a = r.x0 + k * (r.x1 - r.x0) / n, b = r.x0 + (k + 1) * (r.x1 - r.x0) / n;
-            const c = people.filter((p) => p.x0 <= b && p.x1 >= a && p.top <= r.bottom - 1);
-            if (!c.length) continue;
-            const p = c.reduce((x, y) => (y.top > x.top ? y : x));
-            const mins = covered(r).reduce((s, x) => s + x.d, 0);
-            if (IGKA_OK.has(p.name)) info[p.name].igkA += mins / 60;
+          const cols = []; // 列ごとに、その洋紅セルより上で一番下にいる人
+          for (const p of people.filter((q) => cx(q) >= r.x0 - 1 && cx(q) <= r.x1 + 1 && q.top <= r.bottom - 1)) {
+            const g = cols.findIndex((q) => Math.abs(cx(q) - cx(p)) < 7);
+            if (g < 0) cols.push(p); else if (p.top > cols[g].top) cols[g] = p;
           }
+          const mins = covered(r).reduce((s, x) => s + x.d, 0);
+          for (const p of cols) if (IGKA_OK.has(p.name)) info[p.name].igkA += mins / 60;
         }
         for (const [n, o] of Object.entries(info)) { if (BOTH_CAMPUS.has(n)) o.campus = opts.campus || '名谷'; if (o.remark.includes('早退') === false && false) o.remark = o.remark; }
         out[dw.text] = info;
@@ -183,6 +215,9 @@
 
   const norm = (s) => { if (s == null) return ''; return s.includes(':') ? hm(tmin(s)) : hm(+s * 60); };
   const key = (s) => s.toLowerCase().replace(/\s+/g, '');
+  // ★ 追加: シフト表の呼び名 → 名簿の名前。クラウドの名簿に呼び名 (別名) が入っていない人用。
+  // 指定した対応なので校舎を問わず名簿全体から探す (大文字小文字・空白の違いは無視)
+  const NAME_MAP = { linh: 'Tran ThiNhat Linh', hamna: 'Ashfaq Hamna', monika: 'MonikaChowdhury', sadia: 'Islam Sadia' };
   // 名前の照合: 日本語の姓 > 別名の完全一致。校舎(campus)が合う人を優先 (Mariko が六甲/名谷で別人のため)
   const matchEmp = (employees, words, campus, both) => {
     const pools = both ? [employees] : [employees.filter((e) => e.location === campus)];
@@ -190,6 +225,11 @@
       const jp = words.filter((w) => /[^\x00-\x7F]/.test(w));
       const hit = pool.find((e) => jp.some((w) => key(e.name).startsWith(key(w)) || (e.aliases || []).some((a) => key(a) === key(w))))
         || pool.find((e) => words.some((w) => [e.name, ...(e.aliases || [])].some((n) => key(n) === key(w))));
+      if (hit) return hit;
+    }
+    for (const w of words) {
+      const full = NAME_MAP[key(w)]; if (!full) continue;
+      const hit = employees.find((e) => [e.name, ...(e.aliases || [])].some((n) => key(n) === key(full)));
       if (hit) return hit;
     }
     return null;
@@ -226,7 +266,7 @@
         if (o.campus) remark.unshift(`${o.campus}校勤務`);
         if (o.drive && o.drive.length) remark.push(o.drive.join(' / '));
         entries.push({ empId: emp.id, empName: emp.name, date, shiftStart: o.shift ? norm(o.shift[0]) : '', shiftEnd: o.shift && o.shift[1] ? norm(o.shift[1]) : '',
-          igkAHours: emp.type === 'full' ? 0 : o.igkA, driveMins: o.driveMins || 0, remark: remark.join(' / '), off: o.off, src: opts.campus,
+          igkAHours: emp.type === 'full' ? null : o.igkA, driveMins: o.driveMins || 0, remark: remark.join(' / '), off: o.off, src: opts.campus,
           estimated: o.shiftFrom === 'color' }); // 備考には書かず、プレビューの黄色表示だけに使う
       }
     }
@@ -309,6 +349,9 @@
     // ★ 修正: 六甲校判定前の空白除去で誤判定防止
     const cleanText = text.replace(/\s+/g, '');
     if (/Toshi/i.test(cleanText) && /Minori/i.test(cleanText)) return { type: 'rokko', campus: 'rokko', parsed: await parseRokko(pdfjs, data, opts) };
+    // ★ 追加: 文字が読めないPDF (「Adobe PDF」プリンターで印刷したもの等) は「名谷・0件」で終わらせず、理由を出す
+    const timeLabels = tc.items.filter((t) => /^\d{1,2}:\d{2}$/.test((t.str || '').normalize('NFKC').trim())).length;
+    if (timeLabels < 5) throw new Error('PDFの文字が読み取れません。スプレッドシートの「ファイル → ダウンロード → PDF」で保存し直してください（「Adobe PDF」で印刷したPDFは読めません）');
     return { type: 'myodani', campus: 'myodani', parsed: await parseMyodani(pdfjs, data, opts) };
   }
 
@@ -442,6 +485,32 @@
                 Object.entries(days).forEach(([date, d]) => {
                     next[empId][date] = (d && typeof d.remark === 'string' && d.remark.includes(AUTO_NOTE)) ? { ...d, remark: stripAutoNote(d.remark) } : d;
                 });
+            });
+            return next;
+        };
+
+        // ★ 修正: シフト表を取り込み直したら、同じ人・同じ日は新しい内容で置き換える (以前は空欄や 0 だと古い値が残り、備考は足されていくだけだった)
+        // ・シフト時間 / IGKA: 新しい内容どおり (空欄・0 なら消す)。正社員は IGKA を出さない (null) ので触らない
+        // ・駕駛時間: 交通費データや手入力からも入るため、シフト表に書いてある時だけ上書きし、無くても消さない
+        // ・備考: 前回の取り込みで入れた部分 (importRemark) だけ入れ替え、手入力の備考は残す。
+        //   importRemark が無い古いデータは、取り込みだけが付ける決まった文言を入れ替えの対象にする
+        const SHIFT_IMPORT_FLAGS = ['OFF?(要確認)', '終了時刻なし(要確認)', '確認中(要確認)', '時間の記載なし(要確認)', 'AM off(午前休)', 'Off(休み)', '名谷校勤務', '六甲校勤務'];
+        const applyShiftEntries = (prev, entries) => {
+            const next = { ...prev };
+            entries.forEach(en => {
+                next[en.empId] = { ...(next[en.empId] || {}) };
+                const d = { ...(next[en.empId][en.date] || {}) };
+                if (en.shiftStart) d.shiftStart = en.shiftStart; else delete d.shiftStart;
+                if (en.shiftEnd) d.shiftEnd = en.shiftEnd; else delete d.shiftEnd;
+                if (en.igkAHours != null) { if (en.igkAHours > 0) d.igkAHours = en.igkAHours; else delete d.igkAHours; }
+                if (en.driveMins > 0) d.driveMins = en.driveMins;
+                const oldParts = typeof d.importRemark === 'string' ? d.importRemark.split(' / ') : SHIFT_IMPORT_FLAGS;
+                const newParts = en.remark ? en.remark.split(' / ') : [];
+                const kept = (d.remark || '').split(' / ').map(s => s.trim()).filter(s => s && !oldParts.includes(s) && !newParts.includes(s));
+                const remark = [...kept, ...newParts].join(' / ');
+                if (remark) d.remark = remark; else delete d.remark;
+                d.importRemark = en.remark || '';
+                next[en.empId][en.date] = d;
             });
             return next;
         };
@@ -998,7 +1067,7 @@ const handleShiftPdf = async (e) => {
         // PDFの色・座標を読むため、このときだけ pdf.js 6.x を読み込む (既存の 3.11 は有休PDFにそのまま使用)
         const pdfjs = await window.__dynImport('https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.min.mjs');
         pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/pdf.worker.min.mjs';
-        const merged = new Map(), unmatched = [], used = [];
+        const merged = new Map(), unmatched = [], used = [], failed = [];
         let outOfRange = 0;
         for (const file of files) {
             try {
@@ -1011,10 +1080,13 @@ const handleShiftPdf = async (e) => {
                 used.push(`${file.name} (${r.type === 'rokko' ? '六甲' : '名谷'}・${t.entries.length}件)`);
             } catch (err) {
                 addLog(`[シフトPDF] ${file.name} の解析に失敗: ${err.message}`, 'error');
+                failed.push({ name: file.name, msg: err.message });
             }
         }
         const entries = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date) || a.empName.localeCompare(b.empName));
-        setShiftPreview({ entries, unmatched, outOfRange, files: used, start: batchStart, end: batchEnd });
+        // ★ 追加: 読めなかったファイルはプレビューに赤字で出す (同じ理由はまとめて1行)
+        const errors = [...new Set(failed.map(f => f.msg))].map(msg => `✕ ${failed.filter(f => f.msg === msg).map(f => f.name).join('、')}：${msg}`);
+        setShiftPreview({ entries, unmatched, outOfRange, files: used, errors, start: batchStart, end: batchEnd });
         addLog(`[シフトPDF] ${files.length}ファイル / ${entries.length}件を解析しました。プレビューで確認してください。`, 'info');
     } catch (err) {
         addLog(`[シフトPDF] エラー: ${err.message}`, 'error');
@@ -1025,20 +1097,7 @@ const handleShiftPdf = async (e) => {
 
 const applyShiftPreview = () => {
     if (!shiftPreview) return;
-    setAttendanceData(prev => {
-        const next = { ...prev };
-        shiftPreview.entries.forEach(en => {
-            next[en.empId] = { ...(next[en.empId] || {}) };
-            const d = { ...(next[en.empId][en.date] || {}) };
-            if (en.shiftStart) d.shiftStart = en.shiftStart;
-            if (en.shiftEnd) d.shiftEnd = en.shiftEnd;
-            if (en.igkAHours > 0) d.igkAHours = en.igkAHours;
-            if (en.driveMins > 0) d.driveMins = en.driveMins;
-            if (en.remark && !(d.remark || '').includes(en.remark)) d.remark = d.remark ? `${d.remark} / ${en.remark}` : en.remark;
-            next[en.empId][en.date] = d;
-        });
-        return next;
-    });
+    setAttendanceData(prev => applyShiftEntries(prev, shiftPreview.entries));
     addLog(`[シフトPDF] ${shiftPreview.entries.length}件を適用しました。`, 'success');
     setShiftPreview(null);
 };
@@ -2219,6 +2278,7 @@ const exportLeavePdfs = async () => {
                 <div>
                     <h2 className="font-black text-gray-800 text-sm">シフトPDF プレビュー ({shiftPreview.entries.length}件) 期間: {shiftPreview.start} 〜 {shiftPreview.end}</h2>
                     <div className="text-[10px] text-gray-500 mt-0.5">{shiftPreview.files.join(' / ')} {shiftPreview.outOfRange > 0 && ` / 期間外の${shiftPreview.outOfRange}日分は除外`}</div>
+                    {(shiftPreview.errors || []).map((er, i) => <div key={i} className="text-[11px] text-red-600 font-bold mt-0.5">{er}</div>)}
                 </div>
                 <button onClick={() => setShiftPreview(null)} className="text-gray-400 hover:text-red-500"><i className="fa-solid fa-xmark fa-xl"></i></button>
             </div>
