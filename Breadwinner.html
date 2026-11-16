@@ -640,32 +640,44 @@
                                     }
                                     const igkaWithoutPunch = !hasData && parseFloat(dayData.igkAHours) > 0;
 
-                                    const isLeave = dayData.leaveType && (dayData.leaveType.includes('休') || dayData.leaveType.includes('欠'));
+                                    // ★ 修正: 檢查雙假別
+                                    const isLeave = (dayData.leaveType && (dayData.leaveType.includes('休') || dayData.leaveType.includes('欠'))) ||
+                                                    (dayData.leaveType2 && (dayData.leaveType2.includes('休') || dayData.leaveType2.includes('欠')));
 
-                                    if (dayData.leaveType === '有休(2時間)') leave.h2++;
-                                    if (dayData.leaveType === '有休(4時間)') leave.h4++;
-                                    if (dayData.leaveType === '有休(6時間)') leave.h6++;
-                                    if (dayData.leaveType === '有休(8時間)') leave.h8++;
-
-                                    if (dayData.leaveType === '病欠(2時間)') sick.h2++;
-                                    if (dayData.leaveType === '病欠(4時間)') sick.h4++;
-                                    if (dayData.leaveType === '病欠(6時間)') sick.h6++;
-                                    if (dayData.leaveType === '病欠(8時間)') sick.h8++;
-
-                                    if (dayData.leaveType === '欠勤(2時間)') absent.h2++;
-                                    if (dayData.leaveType === '欠勤(4時間)') absent.h4++;
-                                    if (dayData.leaveType === '欠勤(6時間)') absent.h6++;
-                                    if (dayData.leaveType === '欠勤(8時間)') absent.h8++;
+                                    const processLeave = (lt) => {
+                                        if (!lt) return;
+                                        if (lt === '有休(2時間)') leave.h2++;
+                                        if (lt === '有休(4時間)') leave.h4++;
+                                        if (lt === '有休(6時間)') leave.h6++;
+                                        if (lt === '有休(8時間)') leave.h8++;
+                                        if (lt === '病欠(2時間)') sick.h2++;
+                                        if (lt === '病欠(4時間)') sick.h4++;
+                                        if (lt === '病欠(6時間)') sick.h6++;
+                                        if (lt === '病欠(8時間)') sick.h8++;
+                                        if (lt === '欠勤(2時間)') absent.h2++;
+                                        if (lt === '欠勤(4時間)') absent.h4++;
+                                        if (lt === '欠勤(6時間)') absent.h6++;
+                                        if (lt === '欠勤(8時間)') absent.h8++;
+                                    };
+                                    processLeave(dayData.leaveType);
+                                    processLeave(dayData.leaveType2);
 
                                     const mins1 = calculateMinutes(dayData.in, dayData.out);
                                     const mins2 = calculateMinutes(dayData.in2, dayData.out2);
                                     const inOutMins = mins1 + mins2;
                                     totalInOutGlobal += inOutMins;
 
-                                    const leaveMatch = dayData.leaveType ? dayData.leaveType.match(/\((\d)時間\)/) : null;
-                                    const leaveHrs = leaveMatch ? parseInt(leaveMatch[1]) : 0;
+                                    const getLeaveHours = (lt) => {
+                                        const m = lt ? lt.match(/\((\d)時間\)/) : null;
+                                        return m ? parseInt(m[1]) : 0;
+                                    };
+                                    const leaveHrs = getLeaveHours(dayData.leaveType) + getLeaveHours(dayData.leaveType2);
 
-                                    let breakMins = hasData ? (employee.type === 'full' ? (leaveHrs >= 4 ? 0 : 60) : (dayData.break || 0)) : 0;
+                                    // ★ 修正: 依據欄位輸入計算扣休，若未填則根據正社員預設規則
+                                    let parsedBreak = parseInt(dayData.break);
+                                    let defaultBreak = (employee.type === 'full' ? (leaveHrs >= 4 ? 0 : 60) : 0);
+                                    let breakMins = hasData ? (!isNaN(parsedBreak) ? parsedBreak : defaultBreak) : 0;
+
                                     const workMins = Math.max(0, inOutMins - breakMins);
                                     const workHours = workMins / 60;
                                     totalWorkMinsGlobal += workMins;
@@ -756,7 +768,8 @@
                                             </td>
 
                                             <td className="border border-gray-200 p-0.5 text-center align-middle">
-                                                <input disabled={isLocked || !localEditable} className="w-10 text-center bg-transparent outline-none border border-gray-200 rounded py-0.5 mx-auto block" value={dayData.break || (hasData && employee.type==='full' ? (leaveHrs >= 4 ? '0' : '60') : '')} onChange={e=>handleInput(date,'break',e.target.value)} />
+                                                {/* ★ 修正: 依據輸入值直接顯示，不再強制顯示未保存的60 */}
+                                                <input disabled={isLocked || !localEditable} className="w-10 text-center bg-transparent outline-none border border-gray-200 rounded py-0.5 mx-auto block" value={dayData.break !== undefined ? dayData.break : (hasData && employee.type==='full' ? (leaveHrs >= 4 ? '0' : '60') : '')} onChange={e=>handleInput(date,'break',e.target.value)} />
                                             </td>
 
                                             <td className="border border-gray-200 p-1 text-center font-bold text-green-800 bg-green-50 align-middle whitespace-normal">
@@ -794,26 +807,49 @@
                                             <td className="border border-gray-200 p-1 align-middle">
                                                 <div className="flex flex-col gap-1 px-1">
                                                     {employee.type === 'full' && !isH && (
-                                                        <select
-                                                            disabled={isLocked || !localEditable}
-                                                            className="w-full max-w-[120px] text-[10px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer py-0.5"
-                                                            value={dayData.leaveType || ''}
-                                                            onChange={e => handleInput(date, 'leaveType', e.target.value)}
-                                                        >
-                                                            <option value="">- 休暇選択 -</option>
-                                                            <option value="有休(2時間)">有休2H</option>
-                                                            <option value="有休(4時間)">有休4H</option>
-                                                            <option value="有休(6時間)">有休6H</option>
-                                                            <option value="有休(8時間)">有休8H</option>
-                                                            <option value="病欠(2時間)">病欠2H</option>
-                                                            <option value="病欠(4時間)">病欠4H</option>
-                                                            <option value="病欠(6時間)">病欠6H</option>
-                                                            <option value="病欠(8時間)">病欠8H</option>
-                                                            <option value="欠勤(2時間)">欠勤2H</option>
-                                                            <option value="欠勤(4時間)">欠勤4H</option>
-                                                            <option value="欠勤(6時間)">欠勤6H</option>
-                                                            <option value="欠勤(8時間)">欠勤8H</option>
-                                                        </select>
+                                                        <>
+                                                            <select
+                                                                disabled={isLocked || !localEditable}
+                                                                className="w-full max-w-[120px] text-[10px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer py-0.5"
+                                                                value={dayData.leaveType || ''}
+                                                                onChange={e => handleInput(date, 'leaveType', e.target.value)}
+                                                            >
+                                                                <option value="">- 休暇選択 1 -</option>
+                                                                <option value="有休(2時間)">有休2H</option>
+                                                                <option value="有休(4時間)">有休4H</option>
+                                                                <option value="有休(6時間)">有休6H</option>
+                                                                <option value="有休(8時間)">有休8H</option>
+                                                                <option value="病欠(2時間)">病欠2H</option>
+                                                                <option value="病欠(4時間)">病欠4H</option>
+                                                                <option value="病欠(6時間)">病欠6H</option>
+                                                                <option value="病欠(8時間)">病欠8H</option>
+                                                                <option value="欠勤(2時間)">欠勤2H</option>
+                                                                <option value="欠勤(4時間)">欠勤4H</option>
+                                                                <option value="欠勤(6時間)">欠勤6H</option>
+                                                                <option value="欠勤(8時間)">欠勤8H</option>
+                                                            </select>
+                                                            {/* ★ 修正: 加入第二個請假選單以應對半天有休+半天欠勤的狀況 */}
+                                                            <select
+                                                                disabled={isLocked || !localEditable}
+                                                                className="w-full max-w-[120px] text-[10px] bg-white border border-gray-300 rounded outline-none text-gray-700 cursor-pointer py-0.5"
+                                                                value={dayData.leaveType2 || ''}
+                                                                onChange={e => handleInput(date, 'leaveType2', e.target.value)}
+                                                            >
+                                                                <option value="">- 休暇選択 2 -</option>
+                                                                <option value="有休(2時間)">有休2H</option>
+                                                                <option value="有休(4時間)">有休4H</option>
+                                                                <option value="有休(6時間)">有休6H</option>
+                                                                <option value="有休(8時間)">有休8H</option>
+                                                                <option value="病欠(2時間)">病欠2H</option>
+                                                                <option value="病欠(4時間)">病欠4H</option>
+                                                                <option value="病欠(6時間)">病欠6H</option>
+                                                                <option value="病欠(8時間)">病欠8H</option>
+                                                                <option value="欠勤(2時間)">欠勤2H</option>
+                                                                <option value="欠勤(4時間)">欠勤4H</option>
+                                                                <option value="欠勤(6時間)">欠勤6H</option>
+                                                                <option value="欠勤(8時間)">欠勤8H</option>
+                                                            </select>
+                                                        </>
                                                     )}
                                                     <input disabled={isLocked || !localEditable} type="text" className="border-none bg-transparent w-full focus:ring-0 outline-none text-xs" placeholder="備註..." value={dayData.remark || ''} onChange={e => handleInput(date, 'remark', e.target.value)} />
                                                 </div>
@@ -1356,29 +1392,43 @@ const exportLeavePdfs = async () => {
                                 workDays++;
                             }
 
-                            if (d.leaveType === '有休(2時間)') leave.h2++;
-                            if (d.leaveType === '有休(4時間)') leave.h4++;
-                            if (d.leaveType === '有休(6時間)') leave.h6++;
-                            if (d.leaveType === '有休(8時間)') leave.h8++;
+                            // ★ 修正: 檢查雙假別並累加計算
+                            const isLeave = (d.leaveType && (d.leaveType.includes('休') || d.leaveType.includes('欠'))) ||
+                                            (d.leaveType2 && (d.leaveType2.includes('休') || d.leaveType2.includes('欠')));
 
-                            if (d.leaveType === '病欠(2時間)') sick.h2++;
-                            if (d.leaveType === '病欠(4時間)') sick.h4++;
-                            if (d.leaveType === '病欠(6時間)') sick.h6++;
-                            if (d.leaveType === '病欠(8時間)') sick.h8++;
-
-                            if (d.leaveType === '欠勤(2時間)') absent.h2++;
-                            if (d.leaveType === '欠勤(4時間)') absent.h4++;
-                            if (d.leaveType === '欠勤(6時間)') absent.h6++;
-                            if (d.leaveType === '欠勤(8時間)') absent.h8++;
+                            const processLeave = (lt) => {
+                                if (!lt) return;
+                                if (lt === '有休(2時間)') leave.h2++;
+                                if (lt === '有休(4時間)') leave.h4++;
+                                if (lt === '有休(6時間)') leave.h6++;
+                                if (lt === '有休(8時間)') leave.h8++;
+                                if (lt === '病欠(2時間)') sick.h2++;
+                                if (lt === '病欠(4時間)') sick.h4++;
+                                if (lt === '病欠(6時間)') sick.h6++;
+                                if (lt === '病欠(8時間)') sick.h8++;
+                                if (lt === '欠勤(2時間)') absent.h2++;
+                                if (lt === '欠勤(4時間)') absent.h4++;
+                                if (lt === '欠勤(6時間)') absent.h6++;
+                                if (lt === '欠勤(8時間)') absent.h8++;
+                            };
+                            processLeave(d.leaveType);
+                            processLeave(d.leaveType2);
 
                             const mins1 = calculateMinutes(d.in, d.out);
                             const mins2 = calculateMinutes(d.in2, d.out2);
                             const inOutMins = mins1 + mins2;
 
-                            const leaveMatch = d.leaveType ? d.leaveType.match(/\((\d)時間\)/) : null;
-                            const leaveHrs = leaveMatch ? parseInt(leaveMatch[1]) : 0;
+                            const getLeaveHours = (lt) => {
+                                const m = lt ? lt.match(/\((\d)時間\)/) : null;
+                                return m ? parseInt(m[1]) : 0;
+                            };
+                            const leaveHrs = getLeaveHours(d.leaveType) + getLeaveHours(d.leaveType2);
 
-                            let breakMins = hasData ? (emp.type === 'full' ? (leaveHrs >= 4 ? 0 : 60) : (d.break || 0)) : 0;
+                            // ★ 修正: Excel匯出也同步使用欄位設定的休息時間
+                            let parsedBreak = parseInt(d.break);
+                            let defaultBreak = (emp.type === 'full' ? (leaveHrs >= 4 ? 0 : 60) : 0);
+                            let breakMins = hasData ? (!isNaN(parsedBreak) ? parsedBreak : defaultBreak) : 0;
+
                             const workMins = Math.max(0, inOutMins - breakMins);
                             const workHours = workMins / 60;
                             totalWorkMinsGlobal += workMins;
@@ -1437,7 +1487,8 @@ const exportLeavePdfs = async () => {
                             totalTrans += transFee;
 
                             const shiftStr = shiftStart && shiftEnd ? `${shiftStart}-${shiftEnd}` : '';
-                            const displayRemark = [d.leaveType, d.remark].filter(Boolean).join(' / ');
+                            // ★ 修正: 將兩個假別都顯示在 Excel 的備註中
+                            const displayRemark = [d.leaveType, d.leaveType2, d.remark].filter(Boolean).join(' / ');
 
                             const row = ws.addRow([
                                 payMonth,
@@ -1459,8 +1510,6 @@ const exportLeavePdfs = async () => {
                                 transFee || '',
                                 displayRemark
                             ]);
-
-                            const isLeave = d.leaveType && (d.leaveType.includes('休') || d.leaveType.includes('欠'));
 
                             if (isLeave) {
                                 row.eachCell({ includeEmpty: true }, (cell) => {
@@ -1831,6 +1880,7 @@ const exportLeavePdfs = async () => {
                                 next[empId][dStr].shiftEnd = '';
                                 next[empId][dStr].remark = '';
                                 next[empId][dStr].leaveType = '';
+                                next[empId][dStr].leaveType2 = ''; // ★ 修正: 同步清空假別2
                             }
                         });
                         curr = curr.add(1, 'day');
