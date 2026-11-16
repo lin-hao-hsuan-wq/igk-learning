@@ -697,10 +697,10 @@
                                         let adjustedSStart = sStart.clone();
                                         let adjustedSEnd = sEnd.clone();
 
-                                        if (leaveHrs > 0) {
-                                            let minsToAdjust = 0;
-                                            if (leaveHrs === 2) minsToAdjust = 120;
-                                            else if (leaveHrs >= 4) minsToAdjust = (leaveHrs + 1) * 60;
+                                        // ★ 修正: 僅在班表仍為全日班(>縮短後長度)且非整日請假(<8H)時才調整起訖時間，避免重複扣減或將正常工時誤算為後残業
+                                        const shiftSpanMins = sEnd.diff(sStart, 'minute');
+                                        if (leaveHrs > 0 && leaveHrs < 8 && shiftSpanMins > (9 - leaveHrs) * 60) {
+                                            let minsToAdjust = leaveHrs === 2 ? 120 : (leaveHrs + 1) * 60;
 
                                             let delayIn = aIn ? Math.max(0, aIn.diff(sStart, 'minute')) : 0;
                                             let earlyOut = aOut ? Math.max(0, sEnd.diff(aOut, 'minute')) : 0;
@@ -1447,10 +1447,10 @@ const exportLeavePdfs = async () => {
                                 let adjustedSStart = sStart.clone();
                                 let adjustedSEnd = sEnd.clone();
 
-                                if (leaveHrs > 0) {
-                                    let minsToAdjust = 0;
-                                    if (leaveHrs === 2) minsToAdjust = 120;
-                                    else if (leaveHrs >= 4) minsToAdjust = (leaveHrs + 1) * 60;
+                                // ★ 修正: 僅在班表仍為全日班(>縮短後長度)且非整日請假(<8H)時才調整起訖時間
+                                const shiftSpanMins = sEnd.diff(sStart, 'minute');
+                                if (leaveHrs > 0 && leaveHrs < 8 && shiftSpanMins > (9 - leaveHrs) * 60) {
+                                    let minsToAdjust = leaveHrs === 2 ? 120 : (leaveHrs + 1) * 60;
 
                                     let delayIn = aIn ? Math.max(0, aIn.diff(sStart, 'minute')) : 0;
                                     let earlyOut = aOut ? Math.max(0, sEnd.diff(aOut, 'minute')) : 0;
