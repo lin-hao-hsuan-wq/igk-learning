@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGK Afterschool 每月電子報自動產生器</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PDF.js for direct PDF reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- html2canvas for crisp PNG export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Google Fonts: Inter & Noto Sans JP/TC for clean typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', 'Noto Sans JP', sans-serif;
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
+
+    /* Newsletter Exact Styling */
+    #newsletter-canvas {
+      font-family: 'Inter', 'Noto Sans JP', 'Noto Sans TC', Arial, sans-serif;
+      background-color: #ffffff;
+      width: 1180px;
+      min-width: 1180px;
+      box-sizing: border-box;
+      padding: 18px;
+      color: #222222;
+      user-select: none;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.5fr));
+      border-top: 1px solid #cccccc;
+      border-left: 1px solid #cccccc;
+    }
+
+    .cal-header-cell {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13.5px;
+      color: #ffffff;
+      border-right: 1px solid #cccccc;
+      border-bottom: 1px solid #cccccc;
+      letter-spacing: 0.2px;
+    }
+
+    .cal-day-cell {
+      height: 118px;
+      border-right: 1px solid #cccccc;
+      border-bottom: 1px solid #cccccc;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background-color: #ffffff;
+      padding: 4px 5px;
+      box-sizing: border-box;
+      transition: background-color 0.15s ease;
+    }
+
+    .cal-day-cell.holiday-cell {
+      background-color: #fce8ec;
+    }
+
+    .cal-day-number {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.1;
+      z-index: 2;
+      padding-left: 2px;
+      padding-top: 1px;
+    }
+
+    .cal-icon-wrapper {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cal-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      background-color: #ffffff;
+      border: 1.8px solid #2b4c7e;
+      color: #1e3a8a;
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      line-height: 1;
+    }
+
+    /* High-Contrast Rectangular Season School Pill */
+    .camp-pill {
+      font-size: 10.5px;
+      font-weight: 700;
+      line-height: 1.15;
+      text-align: center;
+      border-radius: 4px;
+      padding: 3.5px 4px;
+      margin-top: auto;
+      width: 100%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      word-break: break-word;
+      letter-spacing: 0.1px;
+    }
+
+    /* Special Program Merged Overlay */
+    .special-program-merged {
+      position: relative;
+      border-right: 1px solid #cccccc;
+      border-bottom: 1px solid #cccccc;
+      height: 118px;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 5px;
+      box-sizing: border-box;
+    }
+
+    .special-program-dates {
+      display: grid;
+      width: 100%;
+    }
+
+    .special-program-box {
+      margin: auto;
+      width: 84%;
+      height: 68px;
+      border: 4.5px solid #facc15;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #ffffff;
+    }
+
+    .special-program-text {
+      color: #d63384;
+      font-weight: 800;
+      font-size: 16.5px;
+      line-height: 1.2;
+      letter-spacing: 0.5px;
+      text-align: center;
+    }
+
+    /* Right Legend Section */
+    .legend-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 6px;
+      border-bottom: 1.5px dotted #cbd5e1;
+      min-height: 119px;
+    }
+
+    .legend-row:last-child {
+      border-bottom: none;
+    }
+
+    .legend-icon-col {
+      width: 96px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .legend-subject-title {
+      margin-top: 5px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #50729B;
+      text-align: center;
+    }
+
+    .legend-items-col {
+      flex: 1;
+      padding-left: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-item-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+    }
+
+    .legend-circle-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 9999px;
+      border: 1.6px solid #333333;
+      color: #222222;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+      background-color: #ffffff;
+    }
+
+    .legend-activity-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #222222;
+      line-height: 1.3;
+    }
+
+    .legend-activity-desc {
+      font-size: 13.5px;
+      color: #6b7280;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    /* Drag & Drop Zone Active State */
+    .drop-zone-active {
+      border-color: #4f46e5 !important;
+      background-color: #eef2ff !important;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background-color: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      #preview-scroll-container {
+        overflow: visible !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+      }
+      #newsletter-canvas {
+        width: 100% !important;
+        min-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      @page {
+        size: landscape;
+        margin: 8mm;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Navigation & Action Bar -->
+  <header class="no-print bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow">
+          IGK
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-gray-900 leading-tight">IGK Afterschool 每月電子報自動產生器</h1>
+          <p class="text-xs text-gray-500">直接上傳當月課表 PDF 與 Season School PDF，自動辨識日期、季節配色並產生電子報</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="loadDec2026Sample()" class="px-3 py-2 text-xs sm:text-sm font-medium bg-amber-50 text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-100 transition">
+          載入 2026年12月 範例
+        </button>
+        <button onclick="downloadPNG()" id="btn-download-png" class="px-4 py-2 text-xs sm:text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          下載高畫質圖片 (PNG)
+        </button>
+        <button onclick="window.print()" class="px-4 py-2 text-xs sm:text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          列印 / 存成 PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification Box -->
+  <div id="toast-box" class="no-print fixed bottom-5 right-5 z-50 hidden transform transition-all duration-300">
+    <div id="toast-content" class="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2">
+      <span id="toast-message">訊息提示</span>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Step 1 & 2: Collapsible Control Panel -->
+    <section class="no-print bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="bg-gray-50 px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-md">步驟 1</span>
+          <h2 class="font-bold text-gray-800 text-sm sm:text-base">上傳當月課程 PDF ＆ 選擇特別課程 / Season School</h2>
+        </div>
+        <button onclick="toggleEditorPanel()" id="toggle-editor-btn" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 underline">
+          收合編輯面板
+        </button>
+      </div>
+
+      <div id="editor-panel-body" class="p-5 space-y-6">
+        <!-- Row 1: Lesson Plan PDF Upload + Year/Month -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+          <!-- PDF Dropzone (8 cols) -->
+          <div class="lg:col-span-8">
+            <label class="block text-xs font-bold text-gray-700 mb-1.5">
+              1. 上傳當月 Afterschool Lesson Plan PDF 檔案（自動辨識月份、每日科目與活動）
+            </label>
+            <div id="lesson-pdf-dropzone"
+                 onclick="document.getElementById('lesson-pdf-input').click()"
+                 ondragover="handleDragOver(event, 'lesson-pdf-dropzone')"
+                 ondragleave="handleDragLeave(event, 'lesson-pdf-dropzone')"
+                 ondrop="handleLessonPdfDrop(event)"
+                 class="border-2 border-dashed border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50/80 rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[116px]">
+              <input type="file" id="lesson-pdf-input" accept=".pdf,application/pdf" class="hidden" onchange="handleLessonPdfSelect(event)" />
+              <div class="flex items-center gap-2 text-indigo-700 font-bold text-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                <span id="lesson-pdf-status">點擊此處或將當月 Lesson Plan PDF 拖曳至此上傳</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">支援直接讀取如「IGK Afterschool Lesson Plan - December 2026.pdf」</p>
+            </div>
+          </div>
+
+          <!-- Year & Month Selector (4 cols) -->
+          <div class="lg:col-span-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-center space-y-3">
+            <div class="text-xs font-bold text-gray-700">2. 確認電子報年份與月份</div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-gray-500 mb-1">年份 (Year)</label>
+                <input type="number" id="input-year" value="2026" min="2020" max="2040" onchange="handleYearMonthChange()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white font-semibold" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-gray-500 mb-1">月份 (Month)</label>
+                <select id="input-month" onchange="handleYearMonthChange()" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white font-semibold">
+                  <option value="1">1 月 (January)</option>
+                  <option value="2">2 月 (February)</option>
+                  <option value="3">3 月 (March)</option>
+                  <option value="4">4 月 (April)</option>
+                  <option value="5">5 月 (May)</option>
+                  <option value="6">6 月 (June)</option>
+                  <option value="7">7 月 (July)</option>
+                  <option value="8">8 月 (August)</option>
+                  <option value="9">9 月 (September)</option>
+                  <option value="10">10 月 (October)</option>
+                  <option value="11">11 月 (November)</option>
+                  <option value="12" selected>12 月 (December)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Interactive Checkboxes for SPECIAL PROGRAM & Season School -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- Card A: SPECIAL PROGRAM Checkbox + Date Picker Grid -->
+          <div class="border border-amber-200 bg-amber-50/40 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" id="chk-has-special" checked onchange="toggleSpecialSection()" class="w-5 h-5 text-amber-500 rounded border-gray-300 focus:ring-amber-400" />
+                <span class="font-bold text-gray-900 text-sm">本月有 SPECIAL PROGRAM（特別課程）</span>
+              </label>
+              <span class="text-[11px] font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded">連續日期自動合併黃框</span>
+            </div>
+
+            <div id="special-program-controls" class="space-y-3 pt-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-gray-600 whitespace-nowrap">框內文字：</span>
+                <input type="text" id="input-special-label" value="SPECIAL PROGRAM" oninput="renderNewsletter()" class="w-full px-3 py-1.5 text-xs font-bold text-pink-700 border border-amber-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-400" />
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-gray-700 mb-1.5">請勾選 SPECIAL PROGRAM 日期（可複選，上方日期數字仍會保留）：</div>
+                <div id="special-date-pills" class="grid grid-cols-7 gap-1.5">
+                  <!-- Rendered dynamically by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card B: Season School Checkbox + PDF Upload + Season Theme Selector -->
+          <div class="border border-emerald-200 bg-emerald-50/40 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" id="chk-has-season" checked onchange="toggleSeasonSection()" class="w-5 h-5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" />
+                <span class="font-bold text-gray-900 text-sm">本月有 Season School（季節營隊）</span>
+              </label>
+              <span class="text-[11px] font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">自動套用季節專屬高對比色塊</span>
+            </div>
+
+            <div id="season-school-controls" class="space-y-3 pt-1">
+              <!-- Season Theme Selector -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="season-theme-buttons">
+                <button type="button" onclick="setSeasonTheme('Spring')" data-season="Spring" class="season-btn px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5">
+                  <span class="w-3 h-3 rounded-sm inline-block" style="background:#D81B60;"></span> Spring (春)
+                </button>
+                <button type="button" onclick="setSeasonTheme('Summer')" data-season="Summer" class="season-btn px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5">
+                  <span class="w-3 h-3 rounded-sm inline-block" style="background:#0277BD;"></span> Summer (夏)
+                </button>
+                <button type="button" onclick="setSeasonTheme('Autumn')" data-season="Autumn" class="season-btn px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5">
+                  <span class="w-3 h-3 rounded-sm inline-block" style="background:#D84315;"></span> Autumn (秋)
+                </button>
+                <button type="button" onclick="setSeasonTheme('Winter')" data-season="Winter" class="season-btn px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5">
+                  <span class="w-3 h-3 rounded-sm inline-block" style="background:#43A047;"></span> Winter (冬)
+                </button>
+              </div>
+
+              <!-- Season School PDF Upload Box -->
+              <div id="season-pdf-dropzone"
+                   onclick="document.getElementById('season-pdf-input').click()"
+                   ondragover="handleDragOver(event, 'season-pdf-dropzone')"
+                   ondragleave="handleDragLeave(event, 'season-pdf-dropzone')"
+                   ondrop="handleSeasonPdfDrop(event)"
+                   class="border-2 border-dashed border-emerald-400 bg-white hover:bg-emerald-50 rounded-lg p-3 text-center cursor-pointer transition">
+                <input type="file" id="season-pdf-input" accept=".pdf,application/pdf" class="hidden" onchange="handleSeasonPdfSelect(event)" />
+                <div class="flex items-center justify-center gap-1.5 text-emerald-800 font-bold text-xs">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  <span id="season-pdf-status">上傳 Season School 行事曆 PDF（或直接在下方輸入日期與活動）</span>
+                </div>
+              </div>
+
+              <!-- Season Legend Title & Editable Schedule List -->
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div class="sm:col-span-5">
+                  <label class="block text-[11px] font-semibold text-gray-600 mb-1">左下角圖例文字：</label>
+                  <input type="text" id="input-camp-title" value="Winter School 午前のプログラム" oninput="renderNewsletter()" class="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg bg-white" />
+                </div>
+                <div class="sm:col-span-7">
+                  <label class="block text-[11px] font-semibold text-gray-600 mb-1">營隊日期與名稱（格式：日期: 名稱）：</label>
+                  <textarea id="raw-camp-plan" rows="3" oninput="syncCampTextareaToState()" class="w-full p-2 text-xs font-mono border border-gray-300 rounded-lg bg-white" placeholder="25: Christmas Party&#10;28: Charity Project&#10;29: Sheep S'mores Cooking"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Day-by-Day Fine-Tune Table -->
+        <div class="border-t border-gray-200 pt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-md">步驟 2</span>
+              <h3 class="font-bold text-gray-800 text-sm">每日課程與活動細節微調（可直接修改活動名稱或新增 Cooking 補充說明）</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="toggleRawTextDrawer()" class="text-xs font-medium text-gray-600 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg">
+                檢視 / 貼上純文字課表
+              </button>
+              <button onclick="toggleDayTable()" id="toggle-daytable-btn" class="text-xs font-medium text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg">
+                展開 / 收合每日微調表
+              </button>
+            </div>
+          </div>
+
+          <!-- Optional Raw Text Drawer (Hidden by default since PDF upload is primary) -->
+          <div id="raw-text-drawer" class="hidden mb-3 bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-700">PDF 解析出的原始課表文字（也可以直接貼上文字後點擊重新解析）：</span>
+              <button onclick="parseRawInputs()" class="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700">
+                重新解析文字
+              </button>
+            </div>
+            <textarea id="raw-lesson-plan" rows="4" class="w-full p-2.5 text-xs font-mono border border-gray-300 rounded-lg bg-white"></textarea>
+          </div>
+
+          <div id="day-table-wrapper" class="overflow-x-auto border border-gray-200 rounded-xl max-h-80">
+            <table class="min-w-full divide-y divide-gray-200 text-xs">
+              <thead class="bg-gray-100 sticky top-0 z-10">
+                <tr>
+                  <th class="px-3 py-2 text-left font-bold text-gray-700 w-20">日期</th>
+                  <th class="px-3 py-2 text-left font-bold text-gray-700 w-36">狀態 / 特殊日</th>
+                  <th class="px-3 py-2 text-left font-bold text-gray-700 w-36">科目分類</th>
+                  <th class="px-3 py-2 text-left font-bold text-gray-700 w-52">活動名稱 (自動編號)</th>
+                  <th class="px-3 py-2 text-left font-bold text-gray-700">副標題 / 補充說明 (選填)</th>
+                  <th class="px-3 py-2 text-left font-bold text-emerald-700 w-44">Season School 標籤</th>
+                </tr>
+              </thead>
+              <tbody id="day-editor-tbody" class="divide-y divide-gray-100 bg-white">
+                <!-- Populated dynamically by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Live Newsletter Preview Area -->
+    <section class="space-y-2">
+      <div class="no-print flex items-center justify-between px-1">
+        <div class="flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-md">即時預覽</span>
+          <h2 class="font-bold text-gray-800 text-sm sm:text-base">Newsletter 輸出畫面預覽（100% 還原設計格式）</h2>
+        </div>
+        <span class="text-xs text-gray-500">若螢幕較窄，可左右滑動檢視完整版面</span>
+      </div>
+
+      <div id="preview-scroll-container" class="overflow-x-auto bg-gray-200/70 p-4 rounded-2xl border border-gray-300 shadow-inner flex justify-start xl:justify-center">
+        <!-- Exact Newsletter Canvas -->
+        <div id="newsletter-canvas" class="shadow-lg">
+          <div class="flex flex-row gap-6 items-start">
+            <!-- LEFT COLUMN: Calendar Grid + Camp Footer Legend (~60%) -->
+            <div class="w-[690px] flex-shrink-0 flex flex-col">
+              <div id="calendar-grid-container" class="cal-grid">
+                <!-- Rendered by JS -->
+              </div>
+              <!-- Camp Legend Footer -->
+              <div id="camp-footer-legend" class="mt-2.5 flex items-center gap-2.5 pl-0.5">
+                <span id="camp-footer-swatch" class="inline-block w-11 h-5 rounded flex-shrink-0" style="background-color: #43A047;"></span>
+                <span id="camp-footer-text" class="text-[13.5px] font-medium text-gray-800 tracking-wide">
+                  Winter School 午前のプログラム（25・28・29日）
+                </span>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: 6 Subject Categories Legend (~40%) -->
+            <div id="subject-legend-container" class="flex-1 flex flex-col pt-0.5">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Configure PDF.js worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    /**
+     * Season Color Themes (High-Contrast Rectangular Badges & Subtle Cell Accents)
+     */
+    const SEASON_THEMES = {
+      Spring: {
+        name: 'Spring',
+        zh: '春',
+        badgeBg: '#D81B60',    // Vibrant Sakura Magenta
+        badgeText: '#FFFFFF',
+        cellTint: '#FFF5F8',   // Very subtle sakura tint for clear readability
+        defaultTitle: 'Spring School 午前のプログラム'
+      },
+      Summer: {
+        name: 'Summer',
+        zh: '夏',
+        badgeBg: '#0277BD',    // Crisp Ocean Blue
+        badgeText: '#FFFFFF',
+        cellTint: '#F2FAFE',   // Subtle sky tint
+        defaultTitle: 'Summer School 午前のプログラム'
+      },
+      Autumn: {
+        name: 'Autumn',
+        zh: '秋',
+        badgeBg: '#D84315',    // Rich Maple Terracotta
+        badgeText: '#FFFFFF',
+        cellTint: '#FFF7F4',   // Subtle warm amber tint
+        defaultTitle: 'Autumn School 午前のプログラム'
+      },
+      Winter: {
+        name: 'Winter',
+        zh: '冬',
+        badgeBg: '#43A047',    // Classic Forest Green (matches reference image)
+        badgeText: '#FFFFFF',
+        cellTint: '#FFFFFF',   // Clean white cell as in reference image
+        defaultTitle: 'Winter School 午前のプログラム'
+      }
+    };
+
+    /**
+     * Subject Definitions & Custom High-Precision SVGs matching the reference image
+     */
+    const SUBJECTS = [
+      {
+        id: 'Science',
+        label: 'Science',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" fill="#B8E2F4" />
+            <!-- Erlenmeyer Flask -->
+            <path d="M56 18 H68 V22 H66 V36 L80 64 C82 68 79 72 74 72 H50 C45 72 42 68 44 64 L58 36 V22 H56 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.6" stroke-linejoin="round"/>
+            <!-- Yellow/Orange Liquid inside Flask -->
+            <path d="M51 52 H73 L79 64 C80.5 67 78.5 70 74.5 70 H49.5 C45.5 70 43.5 67 45 64 Z" fill="#f59e0b" />
+            <!-- Bubbles -->
+            <circle cx="62" cy="44" r="2.2" fill="#f59e0b" />
+            <circle cx="58" cy="60" r="2.5" fill="#ffffff" opacity="0.85" />
+            <circle cx="67" cy="63" r="1.8" fill="#ffffff" opacity="0.85" />
+            <!-- Magnifying Glass -->
+            <g transform="translate(-4, 6)">
+              <line x1="33" y1="62" x2="21" y2="75" stroke="#1e293b" stroke-width="5.5" stroke-linecap="round"/>
+              <line x1="33" y1="62" x2="21" y2="75" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="43" cy="51" r="15" fill="#e0f2fe" fill-opacity="0.82" stroke="#1e293b" stroke-width="2.8"/>
+              <circle cx="43" cy="51" r="11.5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="14 18" stroke-linecap="round"/>
+            </g>
+          </svg>
+        `
+      },
+      {
+        id: 'Cooking',
+        label: 'Cooking',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" fill="#FBF0B2" />
+            <!-- Chef Hat -->
+            <path d="M33 44 C26 44 23 36 28 30 C27 22 36 17 43 21 C47 16 55 16 59 21 C66 17 75 22 74 30 C79 36 76 44 69 44 V53 H33 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="33" y1="47" x2="69" y2="47" stroke="#1e293b" stroke-width="2"/>
+            <line x1="42" y1="36" x2="42" y2="44" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="51" y1="34" x2="51" y2="44" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="60" y1="36" x2="60" y2="44" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/>
+            <!-- Wooden Rolling Pin with Pink Handles & Wire Whisk -->
+            <g transform="translate(0, 6)">
+              <rect x="27" y="55" width="46" height="8" rx="3" fill="#ffffff" stroke="#1e293b" stroke-width="2.2"/>
+              <rect x="19" y="57" width="8" height="4" rx="1.5" fill="#f472b6" stroke="#1e293b" stroke-width="2"/>
+              <rect x="73" y="57" width="8" height="4" rx="1.5" fill="#f472b6" stroke="#1e293b" stroke-width="2"/>
+              <rect x="22" y="68" width="18" height="5" rx="2.5" fill="#cbd5e1" stroke="#1e293b" stroke-width="2"/>
+              <path d="M40 70.5 C52 63 74 64 76 70.5 C74 77 52 78 40 70.5 Z" fill="none" stroke="#1e293b" stroke-width="2"/>
+              <path d="M40 70.5 C52 66.5 72 67.5 75 70.5 C72 73.5 52 74.5 40 70.5 Z" fill="none" stroke="#1e293b" stroke-width="1.6"/>
+            </g>
+          </svg>
+        `
+      },
+      {
+        id: 'Art',
+        label: 'Art',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" fill="#5CB3D6" />
+            <!-- Beige Wooden Painter's Palette -->
+            <path d="M52 22 C70 22 82 34 80 50 C78 63 67 70 57 67 C52 65 52 59 47 59 C42 59 41 68 33 68 C23 68 18 57 20 45 C23 30 36 22 52 22 Z" fill="#fde68a" stroke="#1e293b" stroke-width="2.4" stroke-linejoin="round"/>
+            <circle cx="32" cy="56" r="4.5" fill="#5CB3D6" stroke="#1e293b" stroke-width="2"/>
+            <!-- Red, Yellow, Green, Blue Paint Dabs -->
+            <circle cx="34" cy="36" r="4.8" fill="#ef4444" />
+            <circle cx="49" cy="30" r="4.8" fill="#eab308" />
+            <circle cx="65" cy="35" r="4.8" fill="#22c55e" />
+            <circle cx="69" cy="49" r="4.8" fill="#2563eb" />
+            <!-- Wooden Paintbrush -->
+            <g transform="rotate(-38 52 62)">
+              <rect x="48" y="34" width="6" height="44" rx="3" fill="#92400e" stroke="#1e293b" stroke-width="2"/>
+              <rect x="48" y="70" width="6" height="7" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.8"/>
+              <path d="M47 77 H55 L53 87 C52 89 50 89 49 87 Z" fill="#ec4899" stroke="#1e293b" stroke-width="1.8"/>
+            </g>
+          </svg>
+        `
+      },
+      {
+        id: 'Craft',
+        label: 'Craft',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <!-- Grass Green Circle Background (#2FA442) -->
+            <circle cx="50" cy="50" r="46" fill="#2FA442" />
+            <!-- Layer 1: Bottom-left tilted light green square -->
+            <g transform="rotate(14 34 62)">
+              <rect x="20" y="48" width="28" height="28" rx="1.5" fill="#6ED17A" stroke="#45B856" stroke-width="3" />
+            </g>
+            <!-- Layer 2: Middle-left upright orange-bordered peach square -->
+            <rect x="22" y="31" width="38" height="38" rx="1.5" fill="#FAD28C" stroke="#F39C12" stroke-width="3.4" />
+            <!-- Layer 3: Top-right tilted pink paper square with magenta border & cut-out notch -->
+            <g transform="rotate(16 58 38)">
+              <path d="M40 20 H74 V33 L70 35 L74 37 V54 H40 Z" fill="#F89EC2" stroke="#E61E7A" stroke-width="3.4" stroke-linejoin="round" />
+              <circle cx="74" cy="41" r="1.8" fill="#2FA442" />
+            </g>
+            <!-- Layer 4: Front-center rotated periwinkle-blue diamond with navy stroke -->
+            <g transform="rotate(-42 44 45)">
+              <rect x="25" y="26" width="38" height="38" rx="2" fill="#8F9BE0" stroke="#283891" stroke-width="3.8" />
+            </g>
+            <!-- Scissors overlapping bottom-right of blue diamond -->
+            <g>
+              <!-- Lower horizontal-ish blade -->
+              <path d="M51 54 L67 59 L65 64 L49 58 Z" fill="#FFFFFF" stroke="#5BA8E0" stroke-width="2.6" stroke-linejoin="round" />
+              <!-- Upper cutting blade pointing up-left -->
+              <path d="M56 59 L47 36 C49 38 55 47 59 57 Z" fill="#FFFFFF" stroke="#5BA8E0" stroke-width="2.8" stroke-linejoin="round" />
+              <!-- Bottom finger loop -->
+              <circle cx="61" cy="69" r="6.2" fill="#FFFFFF" stroke="#5BA8E0" stroke-width="3.2" />
+              <!-- Right finger loop -->
+              <circle cx="73" cy="61" r="6.2" fill="#FFFFFF" stroke="#5BA8E0" stroke-width="3.2" />
+            </g>
+          </svg>
+        `
+      },
+      {
+        id: 'P.E',
+        label: 'P.E',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <!-- Bright Rose-Pink Circle Background (#E5639E) -->
+            <circle cx="50" cy="50" r="46" fill="#E5639E" />
+            <!-- Top Center Golden-Yellow 5-Pointed Star (#FFD400) -->
+            <polygon points="50,12 52.8,19.5 60.8,19.8 54.5,24.6 56.8,32.2 50,27.6 43.2,32.2 45.5,24.6 39.2,19.8 47.2,19.5" fill="#FFD400" stroke="#FFA700" stroke-width="1" stroke-linejoin="round" />
+            <!-- Tiny Yellow/Orange Sparkle Dots around Star -->
+            <circle cx="41" cy="13" r="1.4" fill="#FFB81C" />
+            <circle cx="59" cy="13" r="1.3" fill="#FFB81C" />
+            <circle cx="37" cy="28" r="1.8" fill="#FFB81C" />
+            <circle cx="63" cy="27" r="2.1" fill="#FFB81C" />
+            <!-- Left Child (Girl with Side Ponytail & A-Line Dress) -->
+            <g fill="#FFFFFF">
+              <!-- Girl Head -->
+              <circle cx="36" cy="39" r="6.8" />
+              <!-- Cute Side Ponytail swooping left -->
+              <path d="M32 33 C29 27 23 28 21 34 C19 37 16 37 15 36 C17 40 23 40 27 37 C29 35 31 35 32 33 Z" />
+              <!-- Left Arm raised, Torso, Right Arm raised to center V-junction -->
+              <path d="M17 41 C15 39 18 36 21 38 L31 48 H41 L49 39 C51 37 54 39 52 42 L43 52 L48 73 H25 L30 52 Z" />
+              <!-- Girl Legs -->
+              <rect x="30" y="71" width="4.8" height="12" rx="2.4" />
+              <rect x="37.5" y="71" width="4.8" height="12" rx="2.4" />
+            </g>
+            <!-- Right Child (Boy with Tunic/Shorts) -->
+            <g fill="#FFFFFF">
+              <!-- Boy Head -->
+              <circle cx="64" cy="39" r="6.8" />
+              <!-- Left Arm meeting Girl's hand at center V-junction, Torso, Right Arm raised -->
+              <path d="M48 42 C46 39 49 37 51 39 L59 48 H69 L79 38 C82 36 85 39 83 41 L72 52 V67 H56 V52 Z" />
+              <!-- Boy Legs -->
+              <rect x="57.5" y="65" width="4.8" height="18" rx="2.4" />
+              <rect x="65.5" y="65" width="4.8" height="18" rx="2.4" />
+            </g>
+          </svg>
+        `
+      },
+      {
+        id: 'Show & Tell',
+        label: 'Show & Tell',
+        svg: `
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <!-- Deep Vibrant Red Circle Background (#D6142A) -->
+            <circle cx="50" cy="50" r="46" fill="#D6142A" />
+            <!-- Top Ladybug Cap & Two Short V-Shaped Antennae -->
+            <path d="M47 16 L43 10 M53 16 L57 10" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M40 23 C40 16 60 16 60 23 Z" fill="#FFFFFF" />
+            <circle cx="46" cy="20" r="1.1" fill="#D6142A" />
+            <circle cx="54" cy="20" r="1.1" fill="#D6142A" />
+            <!-- Outer Watermelon Oval Outline -->
+            <ellipse cx="50" cy="53" rx="31" ry="30" fill="#D6142A" stroke="#FFFFFF" stroke-width="3.2" />
+            <!-- Curved Vertical & Bottom Watermelon Stripes -->
+            <path d="M36 26 C24 40 24 66 36 80" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" />
+            <path d="M64 26 C76 40 76 66 64 80" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" />
+            <path d="M44 24 V34 M56 24 V34" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M44 72 V82 M56 72 V82" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" />
+            <!-- Central Rounded-Rectangle TV/Face Screen -->
+            <rect x="29" y="34" width="42" height="38" rx="9" fill="#D6142A" stroke="#FFFFFF" stroke-width="3.2" />
+            <!-- Left & Right Large White Circular Eyes with Red Pupils -->
+            <circle cx="40.5" cy="50" r="4.6" fill="#FFFFFF" />
+            <circle cx="40.5" cy="50" r="1.7" fill="#D6142A" />
+            <circle cx="59.5" cy="50" r="4.6" fill="#FFFFFF" />
+            <circle cx="59.5" cy="50" r="1.7" fill="#D6142A" />
+            <!-- Cute Little Nose Arc -->
+            <path d="M48.5 53.5 Q50 51.5 51.5 53.5" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+            <!-- Happy Smiling Mouth Curve with Cheek Dimple on Right -->
+            <path d="M44.5 59.5 Q50 64.5 55.5 59.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M54.2 58.2 Q56.5 59.2 56.2 61.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        `
+      }
+    ];
+
+    /**
+     * Application State
+     */
+    let appState = {
+      year: 2026,
+      month: 12,
+      season: 'Winter',
+      daysData: {}
+    };
+
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const text = document.getElementById('toast-message');
+      text.textContent = msg;
+      box.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 3400);
+    }
+
+    function toggleEditorPanel() {
+      const body = document.getElementById('editor-panel-body');
+      const btn = document.getElementById('toggle-editor-btn');
+      if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        btn.textContent = '收合編輯面板';
+      } else {
+        body.classList.add('hidden');
+        btn.textContent = '展開編輯面板';
+      }
+    }
+
+    function toggleDayTable() {
+      document.getElementById('day-table-wrapper').classList.toggle('hidden');
+    }
+
+    function toggleRawTextDrawer() {
+      document.getElementById('raw-text-drawer').classList.toggle('hidden');
+    }
+
+    function toggleSpecialSection() {
+      const checked = document.getElementById('chk-has-special').checked;
+      const controls = document.getElementById('special-program-controls');
+      if (checked) {
+        controls.classList.remove('hidden');
+        renderSpecialDatePills();
+      } else {
+        controls.classList.add('hidden');
+      }
+      renderNewsletter();
+    }
+
+    function toggleSeasonSection() {
+      const checked = document.getElementById('chk-has-season').checked;
+      const controls = document.getElementById('season-school-controls');
+      if (checked) {
+        controls.classList.remove('hidden');
+      } else {
+        controls.classList.add('hidden');
+      }
+      renderNewsletter();
+    }
+
+    /**
+     * Set active Season Theme (Spring / Summer / Autumn / Winter)
+     */
+    function setSeasonTheme(seasonName, autoUpdateTitle = true) {
+      if (!SEASON_THEMES[seasonName]) return;
+      appState.season = seasonName;
+      const theme = SEASON_THEMES[seasonName];
+
+      // Update button active styles
+      document.querySelectorAll('.season-btn').forEach(btn => {
+        const s = btn.getAttribute('data-season');
+        if (s === seasonName) {
+          btn.style.backgroundColor = theme.badgeBg;
+          btn.style.color = '#FFFFFF';
+          btn.style.borderColor = theme.badgeBg;
+        } else {
+          btn.style.backgroundColor = '#FFFFFF';
+          btn.style.color = '#374151';
+          btn.style.borderColor = '#D1D5DB';
+        }
+      });
+
+      if (autoUpdateTitle) {
+        const titleInput = document.getElementById('input-camp-title');
+        if (/^(Spring|Summer|Autumn|Fall|Winter)\s+School/i.test(titleInput.value.trim()) || !titleInput.value.trim()) {
+          titleInput.value = theme.defaultTitle;
+        }
+      }
+
+      renderNewsletter();
+    }
+
+    /**
+     * Auto-detect season from month number
+     */
+    function detectSeasonFromMonth(month) {
+      if (month >= 3 && month <= 5) return 'Spring';
+      if (month >= 6 && month <= 8) return 'Summer';
+      if (month >= 9 && month <= 11) return 'Autumn';
+      return 'Winter';
+    }
+
+    /**
+     * Initialize empty month structure
+     */
+    function initMonthDays(year, month) {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const newDays = {};
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month - 1, d);
+        const dow = dateObj.getDay();
+        const isWeekend = (dow === 0 || dow === 6);
+        newDays[d] = {
+          day: d,
+          status: isWeekend ? 'none' : 'normal',
+          subject: '',
+          activity: '',
+          description: '',
+          campTag: ''
+        };
+      }
+      appState.year = year;
+      appState.month = month;
+      appState.daysData = newDays;
+    }
+
+    function handleYearMonthChange() {
+      const year = parseInt(document.getElementById('input-year').value, 10) || 2026;
+      const month = parseInt(document.getElementById('input-month').value, 10) || 12;
+      initMonthDays(year, month);
+      setSeasonTheme(detectSeasonFromMonth(month), true);
+      renderSpecialDatePills();
+      renderDayEditorTable();
+      renderNewsletter();
+    }
+
+    /**
+     * Render clickable date pills for SPECIAL PROGRAM
+     */
+    function renderSpecialDatePills() {
+      const container = document.getElementById('special-date-pills');
+      container.innerHTML = '';
+      const daysInMonth = Object.keys(appState.daysData).length;
+      const weekdayShort = ['日', '一', '二', '三', '四', '五', '六'];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const item = appState.daysData[d];
+        const dateObj = new Date(appState.year, appState.month - 1, d);
+        const dow = dateObj.getDay();
+        const isSpecial = item && item.status === 'special';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => toggleSpecialDate(d);
+        btn.className = isSpecial
+          ? 'py-1 px-1 rounded-md text-xs font-bold bg-amber-400 text-pink-800 border-2 border-amber-500 shadow-sm transition'
+          : 'py-1 px-1 rounded-md text-xs font-medium bg-white text-gray-700 border border-gray-300 hover:bg-amber-100 transition';
+        btn.innerHTML = `${d}<span class="text-[10px] opacity-75 ml-0.5">${weekdayShort[dow]}</span>`;
+        container.appendChild(btn);
+      }
+    }
+
+    function toggleSpecialDate(day) {
+      const item = appState.daysData[day];
+      if (!item) return;
+      if (item.status === 'special') {
+        item.status = 'normal';
+      } else {
+        item.status = 'special';
+        document.getElementById('chk-has-special').checked = true;
+      }
+      renderSpecialDatePills();
+      renderDayEditorTable();
+      renderNewsletter();
+    }
+
+    /**
+     * Drag & Drop Helpers
+     */
+    function handleDragOver(e, zoneId) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById(zoneId).classList.add('drop-zone-active');
+    }
+
+    function handleDragLeave(e, zoneId) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById(zoneId).classList.remove('drop-zone-active');
+    }
+
+    function handleLessonPdfDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('lesson-pdf-dropzone').classList.remove('drop-zone-active');
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) processLessonPlanPdf(file);
+    }
+
+    function handleLessonPdfSelect(e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) processLessonPlanPdf(file);
+    }
+
+    function handleSeasonPdfDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('season-pdf-dropzone').classList.remove('drop-zone-active');
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) processSeasonSchoolPdf(file);
+    }
+
+    function handleSeasonPdfSelect(e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) processSeasonSchoolPdf(file);
+    }
+
+    /**
+     * Extract Spatial Text from PDF using PDF.js
+     */
+    async function extractTextFromPdfFile(file) {
+      if (!window.pdfjsLib) {
+        throw new Error('PDF.js library not loaded');
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+
+        // Sort items top-to-bottom (y descending), then left-to-right (x ascending)
+        const items = textContent.items.map(it => ({
+          str: it.str,
+          x: it.transform[4],
+          y: it.transform[5]
+        }));
+
+        // Group items that are within 8px vertically into lines, or reconstruct table columns cleanly
+        items.sort((a, b) => {
+          if (Math.abs(b.y - a.y) > 8) return b.y - a.y;
+          return a.x - b.x;
+        });
+
+        let lastY = null;
+        let pageLines = [];
+        let currentLine = [];
+
+        for (const item of items) {
+          if (!item.str.trim()) continue;
+          if (lastY === null || Math.abs(lastY - item.y) <= 8) {
+            currentLine.push(item);
+          } else {
+            currentLine.sort((a, b) => a.x - b.x);
+            pageLines.push(currentLine.map(c => c.str).join(' '));
+            currentLine = [item];
+          }
+          lastY = item.y;
+        }
+        if (currentLine.length > 0) {
+          currentLine.sort((a, b) => a.x - b.x);
+          pageLines.push(currentLine.map(c => c.str).join(' '));
+        }
+
+        // Also extract column-wise text for calendar table PDFs where cells span multiple lines
+        const columnSorted = [...items].sort((a, b) => {
+          // Group into 5 horizontal weekday columns (~110pt wide each)
+          const colA = Math.floor(a.x / 105);
+          const colB = Math.floor(b.x / 105);
+          // Group into ~110pt vertical week rows
+          const rowA = Math.floor((800 - a.y) / 110);
+          const rowB = Math.floor((800 - b.y) / 110);
+          if (rowA !== rowB) return rowA - rowB;
+          if (colA !== colB) return colA - colB;
+          if (Math.abs(b.y - a.y) > 4) return b.y - a.y;
+          return a.x - b.x;
+        });
+
+        const cellStreamText = columnSorted.map(c => c.str).join(' ');
+        fullText += `\n--- PAGE ${pageNum} ---\n` + pageLines.join('\n') + '\n' + cellStreamText;
+      }
+
+      return fullText;
+    }
+
+    /**
+     * Process Uploaded Lesson Plan PDF
+     */
+    async function processLessonPlanPdf(file) {
+      const statusEl = document.getElementById('lesson-pdf-status');
+      statusEl.textContent = `正在讀取並解析「${file.name}」...`;
+
+      try {
+        const extractedText = await extractTextFromPdfFile(file);
+        document.getElementById('raw-lesson-plan').value = extractedText;
+
+        // Auto-detect Month and Year from filename or PDF content
+        const monthNames = {
+          january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+          july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
+        };
+        const combinedMeta = (file.name + ' ' + extractedText.slice(0, 400)).toLowerCase();
+        for (const [mName, mNum] of Object.entries(monthNames)) {
+          if (combinedMeta.includes(mName)) {
+            document.getElementById('input-month').value = mNum;
+            break;
+          }
+        }
+        const yearMatch = combinedMeta.match(/20(2\d|3\d)/);
+        if (yearMatch) {
+          document.getElementById('input-year').value = parseInt(yearMatch[0], 10);
+        }
+
+        parseRawInputs();
+        statusEl.textContent = `已成功載入：${file.name}（可繼續上傳其他月份覆蓋）`;
+        showToast(`已自動讀取「${file.name}」並產生電子報！`);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = `讀取失敗，請確認檔案為有效 PDF`;
+        showToast('PDF 讀取失敗，請改用「貼上純文字課表」功能。');
+      }
+    }
+
+    /**
+     * Process Uploaded Season School Schedule PDF
+     */
+    async function processSeasonSchoolPdf(file) {
+      const statusEl = document.getElementById('season-pdf-status');
+      statusEl.textContent = `正在讀取營隊行事曆「${file.name}」...`;
+
+      try {
+        const text = await extractTextFromPdfFile(file);
+        const lowerAll = (file.name + ' ' + text).toLowerCase();
+
+        // Auto-detect Season from PDF filename/content
+        if (lowerAll.includes('spring')) setSeasonTheme('Spring', true);
+        else if (lowerAll.includes('summer')) setSeasonTheme('Summer', true);
+        else if (lowerAll.includes('autumn') || lowerAll.includes('fall')) setSeasonTheme('Autumn', true);
+        else if (lowerAll.includes('winter')) setSeasonTheme('Winter', true);
+
+        // Extract date + event pairs from Season School PDF
+        const dateRegex = /(?:^|\s)(\d{1,2})\s*(?:\((?:M|Tu|W|Th|F|Sa|Su|Mon|Tue|Wed|Thu|Fri)\)|日|\/|\.)\s*([^\d\n]{3,45})/gi;
+        let match;
+        const foundEvents = {};
+
+        while ((match = dateRegex.exec(text)) !== null) {
+          const d = parseInt(match[1], 10);
+          let title = match[2]
+            .replace(/https?:\/\/[^\s]+/g, '')
+            .replace(/FILE\s*\d+/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (d >= 1 && d <= 31 && title.length >= 2 && !/^(am|pm|morning|afternoon|holiday)$/i.test(title)) {
+            if (!foundEvents[d]) {
+              foundEvents[d] = toTitleCase(title);
+            }
+          }
+        }
+
+        const entries = Object.entries(foundEvents).sort((a, b) => Number(a[0]) - Number(b[0]));
+        if (entries.length > 0) {
+          const formattedLines = entries.map(([d, t]) => `${d}: ${t}`).join('\n');
+          document.getElementById('raw-camp-plan').value = formattedLines;
+          syncCampTextareaToState();
+          statusEl.textContent = `已從「${file.name}」匯入 ${entries.length} 天營隊活動！`;
+          showToast(`已成功匯入 ${entries.length} 筆 Season School 活動！`);
+        } else {
+          statusEl.textContent = `已讀取「${file.name}」，請在下方確認日期與活動名稱`;
+          showToast('已讀取檔案，若未自動抓到日期請在下方欄位手動輸入「日期: 活動名稱」。');
+        }
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = `營隊 PDF 讀取失敗，請直接在下方輸入`;
+        showToast('營隊 PDF 讀取發生錯誤，請直接在下方文字框輸入。');
+      }
+    }
+
+    /**
+     * Sync Season School textarea ("25: Christmas Party") to appState.daysData
+     */
+    function syncCampTextareaToState() {
+      const daysInMonth = Object.keys(appState.daysData).length;
+      for (let d = 1; d <= daysInMonth; d++) {
+        appState.daysData[d].campTag = '';
+      }
+      const rawCamp = document.getElementById('raw-camp-plan').value || '';
+      const campLines = rawCamp.split(/\r?\n/);
+      for (const line of campLines) {
+        const m = line.trim().match(/^(\d{1,2})\s*[:：\-]\s*(.+)$/);
+        if (m) {
+          const dayNum = parseInt(m[1], 10);
+          const campName = m[2].trim();
+          if (appState.daysData[dayNum]) {
+            appState.daysData[dayNum].campTag = campName;
+          }
+        }
+      }
+      renderDayEditorTable();
+      renderNewsletter();
+    }
+
+    /**
+     * Smart Parser: Extracts dates, subjects, activities, holidays, special programs
+     */
+    function parseRawInputs() {
+      const year = parseInt(document.getElementById('input-year').value, 10) || 2026;
+      const month = parseInt(document.getElementById('input-month').value, 10) || 12;
+      initMonthDays(year, month);
+      setSeasonTheme(detectSeasonFromMonth(month), true);
+
+      const rawPlan = document.getElementById('raw-lesson-plan').value || '';
+
+      const cleanedText = rawPlan
+        .replace(/https?:\/\/[^\s]+/g, ' ')
+        .replace(/FILE\s*\d+/gi, ' ')
+        .replace(/CURIOUS|FREE|SUV|MOVIE\s*NIGHT|BOARDGAMES|GOOD\s*TIMES/gi, ' ');
+
+      const dateRegex = /(?:^|\s|\|)(\d{1,2})\s*\((?:M|Tu|W|Th|F|Sa|Su|Mon|Tue|Wed|Thu|Fri)\)/gi;
+      let match;
+      const markers = [];
+      while ((match = dateRegex.exec(cleanedText)) !== null) {
+        const dayNum = parseInt(match[1], 10);
+        if (dayNum >= 28 && match.index < 45 && month !== 1) {
+          continue;
+        }
+        markers.push({
+          day: dayNum,
+          start: match.index + match[0].length,
+          rawStart: match.index
+        });
+      }
+
+      markers.sort((a, b) => a.rawStart - b.rawStart);
+
+      let hasAnySpecial = false;
+
+      for (let i = 0; i < markers.length; i++) {
+        const curr = markers[i];
+        const nextStart = (i + 1 < markers.length) ? markers[i + 1].rawStart : cleanedText.length;
+        const chunk = cleanedText.slice(curr.start, nextStart).replace(/\|/g, ' ').replace(/\s+/g, ' ').trim();
+        const d = curr.day;
+        if (!appState.daysData[d]) continue;
+
+        const lower = chunk.toLowerCase();
+
+        if (lower.includes('holiday')) {
+          appState.daysData[d].status = 'holiday';
+          appState.daysData[d].subject = '';
+          appState.daysData[d].activity = '';
+        } else if (lower.includes('special program')) {
+          appState.daysData[d].status = 'special';
+          appState.daysData[d].subject = '';
+          appState.daysData[d].activity = '';
+          hasAnySpecial = true;
+        } else {
+          appState.daysData[d].status = 'normal';
+          const parsed = classifyChunk(chunk);
+          appState.daysData[d].subject = parsed.subject;
+          appState.daysData[d].activity = parsed.activity;
+          if (parsed.description) {
+            appState.daysData[d].description = parsed.description;
+          }
+        }
+      }
+
+      // Automatically sync SPECIAL PROGRAM checkbox state
+      document.getElementById('chk-has-special').checked = hasAnySpecial;
+      if (hasAnySpecial) {
+        document.getElementById('special-program-controls').classList.remove('hidden');
+      } else {
+        document.getElementById('special-program-controls').classList.add('hidden');
+      }
+
+      // Re-apply any Season School entries currently in the camp textarea
+      syncCampTextareaToState();
+
+      renderSpecialDatePills();
+      renderDayEditorTable();
+      renderNewsletter();
+    }
+
+    /**
+     * Classify a day's text chunk into one of the 6 subjects & clean activity name
+     */
+    function classifyChunk(chunk) {
+      let text = chunk.replace(/\*+/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // Stop at footer boilerplate if captured at end of month
+      text = text.split(/This is the basic plan/i)[0].trim();
+
+      if (/\bOr\b/i.test(text)) {
+        text = text.split(/\bOr\b/i)[0].trim();
+      }
+
+      if (/\bscience\b/i.test(text)) {
+        let act = text.replace(/\bscience\b/i, '').trim();
+        return { subject: 'Science', activity: toTitleCase(act) };
+      }
+
+      if (/\bcooking\b/i.test(text)) {
+        let act = text.replace(/\bcooking\b/i, '').trim();
+        let desc = '';
+        if (/snowballs/i.test(act)) {
+          desc = 'Mixing, shaping and baking snowball cookies together!';
+        }
+        return { subject: 'Cooking', activity: toTitleCase(act), description: desc };
+      }
+
+      if (/\bart\b/i.test(text)) {
+        let act = text.replace(/\bart\b/i, '').trim();
+        return { subject: 'Art', activity: toTitleCase(act) };
+      }
+
+      if (/\bcraft\b/i.test(text)) {
+        let act = text.replace(/\bcraft\b/i, '').trim();
+        act = act.replace(/^Make\s+/i, '');
+        return { subject: 'Craft', activity: toTitleCase(act) };
+      }
+
+      if (/(?:p\.?\s*e\.?|ρ\.?\s*ε\.?)/i.test(text)) {
+        let act = text.replace(/(?:p\.?\s*e\.?|ρ\.?\s*ε\.?)/gi, '').trim();
+        act = act.replace(/penquins/gi, 'Penguins');
+        return { subject: 'P.E', activity: toTitleCase(act) };
+      }
+
+      if (/\bl\.?\s*g\.?\b/i.test(text)) {
+        let act = text.replace(/\bl\.?\s*g\.?\b/gi, '').trim();
+        if (/winter\s*bingo/i.test(act)) act = 'Winter Bingo (L.G.)';
+        else act = toTitleCase(act) + ' (L.G.)';
+        return { subject: 'Show & Tell', activity: act };
+      }
+      if (/role\s*play/i.test(text)) {
+        return { subject: 'Show & Tell', activity: 'Role Play' };
+      }
+      if (/movie/i.test(text)) {
+        return { subject: 'Show & Tell', activity: toTitleCase(text) };
+      }
+      if (/board\s*games?/i.test(text)) {
+        return { subject: 'Show & Tell', activity: 'Board Games' };
+      }
+      if (/show\s*(&|and)\s*tell/i.test(text)) {
+        let act = text.replace(/show\s*(&|and)\s*tell/i, '').trim();
+        return { subject: 'Show & Tell', activity: toTitleCase(act) || 'Show & Tell' };
+      }
+
+      return { subject: 'Show & Tell', activity: toTitleCase(text) };
+    }
+
+    function toTitleCase(str) {
+      if (!str) return '';
+      const minorWords = new Set(['and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of']);
+      return str.split(/\s+/).map((word, idx) => {
+        if (word.startsWith('(') || (word === word.toUpperCase() && word.length <= 4)) {
+          return word;
+        }
+        const lower = word.toLowerCase();
+        if (idx > 0 && minorWords.has(lower)) return lower;
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      }).join(' ');
+    }
+
+    /**
+     * Render Day-by-Day Fine-Tune Table
+     */
+    function renderDayEditorTable() {
+      const tbody = document.getElementById('day-editor-tbody');
+      tbody.innerHTML = '';
+      const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const daysInMonth = Object.keys(appState.daysData).length;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const item = appState.daysData[d];
+        const dateObj = new Date(appState.year, appState.month - 1, d);
+        const dow = dateObj.getDay();
+        if (dow === 0 || dow === 6) continue;
+
+        const tr = document.createElement('tr');
+        tr.className = item.status === 'holiday' ? 'bg-rose-50/60' : (item.status === 'special' ? 'bg-amber-50/60' : 'hover:bg-gray-50');
+
+        tr.innerHTML = `
+          <td class="px-3 py-2 font-bold text-gray-800 whitespace-nowrap">
+            ${appState.month}/${d} <span class="text-gray-400 font-normal">(${weekdayNames[dow]})</span>
+          </td>
+          <td class="px-3 py-2">
+            <select onchange="updateDayField(${d}, 'status', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded bg-white text-xs">
+              <option value="normal" ${item.status === 'normal' ? 'selected' : ''}>一般課程</option>
+              <option value="special" ${item.status === 'special' ? 'selected' : ''}>SPECIAL PROGRAM (合併)</option>
+              <option value="holiday" ${item.status === 'holiday' ? 'selected' : ''}>HOLIDAY (休校)</option>
+              <option value="none" ${item.status === 'none' ? 'selected' : ''}>空白</option>
+            </select>
+          </td>
+          <td class="px-3 py-2">
+            <select onchange="updateDayField(${d}, 'subject', this.value)" ${item.status !== 'normal' ? 'disabled' : ''} class="w-full px-2 py-1 border border-gray-300 rounded bg-white text-xs disabled:bg-gray-100 disabled:text-gray-400">
+              <option value="">-- 無 --</option>
+              ${SUBJECTS.map(s => `<option value="${s.id}" ${item.subject === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}
+            </select>
+          </td>
+          <td class="px-3 py-2">
+            <input type="text" value="${escapeHtml(item.activity)}" oninput="updateDayField(${d}, 'activity', this.value)" ${item.status !== 'normal' ? 'disabled' : ''} placeholder="活動名稱..." class="w-full px-2 py-1 border border-gray-300 rounded text-xs disabled:bg-gray-100" />
+          </td>
+          <td class="px-3 py-2">
+            <input type="text" value="${escapeHtml(item.description)}" oninput="updateDayField(${d}, 'description', this.value)" ${item.status !== 'normal' ? 'disabled' : ''} placeholder="補充說明 (如 Cooking 介紹)..." class="w-full px-2 py-1 border border-gray-300 rounded text-xs disabled:bg-gray-100" />
+          </td>
+          <td class="px-3 py-2">
+            <input type="text" value="${escapeHtml(item.campTag)}" oninput="updateDayField(${d}, 'campTag', this.value)" placeholder="營隊活動 (季節色塊)..." class="w-full px-2 py-1 border border-emerald-300 rounded text-xs bg-emerald-50/30" />
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateDayField(day, field, value) {
+      if (!appState.daysData[day]) return;
+      appState.daysData[day][field] = value;
+      if (field === 'status') {
+        if (value === 'special') {
+          document.getElementById('chk-has-special').checked = true;
+          document.getElementById('special-program-controls').classList.remove('hidden');
+        }
+        renderSpecialDatePills();
+        renderDayEditorTable();
+      }
+      if (field === 'campTag') {
+        syncStateToCampTextarea();
+      }
+      renderNewsletter();
+    }
+
+    function syncStateToCampTextarea() {
+      const daysInMonth = Object.keys(appState.daysData).length;
+      const lines = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const tag = (appState.daysData[d].campTag || '').trim();
+        if (tag) lines.push(`${d}: ${tag}`);
+      }
+      document.getElementById('raw-camp-plan').value = lines.join('\n');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /**
+     * Core Newsletter Renderer
+     */
+    function renderNewsletter() {
+      const year = appState.year;
+      const month = appState.month;
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      const hasSpecialEnabled = document.getElementById('chk-has-special').checked;
+      const hasSeasonEnabled = document.getElementById('chk-has-season').checked;
+      const activeTheme = SEASON_THEMES[appState.season] || SEASON_THEMES.Winter;
+
+      // Step A: Assign chronological unique numbers per subject
+      const subjectActivities = {};
+      SUBJECTS.forEach(s => subjectActivities[s.id] = []);
+      const dayBadgeMap = {};
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const item = appState.daysData[d];
+        if (!item || item.status !== 'normal' || !item.subject || !item.activity.trim()) continue;
+
+        const list = subjectActivities[item.subject];
+        const normalizedTitle = item.activity.trim().toLowerCase();
+
+        let existing = list.find(entry => entry.title.trim().toLowerCase() === normalizedTitle);
+        if (existing) {
+          dayBadgeMap[d] = existing.num;
+          if (!existing.description && item.description) {
+            existing.description = item.description.trim();
+          }
+        } else {
+          const nextNum = list.length + 1;
+          list.push({
+            num: nextNum,
+            title: item.activity.trim(),
+            description: (item.description || '').trim()
+          });
+          dayBadgeMap[d] = nextNum;
+        }
+      }
+
+      // Step B: Build Calendar Grid (Monday = 0 ... Sunday = 6)
+      const gridContainer = document.getElementById('calendar-grid-container');
+      const headers = [
+        { label: 'Monday', bg: '#757575' },
+        { label: 'Tuesday', bg: '#757575' },
+        { label: 'Wednesday', bg: '#757575' },
+        { label: 'Thursday', bg: '#757575' },
+        { label: 'Friday', bg: '#757575' },
+        { label: 'Sat.', bg: '#3b82f6' },
+        { label: 'Sun.', bg: '#ef4444' }
+      ];
+
+      let gridHtml = headers.map(h => `
+        <div class="cal-header-cell" style="background-color: ${h.bg};">${h.label}</div>
+      `).join('');
+
+      const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+      const leadingBlanks = (firstDayOfWeek === 0) ? 6 : (firstDayOfWeek - 1);
+      const prevMonthDays = new Date(year, month - 1, 0).getDate();
+
+      const totalCellsNeeded = Math.ceil((leadingBlanks + daysInMonth) / 7) * 7;
+      const calendarCells = [];
+
+      for (let i = 0; i < totalCellsNeeded; i++) {
+        if (i < leadingBlanks) {
+          const prevDayNum = prevMonthDays - leadingBlanks + i + 1;
+          calendarCells.push({ type: 'prev', dayNum: prevDayNum, colIndex: i % 7 });
+        } else if (i < leadingBlanks + daysInMonth) {
+          const currDayNum = i - leadingBlanks + 1;
+          calendarCells.push({
+            type: 'curr',
+            dayNum: currDayNum,
+            colIndex: i % 7,
+            data: appState.daysData[currDayNum]
+          });
+        } else {
+          const nextDayNum = i - (leadingBlanks + daysInMonth) + 1;
+          calendarCells.push({ type: 'next', dayNum: nextDayNum, colIndex: i % 7 });
+        }
+      }
+
+      const numWeeks = totalCellsNeeded / 7;
+      for (let w = 0; w < numWeeks; w++) {
+        const weekSlice = calendarCells.slice(w * 7, w * 7 + 7);
+        let c = 0;
+        while (c < 7) {
+          const cell = weekSlice[c];
+
+          // Check consecutive SPECIAL PROGRAM merge
+          if (hasSpecialEnabled && cell.type === 'curr' && cell.data && cell.data.status === 'special') {
+            let span = 1;
+            while (
+              c + span < 7 &&
+              weekSlice[c + span].type === 'curr' &&
+              weekSlice[c + span].data &&
+              weekSlice[c + span].data.status === 'special'
+            ) {
+              span++;
+            }
+
+            const rawLabel = (document.getElementById('input-special-label').value || 'SPECIAL PROGRAM').trim();
+            const formattedSpecial = rawLabel.includes('\n')
+              ? rawLabel.split(/\r?\n/).map(l => escapeHtml(l)).join('<br>')
+              : escapeHtml(rawLabel).replace(/\s+PROGRAM$/i, '<br>PROGRAM');
+
+            let dateNumbersHtml = '';
+            for (let k = 0; k < span; k++) {
+              const dObj = weekSlice[c + k];
+              dateNumbersHtml += `<div class="cal-day-number text-gray-800">${dObj.dayNum}</div>`;
+            }
+
+            gridHtml += `
+              <div class="special-program-merged" style="grid-column: span ${span};">
+                <div class="special-program-dates" style="grid-template-columns: repeat(${span}, minmax(0, 1fr));">
+                  ${dateNumbersHtml}
+                </div>
+                <div class="special-program-box">
+                  <div class="special-program-text">${formattedSpecial}</div>
+                </div>
+              </div>
+            `;
+            c += span;
+            continue;
+          }
+
+          // Standard single cell rendering
+          if (cell.type === 'prev' || cell.type === 'next') {
+            gridHtml += `
+              <div class="cal-day-cell">
+                <div class="cal-day-number" style="color: #9ca3af;">${cell.dayNum}</div>
+              </div>
+            `;
+          } else {
+            const d = cell.dayNum;
+            const dData = cell.data;
+            let numColor = '#222222';
+            if (cell.colIndex === 5) numColor = '#3b82f6';
+            if (cell.colIndex === 6) numColor = '#ef4444';
+
+            if (dData.status === 'holiday') {
+              gridHtml += `
+                <div class="cal-day-cell holiday-cell">
+                  <div class="cal-day-number" style="color: ${numColor};">${d}</div>
+                  <div class="m-auto font-bold text-[13.5px] tracking-wide" style="color: #b05c63;">HOLIDAY</div>
+                </div>
+              `;
+            } else {
+              const subjObj = SUBJECTS.find(s => s.id === dData.subject);
+              const badgeNum = dayBadgeMap[d];
+              const hasIcon = (dData.status === 'normal' && subjObj && badgeNum);
+              const campTag = hasSeasonEnabled ? (dData.campTag || '').trim() : '';
+              const cellBg = campTag ? activeTheme.cellTint : '#ffffff';
+
+              gridHtml += `
+                <div class="cal-day-cell" style="background-color: ${cellBg};">
+                  <div class="cal-day-number" style="color: ${numColor};">${d}</div>
+                  ${hasIcon ? `
+                    <div class="cal-icon-wrapper">
+                      ${subjObj.svg}
+                      <div class="cal-badge">${badgeNum}</div>
+                    </div>
+                  ` : ''}
+                  ${campTag ? `
+                    <div class="camp-pill" style="background-color: ${activeTheme.badgeBg}; color: ${activeTheme.badgeText};">
+                      ${escapeHtml(campTag)}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }
+          }
+          c++;
+        }
+      }
+
+      gridContainer.innerHTML = gridHtml;
+
+      // Step C: Update Season School Footer Legend
+      const campTitle = document.getElementById('input-camp-title').value.trim();
+      const campFooterEl = document.getElementById('camp-footer-legend');
+      const campFooterSwatch = document.getElementById('camp-footer-swatch');
+      const campFooterTextEl = document.getElementById('camp-footer-text');
+
+      const campDates = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (appState.daysData[d] && appState.daysData[d].campTag && appState.daysData[d].campTag.trim()) {
+          campDates.push(d);
+        }
+      }
+
+      if (hasSeasonEnabled && (campTitle || campDates.length > 0)) {
+        campFooterEl.classList.remove('hidden');
+        campFooterSwatch.style.backgroundColor = activeTheme.badgeBg;
+        const dateSuffix = campDates.length > 0 ? `（${campDates.join('・')}日）` : '';
+        campFooterTextEl.textContent = `${campTitle}${dateSuffix}`;
+      } else {
+        campFooterEl.classList.add('hidden');
+      }
+
+      // Step D: Render Right Column - 6 Subject Categories Legend
+      const legendContainer = document.getElementById('subject-legend-container');
+      let legendHtml = '';
+
+      for (const subj of SUBJECTS) {
+        const activities = subjectActivities[subj.id] || [];
+        let itemsHtml = '';
+
+        if (activities.length === 0) {
+          itemsHtml = `<div class="text-xs text-gray-400 italic">No scheduled activities this month</div>`;
+        } else {
+          itemsHtml = activities.map(act => `
+            <div class="legend-item-line">
+              <span class="legend-circle-num">${act.num}</span>
+              <div>
+                <div class="legend-activity-title">${escapeHtml(act.title)}</div>
+                ${act.description ? `<div class="legend-activity-desc">${escapeHtml(act.description)}</div>` : ''}
+              </div>
+            </div>
+          `).join('');
+        }
+
+        legendHtml += `
+          <div class="legend-row">
+            <div class="legend-icon-col">
+              ${subj.svg}
+              <div class="legend-subject-title">${subj.label}</div>
+            </div>
+            <div class="legend-items-col">
+              ${itemsHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      legendContainer.innerHTML = legendHtml;
+    }
+
+    /**
+     * Export Newsletter Preview as High-Resolution PNG via html2canvas
+     */
+    async function downloadPNG() {
+      const btn = document.getElementById('btn-download-png');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '產生高畫質圖片中...';
+
+      try {
+        const element = document.getElementById('newsletter-canvas');
+        const canvas = await html2canvas(element, {
+          scale: 2.5,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: false
+        });
+        const link = document.createElement('a');
+        const paddedMonth = String(appState.month).padStart(2, '0');
+        link.download = `IGK_Afterschool_Newsletter_${appState.year}_${paddedMonth}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('PNG 圖片已成功下載！');
+      } catch (err) {
+        console.error(err);
+        showToast('圖片匯出發生錯誤，請嘗試使用「列印 / 存成 PDF」功能。');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    /**
+     * Load exact December 2026 sample matching user's PDF & Reference Image
+     */
+    function loadDec2026Sample() {
+      document.getElementById('input-year').value = 2026;
+      document.getElementById('input-month').value = 12;
+      document.getElementById('chk-has-special').checked = true;
+      document.getElementById('chk-has-season').checked = true;
+      document.getElementById('special-program-controls').classList.remove('hidden');
+      document.getElementById('season-school-controls').classList.remove('hidden');
+      document.getElementById('input-special-label').value = 'SPECIAL PROGRAM';
+      document.getElementById('input-camp-title').value = 'Winter School 午前のプログラム';
+      document.getElementById('lesson-pdf-status').textContent = '目前顯示：2026年12月 預設範例（點擊或拖曳可上傳新月份 PDF）';
+      document.getElementById('season-pdf-status').textContent = '上傳 Season School 行事曆 PDF（或直接在下方輸入日期與活動）';
+
+      document.getElementById('raw-lesson-plan').value = `1 (Tu) FILE 1 Science Fishing Ice
+2 (W) FILE 2 Art Winter Hat
+3 (Th) FILE 3 Craft Let's Keep Warm
+4 (F) FILE 4 L.G. Winter Bingo
+7 (M) FILE 5 Art Snowflake Painting
+8 (Tu) FILE 6 Role Play
+9 (W) FILE 7 P.E. Moving Penguins Nest
+10 (Th) Science Sensory Bottle
+11 (F) Craft Winterstorm
+14 (M) Cooking Snowballs
+15 (Tu) FILE 11 Art Aurora
+16 (W) FILE 4 L.G. Winter Bingo
+17 (Th) SPECIAL PROGRAM
+18 (F) SPECIAL PROGRAM
+21 (M) Craft Waddling Penguins
+22 (Tu) P.E. Moving Penguins Nest
+23 (W) Craft Christmas Cards
+24 (Th) P.E. Winter Tic Tac Toe
+25 (F) Role Play
+28 (M) PM Winter Movie
+29 (Tu) Board Games
+30 (W) HOLIDAY
+31 (Th) HOLIDAY`;
+
+      document.getElementById('raw-camp-plan').value = `25: Christmas Party
+28: Charity Project
+29: Sheep S'mores Cooking`;
+
+      parseRawInputs();
+      setSeasonTheme('Winter', false);
+    }
+
+    // Boot application on load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDec2026Sample();
+    });
+  </script>
+</body>
+</html>
