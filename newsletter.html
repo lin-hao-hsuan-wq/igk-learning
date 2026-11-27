@@ -233,15 +233,16 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
       padding-top: 2px;
       padding-bottom: 2px;
     }
+    /* 余白は行の「外」ではなく「内」に配分する → 点線から点線の間の中央に中身が来る */
     .subject-row {
+      flex: 1 1 auto;
       display: flex;
       align-items: center;
       gap: 14px;
-      padding: 4px 0;
+      padding: 6px 0;
       border-bottom: 1.5px dashed #cbd5e1;
     }
     .subject-row:last-child { border-bottom: none; }
@@ -322,7 +323,7 @@
     <div class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-lg bg-amber-400 text-slate-900 font-black flex items-center justify-center text-lg shadow-inner">IGK</div>
       <div>
-        <h1 class="text-base font-bold tracking-tight">IGK Afterschool ニュースレター</h1>
+        <h1 class="text-base font-bold tracking-tight">IGK Afterschool ニュースレター自動作成ツール</h1>
         <p class="text-xs text-slate-400">PDFアップロードで自動レイアウト・番号採番・シーズンスクール反映</p>
       </div>
     </div>
