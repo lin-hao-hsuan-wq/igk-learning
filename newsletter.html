@@ -322,7 +322,7 @@
     <div class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-lg bg-amber-400 text-slate-900 font-black flex items-center justify-center text-lg shadow-inner">IGK</div>
       <div>
-        <h1 class="text-base font-bold tracking-tight">IGK Afterschool ニュースレター自動作成ツール</h1>
+        <h1 class="text-base font-bold tracking-tight">IGK Afterschool ニュースレター</h1>
         <p class="text-xs text-slate-400">PDFアップロードで自動レイアウト・番号採番・シーズンスクール反映</p>
       </div>
     </div>
@@ -460,7 +460,7 @@
       <section class="space-y-2.5">
         <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">4. 祝日・補足テキスト微調整</h2>
         <div>
-          <label class="block text-[11px] font-bold text-slate-600 mb-1">HOLIDAY 対象日（カンマ区切り）</label>
+          <label class="block text-[11px] font-bold text-slate-600 mb-1">HOLIDAY 対象日（カンマ区切り。名前を付けるなら「3:文化の日」）</label>
           <input type="text" id="holiday-days-input" value="30, 31" oninput="renderAll()" class="w-full px-2.5 py-1.5 text-xs font-bold border border-slate-300 rounded-lg outline-none" />
         </div>
         <div>
@@ -543,24 +543,28 @@
     ];
     const MONTH_NAMES = ['january','february','march','april','may','june','july','august','september','october','november','december'];
     const SMALL_WORDS = new Set(['a','an','the','and','or','of','to','in','on','at','for','with']);
+    const WD_LETTER = { M: 1, Tu: 2, W: 3, Th: 4, F: 5 };
     // PDF内のURL(Pinterest等)は複数行に分割されて出てくるので、その断片を除外する
     const URL_FRAG = /https?:|pinterest|\/pin\/|\.com|\.jp\b|docs\.google|\d{7,}/i;
 
-    // 教案の先頭語 → 科目 [正規表現, 科目キー, モード]
+    // 教案の先頭語 → 科目 [正規表現, 科目キー, モード, (fixed のときの活動名)]
     //   prefix   : 先頭の語が科目名、残りが活動名
     //   prefix_lg: L.G. → 活動名の後ろに (L.G.) を付ける
     //   whole    : 文全体が活動名(Role Play / PM Winter Movie / Board Games → Show & Tell)
+    //   fixed    : 決まった活動名にする(Literature → Literacy Game / S&T → Show and Tell)
     const CAT_PATTERNS = [
       [/^special\s*program/i, 'special', 'none'],
       [/^(holiday|no\s*school|休校|休み)/i, 'holiday', 'none'],
+      [/^off(?=\s|$)/i, 'holiday', 'none'],
       [/^science(?=\s|$)/i, 'Science', 'prefix'],
       [/^art(?=\s|$)/i, 'Art', 'prefix'],
       [/^craft(?=\s|$)/i, 'Craft', 'prefix'],
       [/^cook(ing)?(?=\s|$)/i, 'Cooking', 'prefix'],
       [/^(p\.\s?e\.?|pe)(?=\s|$)/i, 'PE', 'prefix'],
       [/^(l\.\s?g\.?|lg)(?=\s|$)/i, 'ShowTell', 'prefix_lg'],
-      [/^literacy\s*game(?=\s|$)/i, 'ShowTell', 'prefix_lg'],
-      [/^show\s*(&|and)\s*tell(?=\s|$)/i, 'ShowTell', 'prefix'],
+      [/^(literature|literacy)(\s*game)?(?=\s|$)/i, 'ShowTell', 'fixed', 'Literacy Game'],
+      [/^s\s?(&|and)\s?t(?=\s|$)/i, 'ShowTell', 'fixed', 'Show and Tell'],
+      [/^show\s*(&|and)\s*tell(?=\s|$)/i, 'ShowTell', 'fixed', 'Show and Tell'],
       [/^role\s*-?\s*play/i, 'ShowTell', 'whole'],
       [/^(pm\b|movie|board\s*game|game)/i, 'ShowTell', 'whole']
     ];
@@ -580,9 +584,9 @@
 
     function matchCat(text) {
       const t = text.trim();
-      for (const [rx, cat, mode] of CAT_PATTERNS) {
+      for (const [rx, cat, mode, fixedTitle] of CAT_PATTERNS) {
         const m = t.match(rx);
-        if (m) return { cat, mode, rest: t.slice(m[0].length).replace(/^[\s:\-\/.]+/, '').trim() };
+        if (m) return { cat, mode, fixedTitle, rest: t.slice(m[0].length).replace(/^[\s:\-\/.]+/, '').trim() };
       }
       return null;
     }
@@ -612,6 +616,10 @@
     // セルの文章 → {subject,title} / {special:true} / {holiday:true}
     function classifyText(text, day, renameMap, warnings) {
       if (!text) return null;
+      if (/OPTIONAL\s+LESSON\s+PLAN/i.test(text)) {
+        warnings.push(`${day}日: 「OPTIONAL LESSON PLAN」の注記は活動名から除きました`);
+        text = text.replace(/OPTIONAL\s+LESSON\s+PLAN/gi, '').replace(/\s+/g, ' ').trim();
+      }
       const parts = text.split(/\s+or\s+/i);
       if (parts.length > 1 && matchCat(parts[1])) {
         warnings.push(`${day}日: 複数候補があります「${text}」→ 最初の案を使いました。違う場合は「5. レッスン一覧」で直してください`);
@@ -626,13 +634,20 @@
       if (hit.cat === 'special') return { special: true };
       if (hit.cat === 'holiday') return { holiday: true };
       let title;
-      if (hit.mode === 'whole') {
+      if (hit.mode === 'fixed') {
+        title = hit.fixedTitle;
+      } else if (hit.mode === 'whole') {
         title = titleCase(text);
       } else {
-        title = hit.rest ? titleCase(hit.rest) : SUBJECTS.find(s => s.key === hit.cat).label;
-        if (hit.mode === 'prefix_lg' && hit.rest) title += ' (L.G.)';
+        const rest = hit.rest.replace(/\s+-\s*(?=\w)/g, ' ');           // "paint -blending" → "paint blending"
+        title = rest ? titleCase(rest) : SUBJECTS.find(s => s.key === hit.cat).label;
+        if (hit.mode === 'prefix_lg' && rest) title += ' (L.G.)';
       }
-      return { subject: hit.cat, title: renameMap[title.toLowerCase()] || title };
+      title = renameMap[title.toLowerCase()] || title;
+      if (title.length > 40 || /20\d{2}|\d{1,2}(st|nd|rd|th)\b/i.test(title)) {
+        warnings.push(`${day}日: 活動名が不自然です「${title}」。教案の入力ミスの可能性があります。「5. レッスン一覧」で直してください`);
+      }
+      return { subject: hit.cat, title };
     }
 
     // pdf.js の文字断片を「行」にまとめて結合(同じ行で隣り合う断片を1つの文字列にする)
@@ -673,104 +688,199 @@
       return s[Math.floor(s.length / 2)];
     }
 
-    // 教案PDFの文字断片 → { year, month, lessons, specialDays, holidays, warnings }
+    // 近い値をまとめる(列の位置を求めるため)
+    function clusterValues(vals, tol) {
+      const s = vals.slice().sort((a, b) => a - b), cl = [];
+      s.forEach(v => {
+        const c = cl[cl.length - 1];
+        if (c && v - c.max <= tol) { c.vals.push(v); c.max = v; } else cl.push({ vals: [v], max: v });
+      });
+      return cl;
+    }
+    const spreadOf = cl => cl.reduce((s, c) => s + (Math.max(...c.vals) - Math.min(...c.vals)), 0);
+    const meanOf = vals => vals.reduce((a, b) => a + b, 0) / vals.length;
+
+    // 日本の祝日名(祝日・振替休日・国民の休日)
+    function jpHolidayName(y, m, d) {
+      const base = (yy, mm, dd) => {
+        const key = mm + '-' + dd;
+        const fixed = { '1-1': '元日', '2-11': '建国記念の日', '4-29': '昭和の日', '5-3': '憲法記念日', '5-4': 'みどりの日', '5-5': 'こどもの日', '8-11': '山の日', '11-3': '文化の日', '11-23': '勤労感謝の日' };
+        if (fixed[key]) return fixed[key];
+        if (yy >= 2020 && key === '2-23') return '天皇誕生日';
+        const wd = new Date(yy, mm - 1, dd).getDay(), nth = Math.floor((dd - 1) / 7) + 1;
+        if (wd === 1) {
+          if (mm === 1 && nth === 2) return '成人の日';
+          if (mm === 7 && nth === 3) return '海の日';
+          if (mm === 9 && nth === 3) return '敬老の日';
+          if (mm === 10 && nth === 2) return 'スポーツの日';
+        }
+        const ey = yy - 1980;
+        if (mm === 3 && dd === Math.floor(20.8431 + 0.242194 * ey - Math.floor(ey / 4))) return '春分の日';
+        if (mm === 9 && dd === Math.floor(23.2488 + 0.242194 * ey - Math.floor(ey / 4))) return '秋分の日';
+        return null;
+      };
+      const n = base(y, m, d);
+      if (n) return n;
+      const dt = new Date(y, m - 1, d);
+      if (dt.getDay() === 0) return null;
+      for (let k = 1; ; k++) { // 振替休日: 直前に連続する祝日の中に日曜がある
+        const p = new Date(y, m - 1, d - k);
+        if (!base(p.getFullYear(), p.getMonth() + 1, p.getDate())) break;
+        if (p.getDay() === 0) return '振替休日';
+      }
+      const pv = new Date(y, m - 1, d - 1), nx = new Date(y, m - 1, d + 1); // 国民の休日
+      if (base(pv.getFullYear(), pv.getMonth() + 1, pv.getDate()) && base(nx.getFullYear(), nx.getMonth() + 1, nx.getDate())) return '国民の休日';
+      return null;
+    }
+
+    // "30, 31" / "3:文化の日, 23:勤労感謝の日" → Map(日 → 表示名)
+    function parseHolidayText(text) {
+      const map = new Map();
+      String(text || '').split(/[,、，]/).forEach(tok => {
+        const m = tok.trim().match(/^(\d{1,2})\s*(?:[:：]\s*(.+))?$/);
+        if (m) map.set(+m[1], (m[2] || 'HOLIDAY').trim());
+      });
+      return map;
+    }
+
+    // 教案PDFの文字断片 → { year, month, lessons, specialDays, holidays, warnings, source }
     function parseLessonItems(rawItems, opts) {
       opts = opts || {};
       const renameMap = buildRenameMap(opts.renameText);
       const warnings = [];
       const merged = mergeItems(rawItems);
 
-      // --- 年月: "12. December 2026" の形式を最優先(行全体の文字で判定) ---
-      const lineTexts = groupLines(rawItems).map(ln => ln.items.map(i => i.str).join(' '));
-      let year = null, month = null;
-      for (const lt of lineTexts) {
-        const m = lt.match(/(\d{1,2})\.\s*([A-Za-z]+)\s+(20\d{2})/);
-        if (m && MONTH_NAMES.indexOf(m[2].toLowerCase()) >= 0) {
-          month = MONTH_NAMES.indexOf(m[2].toLowerCase()) + 1; year = +m[3]; break;
-        }
-      }
-      if (!month) {
-        const rx = new RegExp('(' + MONTH_NAMES.join('|') + ')\\s+(20\\d{2})', 'i');
-        for (const lt of lineTexts) {
-          const m = lt.match(rx);
-          if (m) { month = MONTH_NAMES.indexOf(m[1].toLowerCase()) + 1; year = +m[2]; break; }
-        }
-      }
-      if (!month) {
-        warnings.push('年月を教案から読み取れませんでした。画面左の「対象年・対象月」を確認してください');
-        year = opts.year; month = opts.month;
-      }
+      // --- 日付の目印 "2 (M)" / "6(F)" ---
+      const anchors = merged.filter(it => /^(\d{1,2})\s*\((M|Tu|W|Th|F)\)/i.test(it.str)).map(it => {
+        const m = it.str.match(/^(\d{1,2})\s*\((M|Tu|W|Th|F)\)/i);
+        const letter = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
+        return { day: +m[1], letter, page: it.page, x: it.x, y: it.y, w: it.w, ref: it, rest: it.str.slice(m[0].length) };
+      });
 
-      // --- 日付の目印 "1 (Tu)" ---
-      const anchors = merged.filter(it => /^(\d{1,2})\s*\((M|Tu|W|Th|F)\)/i.test(it.str))
-        .map(it => ({ day: +it.str.match(/^(\d{1,2})/)[1], page: it.page, x: it.x, y: it.y }));
-
-      // 行ごとにまとめる(ページ→上から下→左から右)
-      const pages = {};
-      anchors.forEach(a => { (pages[a.page] = pages[a.page] || []).push(a); });
-      const ordered = [];
-      const allColGaps = [], allRowGaps = [];
+      // --- ページごとに行・列を求める。文字が「左寄せ」か「中央寄せ」かも判定 ---
+      const pageNums = [...new Set(anchors.map(a => a.page))].sort((a, b) => a - b);
       const pageRows = {};
-      Object.keys(pages).map(Number).sort((a, b) => a - b).forEach(p => {
-        const list = pages[p].slice().sort((a, b) => b.y - a.y || a.x - b.x);
+      let spreadL = 0, spreadC = 0;
+      const allRowGaps = [];
+      pageNums.forEach(p => {
+        const list = anchors.filter(a => a.page === p).sort((a, b) => b.y - a.y || a.x - b.x);
         const rows = [];
-        for (const a of list) {
+        list.forEach(a => {
           const r = rows[rows.length - 1];
           if (r && Math.abs(r.y - a.y) <= 4) r.items.push(a); else rows.push({ y: a.y, items: [a] });
-        }
-        rows.forEach(r => {
-          r.items.sort((a, b) => a.x - b.x);
-          for (let i = 1; i < r.items.length; i++) allColGaps.push(r.items[i].x - r.items[i - 1].x);
         });
+        rows.forEach(r => r.items.sort((a, b) => a.x - b.x));
         for (let i = 1; i < rows.length; i++) allRowGaps.push(rows[i - 1].y - rows[i].y);
         pageRows[p] = rows;
+        if (rows.length >= 2) {
+          spreadL += spreadOf(clusterValues(list.map(a => a.x), 10));
+          spreadC += spreadOf(clusterValues(list.map(a => a.x + a.w / 2), 10));
+        }
       });
-      const colW = median(allColGaps, 150);
+      const centered = spreadC < spreadL;       // 同点・判定不能なら左寄せ
       const rowH = Math.min(median(allRowGaps, 120), 120);
 
       const cells = [];
-      Object.keys(pageRows).map(Number).sort((a, b) => a - b).forEach(p => {
-        const rows = pageRows[p];
+      pageNums.forEach(p => {
+        const rows = pageRows[p], list = anchors.filter(a => a.page === p);
+        const refOf = a => centered ? a.x + a.w / 2 : a.x;
+        const refs = clusterValues(list.map(refOf), 10).map(c => meanOf(c.vals));
+        const half = (refs.length > 1 ? median(refs.slice(1).map((v, i) => v - refs[i]), 150) : 150) / 2 + 10;
+        const colOf = (xLeft, w) => {
+          if (centered) {
+            const c = xLeft + w / 2;
+            let best = -1, bd = 1e9;
+            refs.forEach((r, i) => { const d = Math.abs(c - r); if (d < bd) { bd = d; best = i; } });
+            return bd <= half ? best : -1;
+          }
+          let best = -1;
+          refs.forEach((r, i) => { if (xLeft >= r - 6) best = i; });
+          return best;
+        };
+        const pageItems = merged.filter(it => it.page === p).map(it => ({ it, col: colOf(it.x, it.w) }));
         rows.forEach((r, ri) => {
-          r.items.forEach((a, ci) => {
-            const xLeft = a.x - 4;
-            const xRight = (r.items[ci + 1] ? r.items[ci + 1].x : a.x + colW) - 4;
+          r.items.forEach(a => {
+            const col = colOf(a.x, a.w);
             const yTop = a.y + 6;
             const yBottom = rows[ri + 1] ? rows[ri + 1].y + 7 : a.y - rowH;
-            const strs = merged
-              .filter(it => it.page === p && it.x >= xLeft && it.x < xRight && it.y < yTop && it.y > yBottom && !(Math.abs(it.y - a.y) <= 2.5 && it.x < a.x + 0.5 && /^(\d{1,2})\s*\(/.test(it.str)))
-              .sort((x, y) => y.y - x.y || x.x - y.x)
-              .map(it => it.str);
-            // 日付の目印そのものの行の残り(例: "1 (Tu) FILE 1")は FILE 除去で消える
-            const anchorStr = merged.find(it => it.page === p && it.x === a.x && it.y === a.y);
-            const rest = anchorStr ? anchorStr.str.replace(/^\s*\d{1,2}\s*\(\s*(M|Tu|W|Th|F)\s*\)/i, '') : '';
-            cells.push({ day: a.day, text: cleanCellText([rest].concat(strs.filter(s => s !== (anchorStr && anchorStr.str)))) });
+            const strs = pageItems
+              .filter(o => o.col === col && o.it !== a.ref && o.it.y < yTop && o.it.y > yBottom)
+              .sort((u, v) => v.it.y - u.it.y || u.it.x - v.it.x)
+              .map(o => o.it.str);
+            cells.push({ day: a.day, letter: a.letter, text: cleanCellText([a.rest].concat(strs)) });
           });
         });
       });
 
-      // --- 月の判定: 30(M) のような前月の日付は無視 ---
-      const lessons = {}, specialDays = new Set(), holidays = [];
+      // --- 前月・翌月の日付(30 (M) など)を見分ける ---
       let offset = null, prev = null;
       cells.forEach(c => {
         if (offset === null) offset = c.day >= 15 ? -1 : 0;
         else if (prev !== null && c.day < prev) offset += 1;
         prev = c.day;
-        if (offset !== 0 || !c.text) return;
-        if (month && year) {
-          const dim = new Date(year, month, 0).getDate();
-          if (c.day > dim) { warnings.push(`${c.day}日: この月に存在しない日付なので無視しました`); return; }
-          const wd = new Date(year, month - 1, c.day).getDay();
-          if (wd === 0 || wd === 6) { warnings.push(`${c.day}日は土日です(教案の日付が合っているか確認してください)。この日は表示しません`); return; }
+        c.offset = offset;
+      });
+      const cur = cells.filter(c => c.offset === 0);
+      const ratio = (y, m) => {
+        const dim = new Date(y, m, 0).getDate();
+        let ok = 0, n = 0;
+        cur.forEach(c => { n++; if (c.day <= dim && new Date(y, m - 1, c.day).getDay() === WD_LETTER[c.letter]) ok++; });
+        return n ? ok / n : 0;
+      };
+
+      // --- 年月: 手動指定 > 教案の見出し > ファイル名 > 日付の曜日から推測 ---
+      let year = null, month = null, source = null;
+      if (opts.forceYM) { year = opts.forceYM.year; month = opts.forceYM.month; source = 'manual'; }
+      if (!month) {
+        const lineTexts = groupLines(rawItems).map(ln => ln.items.map(i => i.str).join(' '));
+        for (const lt of lineTexts) {
+          const m = lt.match(/(\d{1,2})\.\s*([A-Za-z]+)\s+(20\d{2})/);
+          if (m && MONTH_NAMES.indexOf(m[2].toLowerCase()) >= 0) { month = MONTH_NAMES.indexOf(m[2].toLowerCase()) + 1; year = +m[3]; source = 'header'; break; }
         }
+      }
+      if (!month && opts.fileName) {
+        const f = String(opts.fileName);
+        let m = f.match(new RegExp('(' + MONTH_NAMES.join('|') + ')[^0-9]{0,3}(20\\d{2})', 'i'));
+        if (m) { month = MONTH_NAMES.indexOf(m[1].toLowerCase()) + 1; year = +m[2]; source = 'file'; }
+        else if ((m = f.match(/(20\d{2})[-_.年]?(\d{1,2})/)) && +m[2] >= 1 && +m[2] <= 12) { year = +m[1]; month = +m[2]; source = 'file'; }
+      }
+      if (!month && cur.length) {
+        const base = (opts.year || new Date().getFullYear()) * 12 + ((opts.month || 1) - 1);
+        let best = null;
+        for (let y = (opts.year || new Date().getFullYear()) - 1; y <= (opts.year || new Date().getFullYear()) + 1; y++) {
+          for (let m = 1; m <= 12; m++) {
+            const r = ratio(y, m), dist = Math.abs(y * 12 + m - 1 - base);
+            if (r >= 0.9 && (!best || r > best.r || (r === best.r && dist < best.dist))) best = { y, m, r, dist };
+          }
+        }
+        if (best) { year = best.y; month = best.m; source = 'weekday'; }
+      }
+      if (!month) {
+        year = opts.year; month = opts.month; source = 'fallback';
+      }
+      if (source === 'file') warnings.push(`年月はファイル名から ${year}年${month}月 と判断しました。違う場合は左の「対象年・対象月」を変更してください`);
+      if (source === 'weekday') warnings.push(`年月は日付の曜日から ${year}年${month}月 と推測しました。違う場合は左の「対象年・対象月」を変更してください`);
+      if (source === 'fallback') warnings.push('年月を教案から読み取れませんでした。左の「対象年・対象月」を確認してください');
+      if (cur.length && source !== 'fallback' && ratio(year, month) < 1) {
+        warnings.push(`教案の曜日(M, Tu…)と ${year}年${month}月 のカレンダーが合わない日があります。年月を確認してください`);
+      }
+
+      // --- 各日の内容を判別 ---
+      const lessons = {}, specialDays = new Set(), holidays = [];
+      const dim = new Date(year, month, 0).getDate();
+      cur.forEach(c => {
+        if (!c.text) return;
+        if (c.day > dim) { warnings.push(`${c.day}日: この月に存在しない日付なので無視しました`); return; }
+        const wd = new Date(year, month - 1, c.day).getDay();
+        if (wd === 0 || wd === 6) { warnings.push(`${c.day}日は土日です(教案の日付が合っているか確認してください)。この日は表示しません`); return; }
         const r = classifyText(c.text, c.day, renameMap, warnings);
         if (!r) return;
         if (r.special) specialDays.add(c.day);
-        else if (r.holiday) holidays.push(c.day);
+        else if (r.holiday) holidays.push({ day: c.day, label: jpHolidayName(year, month, c.day) || 'HOLIDAY' });
         else lessons[c.day] = r;
       });
 
-      return { year, month, lessons, specialDays, holidays, warnings, cellCount: cells.length };
+      return { year, month, lessons, specialDays, holidays, warnings, source, cellCount: cells.length };
     }
 
     // 科目ごとの活動リスト(初出順・重複なし)と番号
@@ -810,7 +920,7 @@
       year: 2026, month: 12,
       specialEnabled: true, specialDays: new Set([17, 18]),
       seasonEnabled: true, seasonTheme: 'winter', seasonEvents: {},
-      lessons: {}, warnings: []
+      lessons: {}, warnings: [], lastPdf: null
     };
 
     function iconImg(key, size) {
@@ -896,16 +1006,23 @@
       });
     }
 
-    // 年・月を手で変えたとき: 前の月の内容が残らないようにクリアする
+    // 年・月を手で変えたとき:
+    //   PDFを読み込み済みなら、その年月で読み直す(曜日の合わない日は警告が出ます)
+    //   読み込んでいなければ、前の月の内容が残らないようにクリアする
     function onMonthChange() {
       const y = parseInt(document.getElementById('input-year').value, 10) || state.year;
       const m = parseInt(document.getElementById('input-month').value, 10) || state.month;
       if (y !== state.year || m !== state.month) {
+        if (state.lastPdf) {
+          applyParse(state.lastPdf.items, state.lastPdf.fileName, { year: y, month: m });
+          return;
+        }
         state.year = y; state.month = m;
         state.lessons = {}; state.specialDays = new Set(); state.warnings = [];
         state.seasonEvents = {};
         document.getElementById('season-events-text').value = '';
         document.getElementById('holiday-days-input').value = '';
+        document.getElementById('cooking-note-input').value = '';
         setStatus(`${y}年 ${m}月 に切り替えました。PDFを読み込むか、「5. レッスン一覧」に入力してください`);
         syncControlsUI();
         renderLessonEditor();
@@ -1009,6 +1126,42 @@
       return true;
     }
 
+    function applyParse(items, fileName, forceYM) {
+      const res = parseLessonItems(items, {
+        year: state.year, month: state.month, fileName,
+        renameText: document.getElementById('rename-input').value,
+        forceYM: forceYM || null
+      });
+      state.year = res.year || state.year;
+      state.month = res.month || state.month;
+      state.lessons = res.lessons;
+      state.specialDays = res.specialDays;
+      state.specialEnabled = res.specialDays.size > 0;
+      state.warnings = res.warnings.slice();
+      if (res.cellCount === 0) state.warnings.push('日付(例: 1 (Tu))が見つかりませんでした。教案の形式が違う可能性があります。「5. レッスン一覧」に手で入力してください');
+      // 前の月の Cooking 説明文は残さない(活動が違うため)
+      const note = document.getElementById('cooking-note-input');
+      if (note.value.trim() && Object.values(res.lessons).some(l => l.subject === 'Cooking')) {
+        state.warnings.push('Cooking の補足説明文は前の月の内容だったので空にしました。必要なら「4.」で入力してください');
+      }
+      note.value = '';
+      // 前の月のシーズンスクール予定(例: 12月の Christmas Party)も残さない。必要なら「3.」に入力
+      if (Object.keys(state.seasonEvents).length) {
+        state.warnings.push('前の月のシーズンスクール予定は消しました。この月にある場合は「3. シーズンスクール設定」に入力してください');
+        state.seasonEvents = {};
+        document.getElementById('season-events-text').value = '';
+      }
+      document.getElementById('toggle-special').checked = state.specialEnabled;
+      document.getElementById('input-year').value = state.year;
+      document.getElementById('input-month').value = state.month;
+      document.getElementById('holiday-days-input').value = res.holidays.map(h => h.label === 'HOLIDAY' ? h.day : `${h.day}:${h.label}`).join(', ');
+      syncControlsUI();
+      renderLessonEditor();
+      renderAll();
+      setStatus(`${state.year}年 ${state.month}月 のカリキュラムを読み込みました(${Object.keys(res.lessons).length}日分)。内容を確認してください`);
+      return res;
+    }
+
     async function handleLessonPdfUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1016,25 +1169,8 @@
       setStatus('レッスンプラン PDF を解析しています...');
       try {
         const items = await extractPdfItems(file);
-        const res = parseLessonItems(items, {
-          year: state.year, month: state.month,
-          renameText: document.getElementById('rename-input').value
-        });
-        state.year = res.year || state.year;
-        state.month = res.month || state.month;
-        state.lessons = res.lessons;
-        state.specialDays = res.specialDays;
-        state.specialEnabled = res.specialDays.size > 0;
-        state.warnings = res.warnings;
-        if (res.cellCount === 0) state.warnings.push('日付(例: 1 (Tu))が見つかりませんでした。教案の形式が違う可能性があります。「5. レッスン一覧」に手で入力してください');
-        document.getElementById('toggle-special').checked = state.specialEnabled;
-        document.getElementById('input-year').value = state.year;
-        document.getElementById('input-month').value = state.month;
-        document.getElementById('holiday-days-input').value = res.holidays.join(', ');
-        syncControlsUI();
-        renderLessonEditor();
-        renderAll();
-        setStatus(`${state.year}年 ${state.month}月 のカリキュラムを読み込みました(${Object.keys(res.lessons).length}日分)。内容を確認してください`);
+        state.lastPdf = { items, fileName: file.name };
+        applyParse(items, file.name, null);
       } catch (err) {
         console.error(err);
         setStatus('PDFの読み込みに失敗しました。ファイル形式をご確認ください。');
@@ -1081,9 +1217,8 @@
     }
 
     // ---------- 描画 ----------
-    function getHolidaySet() {
-      return new Set(document.getElementById('holiday-days-input').value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)));
-    }
+    function getHolidayMap() { return parseHolidayText(document.getElementById('holiday-days-input').value); }
+    function getHolidaySet() { return new Set(getHolidayMap().keys()); }
 
     function renderCalendar(catalog) {
       const tbody = document.getElementById('calendar-tbody');
@@ -1093,7 +1228,7 @@
       const startOffset = (firstDay.getDay() + 6) % 7; // 月曜始まり
       const daysInMonth = new Date(year, month, 0).getDate();
       const prevMonthDays = new Date(year, month - 1, 0).getDate();
-      const holidaySet = getHolidaySet();
+      const holidayMap = getHolidayMap();
       const specialLabel = document.getElementById('special-label').value || 'SPECIAL PROGRAM';
       const themeObj = SEASON_THEMES[state.seasonTheme];
 
@@ -1143,9 +1278,9 @@
           }
 
           const d = cell.day;
-          if (holidaySet.has(d)) {
+          if (holidayMap.has(d)) {
             td.classList.add('cell-holiday');
-            td.innerHTML = `<div class="day-num ${dayColorClass}">${d}</div><div class="holiday-label">HOLIDAY</div>`;
+            td.innerHTML = `<div class="day-num ${dayColorClass}">${d}</div><div class="holiday-label">${esc(holidayMap.get(d))}</div>`;
             tr.appendChild(td);
             col++;
             continue;
